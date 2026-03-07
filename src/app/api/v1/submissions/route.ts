@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { submissions } from "@/lib/db/schema";
+import { problems, submissions } from "@/lib/db/schema";
 import { and, desc, eq } from "drizzle-orm";
 import { getApiUser, unauthorized, isAdmin } from "@/lib/api/auth";
+import { canAccessProblem } from "@/lib/auth/permissions";
 import { nanoid } from "nanoid";
 import {
   MAX_SOURCE_CODE_SIZE_BYTES,
@@ -73,6 +74,21 @@ export async function POST(request: NextRequest) {
         },
         { status: 413 }
       );
+    }
+
+    const problem = await db.query.problems.findFirst({
+      where: eq(problems.id, problemId),
+      columns: { id: true },
+    });
+
+    if (!problem) {
+      return NextResponse.json({ error: "problemNotFound" }, { status: 404 });
+    }
+
+    const hasAccess = await canAccessProblem(problemId, user.id, user.role);
+
+    if (!hasAccess) {
+      return NextResponse.json({ error: "forbidden" }, { status: 403 });
     }
 
     const id = nanoid();

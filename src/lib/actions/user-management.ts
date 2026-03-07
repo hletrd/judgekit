@@ -148,6 +148,7 @@ export async function editUser(userId: string, data: ManagedUserInput): Promise<
 
     if (data.password && data.password.length >= MIN_PASSWORD_LENGTH) {
       updates.passwordHash = await hash(data.password, 12);
+      updates.mustChangePassword = true;
     }
 
     await db.update(users).set(updates).where(eq(users.id, userId));

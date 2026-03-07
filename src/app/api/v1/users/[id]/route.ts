@@ -31,8 +31,10 @@ export async function GET(
     if (!user) return unauthorized();
 
     const { id } = await params;
+    const isAdminActor = isAdmin(user.role);
+    const isSelf = user.id === id;
 
-    if (!isAdmin(user.role) && user.id !== id) return forbidden();
+    if (!isAdminActor && !isSelf) return forbidden();
 
     const found = await db
       .select(safeUserSelect)
@@ -58,8 +60,10 @@ export async function PATCH(
     if (!user) return unauthorized();
 
     const { id } = await params;
+    const isAdminActor = isAdmin(user.role);
+    const isSelf = user.id === id;
 
-    if (!isAdmin(user.role) && user.id !== id) return forbidden();
+    if (!isAdminActor && !isSelf) return forbidden();
 
     const found = await db
       .select(safeUserSelect)
@@ -100,9 +104,9 @@ export async function PATCH(
     if (username !== undefined) updates.username = username;
     if (email !== undefined) updates.email = normalizedEmail;
     if (className !== undefined) updates.className = normalizedClassName;
-    if (isActive !== undefined && isAdmin(user.role)) updates.isActive = isActive;
+    if (isActive !== undefined && isAdminActor) updates.isActive = isActive;
     if (role !== undefined) {
-      if (!isAdmin(user.role)) return forbidden();
+      if (!isAdminActor) return forbidden();
 
       if (typeof role !== "string" || !isUserRole(role)) {
         return NextResponse.json({ error: "Invalid role" }, { status: 400 });
@@ -129,6 +133,13 @@ export async function PATCH(
       updates.role = role;
     }
     if (password !== undefined) {
+      if (!isAdminActor || isSelf) {
+        return NextResponse.json(
+          { error: "passwordChangeRequiresCurrentPassword" },
+          { status: 403 }
+        );
+      }
+
       if (typeof password !== "string" || password.length < MIN_PASSWORD_LENGTH) {
         return NextResponse.json(
           { error: `Password must be at least ${MIN_PASSWORD_LENGTH} characters` },
@@ -136,6 +147,7 @@ export async function PATCH(
         );
       }
       updates.passwordHash = await hash(password, 12);
+      updates.mustChangePassword = true;
     }
 
     await db.update(users).set(updates).where(eq(users.id, id));

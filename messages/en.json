@@ -143,6 +143,7 @@
       "unauthorized": "Please sign in again and retry your submission.",
       "forbidden": "You do not have permission to submit to this problem.",
       "problemRequired": "Problem information is missing. Refresh the page and try again.",
+      "problemNotFound": "This problem could not be found.",
       "languageRequired": "Please select a language.",
       "sourceCodeRequired": "Please enter your source code.",
       "sourceCodeTooLarge": "Your source code exceeds the allowed size limit.",
