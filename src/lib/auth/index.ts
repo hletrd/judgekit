@@ -5,7 +5,7 @@ import { db } from "@/lib/db";
 import { authConfig } from "./config";
 import { accounts, sessions, users } from "@/lib/db/schema";
 
-export const { handlers, auth, signIn, signOut } = NextAuth({
+export const { handlers, auth, signIn, signOut, unstable_update } = NextAuth({
   adapter: DrizzleAdapter(db, {
     usersTable: users,
     accountsTable: accounts,

@@ -1,14 +1,28 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
-import { submissions, submissionResults, testCases } from "@/lib/db/schema";
+import { db, sqlite } from "@/lib/db";
+import { problems, submissions, submissionResults, testCases } from "@/lib/db/schema";
 import { eq, asc } from "drizzle-orm";
 import { nanoid } from "nanoid";
+import { isJudgeAuthorized } from "@/lib/judge/auth";
+import { isSubmissionStatus } from "@/lib/security/constants";
 
-function isJudgeAuthorized(request: NextRequest) {
-  const authHeader = request.headers.get("authorization");
-  if (!authHeader?.startsWith("Bearer ")) return false;
-  return authHeader.slice(7) === process.env.JUDGE_AUTH_TOKEN;
-}
+const IN_PROGRESS_STATUSES = new Set(["queued", "judging"]);
+
+type ClaimedSubmissionRow = {
+  id: string;
+  userId: string;
+  problemId: string;
+  assignmentId: string | null;
+  language: string;
+  sourceCode: string;
+  status: string | null;
+  compileOutput: string | null;
+  executionTimeMs: number | null;
+  memoryUsedKb: number | null;
+  score: number | null;
+  judgedAt: number | null;
+  submittedAt: number;
+};
 
 export async function GET(request: NextRequest) {
   try {
@@ -16,30 +30,67 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Find the oldest pending submission
-    const pending = await db.query.submissions.findFirst({
-      where: eq(submissions.status, "pending"),
-      orderBy: [asc(submissions.submittedAt)],
-    });
+    const claimed = sqlite
+      .prepare(
+        `
+          UPDATE submissions
+          SET status = 'queued'
+          WHERE id = (
+            SELECT id
+            FROM submissions
+            WHERE status = 'pending'
+            ORDER BY submitted_at ASC
+            LIMIT 1
+          )
+          RETURNING
+            id,
+            user_id AS userId,
+            problem_id AS problemId,
+            assignment_id AS assignmentId,
+            language,
+            source_code AS sourceCode,
+            status,
+            compile_output AS compileOutput,
+            execution_time_ms AS executionTimeMs,
+            memory_used_kb AS memoryUsedKb,
+            score,
+            judged_at AS judgedAt,
+            submitted_at AS submittedAt
+        `
+      )
+      .get() as ClaimedSubmissionRow | undefined;
 
-    if (!pending) {
+    if (!claimed) {
       return NextResponse.json({ data: null });
     }
 
-    // Atomically claim it by updating status to "queued"
-    await db
-      .update(submissions)
-      .set({ status: "queued" })
-      .where(eq(submissions.id, pending.id));
+    const problem = await db.query.problems.findFirst({
+      where: eq(problems.id, claimed.problemId),
+      columns: {
+        timeLimitMs: true,
+        memoryLimitMb: true,
+      },
+    });
+
+    if (!problem) {
+      return NextResponse.json({ error: "Problem not found" }, { status: 500 });
+    }
 
     // Fetch test cases for the problem
     const cases = await db
       .select()
       .from(testCases)
-      .where(eq(testCases.problemId, pending.problemId))
+      .where(eq(testCases.problemId, claimed.problemId))
       .orderBy(asc(testCases.sortOrder));
 
-    return NextResponse.json({ data: { ...pending, status: "queued", testCases: cases } });
+    return NextResponse.json({
+      data: {
+        ...claimed,
+        timeLimitMs: problem.timeLimitMs,
+        memoryLimitMb: problem.memoryLimitMb,
+        testCases: cases,
+      },
+    });
   } catch (error) {
     console.error("GET /api/v1/judge/poll error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
@@ -61,6 +112,9 @@ export async function POST(request: NextRequest) {
     if (!status || typeof status !== "string") {
       return NextResponse.json({ error: "status is required" }, { status: 400 });
     }
+    if (!isSubmissionStatus(status)) {
+      return NextResponse.json({ error: "Invalid submission status" }, { status: 400 });
+    }
 
     const submission = await db.query.submissions.findFirst({
       where: eq(submissions.id, submissionId),
@@ -70,7 +124,21 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Submission not found" }, { status: 404 });
     }
 
-    // Calculate aggregate score and timing from results
+    if (IN_PROGRESS_STATUSES.has(status)) {
+      await db
+        .update(submissions)
+        .set({
+          status,
+        })
+        .where(eq(submissions.id, submissionId));
+
+      const updatedInProgress = await db.query.submissions.findFirst({
+        where: eq(submissions.id, submissionId),
+      });
+
+      return NextResponse.json({ data: updatedInProgress });
+    }
+
     let score: number | null = null;
     let maxExecutionTimeMs: number | null = null;
     let maxMemoryUsedKb: number | null = null;
@@ -102,6 +170,8 @@ export async function POST(request: NextRequest) {
         judgedAt: new Date(),
       })
       .where(eq(submissions.id, submissionId));
+
+    await db.delete(submissionResults).where(eq(submissionResults.submissionId, submissionId));
 
     // Insert per-test-case results
     if (Array.isArray(results) && results.length > 0) {

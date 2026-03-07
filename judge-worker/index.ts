@@ -1,8 +1,19 @@
-const POLL_URL = process.env.JUDGE_POLL_URL || "http://localhost:3000/api/judge/poll";
-const POLL_INTERVAL = parseInt(process.env.POLL_INTERVAL || "2000");
-const AUTH_TOKEN = process.env.JUDGE_AUTH_TOKEN || "";
+import { getJudgeAuthToken, getJudgePollIntervalMs, getJudgePollUrl } from "./config";
+import type { Submission } from "./executor";
+
+const POLL_URL = getJudgePollUrl();
+const POLL_INTERVAL = getJudgePollIntervalMs();
+const AUTH_TOKEN = getJudgeAuthToken();
+
+let isPolling = false;
 
 async function pollForSubmissions() {
+  if (isPolling) {
+    return;
+  }
+
+  isPolling = true;
+
   try {
     const response = await fetch(POLL_URL, {
       method: "GET",
@@ -13,13 +24,13 @@ async function pollForSubmissions() {
     });
 
     if (!response.ok) {
-      if (response.status !== 404) {
-        console.error(`Poll failed: ${response.status}`);
-      }
+      console.error(`Poll failed: ${response.status}`);
       return;
     }
 
-    const submission = await response.json();
+    const payload = (await response.json()) as { data: Submission | null };
+    const submission = payload.data;
+
     if (submission) {
       console.log(`Processing submission ${submission.id}`);
       const { executeSubmission } = await import("./executor");
@@ -27,6 +38,9 @@ async function pollForSubmissions() {
     }
   } catch (error) {
     console.error("Poll error:", error);
+  } finally {
+    isPolling = false;
+    setTimeout(pollForSubmissions, POLL_INTERVAL);
   }
 }
 
@@ -34,7 +48,10 @@ async function main() {
   console.log("Judge worker started");
   console.log(`Polling ${POLL_URL} every ${POLL_INTERVAL}ms`);
 
-  setInterval(pollForSubmissions, POLL_INTERVAL);
+  await pollForSubmissions();
 }
 
-main();
+main().catch((error) => {
+  console.error("Judge worker failed to start:", error);
+  process.exit(1);
+});

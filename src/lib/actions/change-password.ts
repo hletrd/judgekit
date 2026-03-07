@@ -6,6 +6,7 @@ import { auth } from "@/lib/auth";
 import { findSessionUser, hasSessionIdentity } from "@/lib/auth/find-session-user";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
+import { MIN_PASSWORD_LENGTH } from "@/lib/security/constants";
 
 export async function changePassword(
   currentPassword: string,
@@ -28,20 +29,25 @@ export async function changePassword(
     return { success: false, error: "currentPasswordIncorrect" };
   }
 
-  if (newPassword.length < 8) {
+  if (newPassword.length < MIN_PASSWORD_LENGTH) {
     return { success: false, error: "passwordTooShort" };
   }
 
   const newHash = await hash(newPassword, 12);
 
-  db.update(users)
-    .set({
-      passwordHash: newHash,
-      mustChangePassword: false,
-      updatedAt: new Date(),
-    })
-    .where(eq(users.id, user.id))
-    .run();
+  try {
+    db.update(users)
+      .set({
+        passwordHash: newHash,
+        mustChangePassword: false,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, user.id))
+      .run();
+  } catch (error) {
+    console.error("Failed to change password:", error);
+    return { success: false, error: "error" };
+  }
 
   return { success: true };
 }

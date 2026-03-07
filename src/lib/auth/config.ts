@@ -6,12 +6,24 @@ import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import type { UserRole } from "@/types";
+import {
+  clearRateLimit,
+  getRateLimitKey,
+  isRateLimited,
+  recordRateLimitFailure,
+} from "@/lib/security/rate-limit";
+import {
+  getAuthSessionCookieName,
+  getValidatedAuthSecret,
+  shouldUseSecureSessionCookie,
+} from "@/lib/security/env";
 
 type AuthUserRecord = {
   id: string;
   username: string;
   email: string | null;
   name: string;
+  className: string | null;
   role: UserRole;
   mustChangePassword: boolean | null;
 };
@@ -27,12 +39,28 @@ function syncTokenWithUser(token: JWT, user: AuthUserRecord) {
   token.username = user.username;
   token.email = user.email;
   token.name = user.name;
+  token.className = user.className;
   token.mustChangePassword = user.mustChangePassword ?? false;
 
   return token;
 }
 
+const secureSessionCookie = shouldUseSecureSessionCookie();
+
 export const authConfig: NextAuthConfig = {
+  secret: getValidatedAuthSecret(),
+  useSecureCookies: secureSessionCookie,
+  cookies: {
+    sessionToken: {
+      name: getAuthSessionCookieName(),
+      options: {
+        httpOnly: true,
+        path: "/",
+        sameSite: "lax",
+        secure: secureSessionCookie,
+      },
+    },
+  },
   providers: [
     Credentials({
       name: "credentials",
@@ -40,11 +68,20 @@ export const authConfig: NextAuthConfig = {
         username: { label: "Username or Email", type: "text" },
         password: { label: "Password", type: "password" },
       },
-      async authorize(credentials) {
-        if (!credentials?.username || !credentials?.password) return null;
+      async authorize(credentials, request) {
+        const rateLimitKey = getRateLimitKey("login", request.headers);
 
-        const identifier = credentials.username as string;
-        const password = credentials.password as string;
+        if (isRateLimited(rateLimitKey)) {
+          console.warn("Blocked login attempt due to rate limiting", { rateLimitKey });
+          return null;
+        }
+
+        if (typeof credentials?.username !== "string" || typeof credentials?.password !== "string") {
+          return null;
+        }
+
+        const identifier = credentials.username;
+        const password = credentials.password;
 
         let user = await db.query.users.findFirst({
           where: eq(users.username, identifier),
@@ -56,16 +93,27 @@ export const authConfig: NextAuthConfig = {
           });
         }
 
-        if (!user || !user.passwordHash || !user.isActive) return null;
+        if (!user || !user.passwordHash || !user.isActive) {
+          recordRateLimitFailure(rateLimitKey);
+          console.warn("Rejected login attempt", { identifier, reason: "user_not_found_or_inactive" });
+          return null;
+        }
 
         const isValid = await compare(password, user.passwordHash);
-        if (!isValid) return null;
+        if (!isValid) {
+          recordRateLimitFailure(rateLimitKey);
+          console.warn("Rejected login attempt", { identifier, reason: "invalid_password" });
+          return null;
+        }
+
+        clearRateLimit(rateLimitKey);
 
         return {
           id: user.id,
           username: user.username,
           email: user.email,
           name: user.name,
+          className: user.className,
           role: user.role as UserRole,
           mustChangePassword: user.mustChangePassword ?? false,
         };
@@ -85,6 +133,7 @@ export const authConfig: NextAuthConfig = {
           username: user.username,
           email: user.email ?? null,
           name: user.name ?? "",
+          className: user.className ?? null,
           role: user.role,
           mustChangePassword: user.mustChangePassword ?? false,
         });
@@ -107,6 +156,7 @@ export const authConfig: NextAuthConfig = {
             username: freshUser.username,
             email: freshUser.email,
             name: freshUser.name,
+            className: freshUser.className,
             role: freshUser.role as UserRole,
             mustChangePassword: freshUser.mustChangePassword ?? false,
           });
@@ -118,6 +168,7 @@ export const authConfig: NextAuthConfig = {
         delete token.username;
         delete token.email;
         delete token.name;
+        delete token.className;
         delete token.mustChangePassword;
       }
 
@@ -131,6 +182,7 @@ export const authConfig: NextAuthConfig = {
         session.user.role = token.role;
         session.user.username = token.username ?? "";
         session.user.name = token.name ?? session.user.name ?? "";
+        session.user.className = token.className ?? null;
         session.user.mustChangePassword = token.mustChangePassword ?? false;
 
         if (typeof token.email === "string") {

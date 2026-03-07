@@ -2,21 +2,27 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { getToken } from "next-auth/jwt";
 import { shouldUseSecureAuthCookie } from "@/lib/auth/secure-cookie";
+import { getValidatedAuthSecret } from "@/lib/security/env";
 
 export async function proxy(request: NextRequest) {
+  const pathname = request.nextUrl.pathname;
   const token = await getToken({
     req: request,
-    secret: process.env.AUTH_SECRET,
+    secret: getValidatedAuthSecret(),
     secureCookie: shouldUseSecureAuthCookie(request),
   });
 
-  const isAuthPage = request.nextUrl.pathname.startsWith("/login");
-  const isChangePasswordPage = request.nextUrl.pathname === "/change-password";
-  const isProtectedRoute =
-    request.nextUrl.pathname.startsWith("/dashboard") ||
-    request.nextUrl.pathname.startsWith("/api/judge");
+  const isAuthPage = pathname.startsWith("/login");
+  const isChangePasswordPage = pathname === "/change-password";
+  const isApiRoute = pathname.startsWith("/api/v1");
+  const isJudgeWorkerRoute = pathname.startsWith("/api/v1/judge/");
+  const isProtectedRoute = pathname.startsWith("/dashboard") || (isApiRoute && !isJudgeWorkerRoute);
 
   if ((isProtectedRoute || isChangePasswordPage) && !token) {
+    if (isApiRoute) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const loginUrl = new URL("/login", request.url);
     loginUrl.searchParams.set("callbackUrl", request.nextUrl.pathname);
     return NextResponse.redirect(loginUrl);
@@ -30,6 +36,10 @@ export async function proxy(request: NextRequest) {
   }
 
   if (isProtectedRoute && token?.mustChangePassword) {
+    if (isApiRoute) {
+      return NextResponse.json({ error: "Password change required" }, { status: 403 });
+    }
+
     return NextResponse.redirect(new URL("/change-password", request.url));
   }
 
@@ -37,5 +47,5 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/dashboard/:path*", "/api/judge/:path*", "/login", "/change-password"],
+  matcher: ["/dashboard/:path*", "/api/v1/:path*", "/login", "/change-password"],
 };

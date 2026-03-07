@@ -1,20 +1,24 @@
 import { getToken } from "next-auth/jwt";
 import { NextRequest, NextResponse } from "next/server";
 import { shouldUseSecureAuthCookie } from "@/lib/auth/secure-cookie";
+import { getValidatedAuthSecret } from "@/lib/security/env";
+import type { UserRole } from "@/types";
 
 export async function getApiUser(request: NextRequest) {
   const token = await getToken({
     req: request,
-    secret: process.env.AUTH_SECRET,
+    secret: getValidatedAuthSecret(),
     secureCookie: shouldUseSecureAuthCookie(request),
   });
   if (!token) return null;
   return {
     id: token.id as string,
-    role: token.role as string,
+    role: token.role as UserRole,
     username: token.username as string,
-    email: token.email as string,
+    email: (token.email as string | null | undefined) ?? null,
     name: token.name as string,
+    className: (token.className as string | null | undefined) ?? null,
+    mustChangePassword: Boolean(token.mustChangePassword),
   };
 }
 

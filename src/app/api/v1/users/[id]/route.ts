@@ -4,12 +4,18 @@ import { users } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { getApiUser, unauthorized, forbidden, notFound, isAdmin } from "@/lib/api/auth";
 import { hash } from "bcryptjs";
+import {
+  MIN_PASSWORD_LENGTH,
+  canManageRole,
+  isUserRole,
+} from "@/lib/security/constants";
 
 const safeUserSelect = {
   id: users.id,
   username: users.username,
-        email: users.email,
+  email: users.email,
   name: users.name,
+  className: users.className,
   role: users.role,
   isActive: users.isActive,
   createdAt: users.createdAt,
@@ -64,10 +70,11 @@ export async function PATCH(
     if (!found) return notFound("User");
 
     const body = await request.json();
-    const { name, username, email, role, isActive, password } = body;
+    const { name, username, email, className, role, isActive, password } = body;
 
     const updates: Record<string, unknown> = { updatedAt: new Date() };
     const normalizedEmail = typeof email === "string" && email.trim() !== "" ? email.trim() : null;
+    const normalizedClassName = typeof className === "string" && className.trim() !== "" ? className.trim() : null;
 
     if (username !== undefined) {
       const existingUsername = await db.query.users.findFirst({
@@ -92,14 +99,41 @@ export async function PATCH(
     if (name !== undefined) updates.name = name;
     if (username !== undefined) updates.username = username;
     if (email !== undefined) updates.email = normalizedEmail;
+    if (className !== undefined) updates.className = normalizedClassName;
     if (isActive !== undefined && isAdmin(user.role)) updates.isActive = isActive;
     if (role !== undefined) {
       if (!isAdmin(user.role)) return forbidden();
+
+      if (typeof role !== "string" || !isUserRole(role)) {
+        return NextResponse.json({ error: "Invalid role" }, { status: 400 });
+      }
+
+      if (!canManageRole(user.role, role)) {
+        return NextResponse.json(
+          { error: "Only super_admin can assign super_admin role" },
+          { status: 403 }
+        );
+      }
+
+      if (found.role === "super_admin" && role !== "super_admin" && user.role !== "super_admin") {
+        return NextResponse.json(
+          { error: "Only super_admin can change super_admin role" },
+          { status: 403 }
+        );
+      }
+
+      if (found.role === "super_admin" && role !== "super_admin") {
+        return NextResponse.json({ error: "Cannot change super_admin role" }, { status: 403 });
+      }
+
       updates.role = role;
     }
     if (password !== undefined) {
-      if (typeof password !== "string" || password.length < 6) {
-        return NextResponse.json({ error: "Password must be at least 6 characters" }, { status: 400 });
+      if (typeof password !== "string" || password.length < MIN_PASSWORD_LENGTH) {
+        return NextResponse.json(
+          { error: `Password must be at least ${MIN_PASSWORD_LENGTH} characters` },
+          { status: 400 }
+        );
       }
       updates.passwordHash = await hash(password, 12);
     }
@@ -137,6 +171,10 @@ export async function DELETE(
       .then((r) => r[0]);
 
     if (!found) return notFound("User");
+
+    if (found.role === "super_admin") {
+      return NextResponse.json({ error: "Cannot deactivate super_admin" }, { status: 403 });
+    }
 
     await db.update(users).set({ isActive: false, updatedAt: new Date() }).where(eq(users.id, id));
 

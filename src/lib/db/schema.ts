@@ -15,6 +15,7 @@ export const users = sqliteTable("users", {
   username: text("username").unique().notNull(),
   email: text("email"),
   name: text("name").notNull(),
+  className: text("class_name"),
   passwordHash: text("password_hash"),
   role: text("role").notNull().default("student"),
   isActive: integer("is_active", { mode: "boolean" }).default(true),
