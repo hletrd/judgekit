@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { signIn } from "next-auth/react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 
 export function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const t = useTranslations("auth");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -22,31 +23,45 @@ export function LoginForm() {
     const formData = new FormData(e.currentTarget);
     const username = formData.get("username") as string;
     const password = formData.get("password") as string;
+    const redirectTo = searchParams.get("callbackUrl") || "/dashboard";
 
-    const result = await signIn("credentials", {
-      username,
-      password,
-      redirect: false,
-    });
+    try {
+      const result = await signIn("credentials", {
+        username,
+        password,
+        redirect: false,
+        redirectTo,
+      });
 
-    if (result?.error) {
+      if (result?.error || !result?.ok) {
+        setError(t("invalidCredentials"));
+        setLoading(false);
+        return;
+      }
+
+      if (result.url) {
+        const nextUrl = new URL(result.url, window.location.origin);
+        router.push(`${nextUrl.pathname}${nextUrl.search}${nextUrl.hash}`);
+      } else {
+        router.push(redirectTo);
+      }
+      router.refresh();
+    } catch (error) {
+      console.error("Sign-in failed", error);
       setError(t("invalidCredentials"));
       setLoading(false);
-    } else {
-      router.push("/dashboard");
-      router.refresh();
     }
   }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="space-y-2">
-        <Label htmlFor="username">{t("username")}</Label>
+        <Label htmlFor="username">{t("identifier")}</Label>
         <Input
           id="username"
           name="username"
           type="text"
-          placeholder=""
+          placeholder={t("identifierPlaceholder")}
           required
         />
       </div>
