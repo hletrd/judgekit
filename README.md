@@ -61,11 +61,41 @@ Open [http://localhost:3000](http://localhost:3000) to access the application.
 
 | Field | Value |
 |-------|-------|
+| Username | `admin` |
 | Email | `admin@example.com` |
 | Password | `admin123` |
 | Role | `super_admin` |
 
-> **Note:** Change the default password immediately in production.
+> **Note:** The seeded admin is forced through `/change-password` on first login. Change the default password immediately in production.
+
+### Local Production Run
+
+```bash
+npm run build
+PORT=3000 npm run start
+```
+
+If port `3000` is already occupied, stop the stale process before restarting the production server on the same port.
+
+## Authentication Notes
+
+- Credentials sign-in accepts either username or email, but the seeded admin uses username `admin` by default.
+- Protected-route login preserves `callbackUrl`, so logging in from a deep link should return the user to the original destination unless the forced password-change flow overrides it.
+- Next.js 16 route protection now lives in `src/proxy.ts`, not `src/middleware.ts`.
+- HTTPS deployments that terminate TLS at a reverse proxy must preserve the original scheme. Auth.js JWT readers in `src/proxy.ts` and `src/lib/api/auth.ts` rely on `src/lib/auth/secure-cookie.ts` to choose the correct secure cookie name.
+
+## Deployment and Database Reset
+
+- Deployment notes for the OCI demo instance live in `docs/deployment.md`.
+- Before touching production, verify that the SSH target matches the public DNS for the environment you intend to change. `oj-demo.atik.kr` should be treated as a separate host from the main `atik.kr` box unless you confirm otherwise.
+- To reset the SQLite database for a disposable or demo environment, stop the app first, remove `data/judge.db`, `data/judge.db-shm`, and `data/judge.db-wal`, then run:
+
+```bash
+npm run db:push
+npm run seed
+```
+
+- Re-verify login after a reset with username `admin` and password `admin123`; the expected first destination is `/change-password`.
 
 ## Tech Stack
 

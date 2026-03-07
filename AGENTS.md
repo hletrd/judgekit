@@ -71,9 +71,13 @@ online-judge/
 ## Auth & Permissions
 
 - Roles: `super_admin` > `admin` > `instructor` > `student`
-- Session includes `user.id` and `user.role`
+- Credentials sign-in accepts either username or email
+- Session includes `user.id`, `user.role`, and `user.username`
 - Use `assertRole()`, `assertGroupAccess()`, `canAccessProblem()` from `@/lib/auth/permissions`
-- All dashboard routes are protected via middleware
+- All dashboard routes are protected via `src/proxy.ts`
+- Any `getToken()` usage that must work on HTTPS or behind a reverse proxy should use `shouldUseSecureAuthCookie()` from `@/lib/auth/secure-cookie`
+- The seeded `super_admin` account is `admin` / `admin@example.com` with password `admin123`
+- Seeded and admin-created users may be forced through `/change-password` on first login
 
 ## Code Style
 
@@ -122,7 +126,14 @@ All API endpoints under `/api/v1/`. Auth via JWT Bearer token. Responses: `{ dat
 | `src/lib/db/schema.ts` | All Drizzle table definitions |
 | `src/lib/db/index.ts` | DB connection singleton |
 | `src/lib/auth/index.ts` | Auth.js exports (handlers, auth, signIn, signOut) |
+| `src/lib/auth/secure-cookie.ts` | Shared HTTPS/reverse-proxy secure cookie detection for Auth.js token readers |
 | `src/lib/auth/permissions.ts` | Role & access control helpers |
+| `src/proxy.ts` | Next.js 16 route guard for login, dashboard access, and forced password changes |
 | `src/types/index.ts` | Shared TypeScript types |
 | `drizzle.config.ts` | Drizzle Kit configuration |
 | `scripts/seed.ts` | Database seeder (creates super_admin) |
+
+## Operational Notes
+
+- For demo or production resets, the SQLite files to purge are `data/judge.db`, `data/judge.db-shm`, and `data/judge.db-wal`; reseed with `npm run db:push && npm run seed`
+- Do not assume `oj-demo.atik.kr` shares the same SSH target as `atik.kr`; verify the DNS target or deployment host before making destructive changes
