@@ -22,6 +22,10 @@ export default function CreateProblemForm() {
   const [memoryLimitMb, setMemoryLimitMb] = useState(256);
   const [visibility, setVisibility] = useState("private");
 
+  function getErrorMessage(error: unknown) {
+    return error instanceof Error ? error.message : tCommon("error");
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setIsLoading(true);
@@ -47,8 +51,8 @@ export default function CreateProblemForm() {
       toast.success(t("createSuccess") || "Problem created successfully");
       router.push("/dashboard/problems");
       router.refresh();
-    } catch (err: any) {
-      toast.error(err.message || tCommon("error"));
+    } catch (error) {
+      toast.error(getErrorMessage(error));
     } finally {
       setIsLoading(false);
     }

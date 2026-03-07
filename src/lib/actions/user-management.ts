@@ -7,6 +7,8 @@ import { auth } from "@/lib/auth";
 import { hash } from "bcryptjs";
 import { nanoid } from "nanoid";
 
+type UserUpdates = Partial<typeof users.$inferInsert>;
+
 export async function toggleUserActive(userId: string, isActive: boolean) {
   const session = await auth();
   if (!session?.user || (session.user.role !== "admin" && session.user.role !== "super_admin")) {
@@ -33,7 +35,7 @@ export async function toggleUserActive(userId: string, isActive: boolean) {
       .set({ isActive, updatedAt: new Date() })
       .where(eq(users.id, userId));
     return { success: true };
-  } catch (error) {
+  } catch {
     return { success: false, error: "Failed to update user status" };
   }
 }
@@ -49,12 +51,24 @@ export async function editUser(userId: string, data: { username: string; email?:
   }
 
   try {
+    const normalizedEmail = data.email?.trim() || null;
+
     const existing = await db.query.users.findFirst({
       where: eq(users.username, data.username),
     });
 
     if (existing && existing.id !== userId) {
       return { success: false, error: "Username already in use" };
+    }
+
+    if (normalizedEmail) {
+      const existingEmail = await db.query.users.findFirst({
+        where: eq(users.email, normalizedEmail),
+      });
+
+      if (existingEmail && existingEmail.id !== userId) {
+        return { success: false, error: "Email already in use" };
+      }
     }
 
     const targetUser = await db.query.users.findFirst({
@@ -72,9 +86,9 @@ export async function editUser(userId: string, data: { username: string; email?:
       return { success: false, error: "Cannot change role of super_admin" };
     }
 
-    const updates: any = {
+    const updates: UserUpdates = {
       username: data.username,
-      email: data.email || null,
+      email: normalizedEmail,
       name: data.name,
       role: data.role,
       updatedAt: new Date(),
@@ -87,7 +101,7 @@ export async function editUser(userId: string, data: { username: string; email?:
     await db.update(users).set(updates).where(eq(users.id, userId));
 
     return { success: true };
-  } catch (error) {
+  } catch {
     return { success: false, error: "Failed to update user" };
   }
 }
@@ -103,12 +117,24 @@ export async function createUser(data: { username: string; email?: string; name:
   }
 
   try {
+    const normalizedEmail = data.email?.trim() || null;
+
     const existing = await db.query.users.findFirst({
       where: eq(users.username, data.username),
     });
 
     if (existing) {
       return { success: false, error: "Username already in use" };
+    }
+
+    if (normalizedEmail) {
+      const existingEmail = await db.query.users.findFirst({
+        where: eq(users.email, normalizedEmail),
+      });
+
+      if (existingEmail) {
+        return { success: false, error: "Email already in use" };
+      }
     }
 
     const id = nanoid();
@@ -118,7 +144,7 @@ export async function createUser(data: { username: string; email?: string; name:
     await db.insert(users).values({
       id,
       username: data.username,
-      email: data.email || null,
+      email: normalizedEmail,
       name: data.name,
       role: data.role,
       passwordHash,
@@ -129,7 +155,7 @@ export async function createUser(data: { username: string; email?: string; name:
     });
 
     return { success: true };
-  } catch (error) {
+  } catch {
     return { success: false, error: "Failed to create user" };
   }
 }
