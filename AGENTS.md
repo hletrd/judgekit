@@ -115,7 +115,7 @@ online-judge/
 
 ## REST API (v1)
 
-All API endpoints under `/api/v1/`. Auth via JWT Bearer token. Responses: `{ data: ... }` or `{ error: "..." }`.
+All API endpoints live under `/api/v1/`. Protected user-facing routes authenticate through the Auth.js credentials flow plus the session cookie (JWT-backed session strategy), `GET /api/v1/languages` is public, and `GET`/`POST /api/v1/judge/poll` use the separate judge bearer token. Responses: `{ data: ... }` or `{ error: "..." }`.
 
 | Endpoint | Methods | Auth | Description |
 |----------|---------|------|-------------|
@@ -151,3 +151,4 @@ All API endpoints under `/api/v1/`. Auth via JWT Bearer token. Responses: `{ dat
 - For demo or production resets, the SQLite files to purge are `data/judge.db`, `data/judge.db-shm`, and `data/judge.db-wal`; reseed with `npm run db:push && npm run seed`
 - Do not assume `oj-demo.atik.kr` shares the same SSH target as `atik.kr`; verify the DNS target or deployment host before making destructive changes
 - As of 2026-03-07, the demo host at `oj-demo.atik.kr` runs the web app from `/home/ubuntu/online-judge` via `online-judge.service`; there is no managed judge-worker systemd unit yet
+- As of 2026-03-07, the demo host also contains six instructor-owned private smoke-test problems created through `/api/v1/problems`: `두 수의 합 (A+B)`, `두 수의 차 (A-B)`, `두 수의 곱 (A*B)`, `세 수의 합`, `두 수 중 큰 수`, and `절댓값 구하기`
