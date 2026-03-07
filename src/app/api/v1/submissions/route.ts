@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { problems, submissions } from "@/lib/db/schema";
+import { languageConfigs, problems, submissions } from "@/lib/db/schema";
+import { isJudgeLanguage } from "@/lib/judge/languages";
 import { and, desc, eq } from "drizzle-orm";
 import { getApiUser, unauthorized, isAdmin } from "@/lib/api/auth";
 import { canAccessProblem } from "@/lib/auth/permissions";
@@ -66,6 +67,9 @@ export async function POST(request: NextRequest) {
     if (!sourceCode || typeof sourceCode !== "string") {
       return NextResponse.json({ error: "sourceCodeRequired" }, { status: 400 });
     }
+    if (!isJudgeLanguage(language)) {
+      return NextResponse.json({ error: "languageNotSupported" }, { status: 400 });
+    }
 
     if (Buffer.byteLength(sourceCode, "utf8") > MAX_SOURCE_CODE_SIZE_BYTES) {
       return NextResponse.json(
@@ -89,6 +93,20 @@ export async function POST(request: NextRequest) {
 
     if (!hasAccess) {
       return NextResponse.json({ error: "forbidden" }, { status: 403 });
+    }
+
+    const languageConfig = await db.query.languageConfigs.findFirst({
+      where: and(
+        eq(languageConfigs.language, language),
+        eq(languageConfigs.isEnabled, true)
+      ),
+      columns: {
+        id: true,
+      },
+    });
+
+    if (!languageConfig) {
+      return NextResponse.json({ error: "languageNotSupported" }, { status: 400 });
     }
 
     const id = nanoid();

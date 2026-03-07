@@ -4,14 +4,15 @@ import { existsSync } from "node:fs";
 import { chmod, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import type { Language } from "../src/types";
 import { compareOutput } from "./comparator";
 import { getJudgeAuthToken, getJudgePollUrl, shouldDisableCustomSeccomp } from "./config";
 import { LANGUAGE_CONFIGS } from "./languages";
 
 const EXECUTION_CPU_LIMIT = "1";
 const MIN_MEMORY_LIMIT_MB = 16;
-const COMPILATION_MEMORY_LIMIT_MB = 512;
-const COMPILATION_TIMEOUT_MS = 10_000;
+const COMPILATION_MEMORY_LIMIT_MB = 1024;
+const COMPILATION_TIMEOUT_MS = 20_000;
 const MIN_TIMEOUT_MS = 100;
 const CONTAINER_TMPFS = "/tmp:rw,noexec,nosuid,size=64m";
 const SECCOMP_PROFILE_PATH = path.resolve(process.cwd(), "docker/seccomp-profile.json");
@@ -23,7 +24,7 @@ const SECCOMP_INIT_ERROR_SNIPPETS = [
 
 export interface Submission {
   id: string;
-  language: string;
+  language: Language;
   sourceCode: string;
   timeLimitMs: number;
   memoryLimitMb: number;

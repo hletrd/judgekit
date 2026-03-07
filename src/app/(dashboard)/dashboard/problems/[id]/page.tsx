@@ -2,6 +2,7 @@ import { getTranslations } from "next-intl/server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { db } from "@/lib/db";
 import { problems, languageConfigs } from "@/lib/db/schema";
+import { getJudgeLanguageDefinition } from "@/lib/judge/languages";
 import { eq } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import { redirect, notFound } from "next/navigation";
@@ -37,6 +38,20 @@ export default async function ProblemDetailPage({ params }: { params: Promise<{ 
 
   // Fetch languages
   const langs = await db.select().from(languageConfigs).where(eq(languageConfigs.isEnabled, true));
+  const enabledLanguages = langs.flatMap((language) => {
+    const definition = getJudgeLanguageDefinition(language.language);
+
+    if (!definition) {
+      return [];
+    }
+
+    return [{
+      id: language.id,
+      language: definition.language,
+      displayName: definition.displayName,
+      standard: definition.standard,
+    }];
+  });
 
   const hasAccess = await canAccessProblem(problem.id, session.user.id, session.user.role);
 
@@ -90,12 +105,7 @@ export default async function ProblemDetailPage({ params }: { params: Promise<{ 
           <CardContent>
             <ProblemSubmissionForm
               problemId={problem.id}
-              languages={langs.map((lang) => ({
-                id: lang.id,
-                language: lang.language,
-                displayName: lang.displayName,
-                standard: lang.standard,
-              }))}
+              languages={enabledLanguages}
             />
           </CardContent>
         </Card>

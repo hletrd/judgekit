@@ -15,8 +15,11 @@ export async function proxy(request: NextRequest) {
   const isAuthPage = pathname.startsWith("/login");
   const isChangePasswordPage = pathname === "/change-password";
   const isApiRoute = pathname.startsWith("/api/v1");
+  const isPublicLanguagesRoute = pathname === "/api/v1/languages";
   const isJudgeWorkerRoute = pathname.startsWith("/api/v1/judge/");
-  const isProtectedRoute = pathname.startsWith("/dashboard") || (isApiRoute && !isJudgeWorkerRoute);
+  const isProtectedRoute =
+    pathname.startsWith("/dashboard") ||
+    (isApiRoute && !isJudgeWorkerRoute && !isPublicLanguagesRoute);
 
   if ((isProtectedRoute || isChangePasswordPage) && !token) {
     if (isApiRoute) {

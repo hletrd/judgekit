@@ -1,27 +1,32 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { languageConfigs } from "@/lib/db/schema";
+import { getJudgeLanguageDefinition } from "@/lib/judge/languages";
 import { eq } from "drizzle-orm";
-import { getApiUser, unauthorized } from "@/lib/api/auth";
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
-    const user = await getApiUser(request);
-    if (!user) return unauthorized();
-
     const languages = await db
       .select()
       .from(languageConfigs)
       .where(eq(languageConfigs.isEnabled, true));
 
     return NextResponse.json({
-      data: languages.map((language) => ({
-        id: language.id,
-        language: language.language,
-        displayName: language.displayName,
-        standard: language.standard,
-        extension: language.extension,
-      })),
+      data: languages.flatMap((language) => {
+        const definition = getJudgeLanguageDefinition(language.language);
+
+        if (!definition) {
+          return [];
+        }
+
+        return [{
+          id: language.id,
+          language: definition.language,
+          displayName: definition.displayName,
+          standard: definition.standard,
+          extension: definition.extension,
+        }];
+      }),
     });
   } catch (error) {
     console.error("GET /api/v1/languages error:", error);
