@@ -47,7 +47,7 @@ export default function EditUserDialog({ user }: EditUserDialogProps) {
       } else {
         toast.error(result.error || tCommon("error"));
       }
-    } catch (err) {
+    } catch {
       toast.error(tCommon("error"));
     } finally {
       setIsLoading(false);

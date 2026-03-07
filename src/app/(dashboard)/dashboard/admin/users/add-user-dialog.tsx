@@ -43,7 +43,7 @@ export default function AddUserDialog() {
       } else {
         toast.error(result.error || tCommon("error"));
       }
-    } catch (err) {
+    } catch {
       toast.error(tCommon("error"));
     } finally {
       setIsLoading(false);
