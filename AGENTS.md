@@ -31,6 +31,7 @@ online-judge/
 │   │   ├── db/              # Schema, relations, DB connection
 │   │   ├── auth/            # Auth config, permissions
 │   │   ├── actions/         # Server actions
+│   │   ├── system-settings.ts # Resolved global site identity settings
 │   │   └── validators/      # Zod schemas
 │   ├── components/
 │   │   ├── ui/              # shadcn/ui primitives
@@ -67,6 +68,7 @@ online-judge/
 - Boolean fields use integer (0/1)
 - Foreign keys enforced via `PRAGMA foreign_keys = ON`
 - WAL mode enabled for concurrent reads
+- Global site identity overrides live in the single-row `system_settings` table (`id = "global"`)
 
 ## Auth & Permissions
 
@@ -78,6 +80,14 @@ online-judge/
 - Any `getToken()` usage that must work on HTTPS or behind a reverse proxy should use `shouldUseSecureAuthCookie()` from `@/lib/auth/secure-cookie`
 - The seeded `super_admin` account is `admin` / `admin@example.com` with password `admin123`
 - Seeded and admin-created users may be forced through `/change-password` on first login
+- Site title/description overrides from `system_settings` are resolved server-side and applied to login, dashboard chrome, and page metadata
+
+## Admin Settings
+
+- `/dashboard/admin/settings` is restricted to `admin` and `super_admin`
+- `src/lib/actions/system-settings.ts` updates global site title/description overrides
+- Blank settings should fall back to the localized defaults from `messages/en.json` and `messages/ko.json`
+- Revalidation for system settings should cover `/`, `/login`, `/dashboard`, and `/dashboard/admin/settings`
 
 ## Code Style
 
@@ -129,6 +139,8 @@ All API endpoints under `/api/v1/`. Auth via JWT Bearer token. Responses: `{ dat
 | `src/lib/auth/index.ts` | Auth.js exports (handlers, auth, signIn, signOut) |
 | `src/lib/auth/secure-cookie.ts` | Shared HTTPS/reverse-proxy secure cookie detection for Auth.js token readers |
 | `src/lib/auth/permissions.ts` | Role & access control helpers |
+| `src/lib/system-settings.ts` | Resolves global site title/description overrides with localized fallbacks |
+| `src/lib/actions/system-settings.ts` | Server action for updating admin-managed site identity settings |
 | `src/proxy.ts` | Next.js 16 route guard for login, dashboard access, and forced password changes |
 | `src/types/index.ts` | Shared TypeScript types |
 | `drizzle.config.ts` | Drizzle Kit configuration |

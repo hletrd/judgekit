@@ -29,6 +29,7 @@
 ## Features
 
 - **Role-based access** — Super admin, admin, instructor, and student roles with granular permissions
+- **Configurable site identity** — Admins can override the site title and description shown in metadata, the login screen, and dashboard chrome
 - **Classroom management** — Groups, enrollments, and assignments with deadlines and late penalties
 - **Problem management** — Sanitized descriptions, configurable time/memory limits, public/private/hidden visibility, and test-case editing before submissions exist
 - **Secure code execution** — Docker containers with no network, seccomp profiles, memory/CPU limits, and non-root users
@@ -38,9 +39,9 @@
 ## Current Status
 
 - Phase 0 remediation is complete: submission flow works, the judge worker executes submissions, instructors can manage test cases during problem authoring, the problem edit page exists, and the group creation flow is wired
-- High-priority Phase 1 work is also in place: dashboard `loading.tsx` / `error.tsx` / `not-found.tsx`, submission polling, paginated submissions, solved/attempted problem indicators, translated status badges, callback-aware login, and sanitized problem descriptions
+- High-priority Phase 1 work is also in place: dashboard `loading.tsx` / `error.tsx` / `not-found.tsx`, submission polling, paginated submissions, solved/attempted problem indicators, translated status badges, callback-aware login, sanitized problem descriptions, and admin-managed site identity settings
 - Security hardening now includes login rate limiting, explicit auth/judge env validation, stronger API access checks, problem/test-case exposure fixes, and shared security headers
-- Remaining roadmap items live in `docs/review.md`, `docs/security-review.md`, and `docs/feature-plan.md`; assignment CRUD, group membership management, audit logging, CI, and backup/observability work are still open
+- Remaining roadmap items are still open: assignment CRUD, group membership management, audit logging, CI, and backup/observability work
 
 ## Getting Started
 
@@ -91,9 +92,15 @@ If port `3000` is already occupied, stop the stale process before restarting the
 - Next.js 16 route protection now lives in `src/proxy.ts`, not `src/middleware.ts`.
 - HTTPS deployments that terminate TLS at a reverse proxy must preserve the original scheme. Auth.js JWT readers in `src/proxy.ts` and `src/lib/api/auth.ts` rely on `src/lib/auth/secure-cookie.ts` to choose the correct secure cookie name.
 
+## System Settings
+
+- Admins and super admins can manage site-wide title and description overrides from `/dashboard/admin/settings`.
+- Settings are stored in the SQLite `system_settings` table and resolved through `src/lib/system-settings.ts`.
+- The configured values flow into root metadata, the login card title, the dashboard header title, and the sidebar brand label.
+- Leaving either field blank falls back to the localized defaults from `messages/en.json` and `messages/ko.json`.
+
 ## Deployment and Database Reset
 
-- Deployment notes for the OCI demo instance live in `docs/deployment.md`.
 - Before touching production, verify that the SSH target matches the public DNS for the environment you intend to change. `oj-demo.atik.kr` should be treated as a separate host from the main `atik.kr` box unless you confirm otherwise.
 - As of 2026-03-07, the demo host runs the web app via `online-judge.service` from `/home/ubuntu/online-judge`. A separate managed judge-worker service is not configured there yet.
 - To reset the SQLite database for a disposable or demo environment, stop the app first, remove `data/judge.db`, `data/judge.db-shm`, and `data/judge.db-wal`, then run:
@@ -132,7 +139,8 @@ online-judge/
 │   │   └── api/         # API routes
 │   ├── lib/
 │   │   ├── db/          # Schema, relations, connection
-│   │   └── auth/        # Auth config & permissions
+│   │   ├── auth/        # Auth config & permissions
+│   │   └── system-settings.ts # Resolved site identity settings
 │   ├── components/      # UI components
 │   └── types/           # TypeScript types
 └── data/                # SQLite database (gitignored)
