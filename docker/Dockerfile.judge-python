@@ -1,0 +1,9 @@
+FROM python:3.14-slim
+
+RUN useradd -m -s /bin/false judge && \
+    mkdir -p /workspace && \
+    chown judge:judge /workspace
+
+WORKDIR /workspace
+
+USER judge
