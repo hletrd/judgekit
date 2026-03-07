@@ -101,19 +101,29 @@
     "language": "언어",
     "compiler": "컴파일러 / 런타임",
     "compileOptions": "컴파일 옵션",
-    "cpp": {
-      "name": "C++17",
-      "compiler": "GCC 14 (g++)",
-      "flags": "-O2 -std=c++17 -lm"
+    "c17": {
+      "name": "C17",
+      "compiler": "GCC 15 (gcc)",
+      "flags": "-O2 -std=c17 -lm"
     },
-    "c": {
-      "name": "C11",
-      "compiler": "GCC 14 (gcc)",
-      "flags": "-O2 -std=c11 -lm"
+    "c23": {
+      "name": "C23",
+      "compiler": "GCC 15 (gcc)",
+      "flags": "-O2 -std=c23 -lm"
+    },
+    "cpp20": {
+      "name": "C++20",
+      "compiler": "GCC 15 (g++)",
+      "flags": "-O2 -std=c++20"
+    },
+    "cpp23": {
+      "name": "C++23",
+      "compiler": "GCC 15 (g++)",
+      "flags": "-O2 -std=c++23"
     },
     "python": {
       "name": "Python 3",
-      "compiler": "CPython 3.14",
+      "compiler": "CPython 3.13",
       "flags": "-"
     }
   }

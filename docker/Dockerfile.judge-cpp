@@ -1,6 +1,6 @@
 FROM alpine:latest
 
-RUN apk add --no-cache gcc g++ musl-dev && \
+RUN apk add --no-cache gcc g++ musl-dev --repository=http://dl-cdn.alpinelinux.org/alpine/edge/main && \
     adduser -D -s /bin/false judge && \
     mkdir -p /workspace && \
     chown judge:judge /workspace

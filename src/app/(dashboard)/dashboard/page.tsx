@@ -76,27 +76,15 @@ export default async function DashboardPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              <TableRow>
-                <TableCell>
-                  <Badge variant="secondary">{tLangs("cpp.name")}</Badge>
-                </TableCell>
-                <TableCell className="font-mono text-sm">{tLangs("cpp.compiler")}</TableCell>
-                <TableCell className="font-mono text-sm">{tLangs("cpp.flags")}</TableCell>
-              </TableRow>
-              <TableRow>
-                <TableCell>
-                  <Badge variant="secondary">{tLangs("c.name")}</Badge>
-                </TableCell>
-                <TableCell className="font-mono text-sm">{tLangs("c.compiler")}</TableCell>
-                <TableCell className="font-mono text-sm">{tLangs("c.flags")}</TableCell>
-              </TableRow>
-              <TableRow>
-                <TableCell>
-                  <Badge variant="secondary">{tLangs("python.name")}</Badge>
-                </TableCell>
-                <TableCell className="font-mono text-sm">{tLangs("python.compiler")}</TableCell>
-                <TableCell className="font-mono text-sm">{tLangs("python.flags")}</TableCell>
-              </TableRow>
+              {(["c17", "c23", "cpp20", "cpp23", "python"] as const).map((lang) => (
+                <TableRow key={lang}>
+                  <TableCell>
+                    <Badge variant="secondary">{tLangs(`${lang}.name`)}</Badge>
+                  </TableCell>
+                  <TableCell className="font-mono text-sm">{tLangs(`${lang}.compiler`)}</TableCell>
+                  <TableCell className="font-mono text-sm">{tLangs(`${lang}.flags`)}</TableCell>
+                </TableRow>
+              ))}
             </TableBody>
           </Table>
         </CardContent>

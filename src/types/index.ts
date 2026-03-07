@@ -10,4 +10,4 @@ export type SubmissionStatus =
   | "memory_limit"
   | "runtime_error"
   | "compile_error";
-export type Language = "c" | "cpp" | "python";
+export type Language = "c17" | "c23" | "cpp20" | "cpp23" | "python";
