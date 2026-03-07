@@ -101,6 +101,7 @@ online-judge/
   - Default compiler flags (e.g., `-O2 -std=c++17`)
   - Additional allowed/disallowed flags
   - Configurable time/memory limits per problem
+- Problem test cases are editable from the dashboard create/edit flow, but they should stay locked once submissions already exist to preserve historical `submission_results`
 
 ## REST API (v1)
 
@@ -137,3 +138,4 @@ All API endpoints under `/api/v1/`. Auth via JWT Bearer token. Responses: `{ dat
 
 - For demo or production resets, the SQLite files to purge are `data/judge.db`, `data/judge.db-shm`, and `data/judge.db-wal`; reseed with `npm run db:push && npm run seed`
 - Do not assume `oj-demo.atik.kr` shares the same SSH target as `atik.kr`; verify the DNS target or deployment host before making destructive changes
+- As of 2026-03-07, the demo host at `oj-demo.atik.kr` runs the web app from `/home/ubuntu/online-judge` via `online-judge.service`; there is no managed judge-worker systemd unit yet

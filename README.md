@@ -30,10 +30,17 @@
 
 - **Role-based access** — Super admin, admin, instructor, and student roles with granular permissions
 - **Classroom management** — Groups, enrollments, and assignments with deadlines and late penalties
-- **Problem management** — Markdown descriptions, configurable time/memory limits, public/private/hidden visibility
+- **Problem management** — Sanitized descriptions, configurable time/memory limits, public/private/hidden visibility, and test-case editing before submissions exist
 - **Secure code execution** — Docker containers with no network, seccomp profiles, memory/CPU limits, and non-root users
 - **Multi-language support** — C, C++, and Python with admin-customizable compile options
-- **Real-time judging** — Queue-based submission processing with per-test-case results
+- **Submission workflow** — JSON submission flow, live status polling, per-test-case results, and paginated submission history
+
+## Current Status
+
+- Phase 0 remediation is complete: submission flow works, the judge worker executes submissions, instructors can manage test cases during problem authoring, the problem edit page exists, and the group creation flow is wired
+- High-priority Phase 1 work is also in place: dashboard `loading.tsx` / `error.tsx` / `not-found.tsx`, submission polling, paginated submissions, solved/attempted problem indicators, translated status badges, callback-aware login, and sanitized problem descriptions
+- Security hardening now includes login rate limiting, explicit auth/judge env validation, stronger API access checks, problem/test-case exposure fixes, and shared security headers
+- Remaining roadmap items live in `docs/review.md`, `docs/security-review.md`, and `docs/feature-plan.md`; assignment CRUD, group membership management, audit logging, CI, and backup/observability work are still open
 
 ## Getting Started
 
@@ -88,6 +95,7 @@ If port `3000` is already occupied, stop the stale process before restarting the
 
 - Deployment notes for the OCI demo instance live in `docs/deployment.md`.
 - Before touching production, verify that the SSH target matches the public DNS for the environment you intend to change. `oj-demo.atik.kr` should be treated as a separate host from the main `atik.kr` box unless you confirm otherwise.
+- As of 2026-03-07, the demo host runs the web app via `online-judge.service` from `/home/ubuntu/online-judge`. A separate managed judge-worker service is not configured there yet.
 - To reset the SQLite database for a disposable or demo environment, stop the app first, remove `data/judge.db`, `data/judge.db-shm`, and `data/judge.db-wal`, then run:
 
 ```bash
@@ -106,8 +114,8 @@ npm run seed
 | Database | SQLite + Drizzle ORM |
 | Auth | Auth.js v5 (Credentials) |
 | UI | Tailwind CSS v4, shadcn/ui |
-| Code Editor | Monaco Editor |
-| Judge | Docker (GCC 14, Python 3.14) |
+| Code Editor | Textarea today, Monaco-ready dependency installed |
+| Judge | Docker on Alpine Linux (GCC toolchain, Python 3) |
 | Validation | Zod |
 
 ## Project Structure
