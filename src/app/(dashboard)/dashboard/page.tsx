@@ -31,28 +31,28 @@ export default async function DashboardPage() {
             <div className="flex items-center gap-3 rounded-lg border p-3">
               <Cpu className="h-5 w-5 text-muted-foreground" />
               <div>
-                <p className="text-xs text-muted-foreground">CPU</p>
+                <p className="text-xs text-muted-foreground">{tJudge("cpuLabel")}</p>
                 <p className="text-sm font-medium">{tJudge("cpu")}</p>
               </div>
             </div>
             <div className="flex items-center gap-3 rounded-lg border p-3">
               <HardDrive className="h-5 w-5 text-muted-foreground" />
               <div>
-                <p className="text-xs text-muted-foreground">OS</p>
+                <p className="text-xs text-muted-foreground">{tJudge("osLabel")}</p>
                 <p className="text-sm font-medium">{tJudge("os")}</p>
               </div>
             </div>
             <div className="flex items-center gap-3 rounded-lg border p-3">
               <Clock className="h-5 w-5 text-muted-foreground" />
               <div>
-                <p className="text-xs text-muted-foreground">Time Limit</p>
+                <p className="text-xs text-muted-foreground">{tJudge("timeLimitLabel")}</p>
                 <p className="text-sm font-medium">{tJudge("defaultTimeLimit")}</p>
               </div>
             </div>
             <div className="flex items-center gap-3 rounded-lg border p-3">
               <MemoryStick className="h-5 w-5 text-muted-foreground" />
               <div>
-                <p className="text-xs text-muted-foreground">Memory Limit</p>
+                <p className="text-xs text-muted-foreground">{tJudge("memoryLimitLabel")}</p>
                 <p className="text-sm font-medium">{tJudge("defaultMemoryLimit")}</p>
               </div>
             </div>

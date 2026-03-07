@@ -92,6 +92,10 @@
     "cpu": "Ampere Altra (ARM64)",
     "os": "Alpine Linux (latest)",
     "architecture": "AArch64 (ARM64)",
+    "cpuLabel": "CPU",
+    "osLabel": "운영체제",
+    "timeLimitLabel": "시간 제한",
+    "memoryLimitLabel": "메모리 제한",
     "defaultTimeLimit": "2,000 ms",
     "defaultMemoryLimit": "256 MB",
     "limitsNote": "시간 및 메모리 제한은 문제별로 설정할 수 있습니다."
