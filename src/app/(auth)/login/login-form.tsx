@@ -46,7 +46,7 @@ export function LoginForm() {
           id="email"
           name="email"
           type="email"
-          placeholder={t("emailPlaceholder")}
+          placeholder=""
           required
         />
       </div>
