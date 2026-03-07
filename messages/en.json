@@ -190,7 +190,12 @@
     "changePassword": "Change Password",
     "changePasswordDesc": "Update your account password for security.",
     "changePasswordBtn": "Change Password",
-    "updateSuccess": "Profile updated successfully"
+    "updateSuccess": "Profile updated successfully",
+    "updateError": "Failed to update profile",
+    "notAuthenticated": "Not authenticated",
+    "nameRequired": "Name is required",
+    "emailInUse": "Email already in use",
+    "username": "Username"
   },
   "changePassword": {
     "title": "Change Password",
@@ -203,7 +208,8 @@
     "passwordMismatch": "Passwords do not match",
     "passwordTooShort": "Password must be at least 8 characters",
     "currentPasswordIncorrect": "Current password is incorrect",
-    "error": "An error occurred"
+    "error": "An error occurred",
+    "userNotFound": "User not found"
   },
   "judge": {
     "title": "Judge Environment",

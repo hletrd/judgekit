@@ -31,10 +31,10 @@ export default function ProfileForm({
     try {
       const result = await updateProfile(name, email);
       if (result.success) {
-        toast.success(t("updateSuccess") || "Profile updated successfully");
+        toast.success(t("updateSuccess"));
         router.refresh();
       } else {
-        toast.error(result.error || tCommon("error"));
+        toast.error(t(result.error ?? "updateError"));
       }
     } catch (err) {
       toast.error(tCommon("error"));

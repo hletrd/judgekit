@@ -20,7 +20,7 @@ export async function changePassword(
   });
 
   if (!user || !user.passwordHash) {
-    return { success: false, error: "User not found" };
+    return { success: false, error: "userNotFound" };
   }
 
   const isValid = await compare(currentPassword, user.passwordHash);

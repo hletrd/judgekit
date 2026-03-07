@@ -11,11 +11,11 @@ export async function updateProfile(
 ): Promise<{ success: boolean; error?: string }> {
   const session = await auth();
   if (!session?.user?.id) {
-    return { success: false, error: "Not authenticated" };
+    return { success: false, error: "notAuthenticated" };
   }
 
   if (!name || name.trim() === "") {
-    return { success: false, error: "Name is required" };
+    return { success: false, error: "nameRequired" };
   }
 
   // Check if email is taken by someone else
@@ -24,7 +24,7 @@ export async function updateProfile(
       where: eq(users.email, email),
     });
     if (existingUser && existingUser.id !== session.user.id) {
-      return { success: false, error: "Email already in use" };
+      return { success: false, error: "emailInUse" };
     }
   }
 
