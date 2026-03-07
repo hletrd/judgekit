@@ -31,7 +31,7 @@ online-judge/
 │   │   ├── db/              # Schema, relations, DB connection
 │   │   ├── auth/            # Auth config, permissions
 │   │   ├── actions/         # Server actions
-│   │   ├── system-settings.ts # Resolved global site identity settings
+│   │   ├── system-settings.ts # Resolved global site identity + timezone settings
 │   │   └── validators/      # Zod schemas
 │   ├── components/
 │   │   ├── ui/              # shadcn/ui primitives
@@ -76,7 +76,7 @@ online-judge/
 - Boolean fields use integer (0/1)
 - Foreign keys enforced via `PRAGMA foreign_keys = ON`
 - WAL mode enabled for concurrent reads
-- Global site identity overrides live in the single-row `system_settings` table (`id = "global"`)
+- Global site identity and default timezone overrides live in the single-row `system_settings` table (`id = "global"`)
 
 ## Auth & Permissions
 
@@ -88,14 +88,15 @@ online-judge/
 - Any `getToken()` usage that must work on HTTPS or behind a reverse proxy should use `shouldUseSecureAuthCookie()` from `@/lib/auth/secure-cookie`
 - The seeded `super_admin` account is `admin` / `admin@example.com` with password `admin123`
 - Seeded and admin-created users may be forced through `/change-password` on first login
-- Site title/description overrides from `system_settings` are resolved server-side and applied to login, dashboard chrome, and page metadata
+- Site title/description/timezone overrides from `system_settings` are resolved server-side and applied to login, dashboard chrome, page metadata, and timestamp rendering surfaces
 
 ## Admin Settings
 
 - `/dashboard/admin/settings` is restricted to `admin` and `super_admin`
-- `src/lib/actions/system-settings.ts` updates global site title/description overrides
-- Blank settings should fall back to the localized defaults from `messages/en.json` and `messages/ko.json`
+- `src/lib/actions/system-settings.ts` updates global site title/description/timezone overrides
+- Blank title/description settings should fall back to the localized defaults from `messages/en.json` and `messages/ko.json`
 - Revalidation for system settings should cover `/`, `/login`, `/dashboard`, and `/dashboard/admin/settings`
+- The default timezone falls back to `Asia/Seoul` when the admin leaves it blank
 
 ## Code Style
 
@@ -147,8 +148,8 @@ All API endpoints live under `/api/v1/`. Protected user-facing routes authentica
 | `src/lib/auth/index.ts` | Auth.js exports (handlers, auth, signIn, signOut) |
 | `src/lib/auth/secure-cookie.ts` | Shared HTTPS/reverse-proxy secure cookie detection for Auth.js token readers |
 | `src/lib/auth/permissions.ts` | Role & access control helpers |
-| `src/lib/system-settings.ts` | Resolves global site title/description overrides with localized fallbacks |
-| `src/lib/actions/system-settings.ts` | Server action for updating admin-managed site identity settings |
+| `src/lib/system-settings.ts` | Resolves global site title/description/timezone overrides with localized fallbacks |
+| `src/lib/actions/system-settings.ts` | Server action for updating admin-managed site identity and timezone settings |
 | `src/proxy.ts` | Next.js 16 route guard for login, dashboard access, and forced password changes |
 | `src/types/index.ts` | Shared TypeScript types |
 | `drizzle.config.ts` | Drizzle Kit configuration |
@@ -162,3 +163,5 @@ All API endpoints live under `/api/v1/`. Protected user-facing routes authentica
 - As of 2026-03-07, the demo host must keep `JUDGE_POLL_URL=http://localhost:3000/api/v1/judge/poll`; the previous `/api/judge/poll` path breaks grading
 - As of 2026-03-07, the demo host also sets `JUDGE_DISABLE_CUSTOM_SECCOMP=1` because Docker 28.2.2 on Ubuntu 24.04 / kernel 6.17 rejects the repository seccomp profile during container init
 - As of 2026-03-07, the demo host also contains six instructor-owned private smoke-test problems created through `/api/v1/problems`: `두 수의 합 (A+B)`, `두 수의 차 (A-B)`, `두 수의 곱 (A*B)`, `세 수의 합`, `두 수 중 큰 수`, and `절댓값 구하기`
+- As of 2026-03-07, the demo host is verified at commit `6951d46`, and `system_settings.time_zone` is present after `npm run db:push`
+- As of 2026-03-07, do not assume the long-lived demo host still accepts the seeded `admin` / `admin123` credentials unless it was freshly reset and reseeded

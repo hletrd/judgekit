@@ -29,7 +29,7 @@
 ## Features
 
 - **Role-based access** — Super admin, admin, instructor, and student roles with granular permissions
-- **Configurable site identity** — Admins can override the site title and description shown in metadata, the login screen, and dashboard chrome
+- **Configurable site identity and timezone** — Admins can override the site title, description, and default timezone used for rendered timestamps across the application
 - **Classroom management** — Groups, enrollments, and assignments with deadlines and late penalties
 - **Problem management** — Sanitized descriptions, configurable time/memory limits, public/private/hidden visibility, and test-case editing before submissions exist
 - **Secure code execution** — Docker containers with no network, seccomp profiles, memory/CPU limits, and non-root users
@@ -39,7 +39,8 @@
 ## Current Status
 
 - Phase 0 remediation is complete: submission flow works, the judge worker executes submissions, instructors can manage test cases during problem authoring, the problem edit page exists, and the group creation flow is wired
-- High-priority Phase 1 work is also in place: dashboard `loading.tsx` / `error.tsx` / `not-found.tsx`, submission polling, paginated submissions, solved/attempted problem indicators, translated status badges, callback-aware login, sanitized problem descriptions, and admin-managed site identity settings
+- High-priority Phase 1 work is also in place: dashboard `loading.tsx` / `error.tsx` / `not-found.tsx`, submission polling, paginated submissions, solved/attempted problem indicators, translated status badges, callback-aware login, sanitized problem descriptions, theme switching, richer code surfaces, and admin-managed site identity/timezone settings
+- As of 2026-03-07, commit `6951d46` is deployed to `oj-demo.atik.kr`; the demo host has the `system_settings.time_zone` column applied and the public login page returns HTTP 200
 - Security hardening now includes login rate limiting, explicit auth/judge env validation, stronger API access checks, problem/test-case exposure fixes, and shared security headers
 - As of 2026-03-07, a remote smoke test against `oj-demo.atik.kr` succeeded with instructor-authenticated `POST /api/v1/problems` calls and left six private Korean practice problems on the demo host for API verification
 - Remaining roadmap items are still open: assignment CRUD, group membership management, audit logging, CI, and backup/observability work
@@ -75,7 +76,7 @@ Open [http://localhost:3000](http://localhost:3000) to access the application.
 | Password | `admin123` |
 | Role | `super_admin` |
 
-> **Note:** The seeded admin is forced through `/change-password` on first login. Change the default password immediately in production.
+> **Note:** The seeded admin is forced through `/change-password` on first login. Change the default password immediately in production. On long-lived shared hosts like `oj-demo.atik.kr`, do not assume `admin123` is still valid unless the instance was freshly reset and reseeded.
 
 ### Local Production Run
 
@@ -126,16 +127,19 @@ As of 2026-03-07, the demo deployment at `oj-demo.atik.kr` includes six instruct
 
 ## System Settings
 
-- Admins and super admins can manage site-wide title and description overrides from `/dashboard/admin/settings`.
+- Admins and super admins can manage site-wide title, description, and default timezone overrides from `/dashboard/admin/settings`.
 - Settings are stored in the SQLite `system_settings` table and resolved through `src/lib/system-settings.ts`.
-- The configured values flow into root metadata, the login card title, the dashboard header title, and the sidebar brand label.
-- Leaving either field blank falls back to the localized defaults from `messages/en.json` and `messages/ko.json`.
+- The configured title and description flow into root metadata, the login card title, the dashboard header title, and the sidebar brand label.
+- The configured timezone is used when rendering timestamps in student/admin submission views, admin user pages, and group assignment schedules.
+- Leaving any field blank falls back to defaults, with localized app strings for title/description and `Asia/Seoul` as the default timezone.
 
 ## Deployment and Database Reset
 
 - Before touching production, verify that the SSH target matches the public DNS for the environment you intend to change. `oj-demo.atik.kr` should be treated as a separate host from the main `atik.kr` box unless you confirm otherwise.
 - As of 2026-03-07, the demo host runs the web app via `online-judge.service` and the judge worker via `online-judge-worker.service` from `/home/ubuntu/online-judge`.
+- As of 2026-03-07, the demo host is verified at commit `6951d46`, and its `system_settings` table includes the `time_zone` column required for timezone-aware timestamp rendering.
 - As of 2026-03-07, the demo host also contains six instructor-owned private smoke-test problems created through the API: `두 수의 합 (A+B)`, `두 수의 차 (A-B)`, `두 수의 곱 (A*B)`, `세 수의 합`, `두 수 중 큰 수`, and `절댓값 구하기`.
+- Do not assume the long-lived demo host still uses the seeded `admin` / `admin123` credentials unless it was reset and reseeded immediately beforehand.
 - To reset the SQLite database for a disposable or demo environment, stop the app first, remove `data/judge.db`, `data/judge.db-shm`, and `data/judge.db-wal`, then run:
 
 ```bash
@@ -210,6 +214,7 @@ sudo systemctl restart online-judge-worker.service
 ```
 
 If you changed the judge Dockerfiles or compiler/runtime assumptions, run `npm run languages:sync`, rebuild the affected images, and then restart the worker.
+If you changed versioned systemd unit files or drop-ins, run `sudo systemctl daemon-reload` before restarting services.
 
 ### 6. Post-deploy verification
 
@@ -223,6 +228,7 @@ journalctl -u online-judge-worker.service -n 50 --no-pager
 - Confirm submissions progress out of `pending`
 - If you see `401 Unauthorized` in worker logs, verify `JUDGE_AUTH_TOKEN`
 - If you see the `fsmount:fscontext:proc` container-init error, set `JUDGE_DISABLE_CUSTOM_SECCOMP=1` and restart `online-judge-worker.service`
+- For system settings schema or timezone changes, verify `/dashboard/admin/settings` and at least one timestamped page such as `/dashboard/submissions` or `/dashboard/admin/users/[id]` after deploy
 
 ## Tech Stack
 
@@ -233,7 +239,7 @@ journalctl -u online-judge-worker.service -n 50 --no-pager
 | Database | SQLite + Drizzle ORM |
 | Auth | Auth.js v5 (Credentials) |
 | UI | Tailwind CSS v4, shadcn/ui |
-| Code Editor | Textarea today, Monaco-ready dependency installed |
+| Code Editor | CodeMirror-based editor/viewer surfaces with theme-aware styling |
 | Judge | Dockerized toolchains for GCC, Python 3.14.3, Node.js 24.14.0 / TypeScript 5.9.3, Rust 1.94.0, Go 1.26.1, and Swift 6.2.4 |
 | Validation | Zod |
 
