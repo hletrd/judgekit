@@ -71,7 +71,15 @@
     "selectLanguage": "언어 선택",
     "writeCodePlaceholder": "여기에 코드를 작성하세요...",
     "descriptionTitle": "설명",
-    "noDescription": "제공된 설명이 없습니다."
+    "noDescription": "제공된 설명이 없습니다.",
+    "createTitle": "새 문제 생성",
+    "createDescription": "문제 내용과 리소스 제한을 설정합니다.",
+    "titleLabel": "제목",
+    "descLabel": "설명 (Markdown/HTML)",
+    "timeLimitLabel": "시간 제한 (ms)",
+    "memoryLimitLabel": "메모리 제한 (MB)",
+    "visibilityLabel": "공개 여부",
+    "createSuccess": "문제가 성공적으로 생성되었습니다"
   },
   "submissions": {
     "title": "내 제출 내역",
@@ -171,7 +179,12 @@
     "userId": "사용자 ID",
     "name": "이름",
     "email": "이메일",
-    "role": "역할"
+    "role": "역할",
+    "editProfile": "프로필 수정",
+    "changePassword": "비밀번호 변경",
+    "changePasswordDesc": "보안을 위해 계정 비밀번호를 변경하세요.",
+    "changePasswordBtn": "비밀번호 변경",
+    "updateSuccess": "프로필이 성공적으로 업데이트되었습니다"
   },
   "changePassword": {
     "title": "비밀번호 변경",
@@ -188,7 +201,7 @@
   },
   "judge": {
     "title": "채점 환경",
-    "cpu": "Ampere Altra (ARM64)",
+    "cpu": "Ampere Altra (ARM64, 3.0 GHz)",
     "os": "Alpine Linux (latest)",
     "architecture": "AArch64 (ARM64)",
     "cpuLabel": "CPU",

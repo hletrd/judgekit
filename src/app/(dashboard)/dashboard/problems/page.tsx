@@ -50,7 +50,9 @@ export default async function ProblemsPage() {
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-2xl font-bold">{t("title")}</h2>
         {(session.user.role === "admin" || session.user.role === "super_admin" || session.user.role === "instructor") && (
-          <Button>{t("create")}</Button>
+          <Link href="/dashboard/problems/create">
+            <Button>{t("create")}</Button>
+          </Link>
         )}
       </div>
       <Card>

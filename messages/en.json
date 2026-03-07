@@ -71,7 +71,15 @@
     "selectLanguage": "Select Language",
     "writeCodePlaceholder": "Write your code here...",
     "descriptionTitle": "Description",
-    "noDescription": "No description provided."
+    "noDescription": "No description provided.",
+    "createTitle": "Create New Problem",
+    "createDescription": "Define the problem statement and resource limits.",
+    "titleLabel": "Title",
+    "descLabel": "Description (Markdown/HTML)",
+    "timeLimitLabel": "Time Limit (ms)",
+    "memoryLimitLabel": "Memory Limit (MB)",
+    "visibilityLabel": "Visibility",
+    "createSuccess": "Problem created successfully"
   },
   "submissions": {
     "title": "My Submissions",
@@ -171,7 +179,12 @@
     "userId": "User ID",
     "name": "Name",
     "email": "Email",
-    "role": "Role"
+    "role": "Role",
+    "editProfile": "Edit Profile",
+    "changePassword": "Change Password",
+    "changePasswordDesc": "Update your account password for security.",
+    "changePasswordBtn": "Change Password",
+    "updateSuccess": "Profile updated successfully"
   },
   "changePassword": {
     "title": "Change Password",
@@ -188,7 +201,7 @@
   },
   "judge": {
     "title": "Judge Environment",
-    "cpu": "Ampere Altra (ARM64)",
+    "cpu": "Ampere Altra (ARM64, 3.0 GHz)",
     "os": "Alpine Linux (latest)",
     "architecture": "AArch64 (ARM64)",
     "cpuLabel": "CPU",
