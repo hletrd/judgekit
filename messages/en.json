@@ -66,7 +66,8 @@
     "groups": "Groups",
     "userManagement": "User Management",
     "allSubmissions": "All Submissions",
-    "profile": "Profile"
+    "profile": "Profile",
+    "systemSettings": "System Settings"
   },
   "dashboard": {
     "title": "Dashboard",
@@ -324,6 +325,21 @@
         "submittedAt": "Submitted At"
       },
       "noSubmissions": "No submissions found."
+    },
+    "settings": {
+      "title": "System Settings",
+      "description": "Manage site-wide settings that affect the whole application.",
+      "siteCardTitle": "Site Identity",
+      "siteCardDescription": "Configure the title and description shown across the login screen, dashboard, and page metadata.",
+      "siteTitle": "Site Title",
+      "siteTitleHint": "Leave blank to use the default localized app name.",
+      "siteDescription": "Site Description",
+      "siteDescriptionHint": "Leave blank to use the default localized site description.",
+      "updateSuccess": "System settings updated successfully",
+      "updateError": "Failed to update system settings",
+      "siteTitleTooLong": "Site title must be 100 characters or less",
+      "siteDescriptionTooLong": "Site description must be 255 characters or less",
+      "unauthorized": "You are not authorized to update system settings"
     }
   },
   "profile": {
