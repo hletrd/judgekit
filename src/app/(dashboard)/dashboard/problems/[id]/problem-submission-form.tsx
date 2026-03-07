@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
@@ -8,6 +8,8 @@ import { CodeEditor } from "@/components/code/code-editor";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useSourceDraft } from "@/hooks/use-source-draft";
+import { useUnsavedChangesGuard } from "@/hooks/use-unsaved-changes-guard";
 
 type SubmissionLanguage = {
   id: string;
@@ -17,17 +19,25 @@ type SubmissionLanguage = {
 };
 
 type ProblemSubmissionFormProps = {
+  userId: string;
   problemId: string;
   languages: SubmissionLanguage[];
 };
 
-export function ProblemSubmissionForm({ problemId, languages }: ProblemSubmissionFormProps) {
+export function ProblemSubmissionForm({ userId, problemId, languages }: ProblemSubmissionFormProps) {
   const router = useRouter();
   const t = useTranslations("problems");
   const tCommon = useTranslations("common");
-  const [language, setLanguage] = useState(languages[0]?.language ?? "python");
-  const [sourceCode, setSourceCode] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const availableLanguages = useMemo(() => languages.map((entry) => entry.language), [languages]);
+  const { language, setLanguage, sourceCode, setSourceCode, isDirty, clearAllDrafts } = useSourceDraft({
+    userId,
+    problemId,
+    languages: availableLanguages,
+    initialLanguage: languages[0]?.language ?? "python",
+  });
+
+  const { allowNextNavigation } = useUnsavedChangesGuard({ isDirty });
 
   function translateSubmissionError(error: unknown) {
     if (typeof error !== "string") {
@@ -90,6 +100,8 @@ export function ProblemSubmissionForm({ problemId, languages }: ProblemSubmissio
         return;
       }
 
+      allowNextNavigation();
+      clearAllDrafts();
       router.push(`/dashboard/submissions/${submissionId}`);
       router.refresh();
     } catch (error) {

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { problems, submissions, testCases } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
+import { assignmentProblems, problems, submissions, testCases } from "@/lib/db/schema";
+import { eq, sql } from "drizzle-orm";
 import { getApiUser, unauthorized, forbidden, notFound, isAdmin } from "@/lib/api/auth";
 import { canAccessProblem } from "@/lib/auth/permissions";
 import { updateProblemWithTestCases } from "@/lib/problem-management";
@@ -127,10 +127,39 @@ export async function DELETE(
     const isAuthor = problem.authorId === user.id;
     if (!isAuthor && !isAdmin(user.role)) return forbidden();
 
+    const [submissionCountRow, assignmentLinkCountRow] = await Promise.all([
+      db
+        .select({ total: sql<number>`count(${submissions.id})` })
+        .from(submissions)
+        .where(eq(submissions.problemId, id))
+        .then((rows) => rows[0] ?? { total: 0 }),
+      db
+        .select({ total: sql<number>`count(${assignmentProblems.id})` })
+        .from(assignmentProblems)
+        .where(eq(assignmentProblems.problemId, id))
+        .then((rows) => rows[0] ?? { total: 0 }),
+    ]);
+
+    const submissionCount = Number(submissionCountRow.total ?? 0);
+    const assignmentLinkCount = Number(assignmentLinkCountRow.total ?? 0);
+
+    if (submissionCount > 0 || assignmentLinkCount > 0) {
+      return NextResponse.json(
+        {
+          error: "problemDeleteBlocked",
+          details: {
+            submissionCount,
+            assignmentLinkCount,
+          },
+        },
+        { status: 409 }
+      );
+    }
+
     await db.delete(problems).where(eq(problems.id, id));
     return NextResponse.json({ data: { id } });
   } catch (error) {
     console.error("DELETE /api/v1/problems/[id] error:", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return NextResponse.json({ error: "problemDeleteFailed" }, { status: 500 });
   }
 }

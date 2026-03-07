@@ -1,0 +1,354 @@
+"use client";
+
+import { useCallback, useEffect, useMemo, useSyncExternalStore } from "react";
+
+const STORAGE_PREFIX = "oj:submission-draft";
+const STORAGE_VERSION = 1;
+const DRAFT_TTL_MS = 1000 * 60 * 60 * 24 * 7;
+const SAVE_DEBOUNCE_MS = 500;
+
+type DraftPayload = {
+  version: number;
+  updatedAt: number;
+  latestLanguage: string | null;
+  drafts: Record<string, string>;
+};
+
+type DraftState = {
+  drafts: Record<string, string>;
+  latestLanguage: string | null;
+};
+
+type DraftStoreState = DraftState & {
+  selectedLanguage: string;
+};
+
+type DraftStore = {
+  getSnapshot: () => DraftStoreState;
+  getServerSnapshot: () => DraftStoreState;
+  subscribe: (listener: () => void) => () => void;
+  updateSnapshot: (updater: (state: DraftStoreState) => DraftStoreState) => DraftStoreState;
+};
+
+type UseSourceDraftOptions = {
+  userId: string;
+  problemId: string;
+  languages: string[];
+  initialLanguage: string;
+};
+
+type UseSourceDraftResult = {
+  language: string;
+  setLanguage: (language: string) => void;
+  sourceCode: string;
+  setSourceCode: (sourceCode: string) => void;
+  isDirty: boolean;
+  clearAllDrafts: () => void;
+  clearDraft: (language?: string) => void;
+};
+
+function getStorageKey(userId: string, problemId: string) {
+  return `${STORAGE_PREFIX}:${userId}:${problemId}`;
+}
+
+function normalizeDrafts(drafts: unknown, languages: readonly string[]) {
+  if (!drafts || typeof drafts !== "object") {
+    return {};
+  }
+
+  const allowedLanguages = new Set(languages);
+  const normalizedEntries = Object.entries(drafts).filter(
+    ([language, value]) => allowedLanguages.has(language) && typeof value === "string" && value.length > 0,
+  );
+
+  return Object.fromEntries(normalizedEntries);
+}
+
+function resolveLatestLanguage(latestLanguage: string | null, drafts: Record<string, string>, languages: readonly string[]) {
+  if (latestLanguage && drafts[latestLanguage]) {
+    return latestLanguage;
+  }
+
+  for (const language of languages) {
+    if (drafts[language]) {
+      return language;
+    }
+  }
+
+  const [fallbackLanguage] = Object.keys(drafts);
+  return fallbackLanguage ?? null;
+}
+
+function createEmptyDraftState(): DraftState {
+  return {
+    drafts: {},
+    latestLanguage: null,
+  };
+}
+
+function createDraftStoreState(
+  state: DraftState,
+  languages: readonly string[],
+  fallbackLanguage: string
+): DraftStoreState {
+  return {
+    ...state,
+    selectedLanguage:
+      resolveLatestLanguage(state.latestLanguage, state.drafts, languages) ?? fallbackLanguage,
+  };
+}
+
+function getPersistedDraftState(state: DraftStoreState): DraftState {
+  return {
+    drafts: state.drafts,
+    latestLanguage: state.latestLanguage,
+  };
+}
+
+function subscribeToHydration() {
+  return () => {};
+}
+
+function createDraftStore(
+  storageKey: string,
+  languages: readonly string[],
+  fallbackLanguage: string
+): DraftStore {
+  const serverSnapshot = createDraftStoreState(createEmptyDraftState(), languages, fallbackLanguage);
+  let snapshot =
+    typeof window === "undefined"
+      ? serverSnapshot
+      : createDraftStoreState(readDraftPayload(storageKey, languages), languages, fallbackLanguage);
+  const listeners = new Set<() => void>();
+
+  return {
+    getSnapshot: () => snapshot,
+    getServerSnapshot: () => serverSnapshot,
+    subscribe(listener) {
+      listeners.add(listener);
+
+      return () => {
+        listeners.delete(listener);
+      };
+    },
+    updateSnapshot(updater) {
+      snapshot = updater(snapshot);
+
+      for (const listener of listeners) {
+        listener();
+      }
+
+      return snapshot;
+    },
+  };
+}
+
+function readDraftPayload(storageKey: string, languages: readonly string[]) {
+  try {
+    const rawValue = window.localStorage.getItem(storageKey);
+
+    if (!rawValue) {
+      return createEmptyDraftState();
+    }
+
+    const parsedValue = JSON.parse(rawValue) as Partial<DraftPayload>;
+
+    if (parsedValue.version !== STORAGE_VERSION || typeof parsedValue.updatedAt !== "number") {
+      window.localStorage.removeItem(storageKey);
+      return createEmptyDraftState();
+    }
+
+    if (Date.now() - parsedValue.updatedAt > DRAFT_TTL_MS) {
+      window.localStorage.removeItem(storageKey);
+      return createEmptyDraftState();
+    }
+
+    const drafts = normalizeDrafts(parsedValue.drafts, languages);
+    const latestLanguage = resolveLatestLanguage(
+      typeof parsedValue.latestLanguage === "string" ? parsedValue.latestLanguage : null,
+      drafts,
+      languages,
+    );
+
+    if (Object.keys(drafts).length === 0) {
+      window.localStorage.removeItem(storageKey);
+      return createEmptyDraftState();
+    }
+
+    return {
+      drafts,
+      latestLanguage,
+    };
+  } catch {
+    window.localStorage.removeItem(storageKey);
+    return createEmptyDraftState();
+  }
+}
+
+export function useSourceDraft({ userId, problemId, languages, initialLanguage }: UseSourceDraftOptions): UseSourceDraftResult {
+  const availableLanguages = useMemo(
+    () => (languages.length > 0 ? languages : [initialLanguage]),
+    [initialLanguage, languages],
+  );
+  const fallbackLanguage = availableLanguages[0] ?? initialLanguage;
+  const storageKey = useMemo(() => getStorageKey(userId, problemId), [problemId, userId]);
+  const draftStore = useMemo(
+    () => createDraftStore(storageKey, availableLanguages, fallbackLanguage),
+    [availableLanguages, fallbackLanguage, storageKey],
+  );
+  const hasHydrated = useSyncExternalStore(subscribeToHydration, () => true, () => false);
+  const draftState = useSyncExternalStore(
+    draftStore.subscribe,
+    draftStore.getSnapshot,
+    draftStore.getServerSnapshot,
+  );
+
+  const persistDraftState = useCallback(
+    (state: DraftState) => {
+      try {
+        const drafts = normalizeDrafts(state.drafts, availableLanguages);
+
+        if (Object.keys(drafts).length === 0) {
+          window.localStorage.removeItem(storageKey);
+          return;
+        }
+
+        const payload: DraftPayload = {
+          version: STORAGE_VERSION,
+          updatedAt: Date.now(),
+          latestLanguage: resolveLatestLanguage(state.latestLanguage, drafts, availableLanguages),
+          drafts,
+        };
+
+        window.localStorage.setItem(storageKey, JSON.stringify(payload));
+      } catch {
+        return;
+      }
+    },
+    [availableLanguages, storageKey],
+  );
+
+  useEffect(() => {
+    if (!hasHydrated) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      persistDraftState(getPersistedDraftState(draftState));
+    }, SAVE_DEBOUNCE_MS);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [draftState, hasHydrated, persistDraftState]);
+
+  useEffect(() => {
+    if (!hasHydrated) {
+      return;
+    }
+
+    const flushDraftState = () => {
+      persistDraftState(getPersistedDraftState(draftStore.getSnapshot()));
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "hidden") {
+        flushDraftState();
+      }
+    };
+
+    window.addEventListener("pagehide", flushDraftState);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener("pagehide", flushDraftState);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      flushDraftState();
+    };
+  }, [draftStore, hasHydrated, persistDraftState]);
+
+  const setLanguage = useCallback(
+    (nextLanguage: string) => {
+      draftStore.updateSnapshot((state) => ({
+        ...state,
+        selectedLanguage: nextLanguage,
+      }));
+    },
+    [draftStore],
+  );
+
+  const setSourceCode = useCallback(
+    (nextSourceCode: string) => {
+      draftStore.updateSnapshot((state) => {
+        const nextDrafts = { ...state.drafts };
+        const activeLanguage = state.selectedLanguage;
+
+        if (nextSourceCode.length === 0) {
+          delete nextDrafts[activeLanguage];
+        } else {
+          nextDrafts[activeLanguage] = nextSourceCode;
+        }
+
+        return {
+          drafts: nextDrafts,
+          latestLanguage:
+            nextSourceCode.length === 0
+              ? resolveLatestLanguage(
+                  state.latestLanguage === activeLanguage ? null : state.latestLanguage,
+                  nextDrafts,
+                  availableLanguages,
+                )
+              : activeLanguage,
+          selectedLanguage: activeLanguage,
+        };
+      });
+    },
+    [availableLanguages, draftStore],
+  );
+
+  const clearDraft = useCallback(
+    (languageToClear?: string) => {
+      const targetLanguage = languageToClear ?? draftStore.getSnapshot().selectedLanguage;
+      const nextState = draftStore.updateSnapshot((state) => {
+        const nextDrafts = { ...state.drafts };
+        delete nextDrafts[targetLanguage];
+        const nextLatestLanguage = resolveLatestLanguage(
+          state.latestLanguage === targetLanguage ? null : state.latestLanguage,
+          nextDrafts,
+          availableLanguages,
+        );
+
+        return {
+          drafts: nextDrafts,
+          latestLanguage: nextLatestLanguage,
+          selectedLanguage:
+            state.selectedLanguage === targetLanguage
+              ? nextLatestLanguage ?? fallbackLanguage
+              : state.selectedLanguage,
+        };
+      });
+
+      persistDraftState(getPersistedDraftState(nextState));
+    },
+    [availableLanguages, draftStore, fallbackLanguage, persistDraftState],
+  );
+
+  const clearAllDrafts = useCallback(() => {
+    draftStore.updateSnapshot(() =>
+      createDraftStoreState(createEmptyDraftState(), availableLanguages, fallbackLanguage),
+    );
+    window.localStorage.removeItem(storageKey);
+  }, [availableLanguages, draftStore, fallbackLanguage, storageKey]);
+
+  const isDirty = Object.keys(draftState.drafts).length > 0;
+
+  return {
+    language: draftState.selectedLanguage,
+    setLanguage,
+    sourceCode: draftState.drafts[draftState.selectedLanguage] ?? "",
+    setSourceCode,
+    isDirty,
+    clearAllDrafts,
+    clearDraft,
+  };
+}

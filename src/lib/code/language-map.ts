@@ -3,7 +3,12 @@ export const CODE_SURFACE_LANGUAGE_MAP = {
   c23: "c",
   cpp20: "cpp",
   cpp23: "cpp",
+  javascript: "javascript",
+  typescript: "typescript",
   python: "python",
+  rust: "rust",
+  go: "go",
+  swift: "swift",
 } as const;
 
 export const CODE_SURFACE_PLAINTEXT_LANGUAGE = "plaintext" as const;

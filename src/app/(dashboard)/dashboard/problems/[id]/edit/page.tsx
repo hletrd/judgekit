@@ -6,6 +6,7 @@ import { db } from "@/lib/db";
 import { problems, submissions } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import CreateProblemForm from "../../create/create-problem-form";
+import { ProblemDeleteButton } from "../problem-delete-button";
 
 export default async function EditProblemPage({ params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
@@ -45,7 +46,13 @@ export default async function EditProblemPage({ params }: { params: Promise<{ id
 
   return (
     <div className="mx-auto max-w-4xl space-y-6">
-      <h2 className="text-2xl font-bold">{t("editTitle")}</h2>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 className="text-2xl font-bold">{t("editTitle")}</h2>
+          <p className="text-sm text-muted-foreground">{t("deleteHelpText")}</p>
+        </div>
+        <ProblemDeleteButton problemId={problem.id} problemTitle={problem.title} />
+      </div>
 
       <Card>
         <CardHeader>

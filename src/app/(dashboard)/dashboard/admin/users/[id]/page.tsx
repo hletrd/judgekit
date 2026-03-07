@@ -9,6 +9,7 @@ import { getResolvedSystemTimeZone } from "@/lib/system-settings";
 import { eq } from "drizzle-orm";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
+import UserActions from "../user-actions";
 
 export default async function AdminUserDetailPage({
   params,
@@ -46,9 +47,19 @@ export default async function AdminUserDetailPage({
           <h2 className="text-2xl font-bold">{user.name}</h2>
           <p className="text-sm text-muted-foreground">@{user.username}</p>
         </div>
-        <Link href="/dashboard/admin/users" className="text-sm text-primary hover:underline">
-          {t("usersList")}
-        </Link>
+        <div className="flex items-center gap-2">
+          <UserActions
+            userId={user.id}
+            username={user.username}
+            isActive={!!user.isActive}
+            isSelf={user.id === session.user.id}
+            userRole={user.role}
+            triggerVariant={user.isActive ? "destructive" : "outline"}
+          />
+          <Link href="/dashboard/admin/users" className="text-sm text-primary hover:underline">
+            {t("usersList")}
+          </Link>
+        </div>
       </div>
 
       <Card>

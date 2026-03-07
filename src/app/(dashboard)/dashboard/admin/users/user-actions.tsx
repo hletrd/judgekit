@@ -1,38 +1,70 @@
 "use client";
 
 import { useTransition } from "react";
-import { Button } from "@/components/ui/button";
 import { toggleUserActive } from "@/lib/actions/user-management";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { DestructiveActionDialog } from "@/components/destructive-action-dialog";
 
-export default function UserActions({ userId, isActive, isSelf, userRole }: { userId: string; isActive: boolean; isSelf: boolean; userRole: string }) {
+export default function UserActions({
+  userId,
+  username,
+  isActive,
+  isSelf,
+  userRole,
+  triggerVariant,
+}: {
+  userId: string;
+  username: string;
+  isActive: boolean;
+  isSelf: boolean;
+  userRole: string;
+  triggerVariant?: "default" | "destructive" | "outline" | "secondary" | "ghost" | "link";
+}) {
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
   const t = useTranslations("admin.users");
-  function handleToggle() {
-    startTransition(async () => {
-      const result = await toggleUserActive(userId, !isActive);
-      if (result.success) {
-        toast.success(t(isActive ? "deactivatedSuccess" : "activatedSuccess"));
-        router.refresh();
-      } else {
-        toast.error(t(result.error));
-      }
+
+  async function handleToggle() {
+    return new Promise<boolean>((resolve) => {
+      startTransition(async () => {
+        try {
+          const result = await toggleUserActive(userId, !isActive);
+
+          if (result.success) {
+            toast.success(t(isActive ? "deactivatedAccessSuccess" : "restoredAccessSuccess"));
+            router.refresh();
+            resolve(true);
+            return;
+          }
+
+          toast.error(t(result.error));
+          resolve(false);
+        } catch {
+          toast.error(t("updateUserStatusFailed"));
+          resolve(false);
+        }
+      });
     });
   }
 
   if (isSelf || userRole === "super_admin") return null;
 
   return (
-    <Button 
-      variant={isActive ? "destructive" : "default"} 
-      size="sm" 
-      onClick={handleToggle}
+    <DestructiveActionDialog
+      triggerLabel={t(isActive ? "deactivateAccess" : "restoreAccess")}
+      title={t(isActive ? "deactivateDialogTitle" : "restoreDialogTitle")}
+      description={t(isActive ? "deactivateDialogDescription" : "restoreDialogDescription", {
+        username,
+      })}
+      confirmLabel={t(isActive ? "deactivateAccess" : "restoreAccess")}
+      cancelLabel={t("cancelAction")}
+      onConfirmAction={handleToggle}
       disabled={isPending}
-    >
-      {isActive ? t("deactivate") : t("activate")}
-    </Button>
+      triggerVariant={triggerVariant ?? (isActive ? "destructive" : "outline")}
+      triggerTestId={`user-access-toggle-${userId}`}
+      confirmTestId={`user-access-toggle-confirm-${userId}`}
+    />
   );
 }

@@ -1,15 +1,18 @@
-"use client";
-
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { defaultKeymap, history, historyKeymap, indentWithTab } from "@codemirror/commands";
 import { cpp } from "@codemirror/lang-cpp";
+import { javascript } from "@codemirror/lang-javascript";
 import {
   bracketMatching,
   defaultHighlightStyle,
   indentOnInput,
+  StreamLanguage,
   syntaxHighlighting,
   type LanguageSupport,
 } from "@codemirror/language";
+import { go } from "@codemirror/legacy-modes/mode/go";
+import { rust } from "@codemirror/legacy-modes/mode/rust";
+import { swift } from "@codemirror/legacy-modes/mode/swift";
 import { python } from "@codemirror/lang-python";
 import { oneDarkHighlightStyle } from "@codemirror/theme-one-dark";
 import { Compartment, EditorState, type Extension } from "@codemirror/state";
@@ -34,7 +37,7 @@ type CodeSurfaceProps = {
   id?: string;
   language?: string | null;
   minHeight?: number;
-  onValueChange?: (value: string) => void;
+  onValueChangeAction?: (value: string) => void;
   placeholder?: string;
   readOnly?: boolean;
   tone?: CodeSurfaceTone;
@@ -104,6 +107,16 @@ function getLanguageExtension(language: string | null | undefined): LanguageSupp
       return cpp();
     case "python":
       return python();
+    case "javascript":
+      return javascript();
+    case "typescript":
+      return javascript({ typescript: true });
+    case "go":
+      return StreamLanguage.define(go);
+    case "rust":
+      return StreamLanguage.define(rust);
+    case "swift":
+      return StreamLanguage.define(swift);
     default:
       return [];
   }
@@ -169,7 +182,7 @@ export function CodeSurface({
   id,
   language,
   minHeight = 220,
-  onValueChange,
+  onValueChangeAction,
   placeholder: placeholderText,
   readOnly = false,
   tone = "default",
@@ -178,7 +191,7 @@ export function CodeSurface({
   const { resolvedTheme } = useTheme();
   const editorHostRef = useRef<HTMLDivElement | null>(null);
   const editorViewRef = useRef<EditorView | null>(null);
-  const onValueChangeRef = useRef(onValueChange);
+  const onValueChangeRef = useRef(onValueChangeAction);
   const isSyncingRef = useRef(false);
   const languageCompartmentRef = useRef(new Compartment());
   const highlightCompartmentRef = useRef(new Compartment());
@@ -199,8 +212,8 @@ export function CodeSurface({
   const editorStyle = useMemo(() => getSurfaceStyle(minHeight, tone), [minHeight, tone]);
 
   useEffect(() => {
-    onValueChangeRef.current = onValueChange;
-  }, [onValueChange]);
+    onValueChangeRef.current = onValueChangeAction;
+  }, [onValueChangeAction]);
 
   useEffect(() => {
     if (!editorHostRef.current) {

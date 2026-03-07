@@ -1,5 +1,3 @@
-"use client";
-
 import { CodeSurface } from "./code-surface";
 
 type CodeEditorProps = {
@@ -15,5 +13,13 @@ type CodeEditorProps = {
 };
 
 export function CodeEditor(props: CodeEditorProps) {
-  return <CodeSurface {...props} minHeight={props.minHeight ?? 300} />;
+  const { minHeight, onValueChange, ...surfaceProps } = props;
+
+  return (
+    <CodeSurface
+      {...surfaceProps}
+      minHeight={minHeight ?? 300}
+      onValueChangeAction={onValueChange}
+    />
+  );
 }

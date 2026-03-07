@@ -8,10 +8,12 @@ import { auth } from "@/lib/auth";
 import { redirect, notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { canAccessProblem } from "@/lib/auth/permissions";
-import { sanitizeHtml } from "@/lib/security/sanitize-html";
+import { ProblemDescription } from "@/components/problem-description";
+import { getTrustedLegacySeededDescription } from "@/lib/problems/legacy-seeded";
 import { ProblemSubmissionForm } from "./problem-submission-form";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { ProblemDeleteButton } from "./problem-delete-button";
 
 export default async function ProblemDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
@@ -27,7 +29,7 @@ export default async function ProblemDetailPage({ params }: { params: Promise<{ 
     where: eq(problems.id, problemId),
     with: {
       author: {
-        columns: { name: true }
+        columns: { name: true, username: true, email: true }
       }
     }
   });
@@ -47,7 +49,7 @@ export default async function ProblemDetailPage({ params }: { params: Promise<{ 
 
     return [{
       id: language.id,
-      language: definition.language,
+      language: language.language,
       displayName: definition.displayName,
       standard: definition.standard,
     }];
@@ -59,11 +61,17 @@ export default async function ProblemDetailPage({ params }: { params: Promise<{ 
     redirect("/dashboard/problems");
   }
 
-  const safeDescription = problem.description ? sanitizeHtml(problem.description) : null;
   const canEdit =
     problem.authorId === session.user.id ||
     session.user.role === "admin" ||
     session.user.role === "super_admin";
+
+  const legacyHtmlDescription = getTrustedLegacySeededDescription({
+    title: problem.title,
+    description: problem.description,
+    authorUsername: problem.author?.username,
+    authorEmail: problem.author?.email,
+  });
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -72,9 +80,12 @@ export default async function ProblemDetailPage({ params }: { params: Promise<{ 
           <div className="mb-2 flex flex-wrap items-start justify-between gap-3">
             <h2 className="text-3xl font-bold">{problem.title}</h2>
             {canEdit && (
-              <Link href={`/dashboard/problems/${problem.id}/edit`}>
-                <Button variant="outline">{tCommon("edit")}</Button>
-              </Link>
+              <div className="flex flex-wrap gap-2">
+                <Link href={`/dashboard/problems/${problem.id}/edit`}>
+                  <Button variant="outline">{tCommon("edit")}</Button>
+                </Link>
+                <ProblemDeleteButton problemId={problem.id} problemTitle={problem.title} />
+              </div>
             )}
           </div>
           <div className="mb-4 flex gap-2 text-sm text-muted-foreground">
@@ -87,9 +98,14 @@ export default async function ProblemDetailPage({ params }: { params: Promise<{ 
           <CardHeader>
             <CardTitle>{t("descriptionTitle")}</CardTitle>
           </CardHeader>
-          <CardContent className="prose dark:prose-invert max-w-none">
-            {safeDescription ? (
-              <div dangerouslySetInnerHTML={{ __html: safeDescription }} />
+          <CardContent>
+            {canEdit && <p className="mb-4 text-sm text-muted-foreground">{t("deleteHelpText")}</p>}
+            {problem.description ? (
+              <ProblemDescription
+                className="text-sm sm:text-base"
+                description={problem.description}
+                legacyHtmlDescription={legacyHtmlDescription}
+              />
             ) : (
               <p>{t("noDescription")}</p>
             )}
@@ -104,6 +120,7 @@ export default async function ProblemDetailPage({ params }: { params: Promise<{ 
           </CardHeader>
           <CardContent>
             <ProblemSubmissionForm
+              userId={session.user.id}
               problemId={problem.id}
               languages={enabledLanguages}
             />

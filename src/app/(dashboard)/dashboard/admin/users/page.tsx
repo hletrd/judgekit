@@ -98,6 +98,7 @@ export default async function UserManagementPage() {
                       }} />
                       <UserActions 
                         userId={user.id} 
+                        username={user.username}
                         isActive={!!user.isActive} 
                         isSelf={user.id === session.user.id} 
                         userRole={user.role}

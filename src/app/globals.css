@@ -130,15 +130,199 @@
 }
 
 @layer components {
-  .problem-description pre {
+  .problem-description {
+    color: var(--card-foreground);
+    line-height: 1.75;
+    overflow-wrap: anywhere;
+  }
+
+  .description-copy {
+    overflow-wrap: anywhere;
+    white-space: pre-wrap;
+  }
+
+  .description-cell {
+    overflow-wrap: anywhere;
+    white-space: pre-wrap;
+  }
+
+  .problem-description > :first-child {
+    margin-top: 0;
+  }
+
+  .problem-description > :last-child {
+    margin-bottom: 0;
+  }
+
+  .problem-description :is(h1, h2, h3, h4) {
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1.3;
+    margin-bottom: 0.75rem;
+    margin-top: 1.75rem;
+  }
+
+  .problem-description h1 {
+    font-size: 1.875rem;
+  }
+
+  .problem-description h2 {
+    font-size: 1.5rem;
+  }
+
+  .problem-description h3 {
+    font-size: 1.25rem;
+  }
+
+  .problem-description :is(p, ul, ol, pre, table, blockquote) {
+    margin: 1rem 0;
+  }
+
+  .problem-description ul,
+  .problem-description ol {
+    padding-left: 1.5rem;
+  }
+
+  .problem-description ul {
+    list-style: disc;
+  }
+
+  .problem-description ol {
+    list-style: decimal;
+  }
+
+  .problem-description li + li {
+    margin-top: 0.35rem;
+  }
+
+  .problem-description blockquote {
+    border-left: 3px solid var(--border);
+    color: var(--muted-foreground);
+    padding-left: 1rem;
+  }
+
+  .problem-description :not(pre) > code {
+    background: color-mix(in oklch, var(--accent) 72%, var(--card));
+    border: 1px solid var(--border);
+    border-radius: 0.4rem;
     font-family: var(--font-mono);
+    font-size: 0.875em;
+    padding: 0.15rem 0.4rem;
+  }
+
+  .problem-description pre {
+    background: var(--problem-code-background);
+    border: 1px solid var(--problem-code-border);
+    border-radius: 1rem;
+    box-shadow: inset 0 1px 0 var(--problem-code-highlight);
+    color: var(--problem-code-foreground);
+    font-family: var(--font-mono);
+    overflow-x: auto;
+    padding: 1rem 1.1rem;
+  }
+
+  .problem-description pre code {
+    background: transparent;
+    border: 0;
+    color: inherit;
+    display: block;
+    font-family: var(--font-mono);
+    font-size: 0.9rem;
+    line-height: 1.7;
+    padding: 0;
   }
 
   .problem-description .hljs {
+    background: transparent;
+    color: inherit;
     font-family: inherit;
   }
 
   .problem-description .hljs * {
     font-family: inherit;
   }
+
+  .problem-description .hljs-comment,
+  .problem-description .hljs-quote {
+    color: var(--problem-code-comment);
+  }
+
+  .problem-description .hljs-keyword,
+  .problem-description .hljs-selector-tag,
+  .problem-description .hljs-literal,
+  .problem-description .hljs-type {
+    color: var(--problem-code-keyword);
+  }
+
+  .problem-description .hljs-string,
+  .problem-description .hljs-doctag,
+  .problem-description .hljs-regexp {
+    color: var(--problem-code-string);
+  }
+
+  .problem-description .hljs-title,
+  .problem-description .hljs-title.class_,
+  .problem-description .hljs-title.function_,
+  .problem-description .hljs-section,
+  .problem-description .hljs-attr,
+  .problem-description .hljs-attribute {
+    color: var(--problem-code-title);
+  }
+
+  .problem-description .hljs-number,
+  .problem-description .hljs-symbol,
+  .problem-description .hljs-bullet,
+  .problem-description .hljs-variable,
+  .problem-description .hljs-template-variable {
+    color: var(--problem-code-number);
+  }
+
+  .problem-description table {
+    border-collapse: collapse;
+    display: block;
+    font-size: 0.95rem;
+    min-width: 100%;
+    overflow-x: auto;
+  }
+
+  .problem-description th,
+  .problem-description td {
+    border: 1px solid var(--border);
+    padding: 0.7rem 0.85rem;
+    text-align: left;
+    vertical-align: top;
+  }
+
+  .problem-description th {
+    background: color-mix(in oklch, var(--accent) 76%, var(--card));
+    font-weight: 600;
+  }
+
+  .problem-description tr:nth-child(even) td {
+    background: color-mix(in oklch, var(--muted) 72%, transparent);
+  }
+}
+
+:root {
+  --problem-code-background: oklch(0.22 0.02 255);
+  --problem-code-border: oklch(0.32 0.03 255 / 70%);
+  --problem-code-comment: oklch(0.78 0.03 230);
+  --problem-code-foreground: oklch(0.96 0.01 255);
+  --problem-code-highlight: oklch(1 0 0 / 7%);
+  --problem-code-keyword: oklch(0.78 0.13 295);
+  --problem-code-number: oklch(0.83 0.12 65);
+  --problem-code-string: oklch(0.84 0.12 155);
+  --problem-code-title: oklch(0.83 0.1 240);
+}
+
+.dark {
+  --problem-code-background: oklch(0.19 0.02 255);
+  --problem-code-border: oklch(0.34 0.03 255 / 65%);
+  --problem-code-comment: oklch(0.72 0.03 235);
+  --problem-code-foreground: oklch(0.96 0.01 255);
+  --problem-code-highlight: oklch(1 0 0 / 8%);
+  --problem-code-keyword: oklch(0.78 0.12 300);
+  --problem-code-number: oklch(0.84 0.11 68);
+  --problem-code-string: oklch(0.82 0.11 158);
+  --problem-code-title: oklch(0.82 0.09 242);
 }

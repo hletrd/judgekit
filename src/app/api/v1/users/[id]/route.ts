@@ -104,7 +104,17 @@ export async function PATCH(
     if (username !== undefined) updates.username = username;
     if (email !== undefined) updates.email = normalizedEmail;
     if (className !== undefined) updates.className = normalizedClassName;
-    if (isActive !== undefined && isAdminActor) updates.isActive = isActive;
+    if (isActive !== undefined && isAdminActor) {
+      if (isActive === false && found.id === user.id) {
+        return NextResponse.json({ error: "cannotDeactivateSelf" }, { status: 403 });
+      }
+
+      if (isActive === false && found.role === "super_admin") {
+        return NextResponse.json({ error: "cannotDeactivateSuperAdmin" }, { status: 403 });
+      }
+
+      updates.isActive = isActive;
+    }
     if (role !== undefined) {
       if (!isAdminActor) return forbidden();
 
@@ -184,8 +194,12 @@ export async function DELETE(
 
     if (!found) return notFound("User");
 
+    if (found.id === user.id) {
+      return NextResponse.json({ error: "cannotDeactivateSelf" }, { status: 403 });
+    }
+
     if (found.role === "super_admin") {
-      return NextResponse.json({ error: "Cannot deactivate super_admin" }, { status: 403 });
+      return NextResponse.json({ error: "cannotDeactivateSuperAdmin" }, { status: 403 });
     }
 
     await db.update(users).set({ isActive: false, updatedAt: new Date() }).where(eq(users.id, id));
