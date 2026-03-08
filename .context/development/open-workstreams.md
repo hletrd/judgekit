@@ -9,11 +9,11 @@ The `dashboard-rendering-audit-and-editor-upgrades` batch is now locally verifie
 - Assignment-aware submission validation, the group-scoped assignment board, and scoped instructor submission drill-down
 - Login-event logging plus the admin login-log dashboard/navigation surface
 - Theme switching, CodeMirror code surfaces, markdown rendering, draft recovery, mixed submission IDs, and guarded delete flows
+- Group membership management plus assignment create/edit/delete flows, assignment-linked student detail pages, and submission guards tied to assignment schedules/history
+- Broader audit/event logging across admin mutations, submission/judge lifecycle events, and the admin audit-log page
 
 ## Still open
 
-- Assignment CRUD and group membership management
-- Broader audit/event logging beyond credential login history
 - Additional language/runtime expansion work
 - CI and backup/observability work
 

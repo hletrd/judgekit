@@ -42,11 +42,11 @@
 
 - Phase 0 remediation is complete: submission flow works, the judge worker executes submissions, instructors can manage test cases during problem authoring, the problem edit page exists, and the group creation flow is wired
 - High-priority Phase 1 work is also in place: dashboard `loading.tsx` / `error.tsx` / `not-found.tsx`, submission polling, paginated submissions, solved/attempted problem indicators, translated status badges, callback-aware login, sanitized problem descriptions, theme switching, richer code surfaces, and admin-managed site identity/timezone settings
-- Local main also includes the dashboard-rendering-audit-and-editor-upgrades batch: instructor assignment status boards with scoped submission drill-down, admin login logs, theme-aware CodeMirror surfaces, draft recovery, guarded delete flows, and 32-character hex submission IDs. These changes are verified locally but not yet confirmed on `oj-demo.atik.kr`.
+- Local main also includes the dashboard-rendering-audit-and-editor-upgrades batch plus the classroom-management and broader audit-logging follow-up: instructor assignment status boards with scoped submission drill-down, admin login logs, theme-aware CodeMirror surfaces, draft recovery, guarded delete flows, 32-character hex submission IDs, group membership management, assignment create/edit/delete flows, student assignment detail/submission paths, assignment-context enforcement for enrolled students, group deletion guards that preserve assignment-linked history, and admin audit logs for privileged and system-driven mutations across settings, users, problems, groups, assignments, submissions, judging, profile updates, and password changes. These changes are verified locally but not yet confirmed on `oj-demo.atik.kr`.
 - As of 2026-03-07, commit `6951d46` is deployed to `oj-demo.atik.kr`; the demo host has the `system_settings.time_zone` column applied and the public login page returns HTTP 200
 - Security hardening now includes login rate limiting, explicit auth/judge env validation, stronger API access checks, problem/test-case exposure fixes, and shared security headers
 - As of 2026-03-07, a remote smoke test against `oj-demo.atik.kr` succeeded with instructor-authenticated `POST /api/v1/problems` calls and left six private Korean practice problems on the demo host for API verification
-- Remaining roadmap items are still open: assignment CRUD, group membership management, broader audit/event logging, additional language/runtime expansion, CI, and backup/observability work
+- Remaining roadmap items are still open: additional language/runtime expansion, CI, and backup/observability work
 
 ## Getting Started
 
