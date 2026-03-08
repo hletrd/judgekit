@@ -3,8 +3,9 @@ import { db } from "@/lib/db";
 import { assignments, groups, submissions } from "@/lib/db/schema";
 import { eq, sql } from "drizzle-orm";
 import { canAccessGroup } from "@/lib/auth/permissions";
-import { getApiUser, unauthorized, forbidden, notFound, isAdmin } from "@/lib/api/auth";
+import { getApiUser, unauthorized, forbidden, notFound, isAdmin, csrfForbidden } from "@/lib/api/auth";
 import { recordAuditEvent } from "@/lib/audit/events";
+import { updateGroupSchema } from "@/lib/validators/groups";
 
 export async function GET(
   request: NextRequest,
@@ -90,6 +91,9 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const csrfError = csrfForbidden(request);
+    if (csrfError) return csrfError;
+
     const user = await getApiUser(request);
     if (!user) return unauthorized();
 
@@ -100,11 +104,20 @@ export async function PATCH(
     if (!isAdmin(user.role) && group.instructorId !== user.id) return forbidden();
 
     const body = await request.json();
-    const { name, description, isArchived } = body;
+    const parsed = updateGroupSchema.safeParse(body);
+
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: parsed.error.issues[0]?.message ?? "validationError" },
+        { status: 400 }
+      );
+    }
+
+    const { name, description, isArchived } = parsed.data;
 
     const updates: Record<string, unknown> = { updatedAt: new Date() };
     if (name !== undefined) updates.name = name;
-    if (description !== undefined) updates.description = description;
+    if (description !== undefined) updates.description = description ?? null;
     if (isArchived !== undefined) updates.isArchived = isArchived;
 
     await db.update(groups).set(updates).where(eq(groups.id, id));
@@ -140,6 +153,9 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const csrfError = csrfForbidden(request);
+    if (csrfError) return csrfError;
+
     const user = await getApiUser(request);
     if (!user) return unauthorized();
     if (!isAdmin(user.role)) return forbidden();

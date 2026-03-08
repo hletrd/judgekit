@@ -164,13 +164,16 @@
       "assignmentClosed": "This assignment is already closed.",
       "assignmentEnrollmentRequired": "You must be enrolled in this assignment's group to submit.",
       "assignmentProblemMismatch": "This problem is not part of the selected assignment.",
-      "languageRequired": "Please select a language.",
-      "languageNotSupported": "This language is not currently available for submissions.",
-      "sourceCodeRequired": "Please enter your source code.",
-      "sourceCodeTooLarge": "Your source code exceeds the allowed size limit.",
-      "invalidSubmissionStatus": "Invalid submission status.",
-      "submissionLoadFailed": "Failed to load submissions.",
-      "submissionCreateFailed": "Failed to submit your solution."
+        "languageRequired": "Please select a language.",
+        "languageNotSupported": "This language is not currently available for submissions.",
+        "sourceCodeRequired": "Please enter your source code.",
+        "sourceCodeTooLarge": "Your source code exceeds the allowed size limit.",
+        "submissionRateLimited": "You are submitting too quickly. Please wait a moment before trying again.",
+        "tooManyPendingSubmissions": "You already have too many submissions waiting to be judged. Please wait for them to finish.",
+        "judgeQueueFull": "The judge queue is currently full. Please try again in a few minutes.",
+        "invalidSubmissionStatus": "Invalid submission status.",
+        "submissionLoadFailed": "Failed to load submissions.",
+        "submissionCreateFailed": "Failed to submit your solution."
     },
     "visibilityOptions": {
       "public": "Public",
@@ -410,11 +413,12 @@
       "usernameAndNameRequired": "Username and name are required",
       "usernameInUse": "Username already in use",
       "emailInUse": "Email already in use",
-      "onlySuperAdminCanChangeSuperAdminRole": "Only a super admin can change the super admin role",
-      "cannotChangeSuperAdminRole": "The super admin role cannot be changed",
-      "passwordTooShort": "Password must be at least 8 characters",
-      "updateUserFailed": "Failed to update user",
-      "createUserFailed": "Failed to create user"
+       "onlySuperAdminCanChangeSuperAdminRole": "Only a super admin can change the super admin role",
+       "cannotChangeSuperAdminRole": "The super admin role cannot be changed",
+       "passwordTooShort": "Password must be at least 8 characters",
+       "passwordTooWeak": "Password must include uppercase and lowercase letters plus at least one number",
+       "updateUserFailed": "Failed to update user",
+       "createUserFailed": "Failed to create user"
     },
     "submissions": {
       "title": "All Submissions",
@@ -571,7 +575,9 @@
     "changing": "Changing...",
     "passwordMismatch": "Passwords do not match",
     "passwordTooShort": "Password must be at least 8 characters",
+    "passwordTooWeak": "Password must include uppercase and lowercase letters plus at least one number",
     "currentPasswordIncorrect": "Current password is incorrect",
+    "changePasswordRateLimited": "Too many password change attempts. Please wait a few minutes and try again.",
     "error": "An error occurred",
     "userNotFound": "User not found",
     "sessionExpired": "Your session expired. Redirecting to the sign-in page..."

@@ -4,7 +4,7 @@ import { recordAuditEvent } from "@/lib/audit/events";
 import { db } from "@/lib/db";
 import { assignments, enrollments, submissions } from "@/lib/db/schema";
 import { canManageGroupResources } from "@/lib/assignments/management";
-import { getApiUser, forbidden, notFound, unauthorized } from "@/lib/api/auth";
+import { getApiUser, forbidden, notFound, unauthorized, csrfForbidden } from "@/lib/api/auth";
 import type { UserRole } from "@/types";
 
 export async function DELETE(
@@ -12,6 +12,9 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string; userId: string }> }
 ) {
   try {
+    const csrfError = csrfForbidden(request);
+    if (csrfError) return csrfError;
+
     const user = await getApiUser(request);
     if (!user) return unauthorized();
 

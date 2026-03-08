@@ -9,7 +9,7 @@ import {
   getManageableProblemsForGroup,
 } from "@/lib/assignments/management";
 import { assignmentMutationSchema } from "@/lib/validators/assignments";
-import { getApiUser, forbidden, notFound, unauthorized } from "@/lib/api/auth";
+import { getApiUser, forbidden, notFound, unauthorized, csrfForbidden } from "@/lib/api/auth";
 import { canAccessGroup } from "@/lib/auth/permissions";
 import type { UserRole } from "@/types";
 
@@ -57,6 +57,9 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const csrfError = csrfForbidden(request);
+    if (csrfError) return csrfError;
+
     const user = await getApiUser(request);
     if (!user) return unauthorized();
 

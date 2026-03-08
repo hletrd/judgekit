@@ -6,7 +6,7 @@ import { db } from "@/lib/db";
 import { enrollments, users } from "@/lib/db/schema";
 import { canManageGroupResources } from "@/lib/assignments/management";
 import { groupMembershipSchema } from "@/lib/validators/groups";
-import { getApiUser, forbidden, notFound, unauthorized } from "@/lib/api/auth";
+import { getApiUser, forbidden, notFound, unauthorized, csrfForbidden } from "@/lib/api/auth";
 import { canAccessGroup } from "@/lib/auth/permissions";
 import type { UserRole } from "@/types";
 
@@ -49,6 +49,9 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const csrfError = csrfForbidden(request);
+    if (csrfError) return csrfError;
+
     const user = await getApiUser(request);
     if (!user) return unauthorized();
 

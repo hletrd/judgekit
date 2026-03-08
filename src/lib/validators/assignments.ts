@@ -1,21 +1,5 @@
 import { z } from "zod";
-
-function trimString(value: unknown) {
-  if (typeof value !== "string") {
-    return value;
-  }
-
-  return value.trim();
-}
-
-function normalizeOptionalString(value: unknown) {
-  if (typeof value !== "string") {
-    return value;
-  }
-
-  const trimmed = value.trim();
-  return trimmed === "" ? undefined : trimmed;
-}
+import { normalizeOptionalString, trimString } from "@/lib/validators/preprocess";
 
 export const assignmentProblemSchema = z.object({
   problemId: z.preprocess(trimString, z.string().min(1, "assignmentProblemRequired")),

@@ -3,9 +3,18 @@ import type { SubmissionStatus, UserRole } from "@/types";
 export const MIN_PASSWORD_LENGTH = 8;
 export const MAX_SOURCE_CODE_SIZE_BYTES = 256 * 1024;
 
-export const LOGIN_RATE_LIMIT_MAX_ATTEMPTS = 5;
-export const LOGIN_RATE_LIMIT_WINDOW_MS = 60 * 1000;
-export const LOGIN_RATE_LIMIT_BLOCK_MS = 15 * 60 * 1000;
+export const SUBMISSION_RATE_LIMIT_MAX_PER_MINUTE = parseInt(
+  process.env.SUBMISSION_RATE_LIMIT_MAX_PER_MINUTE || "5",
+  10
+);
+export const SUBMISSION_MAX_PENDING = parseInt(
+  process.env.SUBMISSION_MAX_PENDING || "3",
+  10
+);
+export const SUBMISSION_GLOBAL_QUEUE_LIMIT = parseInt(
+  process.env.SUBMISSION_GLOBAL_QUEUE_LIMIT || "100",
+  10
+);
 
 export const USER_ROLES: readonly UserRole[] = [
   "student",

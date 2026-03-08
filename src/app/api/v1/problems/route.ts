@@ -1,12 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { problems } from "@/lib/db/schema";
-import { eq, desc } from "drizzle-orm";
-import { getApiUser, unauthorized, forbidden, isInstructor } from "@/lib/api/auth";
+import { problems, problemGroupAccess, enrollments } from "@/lib/db/schema";
+import { eq, desc, sql, and, or } from "drizzle-orm";
+import { getApiUser, unauthorized, forbidden, isInstructor, isAdmin, csrfForbidden } from "@/lib/api/auth";
 import { recordAuditEvent } from "@/lib/audit/events";
-import { canAccessProblem } from "@/lib/auth/permissions";
 import { createProblemWithTestCases } from "@/lib/problem-management";
-import { problemMutationSchema } from "@/lib/validators/problem-management";
+import { problemMutationSchema, problemVisibilityValues } from "@/lib/validators/problem-management";
 
 export async function GET(request: NextRequest) {
   try {
@@ -19,29 +18,59 @@ export async function GET(request: NextRequest) {
     const offset = (page - 1) * limit;
     const visibility = searchParams.get("visibility");
 
-    const allProblems = await db.select().from(problems).orderBy(desc(problems.createdAt));
+    if (visibility && !problemVisibilityValues.includes(visibility as (typeof problemVisibilityValues)[number])) {
+      return NextResponse.json({ error: "invalidVisibility" }, { status: 400 });
+    }
 
-    const accessibleProblems =
-      user.role === "admin" || user.role === "super_admin"
-        ? allProblems
-        : (
-            await Promise.all(
-              allProblems.map(async (problem) => ({
-                problem,
-                hasAccess: await canAccessProblem(problem.id, user.id, user.role),
-              }))
-            )
-          )
-            .filter((entry) => entry.hasAccess)
-            .map((entry) => entry.problem);
+    const visibilityFilter = visibility ? eq(problems.visibility, visibility) : undefined;
 
-    const filtered = visibility
-      ? accessibleProblems.filter((problem) => problem.visibility === visibility)
-      : accessibleProblems;
+    if (isAdmin(user.role)) {
+      const [total] = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(problems)
+        .where(visibilityFilter);
 
-    const paginatedProblems = filtered.slice(offset, offset + limit);
+      const results = await db
+        .select()
+        .from(problems)
+        .where(visibilityFilter)
+        .orderBy(desc(problems.createdAt))
+        .limit(limit)
+        .offset(offset);
 
-    return NextResponse.json({ data: paginatedProblems, page, limit, total: filtered.length });
+      return NextResponse.json({ data: results, page, limit, total: Number(total?.count ?? 0) });
+    }
+
+    const accessFilter = or(
+      eq(problems.visibility, "public"),
+      eq(problems.authorId, user.id),
+      sql`exists (
+        select 1
+        from ${problemGroupAccess}
+        inner join ${enrollments}
+          on ${problemGroupAccess.groupId} = ${enrollments.groupId}
+        where ${problemGroupAccess.problemId} = ${problems.id}
+          and ${enrollments.userId} = ${user.id}
+      )`
+    );
+    const whereClause = visibilityFilter ? and(accessFilter, visibilityFilter) : accessFilter;
+
+    const [totalRow] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(problems)
+      .where(whereClause);
+
+    const paginatedProblems = await db
+      .select()
+      .from(problems)
+      .where(whereClause)
+      .orderBy(desc(problems.createdAt))
+      .limit(limit)
+      .offset(offset);
+
+    const total = Number(totalRow?.count ?? 0);
+
+    return NextResponse.json({ data: paginatedProblems, page, limit, total });
   } catch (error) {
     console.error("GET /api/v1/problems error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
@@ -50,6 +79,9 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const csrfError = csrfForbidden(request);
+    if (csrfError) return csrfError;
+
     const user = await getApiUser(request);
     if (!user) return unauthorized();
     if (!isInstructor(user.role)) return forbidden();

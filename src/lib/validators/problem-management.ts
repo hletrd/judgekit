@@ -1,12 +1,5 @@
 import { z } from "zod";
-
-function trimString(value: unknown) {
-  if (typeof value !== "string") {
-    return value;
-  }
-
-  return value.trim();
-}
+import { trimString } from "@/lib/validators/preprocess";
 
 export const problemVisibilityValues = ["public", "private", "hidden"] as const;
 

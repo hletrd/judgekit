@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { assignmentProblems, problems, submissions, testCases } from "@/lib/db/schema";
 import { eq, sql } from "drizzle-orm";
-import { getApiUser, unauthorized, forbidden, notFound, isAdmin } from "@/lib/api/auth";
+import { getApiUser, unauthorized, forbidden, notFound, isAdmin, csrfForbidden } from "@/lib/api/auth";
 import { recordAuditEvent } from "@/lib/audit/events";
 import { canAccessProblem } from "@/lib/auth/permissions";
 import { updateProblemWithTestCases } from "@/lib/problem-management";
@@ -48,6 +48,9 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const csrfError = csrfForbidden(request);
+    if (csrfError) return csrfError;
+
     const user = await getApiUser(request);
     if (!user) return unauthorized();
 
@@ -138,6 +141,9 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const csrfError = csrfForbidden(request);
+    if (csrfError) return csrfError;
+
     const user = await getApiUser(request);
     if (!user) return unauthorized();
 

@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { groups, enrollments } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
-import { getApiUser, unauthorized, forbidden, isAdmin, isInstructor } from "@/lib/api/auth";
+import { eq, desc, sql } from "drizzle-orm";
+import { getApiUser, unauthorized, forbidden, isAdmin, isInstructor, csrfForbidden } from "@/lib/api/auth";
 import { recordAuditEvent } from "@/lib/audit/events";
 import { nanoid } from "nanoid";
 import { createGroupSchema } from "@/lib/validators/groups";
@@ -12,10 +12,38 @@ export async function GET(request: NextRequest) {
     const user = await getApiUser(request);
     if (!user) return unauthorized();
 
-    let results;
+    const searchParams = request.nextUrl.searchParams;
+    const page = Math.max(1, parseInt(searchParams.get("page") || "1"));
+    const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") || "25")));
+    const offset = (page - 1) * limit;
 
-    if (isAdmin(user.role) || isInstructor(user.role)) {
+    let results;
+    let total = 0;
+
+    if (isAdmin(user.role)) {
+      const [totalRow] = await db.select({ count: sql<number>`count(*)` }).from(groups);
+      total = Number(totalRow?.count ?? 0);
       results = await db.query.groups.findMany({
+        orderBy: [desc(groups.createdAt)],
+        limit,
+        offset,
+        with: {
+          instructor: {
+            columns: { id: true, name: true, email: true },
+          },
+        },
+      });
+    } else if (isInstructor(user.role)) {
+      const [totalRow] = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(groups)
+        .where(eq(groups.instructorId, user.id));
+      total = Number(totalRow?.count ?? 0);
+      results = await db.query.groups.findMany({
+        where: eq(groups.instructorId, user.id),
+        orderBy: [desc(groups.createdAt)],
+        limit,
+        offset,
         with: {
           instructor: {
             columns: { id: true, name: true, email: true },
@@ -23,8 +51,16 @@ export async function GET(request: NextRequest) {
         },
       });
     } else {
+      const [totalRow] = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(enrollments)
+        .where(eq(enrollments.userId, user.id));
+      total = Number(totalRow?.count ?? 0);
       const userEnrollments = await db.query.enrollments.findMany({
         where: eq(enrollments.userId, user.id),
+        limit,
+        offset,
+        orderBy: [desc(enrollments.enrolledAt)],
         with: {
           group: {
             with: {
@@ -38,7 +74,7 @@ export async function GET(request: NextRequest) {
       results = userEnrollments.map((e) => e.group);
     }
 
-    return NextResponse.json({ data: results });
+    return NextResponse.json({ data: results, page, limit, total });
   } catch (error) {
     console.error("GET /api/v1/groups error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
@@ -47,6 +83,9 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const csrfError = csrfForbidden(request);
+    if (csrfError) return csrfError;
+
     const user = await getApiUser(request);
     if (!user) return unauthorized();
     if (!isInstructor(user.role)) return forbidden();

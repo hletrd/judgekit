@@ -1,13 +1,5 @@
 import { z } from "zod";
-
-function normalizeOptionalString(value: unknown) {
-  if (typeof value !== "string") {
-    return value;
-  }
-
-  const trimmed = value.trim();
-  return trimmed === "" ? undefined : trimmed;
-}
+import { normalizeOptionalString } from "@/lib/validators/preprocess";
 
 function isValidTimeZone(value: string) {
   try {
