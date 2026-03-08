@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { groups, enrollments } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { getApiUser, unauthorized, forbidden, isAdmin, isInstructor } from "@/lib/api/auth";
+import { recordAuditEvent } from "@/lib/audit/events";
 import { nanoid } from "nanoid";
 import { createGroupSchema } from "@/lib/validators/groups";
 
@@ -73,6 +74,23 @@ export async function POST(request: NextRequest) {
     });
 
     const group = await db.query.groups.findFirst({ where: eq(groups.id, id) });
+
+    if (group) {
+      recordAuditEvent({
+        actorId: user.id,
+        actorRole: user.role,
+        action: "group.created",
+        resourceType: "group",
+        resourceId: group.id,
+        resourceLabel: group.name,
+        summary: `Created group \"${group.name}\"`,
+        details: {
+          isArchived: group.isArchived,
+        },
+        request,
+      });
+    }
+
     return NextResponse.json({ data: group }, { status: 201 });
   } catch (error) {
     console.error("POST /api/v1/groups error:", error);

@@ -6,6 +6,7 @@ import { users } from "@/lib/db/schema";
 import { auth } from "@/lib/auth";
 import { hash } from "bcryptjs";
 import { nanoid } from "nanoid";
+import { buildServerActionAuditContext, recordAuditEvent } from "@/lib/audit/events";
 import { generateSecurePassword } from "@/lib/auth/generated-password";
 import {
   MIN_PASSWORD_LENGTH,
@@ -69,6 +70,23 @@ export async function toggleUserActive(userId: string, isActive: boolean): Promi
     await db.update(users)
       .set({ isActive, updatedAt: new Date() })
       .where(eq(users.id, userId));
+
+    const auditContext = await buildServerActionAuditContext("/dashboard/admin/users");
+    recordAuditEvent({
+      actorId: session.user.id,
+      actorRole: session.user.role,
+      action: isActive ? "user.access_restored" : "user.access_deactivated",
+      resourceType: "user",
+      resourceId: targetUser.id,
+      resourceLabel: targetUser.username,
+      summary: `${isActive ? "Restored" : "Deactivated"} access for @${targetUser.username}`,
+      details: {
+        isActive,
+        role: targetUser.role,
+      },
+      context: auditContext,
+    });
+
     return { success: true };
   } catch (error) {
     console.error("Failed to update user status:", error);
@@ -153,6 +171,23 @@ export async function editUser(userId: string, data: ManagedUserInput): Promise<
 
     await db.update(users).set(updates).where(eq(users.id, userId));
 
+    const auditContext = await buildServerActionAuditContext("/dashboard/admin/users");
+    recordAuditEvent({
+      actorId: session.user.id,
+      actorRole: session.user.role,
+      action: "user.updated",
+      resourceType: "user",
+      resourceId: targetUser.id,
+      resourceLabel: data.username,
+      summary: `Updated user @${data.username}`,
+      details: {
+        changedFields: Object.keys(updates).filter((key) => key !== "passwordHash"),
+        resetPassword: Boolean(data.password && data.password.length >= MIN_PASSWORD_LENGTH),
+        role: requestedRole,
+      },
+      context: auditContext,
+    });
+
     return { success: true };
   } catch (error) {
     console.error("Failed to update user:", error);
@@ -224,6 +259,22 @@ export async function createUser(data: ManagedUserInput): Promise<UserManagement
       mustChangePassword: true, // force new user to change password on first login
       createdAt: new Date(),
       updatedAt: new Date(),
+    });
+
+    const auditContext = await buildServerActionAuditContext("/dashboard/admin/users");
+    recordAuditEvent({
+      actorId: session.user.id,
+      actorRole: session.user.role,
+      action: "user.created",
+      resourceType: "user",
+      resourceId: id,
+      resourceLabel: data.username,
+      summary: `Created user @${data.username}`,
+      details: {
+        role: requestedRole,
+        usedGeneratedPassword: !data.password,
+      },
+      context: auditContext,
     });
 
     return {

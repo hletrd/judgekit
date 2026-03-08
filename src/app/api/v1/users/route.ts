@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { eq, desc } from "drizzle-orm";
 import { getApiUser, unauthorized, forbidden, isAdmin } from "@/lib/api/auth";
+import { recordAuditEvent } from "@/lib/audit/events";
 import { nanoid } from "nanoid";
 import { hash } from "bcryptjs";
 import { generateSecurePassword } from "@/lib/auth/generated-password";
@@ -149,6 +150,23 @@ export async function POST(request: NextRequest) {
       .from(users)
       .where(eq(users.id, id))
       .then((r) => r[0]);
+
+    if (created) {
+      recordAuditEvent({
+        actorId: user.id,
+        actorRole: user.role,
+        action: "user.created_api",
+        resourceType: "user",
+        resourceId: created.id,
+        resourceLabel: created.username,
+        summary: `Created user @${created.username} via API`,
+        details: {
+          role: created.role,
+          usedGeneratedPassword: !password,
+        },
+        request,
+      });
+    }
 
     return NextResponse.json({ data: created, generatedPassword: password ? undefined : generatedPassword }, { status: 201 });
   } catch (error) {

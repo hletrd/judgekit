@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { getApiUser, unauthorized, forbidden, notFound, isAdmin } from "@/lib/api/auth";
+import { recordAuditEvent } from "@/lib/audit/events";
 import { hash } from "bcryptjs";
 import {
   MIN_PASSWORD_LENGTH,
@@ -168,6 +169,27 @@ export async function PATCH(
       .where(eq(users.id, id))
       .then((r) => r[0]);
 
+    if (updated) {
+      recordAuditEvent({
+        actorId: user.id,
+        actorRole: user.role,
+        action: "user.updated_api",
+        resourceType: "user",
+        resourceId: updated.id,
+        resourceLabel: updated.username,
+        summary: `Updated user @${updated.username} via API`,
+        details: {
+          changedFields: Object.keys(body).filter((key) =>
+            ["name", "username", "email", "className", "role", "isActive", "password"].includes(key)
+          ),
+          resetPassword: password !== undefined,
+          role: updated.role,
+          isActive: updated.isActive,
+        },
+        request,
+      });
+    }
+
     return NextResponse.json({ data: updated });
   } catch (error) {
     console.error("PATCH /api/v1/users/[id] error:", error);
@@ -203,6 +225,20 @@ export async function DELETE(
     }
 
     await db.update(users).set({ isActive: false, updatedAt: new Date() }).where(eq(users.id, id));
+
+    recordAuditEvent({
+      actorId: user.id,
+      actorRole: user.role,
+      action: "user.access_deactivated_api",
+      resourceType: "user",
+      resourceId: found.id,
+      resourceLabel: found.username,
+      summary: `Deactivated access for @${found.username} via API`,
+      details: {
+        role: found.role,
+      },
+      request,
+    });
 
     return NextResponse.json({ data: { id, isActive: false } });
   } catch (error) {

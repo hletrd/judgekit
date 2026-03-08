@@ -4,6 +4,7 @@ import { hash, compare } from "bcryptjs";
 import { eq } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import { findSessionUser, hasSessionIdentity } from "@/lib/auth/find-session-user";
+import { buildServerActionAuditContext, recordAuditEvent } from "@/lib/audit/events";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { MIN_PASSWORD_LENGTH } from "@/lib/security/constants";
@@ -48,6 +49,21 @@ export async function changePassword(
     console.error("Failed to change password:", error);
     return { success: false, error: "error" };
   }
+
+  const auditContext = await buildServerActionAuditContext("/change-password");
+  recordAuditEvent({
+    actorId: user.id,
+    actorRole: user.role,
+    action: "user.password_changed",
+    resourceType: "user",
+    resourceId: user.id,
+    resourceLabel: user.username,
+    summary: `Changed password for @${user.username}`,
+    details: {
+      mustChangePassword: false,
+    },
+    context: auditContext,
+  });
 
   return { success: true };
 }

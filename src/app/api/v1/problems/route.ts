@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { problems } from "@/lib/db/schema";
 import { eq, desc } from "drizzle-orm";
 import { getApiUser, unauthorized, forbidden, isInstructor } from "@/lib/api/auth";
+import { recordAuditEvent } from "@/lib/audit/events";
 import { canAccessProblem } from "@/lib/auth/permissions";
 import { createProblemWithTestCases } from "@/lib/problem-management";
 import { problemMutationSchema } from "@/lib/validators/problem-management";
@@ -78,6 +79,25 @@ export async function POST(request: NextRequest) {
         testCases: true,
       },
     });
+
+    if (problem) {
+      recordAuditEvent({
+        actorId: user.id,
+        actorRole: user.role,
+        action: "problem.created",
+        resourceType: "problem",
+        resourceId: problem.id,
+        resourceLabel: problem.title,
+        summary: `Created problem \"${problem.title}\"`,
+        details: {
+          visibility: problem.visibility,
+          timeLimitMs: problem.timeLimitMs,
+          memoryLimitMb: problem.memoryLimitMb,
+          testCaseCount: problem.testCases.length,
+        },
+        request,
+      });
+    }
 
     return NextResponse.json({ data: problem }, { status: 201 });
   } catch (error) {

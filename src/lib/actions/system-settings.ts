@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { auth } from "@/lib/auth";
+import { buildServerActionAuditContext, recordAuditEvent } from "@/lib/audit/events";
 import { db } from "@/lib/db";
 import { systemSettings } from "@/lib/db/schema";
 import { GLOBAL_SETTINGS_ID } from "@/lib/system-settings";
@@ -52,6 +53,23 @@ export async function updateSystemSettings(
         updatedAt: new Date(),
       },
     });
+
+  const auditContext = await buildServerActionAuditContext("/dashboard/admin/settings");
+  recordAuditEvent({
+    actorId: session.user.id,
+    actorRole: session.user.role,
+    action: "system_settings.updated",
+    resourceType: "system_settings",
+    resourceId: GLOBAL_SETTINGS_ID,
+    resourceLabel: "Global settings",
+    summary: "Updated global system settings",
+    details: {
+      siteTitle: siteTitle ?? null,
+      siteDescription: siteDescription ?? null,
+      timeZone: timeZone ?? null,
+    },
+    context: auditContext,
+  });
 
   revalidatePath("/", "layout");
   revalidatePath("/login");

@@ -3,6 +3,7 @@ import { db, sqlite } from "@/lib/db";
 import { problems, submissions, submissionResults, testCases } from "@/lib/db/schema";
 import { eq, asc } from "drizzle-orm";
 import { nanoid } from "nanoid";
+import { recordAuditEvent } from "@/lib/audit/events";
 import { isJudgeAuthorized } from "@/lib/judge/auth";
 import { isSubmissionStatus } from "@/lib/security/constants";
 
@@ -63,6 +64,22 @@ export async function GET(request: NextRequest) {
     if (!claimed) {
       return NextResponse.json({ data: null });
     }
+
+    recordAuditEvent({
+      action: "submission.claimed_for_judging",
+      actorRole: "system",
+      resourceType: "submission",
+      resourceId: claimed.id,
+      resourceLabel: claimed.id,
+      summary: `Claimed submission ${claimed.id} for judging`,
+      details: {
+        assignmentId: claimed.assignmentId,
+        language: claimed.language,
+        problemId: claimed.problemId,
+        status: claimed.status,
+      },
+      request,
+    });
 
     const problem = await db.query.problems.findFirst({
       where: eq(problems.id, claimed.problemId),
@@ -136,6 +153,20 @@ export async function POST(request: NextRequest) {
         where: eq(submissions.id, submissionId),
       });
 
+      recordAuditEvent({
+        action: "submission.status_updated",
+        actorRole: "system",
+        resourceType: "submission",
+        resourceId: submission.id,
+        resourceLabel: submission.id,
+        summary: `Marked submission ${submission.id} as ${status}`,
+        details: {
+          previousStatus: submission.status,
+          status,
+        },
+        request,
+      });
+
       return NextResponse.json({ data: updatedInProgress });
     }
 
@@ -196,6 +227,23 @@ export async function POST(request: NextRequest) {
 
     const updated = await db.query.submissions.findFirst({
       where: eq(submissions.id, submissionId),
+    });
+
+    recordAuditEvent({
+      action: "submission.judged",
+      actorRole: "system",
+      resourceType: "submission",
+      resourceId: submission.id,
+      resourceLabel: submission.id,
+      summary: `Recorded final verdict ${status} for submission ${submission.id}`,
+      details: {
+        compileOutputPresent: Boolean(compileOutput),
+        previousStatus: submission.status,
+        resultCount: Array.isArray(results) ? results.length : 0,
+        score,
+        status,
+      },
+      request,
     });
 
     return NextResponse.json({ data: updated });

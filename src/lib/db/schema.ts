@@ -82,6 +82,36 @@ export const loginEvents = sqliteTable(
   ]
 );
 
+export const auditEvents = sqliteTable(
+  "audit_events",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => nanoid()),
+    actorId: text("actor_id").references(() => users.id, { onDelete: "set null" }),
+    actorRole: text("actor_role"),
+    action: text("action").notNull(),
+    resourceType: text("resource_type").notNull(),
+    resourceId: text("resource_id"),
+    resourceLabel: text("resource_label"),
+    summary: text("summary").notNull(),
+    details: text("details"),
+    ipAddress: text("ip_address"),
+    userAgent: text("user_agent"),
+    requestMethod: text("request_method"),
+    requestPath: text("request_path"),
+    createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(
+      () => new Date(Date.now())
+    ),
+  },
+  (table) => [
+    index("audit_events_actor_idx").on(table.actorId),
+    index("audit_events_action_idx").on(table.action),
+    index("audit_events_resource_type_idx").on(table.resourceType),
+    index("audit_events_created_at_idx").on(table.createdAt),
+  ]
+);
+
 export const groups = sqliteTable("groups", {
   id: text("id")
     .primaryKey()

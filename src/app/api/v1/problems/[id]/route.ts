@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { assignmentProblems, problems, submissions, testCases } from "@/lib/db/schema";
 import { eq, sql } from "drizzle-orm";
 import { getApiUser, unauthorized, forbidden, notFound, isAdmin } from "@/lib/api/auth";
+import { recordAuditEvent } from "@/lib/audit/events";
 import { canAccessProblem } from "@/lib/auth/permissions";
 import { updateProblemWithTestCases } from "@/lib/problem-management";
 import { problemMutationSchema } from "@/lib/validators/problem-management";
@@ -105,6 +106,26 @@ export async function PATCH(
       },
     });
 
+    if (updated) {
+      recordAuditEvent({
+        actorId: user.id,
+        actorRole: user.role,
+        action: "problem.updated",
+        resourceType: "problem",
+        resourceId: updated.id,
+        resourceLabel: updated.title,
+        summary: `Updated problem \"${updated.title}\"`,
+        details: {
+          visibility: updated.visibility,
+          timeLimitMs: updated.timeLimitMs,
+          memoryLimitMb: updated.memoryLimitMb,
+          testCasesChanged: body.testCases !== undefined,
+          testCaseCount: updated.testCases.length,
+        },
+        request,
+      });
+    }
+
     return NextResponse.json({ data: updated });
   } catch (error) {
     console.error("PATCH /api/v1/problems/[id] error:", error);
@@ -157,6 +178,21 @@ export async function DELETE(
     }
 
     await db.delete(problems).where(eq(problems.id, id));
+
+    recordAuditEvent({
+      actorId: user.id,
+      actorRole: user.role,
+      action: "problem.deleted",
+      resourceType: "problem",
+      resourceId: problem.id,
+      resourceLabel: problem.title,
+      summary: `Deleted problem \"${problem.title}\"`,
+      details: {
+        visibility: problem.visibility,
+      },
+      request,
+    });
+
     return NextResponse.json({ data: { id } });
   } catch (error) {
     console.error("DELETE /api/v1/problems/[id] error:", error);
