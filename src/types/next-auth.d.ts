@@ -33,5 +33,6 @@ declare module "next-auth/jwt" {
     email?: string | null;
     className?: string | null;
     mustChangePassword?: boolean;
+    authenticatedAt?: number;
   }
 }

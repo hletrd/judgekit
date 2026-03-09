@@ -1,0 +1,45 @@
+import type { JWT } from "next-auth/jwt";
+
+export const AUTH_SESSION_MAX_AGE_SECONDS = 8 * 60 * 60;
+
+type TokenTimeCarrier = {
+  authenticatedAt?: unknown;
+  iat?: unknown;
+};
+
+export function getTokenAuthenticatedAtSeconds(token: TokenTimeCarrier | null | undefined) {
+  if (typeof token?.authenticatedAt === "number" && Number.isFinite(token.authenticatedAt)) {
+    return Math.trunc(token.authenticatedAt);
+  }
+
+  if (typeof token?.iat === "number" && Number.isFinite(token.iat)) {
+    return Math.trunc(token.iat);
+  }
+
+  return null;
+}
+
+export function isTokenInvalidated(
+  authenticatedAtSeconds: number | null,
+  tokenInvalidatedAt: Date | null | undefined
+) {
+  if (!authenticatedAtSeconds || !tokenInvalidatedAt) {
+    return false;
+  }
+
+  return authenticatedAtSeconds * 1000 < tokenInvalidatedAt.getTime();
+}
+
+export function clearAuthToken(token: JWT) {
+  delete token.sub;
+  delete token.id;
+  delete token.role;
+  delete token.username;
+  delete token.email;
+  delete token.name;
+  delete token.className;
+  delete token.mustChangePassword;
+  delete token.authenticatedAt;
+
+  return token;
+}

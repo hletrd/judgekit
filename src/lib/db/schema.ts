@@ -21,6 +21,7 @@ export const users = sqliteTable("users", {
   role: text("role").notNull().default("student"),
   isActive: integer("is_active", { mode: "boolean" }).default(true),
   mustChangePassword: integer("must_change_password", { mode: "boolean" }).default(false),
+  tokenInvalidatedAt: integer("token_invalidated_at", { mode: "timestamp" }),
   emailVerified: integer("email_verified", { mode: "timestamp" }),
   image: text("image"),
   createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(

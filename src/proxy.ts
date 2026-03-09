@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { getToken } from "next-auth/jwt";
 import { shouldUseSecureAuthCookie } from "@/lib/auth/secure-cookie";
+import { getTokenAuthenticatedAtSeconds } from "@/lib/auth/session-security";
 import { getActiveAuthUserById, getTokenUserId } from "@/lib/api/auth";
 import { getValidatedAuthSecret } from "@/lib/security/env";
 
@@ -63,7 +64,10 @@ export async function proxy(request: NextRequest) {
     (isApiRoute && !isJudgeWorkerRoute && !isPublicLanguagesRoute);
   const shouldRefreshAuthState = Boolean(token) && (isProtectedRoute || isChangePasswordPage || isAuthPage);
   const activeUser = shouldRefreshAuthState
-    ? await getActiveAuthUserById(getTokenUserId(token))
+    ? await getActiveAuthUserById(
+        getTokenUserId(token),
+        getTokenAuthenticatedAtSeconds(token)
+      )
     : null;
 
   if (isAuthPage && token && !activeUser) {

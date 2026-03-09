@@ -9,6 +9,7 @@ export const authUserSelect = {
   className: users.className,
   isActive: users.isActive,
   mustChangePassword: users.mustChangePassword,
+  tokenInvalidatedAt: users.tokenInvalidatedAt,
 };
 
 export const safeUserSelect = {

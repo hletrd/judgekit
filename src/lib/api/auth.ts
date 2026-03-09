@@ -1,6 +1,7 @@
 import { getToken } from "next-auth/jwt";
 import { NextRequest, NextResponse } from "next/server";
 import { shouldUseSecureAuthCookie } from "@/lib/auth/secure-cookie";
+import { getTokenAuthenticatedAtSeconds, isTokenInvalidated } from "@/lib/auth/session-security";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { authUserSelect } from "@/lib/db/selects";
@@ -21,7 +22,10 @@ export function getTokenUserId(token: { id?: unknown; sub?: unknown } | null | u
   return null;
 }
 
-export async function getActiveAuthUserById(userId: string | null | undefined) {
+export async function getActiveAuthUserById(
+  userId: string | null | undefined,
+  authenticatedAtSeconds?: number | null
+) {
   if (!userId) {
     return null;
   }
@@ -33,6 +37,10 @@ export async function getActiveAuthUserById(userId: string | null | undefined) {
     .then((rows) => rows[0] ?? null);
 
   if (!user?.isActive) {
+    return null;
+  }
+
+  if (isTokenInvalidated(authenticatedAtSeconds ?? null, user.tokenInvalidatedAt)) {
     return null;
   }
 
@@ -54,7 +62,7 @@ export async function getApiUser(request: NextRequest) {
     secureCookie: shouldUseSecureAuthCookie(),
   });
 
-  return getActiveAuthUserById(getTokenUserId(token));
+  return getActiveAuthUserById(getTokenUserId(token), getTokenAuthenticatedAtSeconds(token));
 }
 
 export function csrfForbidden(request: NextRequest): NextResponse | null {

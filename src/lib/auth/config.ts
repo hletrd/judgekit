@@ -2,6 +2,12 @@ import type { NextAuthConfig } from "next-auth";
 import type { JWT } from "next-auth/jwt";
 import Credentials from "next-auth/providers/credentials";
 import { compare } from "bcryptjs";
+import {
+  AUTH_SESSION_MAX_AGE_SECONDS,
+  clearAuthToken,
+  getTokenAuthenticatedAtSeconds,
+  isTokenInvalidated,
+} from "@/lib/auth/session-security";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
@@ -44,6 +50,8 @@ type AuthenticatedLoginUser = Omit<AuthUserRecord, "mustChangePassword"> & {
   mustChangePassword: boolean;
 } & LoginEventContextCarrier;
 
+const DUMMY_PASSWORD_HASH = "$2b$12$QC3n1zFm/d.VeSd2lLKcnuUmuj1CiQHs3t7UuJ.8HW2XMFJaknQeq";
+
 function createSuccessfulLoginResponse(
   user: AuthUserRecord,
   loginEventContext: LoginEventRequestSummary
@@ -64,7 +72,11 @@ function getTokenUserId(token: JWT) {
   return token.id ?? token.sub;
 }
 
-function syncTokenWithUser(token: JWT, user: AuthUserRecord) {
+function syncTokenWithUser(
+  token: JWT,
+  user: AuthUserRecord,
+  authenticatedAtSeconds = getTokenAuthenticatedAtSeconds(token) ?? Math.trunc(Date.now() / 1000)
+) {
   token.sub = user.id;
   token.id = user.id;
   token.role = user.role;
@@ -73,6 +85,7 @@ function syncTokenWithUser(token: JWT, user: AuthUserRecord) {
   token.name = user.name;
   token.className = user.className;
   token.mustChangePassword = user.mustChangePassword ?? false;
+  token.authenticatedAt = authenticatedAtSeconds;
 
   return token;
 }
@@ -137,6 +150,7 @@ export const authConfig: NextAuthConfig = {
         }
 
         if (!user || !user.passwordHash || !user.isActive) {
+          await compare(password, user?.passwordHash ?? DUMMY_PASSWORD_HASH);
           recordRateLimitFailureMulti(...rateLimitKeys);
           recordLoginEvent({
             outcome: "invalid_credentials",
@@ -189,7 +203,7 @@ export const authConfig: NextAuthConfig = {
     }),
   ],
   trustHost: shouldTrustAuthHost(),
-  session: { strategy: "jwt" },
+  session: { strategy: "jwt", maxAge: AUTH_SESSION_MAX_AGE_SECONDS },
   pages: {
     signIn: "/login",
   },
@@ -237,8 +251,10 @@ export const authConfig: NextAuthConfig = {
 
       return true;
     },
-    async jwt({ token, user, trigger }) {
+    async jwt({ token, user }) {
       if (user) {
+        const authenticatedAtSeconds = Math.trunc(Date.now() / 1000);
+
         return syncTokenWithUser(token, {
           id: user.id ?? token.sub ?? "",
           username: user.username,
@@ -247,43 +263,36 @@ export const authConfig: NextAuthConfig = {
           className: user.className ?? null,
           role: user.role,
           mustChangePassword: user.mustChangePassword ?? false,
-        });
+        }, authenticatedAtSeconds);
       }
 
-      if (trigger === "update") {
-        const userId = getTokenUserId(token);
+      const userId = getTokenUserId(token);
 
-        if (!userId) {
-          return token;
-        }
-
-        const freshUser = await db.query.users.findFirst({
-          where: eq(users.id, userId),
-        });
-
-        if (freshUser) {
-          return syncTokenWithUser(token, {
-            id: freshUser.id,
-            username: freshUser.username,
-            email: freshUser.email,
-            name: freshUser.name,
-            className: freshUser.className,
-            role: freshUser.role as UserRole,
-            mustChangePassword: freshUser.mustChangePassword ?? false,
-          });
-        }
-
-        delete token.sub;
-        delete token.id;
-        delete token.role;
-        delete token.username;
-        delete token.email;
-        delete token.name;
-        delete token.className;
-        delete token.mustChangePassword;
+      if (!userId) {
+        return clearAuthToken(token);
       }
 
-      return token;
+      const freshUser = await db.query.users.findFirst({
+        where: eq(users.id, userId),
+      });
+
+      if (
+        !freshUser ||
+        !freshUser.isActive ||
+        isTokenInvalidated(getTokenAuthenticatedAtSeconds(token), freshUser.tokenInvalidatedAt)
+      ) {
+        return clearAuthToken(token);
+      }
+
+      return syncTokenWithUser(token, {
+        id: freshUser.id,
+        username: freshUser.username,
+        email: freshUser.email,
+        name: freshUser.name,
+        className: freshUser.className,
+        role: freshUser.role as UserRole,
+        mustChangePassword: freshUser.mustChangePassword ?? false,
+      });
     },
     async session({ session, token }) {
       const userId = getTokenUserId(token);
