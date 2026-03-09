@@ -15,6 +15,7 @@ import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import CreateGroupDialog from "./create-group-dialog";
 
 export default async function GroupsPage() {
@@ -33,6 +34,7 @@ export default async function GroupsPage() {
         id: groups.id,
         name: groups.name,
         description: groups.description,
+        isArchived: groups.isArchived,
         instructor: {
           name: users.name,
         }
@@ -48,6 +50,7 @@ export default async function GroupsPage() {
           name: groups.name,
           description: groups.description,
           instructorId: groups.instructorId,
+          isArchived: groups.isArchived,
         },
         instructor: {
           name: users.name,
@@ -57,11 +60,12 @@ export default async function GroupsPage() {
       .innerJoin(groups, eq(enrollments.groupId, groups.id))
       .leftJoin(users, eq(groups.instructorId, users.id))
       .where(eq(enrollments.userId, session.user.id));
-      
+
     myGroups = userEnrollments.map(e => ({
       id: e.group.id,
       name: e.group.name,
       description: e.group.description,
+      isArchived: e.group.isArchived,
       instructor: {
         name: e.instructor?.name || tCommon("unknown"),
       }
@@ -92,9 +96,20 @@ export default async function GroupsPage() {
             </TableHeader>
             <TableBody>
               {myGroups.map((group) => (
-                <TableRow key={group.id}>
-                  <TableCell className="font-medium">{group.name}</TableCell>
-                  <TableCell className="max-w-md !whitespace-pre-wrap break-words">{group.description || "-"}</TableCell>
+                <TableRow key={group.id} className={group.isArchived ? "opacity-60" : undefined}>
+                  <TableCell className="font-medium">
+                    <span className={group.isArchived ? "text-muted-foreground" : undefined}>
+                      {group.name}
+                    </span>
+                    {group.isArchived && (
+                      <Badge variant="secondary" className="ml-2 text-xs">
+                        {t("archived")}
+                      </Badge>
+                    )}
+                  </TableCell>
+                  <TableCell className="max-w-md !whitespace-pre-wrap break-words text-muted-foreground">
+                    {group.description || "-"}
+                  </TableCell>
                   <TableCell>{group.instructor?.name || tCommon("unknown")}</TableCell>
                   <TableCell>
                     <Link href={`/dashboard/groups/${group.id}`}>

@@ -16,6 +16,7 @@ import type { UserRole } from "@/types";
 import AssignmentFormDialog, { type AssignmentEditorValue } from "./assignment-form-dialog";
 import { AssignmentDeleteButton } from "./assignment-delete-button";
 import { GroupMembersManager } from "./group-members-manager";
+import { GroupArchiveButton } from "./group-archive-button";
 
 function sortAssignmentsBySchedule(
   left: {
@@ -190,7 +191,7 @@ export default async function GroupDetailPage({ params }: { params: Promise<{ id
           </div>
         </div>
 
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Badge variant="outline">
             {t("instructorLabel", { name: group.instructor?.name || tCommon("unknown") })}
           </Badge>
@@ -201,6 +202,13 @@ export default async function GroupDetailPage({ params }: { params: Promise<{ id
           <Badge variant="secondary">
             {t("assignmentCount", { count: assignmentsWithSubmissionState.length })}
           </Badge>
+          {canManageGroup && (
+            <GroupArchiveButton
+              groupId={groupId}
+              groupName={group.name}
+              isArchived={group.isArchived ?? false}
+            />
+          )}
         </div>
       </div>
 
