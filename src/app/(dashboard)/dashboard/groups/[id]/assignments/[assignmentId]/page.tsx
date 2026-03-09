@@ -282,6 +282,10 @@ export default async function GroupAssignmentDetailPage({
           noSubmission: tAssignment("noSubmission"),
           noFilteredStudents: tAssignment("noFilteredStudents"),
           notSet: tCommon("notSet"),
+          statsMean: tAssignment("statsMean"),
+          statsMedian: tAssignment("statsMedian"),
+          statsSubmitted: tAssignment("statsSubmitted"),
+          statsPerfect: tAssignment("statsPerfect"),
         }}
       />
     </div>

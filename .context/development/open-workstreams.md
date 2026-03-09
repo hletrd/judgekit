@@ -24,6 +24,7 @@ The `dashboard-rendering-audit-and-editor-upgrades` batch is now locally verifie
 - Problem submission now also uses an explicit confirmation dialog before sending code to the judge, reducing accidental one-click submissions from the editor
 - Submission status badges now carry icons as well as colors across the main student/instructor views, improving accessibility for color-blind users
 - Assignment management now filters manageable problems at the SQL layer for non-admin users instead of materializing the full problems table before applying visibility/group-access checks
+- Assignment status boards now surface basic score distribution stats directly in the UI, including mean, median, submitted count, and perfect-score count
 
 ## Still open
 

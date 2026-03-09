@@ -404,7 +404,11 @@
       "studentSearch": "학생 검색",
       "studentSearchPlaceholder": "이름, 사용자명, 반으로 검색",
       "lastSubmission": "마지막 제출",
-      "scoreFormat": "{score}/{total}"
+      "scoreFormat": "{score}/{total}",
+      "statsMean": "평균",
+      "statsMedian": "중앙값",
+      "statsSubmitted": "제출 학생",
+      "statsPerfect": "만점"
     }
   },
   "admin": {

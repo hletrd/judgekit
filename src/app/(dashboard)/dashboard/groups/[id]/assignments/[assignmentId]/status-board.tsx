@@ -40,6 +40,10 @@ export interface StatusBoardLabels {
   noSubmission: string;
   noFilteredStudents: string;
   notSet: string;
+  statsMean: string;
+  statsMedian: string;
+  statsSubmitted: string;
+  statsPerfect: string;
 }
 
 export interface StatusBoardProps {
@@ -62,6 +66,20 @@ function getRowStatusFilterValue(row: AssignmentStudentStatusRow): Exclude<Statu
   return row.latestStatus ?? "not_submitted";
 }
 
+function getMedian(values: number[]) {
+  if (values.length === 0) {
+    return 0;
+  }
+
+  const midpoint = Math.floor(values.length / 2);
+
+  if (values.length % 2 === 1) {
+    return values[midpoint] ?? 0;
+  }
+
+  return ((values[midpoint - 1] ?? 0) + (values[midpoint] ?? 0)) / 2;
+}
+
 export function StatusBoard({
   filteredRows,
   problems,
@@ -71,12 +89,45 @@ export function StatusBoard({
   timeZone,
   labels,
 }: StatusBoardProps) {
+  const scoreValues = filteredRows
+    .map((row) => row.bestTotalScore)
+    .sort((left, right) => left - right);
+  const submittedCount = filteredRows.filter((row) => row.attemptCount > 0).length;
+  const perfectScoreCount = filteredRows.filter((row) => row.bestTotalScore >= totalPoints).length;
+  const meanScore =
+    scoreValues.length === 0
+      ? 0
+      : scoreValues.reduce((sum, score) => sum + score, 0) / scoreValues.length;
+  const medianScore = getMedian(scoreValues);
+
   return (
     <Card>
       <CardHeader>
         <CardTitle>{labels.boardTitle}</CardTitle>
       </CardHeader>
       <CardContent>
+        <div className="mb-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="rounded-lg border bg-muted/30 p-3">
+            <div className="text-xs text-muted-foreground">{labels.statsMean}</div>
+            <div className="text-lg font-semibold">
+              {formatBoardScore(meanScore, locale)}/{formatBoardScore(totalPoints, locale)}
+            </div>
+          </div>
+          <div className="rounded-lg border bg-muted/30 p-3">
+            <div className="text-xs text-muted-foreground">{labels.statsMedian}</div>
+            <div className="text-lg font-semibold">
+              {formatBoardScore(medianScore, locale)}/{formatBoardScore(totalPoints, locale)}
+            </div>
+          </div>
+          <div className="rounded-lg border bg-muted/30 p-3">
+            <div className="text-xs text-muted-foreground">{labels.statsSubmitted}</div>
+            <div className="text-lg font-semibold">{submittedCount}/{filteredRows.length}</div>
+          </div>
+          <div className="rounded-lg border bg-muted/30 p-3">
+            <div className="text-xs text-muted-foreground">{labels.statsPerfect}</div>
+            <div className="text-lg font-semibold">{perfectScoreCount}</div>
+          </div>
+        </div>
         <Table data-testid="assignment-status-table">
           <TableHeader>
             <TableRow>
