@@ -5,7 +5,7 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { problems, submissions } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
-import CreateProblemForm from "../../create/create-problem-form";
+import CreateProblemForm from "@/app/(dashboard)/dashboard/problems/create/create-problem-form";
 import { ProblemDeleteButton } from "../problem-delete-button";
 
 export default async function EditProblemPage({ params }: { params: Promise<{ id: string }> }) {
