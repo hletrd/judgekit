@@ -1,6 +1,6 @@
 # Current State
 
-Last updated: 2026-03-08
+Last updated: 2026-03-09
 
 ## Shipped and deployed
 
@@ -17,15 +17,17 @@ Last updated: 2026-03-08
 - Local main now also includes broader audit/event logging: append-only `audit_events`, an admin audit-log dashboard with request-context visibility, system-actor rendering, resource-ID search, and mutation coverage for settings, user-management, problems, groups, memberships, assignments, submissions, judge updates, profile edits, and password changes.
 - Local main now also includes repository-native CI plus an operational-hardening baseline: GitHub Actions CI, a public `/api/health` readiness route, verified SQLite backup/restore scripts, and repo-managed systemd timer artifacts for scheduled backups.
 - Local main now also includes the 2026-03-08 security/API hardening batch: SQLite-backed rate limits, shared client-IP extraction, CSRF checks on authenticated mutation APIs, env-gated Auth.js trusted-host handling with explicit auth-route host validation, judge claim-token verification, SQL-level accessible-problem pagination, and CSP-compatible sidebar/toaster/code-surface rendering without inline `style` props.
+- Local main now also includes the follow-up auth/sandbox hardening slice from the same remediation set: exact `next-auth` beta pinning with an 8-hour JWT max age, token invalidation timestamps enforced in JWT/proxy/API auth, session revocation on admin password resets and role changes plus self password changes, self-service username/email restrictions, a Zod source-code size cap, timing-equalized invalid login checks, and run-phase seccomp hardening that fails closed instead of silently retrying without the custom profile.
 - Local verification passed on 2026-03-08 with directory TypeScript diagnostics, `npm run lint`, `npm run build`, backup/restore script verification, targeted Playwright for `tests/e2e/ops-health.spec.ts`, targeted Playwright for `tests/e2e/admin-audit-logs.spec.ts tests/e2e/group-assignment-management.spec.ts tests/e2e/task12-destructive-actions.spec.ts`, and full `npx playwright test`.
 - The current remediation batch was re-verified locally on 2026-03-08 with `npm run db:push`, `npm run lint`, `npm run build`, and `npm run test:e2e -- --grep @smoke`.
 - Follow-up cleanup in the same local batch corrected the submission rate-limit timestamp comparison to use a typed Drizzle timestamp comparison, documented `AUTH_TRUST_HOST` in the example/deployment docs, and disabled Playwright local server reuse so `db:push` cannot be skipped by a stale process.
+- The auth/sandbox follow-up batch was re-verified locally on 2026-03-09 with `npm run db:push`, `npx tsc --noEmit`, `npm run lint`, `npm run build`, and `npm run test:e2e -- --grep @smoke`.
 
 ## Operational notes
 
 - The demo host runs from `/home/ubuntu/online-judge`.
 - The demo host must keep `JUDGE_POLL_URL=http://localhost:3000/api/v1/judge/poll`.
-- The demo host still requires `JUDGE_DISABLE_CUSTOM_SECCOMP=1` because the custom seccomp profile is rejected on its Docker/kernel combination.
+- The demo host still requires `JUDGE_DISABLE_CUSTOM_SECCOMP=1` because the custom seccomp profile is rejected on its Docker/kernel combination; local main now only applies the custom seccomp profile during run-phase execution and refuses silent fallback when that profile is enabled but unavailable.
 - Do not assume the long-lived demo host still accepts the seeded `admin` / `admin123` credentials unless the instance was freshly reset and reseeded.
 
 ## Documentation sync points
@@ -37,4 +39,5 @@ Last updated: 2026-03-08
 - `docs/deployment.md` now captures the deployed revision, the `time_zone` schema requirement, and the shared-host credential/env caveats.
 - `docs/review.md` now records the timezone rollout plus the newer classroom/audit/ops and security-hardening status without leaving those batches marked as pending deploy.
 - `docs/review-plan.md`, `docs/security-review-2026-03-08.md`, `docs/deployment.md`, and `.context/development/open-workstreams.md` now also record the locally completed security/API hardening batch and its verification state.
+- `README.md`, `docs/deployment.md`, `docs/review-plan.md`, `docs/security-review-2026-03-08.md`, and `.context/development/open-workstreams.md` now also record the 2026-03-09 auth/session and seccomp follow-up batch, including the fail-closed run-phase sandbox behavior and self-service identity restrictions.
 - `AGENTS.md` already reflects that `system_settings` carries title, description, and timezone overrides.
