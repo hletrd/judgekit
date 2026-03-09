@@ -21,6 +21,7 @@ The `dashboard-rendering-audit-and-editor-upgrades` batch is now locally verifie
 - Health checks now report degraded audit-write state in addition to DB readiness, and audit request context now shares the same trusted-proxy IP extraction logic as the login/rate-limit path
 - Legacy HTML problem descriptions now sanitize against an explicit content allowlist instead of DOMPurify's broad HTML profile, with regression tests covering stripping of interactive elements and inline handlers
 - Problem submission now supports loading a local source file directly into the editor, with localized success/error feedback for the upload path
+- Problem submission now also uses an explicit confirmation dialog before sending code to the judge, reducing accidental one-click submissions from the editor
 
 ## Still open
 
