@@ -21,6 +21,15 @@ const SECCOMP_INIT_ERROR_SNIPPETS = [
   "error during container init",
   "fsmount:fscontext:proc: operation not permitted",
 ];
+const CUSTOM_SECCOMP_DISABLED = shouldDisableCustomSeccomp();
+const RUN_PHASE_SECCOMP_AVAILABLE = existsSync(SECCOMP_PROFILE_PATH);
+
+if (!CUSTOM_SECCOMP_DISABLED && !RUN_PHASE_SECCOMP_AVAILABLE) {
+  console.error(
+    `Run-phase seccomp profile is missing or unreadable at ${SECCOMP_PROFILE_PATH}. ` +
+      "Execution will fail closed until the profile is restored or explicitly disabled."
+  );
+}
 
 export interface Submission {
   id: string;
@@ -48,6 +57,7 @@ type DockerCommandOptions = {
   image: string;
   workspaceDir: string;
   command: string[];
+  phase: "compile" | "run";
   input?: string;
   timeoutMs: number;
   memoryLimitMb: number;
@@ -66,6 +76,13 @@ type DockerCommandResult = {
 type DockerExecutionOptions = {
   useCustomSeccomp: boolean;
 };
+
+class JudgeEnvironmentError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "JudgeEnvironmentError";
+  }
+}
 
 function getMemoryLimitMb(memoryLimitMb: number) {
   return Math.max(MIN_MEMORY_LIMIT_MB, Math.trunc(memoryLimitMb || MIN_MEMORY_LIMIT_MB));
@@ -144,8 +161,8 @@ async function removeContainer(containerName: string) {
   }
 }
 
-function shouldUseCustomSeccompProfile() {
-  return !shouldDisableCustomSeccomp() && existsSync(SECCOMP_PROFILE_PATH);
+function shouldUseCustomSeccompProfile(phase: DockerCommandOptions["phase"]) {
+  return phase === "run" && !CUSTOM_SECCOMP_DISABLED;
 }
 
 function shouldRetryWithoutCustomSeccomp(stderr: string) {
@@ -252,14 +269,24 @@ async function runDockerCommandOnce(
 }
 
 async function runDockerCommand(options: DockerCommandOptions): Promise<DockerCommandResult> {
-  const useCustomSeccomp = shouldUseCustomSeccompProfile();
+  const useCustomSeccomp = shouldUseCustomSeccompProfile(options.phase);
+
+  if (useCustomSeccomp && !RUN_PHASE_SECCOMP_AVAILABLE) {
+    throw new JudgeEnvironmentError(
+      "Judge sandbox unavailable: the run-phase seccomp profile is missing or unreadable."
+    );
+  }
+
   const firstAttempt = await runDockerCommandOnce(options, { useCustomSeccomp });
 
   if (useCustomSeccomp && shouldRetryWithoutCustomSeccomp(firstAttempt.stderr)) {
-    console.warn(
-      `Custom seccomp profile failed for ${options.image}; retrying with Docker default seccomp.`
+    console.error(
+      `Run-phase seccomp profile failed for ${options.image}; refusing to retry without custom seccomp.`
     );
-    return runDockerCommandOnce(options, { useCustomSeccomp: false });
+
+    throw new JudgeEnvironmentError(
+      "Judge sandbox unavailable: the run-phase seccomp profile could not be applied."
+    );
   }
 
   return firstAttempt;
@@ -290,6 +317,7 @@ export async function executeSubmission(submission: Submission): Promise<void> {
         image: config.dockerImage,
         workspaceDir,
         command: config.compileCommand,
+        phase: "compile",
         timeoutMs: Math.max(COMPILATION_TIMEOUT_MS, submission.timeLimitMs * 5),
         memoryLimitMb: Math.max(COMPILATION_MEMORY_LIMIT_MB, submission.memoryLimitMb),
       });
@@ -320,6 +348,7 @@ export async function executeSubmission(submission: Submission): Promise<void> {
         image: config.dockerImage,
         workspaceDir,
         command: config.runCommand,
+        phase: "run",
         input: testCase.input,
         timeoutMs: Math.max(MIN_TIMEOUT_MS, submission.timeLimitMs),
         memoryLimitMb: submission.memoryLimitMb,
@@ -360,11 +389,19 @@ export async function executeSubmission(submission: Submission): Promise<void> {
     );
   } catch (error) {
     console.error(`Failed to execute submission ${submission.id}:`, error);
+
+    const errorMessage =
+      error instanceof JudgeEnvironmentError
+        ? error.message
+        : error instanceof Error
+          ? error.message
+          : "Judge execution failed";
+
     await reportResult(
       submission.id,
       submission.claimToken,
       "runtime_error",
-      error instanceof Error ? error.message : "Judge execution failed",
+      errorMessage,
       []
     );
   } finally {
