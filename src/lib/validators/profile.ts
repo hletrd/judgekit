@@ -6,10 +6,6 @@ export const updateProfileSchema = z.object({
     trimString,
     z.string().min(1, "nameRequired").max(100, "nameTooLong")
   ),
-  email: z.preprocess(
-    normalizeOptionalString,
-    z.string().email("invalidEmail").max(255, "invalidEmail").optional()
-  ),
   className: z.preprocess(
     normalizeOptionalString,
     z.string().max(100, "classNameTooLong").optional()
@@ -17,6 +13,10 @@ export const updateProfileSchema = z.object({
 });
 
 export const adminUpdateUserSchema = updateProfileSchema.extend({
+  email: z.preprocess(
+    normalizeOptionalString,
+    z.string().email("invalidEmail").max(255, "invalidEmail").optional()
+  ),
   username: z.preprocess(
     trimString,
     z

@@ -551,7 +551,7 @@
     "classNamePlaceholder": "e.g. Class 1-2",
     "role": "Role",
     "editProfile": "Edit Profile",
-    "editProfileDesc": "Update the name, class, and contact details associated with your account.",
+    "editProfileDesc": "Update the name and class associated with your account. Email changes are managed by an administrator.",
     "changePassword": "Change Password",
     "changePasswordDesc": "Update your account password for security.",
     "changePasswordBtn": "Change Password",
@@ -563,6 +563,7 @@
     "invalidEmail": "Please enter a valid email address",
     "classNameTooLong": "Class must be 100 characters or less",
     "emailInUse": "Email already in use",
+    "emailChangeNotAllowed": "Email changes must be handled by an administrator",
     "username": "Username"
   },
   "changePassword": {

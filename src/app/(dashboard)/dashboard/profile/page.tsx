@@ -41,6 +41,10 @@ export default async function ProfilePage() {
             <Input id="username" value={session.user.username} readOnly disabled />
           </div>
           <div className="space-y-2">
+            <Label htmlFor="email">{t("email")}</Label>
+            <Input id="email" value={session.user.email || tCommon("notSet")} readOnly disabled />
+          </div>
+          <div className="space-y-2">
             <Label htmlFor="className">{t("className")}</Label>
             <Input id="className" value={session.user.className || tCommon("notSet")} readOnly disabled />
           </div>
@@ -63,7 +67,6 @@ export default async function ProfilePage() {
         <CardContent>
           <ProfileForm
             initialName={session.user.name || ""}
-            initialEmail={session.user.email || ""}
             initialClassName={session.user.className || ""}
           />
         </CardContent>

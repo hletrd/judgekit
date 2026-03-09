@@ -32,7 +32,6 @@ export async function updateProfile(
       id: true,
       username: true,
       name: true,
-      email: true,
       className: true,
     },
   });
@@ -41,29 +40,16 @@ export async function updateProfile(
     return { success: false, error: "notAuthenticated" };
   }
 
-  const { name, email, className } = parsedInput.data;
-  const normalizedEmail = email ?? null;
+  const { name, className } = parsedInput.data;
   const normalizedClassName = className ?? null;
   const changedFields = [
     currentUser.name !== name ? "name" : null,
-    currentUser.email !== normalizedEmail ? "email" : null,
     currentUser.className !== normalizedClassName ? "className" : null,
   ].flatMap((value) => (value ? [value] : []));
-
-  // Check if email is taken by someone else
-  if (normalizedEmail) {
-    const existingUser = await db.query.users.findFirst({
-      where: eq(users.email, normalizedEmail),
-    });
-    if (existingUser && existingUser.id !== session.user.id) {
-      return { success: false, error: "emailInUse" };
-    }
-  }
 
   db.update(users)
     .set({
       name,
-      email: normalizedEmail,
       className: normalizedClassName,
       updatedAt: new Date(),
     })
@@ -73,7 +59,6 @@ export async function updateProfile(
   await unstable_update({
     user: {
       name,
-      email: normalizedEmail,
       className: normalizedClassName,
     },
   });
@@ -89,7 +74,6 @@ export async function updateProfile(
     summary: `Updated profile for @${currentUser.username}`,
     details: {
       changedFields,
-      emailSet: normalizedEmail !== null,
       classNameSet: normalizedClassName !== null,
     },
     context: auditContext,

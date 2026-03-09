@@ -551,7 +551,7 @@
     "classNamePlaceholder": "예: 1반 또는 A반",
     "role": "역할",
     "editProfile": "프로필 수정",
-    "editProfileDesc": "계정에 연결된 이름, 반, 연락처 정보를 수정합니다.",
+    "editProfileDesc": "계정에 연결된 이름과 반 정보를 수정합니다. 이메일 변경은 관리자가 처리합니다.",
     "changePassword": "비밀번호 변경",
     "changePasswordDesc": "보안을 위해 계정 비밀번호를 변경하세요.",
     "changePasswordBtn": "비밀번호 변경",
@@ -563,6 +563,7 @@
     "invalidEmail": "올바른 이메일 주소를 입력하세요",
     "classNameTooLong": "반 정보는 100자 이하여야 합니다",
     "emailInUse": "이미 사용 중인 이메일입니다",
+    "emailChangeNotAllowed": "이메일 변경은 관리자에게 요청해야 합니다",
     "username": "사용자명"
   },
   "changePassword": {
