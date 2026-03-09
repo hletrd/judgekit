@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { and, eq, or } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { db, sqlite } from "@/lib/db";
 import {
@@ -30,33 +30,36 @@ export async function getManageableProblemsForGroup(
   userId: string,
   role: UserRole
 ): Promise<AssignmentManagerProblem[]> {
-  const [allProblems, groupAccessRows] = await Promise.all([
-    db
+  if (role === "super_admin" || role === "admin") {
+    return db
       .select({
         id: problems.id,
         title: problems.title,
         authorId: problems.authorId,
         visibility: problems.visibility,
       })
-      .from(problems),
-    db
-      .select({ problemId: problemGroupAccess.problemId })
-      .from(problemGroupAccess)
-      .where(eq(problemGroupAccess.groupId, groupId)),
-  ]);
-
-  if (role === "super_admin" || role === "admin") {
-    return allProblems;
+      .from(problems);
   }
 
-  const groupAccessProblemIds = new Set(groupAccessRows.map((row) => row.problemId));
-
-  return allProblems.filter(
-    (problem) =>
-      problem.authorId === userId ||
-      problem.visibility === "public" ||
-      groupAccessProblemIds.has(problem.id)
-  );
+  return db
+    .selectDistinct({
+      id: problems.id,
+      title: problems.title,
+      authorId: problems.authorId,
+      visibility: problems.visibility,
+    })
+    .from(problems)
+    .leftJoin(
+      problemGroupAccess,
+      and(eq(problemGroupAccess.problemId, problems.id), eq(problemGroupAccess.groupId, groupId))
+    )
+    .where(
+      or(
+        eq(problems.authorId, userId),
+        eq(problems.visibility, "public"),
+        eq(problemGroupAccess.groupId, groupId)
+      )
+    );
 }
 
 function mapAssignmentProblems(

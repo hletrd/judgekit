@@ -23,6 +23,7 @@ The `dashboard-rendering-audit-and-editor-upgrades` batch is now locally verifie
 - Problem submission now supports loading a local source file directly into the editor, with localized success/error feedback for the upload path
 - Problem submission now also uses an explicit confirmation dialog before sending code to the judge, reducing accidental one-click submissions from the editor
 - Submission status badges now carry icons as well as colors across the main student/instructor views, improving accessibility for color-blind users
+- Assignment management now filters manageable problems at the SQL layer for non-admin users instead of materializing the full problems table before applying visibility/group-access checks
 
 ## Still open
 
