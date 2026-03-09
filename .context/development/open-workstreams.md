@@ -18,6 +18,7 @@ The `dashboard-rendering-audit-and-editor-upgrades` batch is now locally verifie
 - A first unit-test infrastructure slice is now locally complete: Vitest + coverage are wired into package scripts and CI, initial regression tests cover password rules, assignment validation, late-penalty scoring, and trusted-proxy IP extraction, and the `TRUSTED_PROXY_HOPS` lookup now correctly returns the client IP instead of the final proxy hop
 - Submission detail pages now link back to the underlying problem page, preserving assignment context for assignment-linked submissions so students can iterate without manually reconstructing the original problem URL
 - Submission detail polling now pauses for hidden tabs, backs off after refresh failures, and shows a delayed-refresh warning instead of silently swallowing transient fetch errors during live judging
+- Health checks now report degraded audit-write state in addition to DB readiness, and audit request context now shares the same trusted-proxy IP extraction logic as the login/rate-limit path
 
 ## Still open
 

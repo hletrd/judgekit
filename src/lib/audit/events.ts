@@ -1,6 +1,7 @@
 import { headers } from "next/headers";
 import { db } from "@/lib/db";
 import { auditEvents } from "@/lib/db/schema";
+import { extractClientIp } from "@/lib/security/ip";
 
 type RequestLike = {
   headers: Headers;
@@ -39,6 +40,8 @@ type RecordAuditEventInput = {
 const MAX_TEXT_LENGTH = 512;
 const MAX_PATH_LENGTH = 512;
 const MAX_JSON_LENGTH = 4000;
+let auditEventWriteFailures = 0;
+let lastAuditEventWriteFailureAt: string | null = null;
 
 function normalizeText(value: string | null | undefined, maxLength = MAX_TEXT_LENGTH) {
   if (typeof value !== "string") {
@@ -54,13 +57,12 @@ function normalizeText(value: string | null | undefined, maxLength = MAX_TEXT_LE
 }
 
 function getClientIp(headersList: Headers) {
-  const forwardedFor = headersList
-    .get("x-forwarded-for")
-    ?.split(",")[0]
-    ?.trim();
-  const realIp = headersList.get("x-real-ip")?.trim();
+  const clientIp = extractClientIp(headersList);
+  if (clientIp === "unknown") {
+    return null;
+  }
 
-  return normalizeText(forwardedFor || realIp, 128);
+  return normalizeText(clientIp, 128);
 }
 
 function getRequestPath(url: string | null | undefined) {
@@ -142,6 +144,8 @@ export function recordAuditEvent({
       })
       .run();
   } catch (error) {
+    auditEventWriteFailures += 1;
+    lastAuditEventWriteFailureAt = new Date().toISOString();
     console.warn("Failed to persist audit event", {
       action,
       actorId: normalizeText(actorId, 64),
@@ -149,4 +153,12 @@ export function recordAuditEvent({
       error: error instanceof Error ? error.message : "unknown_error",
     });
   }
+}
+
+export function getAuditEventHealthSnapshot() {
+  return {
+    failedWrites: auditEventWriteFailures,
+    lastFailureAt: lastAuditEventWriteFailureAt,
+    status: auditEventWriteFailures === 0 ? "ok" : "degraded",
+  } as const;
 }
