@@ -60,6 +60,7 @@ type SubmissionDetailClientProps = {
   testCaseResultsDescription: string;
   noResultsLabel: string;
   liveUpdatesLabel: string;
+  liveUpdatesDelayedLabel: string;
   locale: string;
   timeZone: string;
   timeValueLabel: string;
@@ -136,6 +137,7 @@ function normalizeSubmission(data: Record<string, unknown>): SubmissionDetailVie
 
 export function SubmissionDetailClient(props: SubmissionDetailClientProps) {
   const [submission, setSubmission] = useState(props.initialSubmission);
+  const [pollingError, setPollingError] = useState(false);
   const isLive = ACTIVE_SUBMISSION_STATUSES.has(submission.status);
   const problemHref =
     submission.problem === null
@@ -153,39 +155,95 @@ export function SubmissionDetailClient(props: SubmissionDetailClientProps) {
 
   useEffect(() => {
     if (!isLive) {
+      setPollingError(false);
       return undefined;
     }
 
     let isCancelled = false;
+    let timeoutId: number | null = null;
+    let delayMs = 3000;
+
+    function clearScheduledRefresh() {
+      if (timeoutId !== null) {
+        window.clearTimeout(timeoutId);
+        timeoutId = null;
+      }
+    }
+
+    function scheduleRefresh() {
+      clearScheduledRefresh();
+
+      if (isCancelled || document.visibilityState === "hidden") {
+        return;
+      }
+
+      timeoutId = window.setTimeout(() => {
+        void refreshSubmission();
+      }, delayMs);
+    }
 
     async function refreshSubmission() {
+      if (document.visibilityState === "hidden") {
+        clearScheduledRefresh();
+        return;
+      }
+
       try {
         const response = await apiFetch(`/api/v1/submissions/${submission.id}`, {
           cache: "no-store",
         });
 
         if (!response.ok) {
-          return;
+          throw new Error("submissionRefreshFailed");
         }
 
         const payload = (await response.json()) as { data?: Record<string, unknown> };
 
-        if (!isCancelled && payload.data) {
-          setSubmission(normalizeSubmission(payload.data));
+        if (!payload.data) {
+          throw new Error("submissionPayloadMissing");
+        }
+
+        if (isCancelled) {
+          return;
+        }
+
+        const nextSubmission = normalizeSubmission(payload.data);
+        setSubmission(nextSubmission);
+        setPollingError(false);
+        delayMs = 3000;
+
+        if (ACTIVE_SUBMISSION_STATUSES.has(nextSubmission.status)) {
+          scheduleRefresh();
         }
       } catch {
+        if (isCancelled) {
+          return;
+        }
+
+        setPollingError(true);
+        delayMs = Math.min(delayMs * 2, 30000);
+        scheduleRefresh();
+      }
+    }
+
+    function handleVisibilityChange() {
+      if (document.visibilityState === "hidden") {
+        clearScheduledRefresh();
         return;
+      }
+
+      if (!isCancelled) {
+        void refreshSubmission();
       }
     }
 
     void refreshSubmission();
-    const intervalId = window.setInterval(() => {
-      void refreshSubmission();
-    }, 3000);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
 
     return () => {
       isCancelled = true;
-      window.clearInterval(intervalId);
+      clearScheduledRefresh();
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
   }, [isLive, submission.id]);
 
@@ -226,7 +284,16 @@ export function SubmissionDetailClient(props: SubmissionDetailClientProps) {
             </div>
           </div>
 
-          {isLive && <p className="text-sm text-muted-foreground">{props.liveUpdatesLabel}</p>}
+          {isLive && (
+            <div className="space-y-1 text-sm text-muted-foreground">
+              <p>{props.liveUpdatesLabel}</p>
+              {pollingError && (
+                <p aria-live="polite" className="text-amber-600 dark:text-amber-400">
+                  {props.liveUpdatesDelayedLabel}
+                </p>
+              )}
+            </div>
+          )}
         </div>
 
         <div className="text-right text-sm text-muted-foreground">

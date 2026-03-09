@@ -117,6 +117,7 @@ export default async function SubmissionDetailPage({ params }: { params: Promise
       testCaseResultsDescription={t("testCaseResultsDesc")}
       noResultsLabel={t("noResults")}
       liveUpdatesLabel={t("liveUpdatesActive")}
+      liveUpdatesDelayedLabel={t("liveUpdatesDelayed")}
       locale={locale}
       timeZone={timeZone}
       timeValueLabel={t("timeValue", { value: "{value}" })}

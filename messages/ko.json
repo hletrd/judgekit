@@ -222,6 +222,7 @@
     "testCaseResults": "테스트 케이스 결과",
     "testCaseResultsDesc": "각 테스트 케이스의 실행 상세 정보입니다.",
     "liveUpdatesActive": "이 제출이 대기 중이거나 채점 중인 동안 결과가 자동으로 갱신됩니다.",
+    "liveUpdatesDelayed": "자동 새로고침에 일시적인 문제가 발생했습니다. 이 탭이 활성화된 동안 더 긴 간격으로 다시 시도합니다.",
     "testCaseTable": {
       "testCase": "테스트 케이스",
       "status": "상태",

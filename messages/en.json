@@ -222,6 +222,7 @@
     "testCaseResults": "Test Case Results",
     "testCaseResultsDesc": "Execution details for each evaluated test case.",
     "liveUpdatesActive": "Results are updating automatically while this submission is in the queue or being judged.",
+    "liveUpdatesDelayed": "Automatic refresh hit a temporary problem. Retrying with a longer interval while this tab stays active.",
     "testCaseTable": {
       "testCase": "Test Case",
       "status": "Status",
