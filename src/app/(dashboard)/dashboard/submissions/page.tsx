@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/table";
 import { SubmissionStatusBadge } from "@/components/submission-status-badge";
 import { db } from "@/lib/db";
-import { submissions, problems } from "@/lib/db/schema";
+import { assignments, groups, problems, submissions, users } from "@/lib/db/schema";
 import { desc, eq } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
@@ -21,6 +21,29 @@ import { getResolvedSystemTimeZone } from "@/lib/system-settings";
 import { formatSubmissionIdPrefix } from "@/lib/submissions/id";
 
 const PAGE_SIZE = 25;
+
+type StudentSubmissionRow = {
+  id: string;
+  language: string;
+  status: string | null;
+  submittedAt: Date | null;
+  score: number | null;
+  problem: {
+    id: string | null;
+    title: string | null;
+  } | null;
+};
+
+type InstructorSubmissionRow = StudentSubmissionRow & {
+  student: {
+    id: string | null;
+    name: string | null;
+  } | null;
+  assignment: {
+    id: string | null;
+    title: string | null;
+  } | null;
+};
 
 export default async function SubmissionsPage({
   searchParams,
@@ -37,6 +60,7 @@ export default async function SubmissionsPage({
   const tCommon = await getTranslations("common");
   const locale = await getLocale();
   const timeZone = await getResolvedSystemTimeZone();
+  const isInstructorView = session.user.role === "instructor";
   const statusLabels = {
     pending: t("status.pending"),
     queued: t("status.queued"),
@@ -49,24 +73,54 @@ export default async function SubmissionsPage({
     compile_error: t("status.compile_error"),
   };
   
-  const userSubmissions = await db
-    .select({
-      id: submissions.id,
-      language: submissions.language,
-      status: submissions.status,
-      submittedAt: submissions.submittedAt,
-      score: submissions.score,
-      problem: {
-        id: problems.id,
-        title: problems.title,
-      }
-    })
-    .from(submissions)
-    .leftJoin(problems, eq(submissions.problemId, problems.id))
-    .where(eq(submissions.userId, session.user.id))
-    .orderBy(desc(submissions.submittedAt))
-    .limit(PAGE_SIZE + 1)
-    .offset(offset);
+  const userSubmissions: InstructorSubmissionRow[] | StudentSubmissionRow[] = isInstructorView
+    ? await db
+        .select({
+          id: submissions.id,
+          language: submissions.language,
+          status: submissions.status,
+          submittedAt: submissions.submittedAt,
+          score: submissions.score,
+          student: {
+            id: users.id,
+            name: users.name,
+          },
+          assignment: {
+            id: assignments.id,
+            title: assignments.title,
+          },
+          problem: {
+            id: problems.id,
+            title: problems.title,
+          },
+        })
+        .from(submissions)
+        .innerJoin(assignments, eq(submissions.assignmentId, assignments.id))
+        .innerJoin(groups, eq(assignments.groupId, groups.id))
+        .leftJoin(users, eq(submissions.userId, users.id))
+        .leftJoin(problems, eq(submissions.problemId, problems.id))
+        .where(eq(groups.instructorId, session.user.id))
+        .orderBy(desc(submissions.submittedAt))
+        .limit(PAGE_SIZE + 1)
+        .offset(offset)
+    : await db
+        .select({
+          id: submissions.id,
+          language: submissions.language,
+          status: submissions.status,
+          submittedAt: submissions.submittedAt,
+          score: submissions.score,
+          problem: {
+            id: problems.id,
+            title: problems.title,
+          },
+        })
+        .from(submissions)
+        .leftJoin(problems, eq(submissions.problemId, problems.id))
+        .where(eq(submissions.userId, session.user.id))
+        .orderBy(desc(submissions.submittedAt))
+        .limit(PAGE_SIZE + 1)
+        .offset(offset);
 
   const hasNextPage = userSubmissions.length > PAGE_SIZE;
   const visibleSubmissions = hasNextPage ? userSubmissions.slice(0, PAGE_SIZE) : userSubmissions;
@@ -75,10 +129,12 @@ export default async function SubmissionsPage({
 
   return (
     <div className="space-y-4">
-      <h2 className="text-2xl font-bold mb-4">{t("title")}</h2>
+      <h2 className="text-2xl font-bold mb-4">
+        {isInstructorView ? t("instructorTitle") : t("title")}
+      </h2>
       <Card>
         <CardHeader>
-          <CardTitle>{t("mySubmissions")}</CardTitle>
+          <CardTitle>{isInstructorView ? t("groupSubmissions") : t("mySubmissions")}</CardTitle>
         </CardHeader>
         <CardContent>
           {visibleSubmissions.length > 0 && (
@@ -91,6 +147,8 @@ export default async function SubmissionsPage({
             <TableHeader>
               <TableRow>
                 <TableHead>{t("table.id")}</TableHead>
+                {isInstructorView && <TableHead>{t("table.student")}</TableHead>}
+                {isInstructorView && <TableHead>{t("table.assignment")}</TableHead>}
                 <TableHead>{t("table.problem")}</TableHead>
                 <TableHead>{t("table.language")}</TableHead>
                 <TableHead>{t("table.status")}</TableHead>
@@ -107,6 +165,16 @@ export default async function SubmissionsPage({
                       {formatSubmissionIdPrefix(sub.id)}
                     </Link>
                   </TableCell>
+                  {isInstructorView && (
+                    <TableCell>
+                      {(sub as InstructorSubmissionRow).student?.name || tCommon("unknown")}
+                    </TableCell>
+                  )}
+                  {isInstructorView && (
+                    <TableCell>
+                      {(sub as InstructorSubmissionRow).assignment?.title || tCommon("unknown")}
+                    </TableCell>
+                  )}
                   <TableCell>
                     {sub.problem ? (
                       <Link href={`/dashboard/problems/${sub.problem.id}`} className="text-primary hover:underline">
@@ -138,7 +206,7 @@ export default async function SubmissionsPage({
               ))}
               {visibleSubmissions.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center text-muted-foreground">
+                  <TableCell colSpan={isInstructorView ? 9 : 7} className="text-center text-muted-foreground">
                     {t("noSubmissions")}
                   </TableCell>
                 </TableRow>

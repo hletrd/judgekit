@@ -28,6 +28,7 @@ The `dashboard-rendering-audit-and-editor-upgrades` batch is now locally verifie
 - Problem editing now supports an admin-only test-case unlock path after submissions exist, with the override explicitly toggled in the UI and carried through the PATCH route
 - Assignment editing now supports an admin-only unlock path for linked problems after submissions exist, with explicit UI/audit signaling for the override
 - The groups index now scopes instructors to their own groups in both the API and the server-rendered page, removing the earlier SSR mismatch that showed every group
+- The shared submissions page now switches instructors onto a group-scoped student submission view instead of showing only their personal submissions
 
 ## Still open
 

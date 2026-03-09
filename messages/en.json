@@ -211,11 +211,15 @@
   },
   "submissions": {
     "title": "My Submissions",
+    "instructorTitle": "Group Submissions",
     "detail": "Submission Detail",
     "description": "View your submission history and results.",
     "mySubmissions": "My Submissions",
+    "groupSubmissions": "Student Submissions",
     "table": {
       "id": "ID",
+      "student": "Student",
+      "assignment": "Assignment",
       "problem": "Problem",
       "language": "Language",
       "status": "Status",

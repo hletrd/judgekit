@@ -211,11 +211,15 @@
   },
   "submissions": {
     "title": "내 제출 내역",
+    "instructorTitle": "그룹 제출 현황",
     "detail": "제출 상세",
     "description": "제출 기록과 결과를 확인하세요.",
     "mySubmissions": "내 제출",
+    "groupSubmissions": "학생 제출",
     "table": {
       "id": "ID",
+      "student": "학생",
+      "assignment": "과제",
       "problem": "문제",
       "language": "언어",
       "status": "상태",
