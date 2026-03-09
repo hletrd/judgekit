@@ -47,6 +47,7 @@ type AssignmentFormDialogProps = {
   groupId: string;
   availableProblems: AvailableProblem[];
   initialAssignment?: AssignmentEditorValue;
+  allowProblemOverride?: boolean;
 };
 
 function createEmptyProblemDraft(availableProblems: AvailableProblem[]): AssignmentProblemDraft {
@@ -81,12 +82,15 @@ export default function AssignmentFormDialog({
   groupId,
   availableProblems,
   initialAssignment,
+  allowProblemOverride = false,
 }: AssignmentFormDialogProps) {
   const router = useRouter();
   const t = useTranslations("groups");
   const tCommon = useTranslations("common");
   const isEditing = Boolean(initialAssignment);
   const problemsLocked = Boolean(initialAssignment?.hasSubmissions);
+  const [problemOverrideEnabled, setProblemOverrideEnabled] = useState(false);
+  const areProblemsEditable = !problemsLocked || problemOverrideEnabled;
 
   const [open, setOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -183,7 +187,8 @@ export default function AssignmentFormDialog({
             deadline: parseDateTimeInput(deadline),
             lateDeadline: parseDateTimeInput(lateDeadline),
             latePenalty,
-            ...(problemsLocked ? {} : { problems: problemRows }),
+            ...(areProblemsEditable ? { problems: problemRows } : {}),
+            ...(problemOverrideEnabled ? { allowLockedProblems: true } : {}),
           }),
         }
       );
@@ -318,19 +323,36 @@ export default function AssignmentFormDialog({
                 <h3 className="text-base font-semibold">{t("assignmentProblemsTitle")}</h3>
                 <p className="text-sm text-muted-foreground">{t("assignmentProblemsDescription")}</p>
                 {problemsLocked && (
-                  <p className="text-sm text-amber-600">{t("assignmentProblemsLocked")}</p>
+                  <p className="text-sm text-amber-600">
+                    {problemOverrideEnabled && allowProblemOverride
+                      ? t("assignmentProblemsUnlockWarning")
+                      : t("assignmentProblemsLocked")}
+                  </p>
                 )}
               </div>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={addProblemRow}
-                disabled={isLoading || problemsLocked || availableProblems.length === 0}
-              >
-                <Plus />
-                {t("addProblem")}
-              </Button>
+              <div className="flex flex-wrap items-center gap-2">
+                {allowProblemOverride && problemsLocked && (
+                  <Button
+                    type="button"
+                    variant={problemOverrideEnabled ? "secondary" : "outline"}
+                    size="sm"
+                    onClick={() => setProblemOverrideEnabled((current) => !current)}
+                    disabled={isLoading}
+                  >
+                    {t("assignmentProblemsUnlockForAdmin")}
+                  </Button>
+                )}
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={addProblemRow}
+                  disabled={isLoading || !areProblemsEditable || availableProblems.length === 0}
+                >
+                  <Plus />
+                  {t("addProblem")}
+                </Button>
+              </div>
             </div>
 
             {problemRows.length === 0 ? (
@@ -349,7 +371,7 @@ export default function AssignmentFormDialog({
                         variant="ghost"
                         size="sm"
                         onClick={() => removeProblemRow(index)}
-                        disabled={isLoading || problemsLocked}
+                        disabled={isLoading || !areProblemsEditable}
                       >
                         <Trash2 />
                         {t("removeProblem")}
@@ -364,7 +386,7 @@ export default function AssignmentFormDialog({
                           onValueChange={(value) =>
                             updateProblemRow(index, { problemId: value ?? "" })
                           }
-                          disabled={isLoading || problemsLocked}
+                          disabled={isLoading || !areProblemsEditable}
                         >
                           <SelectTrigger>
                             <SelectValue placeholder={t("assignmentProblemSelectPlaceholder")} />
@@ -392,7 +414,7 @@ export default function AssignmentFormDialog({
                           onChange={(event) =>
                             updateProblemRow(index, { points: Number(event.target.value) })
                           }
-                          disabled={isLoading || problemsLocked}
+                          disabled={isLoading || !areProblemsEditable}
                         />
                       </div>
                     </div>

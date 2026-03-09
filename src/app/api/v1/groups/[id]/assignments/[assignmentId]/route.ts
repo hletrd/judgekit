@@ -10,7 +10,7 @@ import {
   updateAssignmentWithProblems,
 } from "@/lib/assignments/management";
 import { assignmentMutationSchema } from "@/lib/validators/assignments";
-import { getApiUser, forbidden, notFound, unauthorized, csrfForbidden } from "@/lib/api/auth";
+import { getApiUser, forbidden, notFound, unauthorized, csrfForbidden, isAdmin } from "@/lib/api/auth";
 import { canAccessGroup } from "@/lib/auth/permissions";
 import type { UserRole } from "@/types";
 import { checkApiRateLimit, recordApiRateHit } from "@/lib/security/api-rate-limit";
@@ -100,6 +100,7 @@ export async function PATCH(
     }
 
     const body = await request.json();
+    const allowLockedProblems = Boolean(body.allowLockedProblems);
     const hasExistingSubmissions = Boolean(
       await db.query.submissions.findFirst({
         where: eq(submissions.assignmentId, assignmentId),
@@ -107,7 +108,11 @@ export async function PATCH(
       })
     );
 
-    if (body.problems !== undefined && hasExistingSubmissions) {
+    if (
+      body.problems !== undefined &&
+      hasExistingSubmissions &&
+      !(allowLockedProblems && isAdmin(user.role))
+    ) {
       return NextResponse.json({ error: "assignmentProblemsLocked" }, { status: 409 });
     }
 
@@ -192,6 +197,7 @@ export async function PATCH(
           groupId: id,
           problemCount: updatedAssignment.assignmentProblems.length,
           problemLinksChanged: body.problems !== undefined,
+          problemLinkOverrideUsed: allowLockedProblems && isAdmin(user.role),
           latePenalty: updatedAssignment.latePenalty ?? 0,
         },
         request,

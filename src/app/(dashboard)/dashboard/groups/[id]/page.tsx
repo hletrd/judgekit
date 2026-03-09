@@ -230,6 +230,9 @@ export default async function GroupDetailPage({ params }: { params: Promise<{ id
             <AssignmentFormDialog
               groupId={groupId}
               availableProblems={availableProblemOptions}
+              allowProblemOverride={
+                session.user.role === "admin" || session.user.role === "super_admin"
+              }
             />
           )}
         </CardHeader>
@@ -308,6 +311,9 @@ export default async function GroupDetailPage({ params }: { params: Promise<{ id
                             groupId={groupId}
                             availableProblems={availableProblemOptions}
                             initialAssignment={editorValue}
+                            allowProblemOverride={
+                              session.user.role === "admin" || session.user.role === "super_admin"
+                            }
                           />
                           <AssignmentDeleteButton
                             groupId={groupId}

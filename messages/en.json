@@ -346,6 +346,8 @@
     "assignmentProblemsTitle": "Assignment problems",
     "assignmentProblemsDescription": "Choose the problems that belong to this assignment and assign their points.",
     "assignmentProblemsLocked": "Problem links are locked because this assignment already has submissions. You can still edit the schedule and description.",
+    "assignmentProblemsUnlockForAdmin": "Unlock assignment problems",
+    "assignmentProblemsUnlockWarning": "Admin override is enabled. Changing linked problems after submissions exist can invalidate earlier grading history.",
     "assignmentTable": {
       "title": "Title",
       "startsAt": "Starts At",
