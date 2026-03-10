@@ -1,0 +1,16 @@
+[Unit]
+Description=Online Judge Worker (Rust)
+After=network.target docker.service online-judge.service
+Requires=online-judge.service
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/home/ubuntu/online-judge
+EnvironmentFile=/home/ubuntu/online-judge/.env
+ExecStart=/home/ubuntu/online-judge/judge-worker-rs/target/release/judge-worker
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

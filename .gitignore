@@ -53,3 +53,6 @@ docs/
 data/*.db
 data/*.db-wal
 data/*.db-shm
+
+# rust
+judge-worker-rs/target/
