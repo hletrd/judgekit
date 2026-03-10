@@ -37,6 +37,7 @@ The `dashboard-rendering-audit-and-editor-upgrades` batch is now locally verifie
 - The users PATCH API route now decomposes profile validation, uniqueness checks, role updates, active-state changes, and password-reset handling into focused helpers
 - Judge poll final-verdict calculation and submission-result row shaping now live in a dedicated verdict module instead of staying inline in the route handler
 - The audit-log page now allows instructors to review only the audit events tied to their own groups and related assignment/submission/problem resources, instead of requiring admin access for all audit visibility
+- The dashboard now serves role-specific student/instructor/admin overview cards, and the request-context normalization logic is shared between audit and login event recording
 
 ## Still open
 
