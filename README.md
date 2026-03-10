@@ -69,7 +69,7 @@ Open [http://localhost:3000](http://localhost:3000) to access the application.
 | Password | `admin123` |
 | Role | `super_admin` |
 
-> **Note:** The seeded admin is forced through `/change-password` on first login. Change the default password immediately in production. On long-lived shared hosts like `oj.auraedu.me`, do not assume `admin123` is still valid unless the instance was freshly reset and reseeded.
+> **Note:** The seeded admin is forced through `/change-password` on first login. Change the default password immediately in production.
 
 ### Local Production Run
 
@@ -116,8 +116,6 @@ curl -s -b "$COOKIE_JAR" \
 rm -f "$COOKIE_JAR"
 ```
 
-The deployment dataset includes six instructor-owned private smoke-test problems with Korean titles and descriptions so you can verify the API against non-English content as well.
-
 ## System Settings
 
 - Admins and super admins can manage site-wide title, description, and default timezone overrides from `/dashboard/admin/settings`.
@@ -128,12 +126,7 @@ The deployment dataset includes six instructor-owned private smoke-test problems
 
 ## Deployment and Database Reset
 
-- Before touching production, verify that public DNS for `oj.auraedu.me` still targets `140.238.0.181`.
-- As of 2026-03-09, the demo host runs the web app via `online-judge.service` and the judge worker via `online-judge-worker.service` from `/home/ubuntu/online-judge`.
-- As of 2026-03-09, `/api/health` is the lightweight readiness endpoint for automated checks after future deploys, and the production host is aligned on `oj.auraedu.me` across nginx, TLS, and `AUTH_URL`.
-- As of 2026-03-07, the demo host also contains six instructor-owned private smoke-test problems created through the API: `두 수의 합 (A+B)`, `두 수의 차 (A-B)`, `두 수의 곱 (A*B)`, `세 수의 합`, `두 수 중 큰 수`, and `절댓값 구하기`.
-- Do not assume the long-lived demo host still uses the seeded `admin` / `admin123` credentials unless it was reset and reseeded immediately beforehand.
-- To reset the SQLite database for a disposable or demo environment, stop the app first, remove `data/judge.db`, `data/judge.db-shm`, and `data/judge.db-wal`, then run:
+- To reset the SQLite database, stop the app first, remove `data/judge.db`, `data/judge.db-shm`, and `data/judge.db-wal`, then run:
 
 ```bash
 npm run db:push
@@ -249,7 +242,6 @@ journalctl -u online-judge-worker.service -n 50 --no-pager
 - Confirm submissions progress out of `pending`
 - Confirm `/api/health` returns `{"status":"ok"...}` with `checks.database` set to `ok`
 - Confirm `https://oj.auraedu.me/login` completes TLS validation and serves the app
-- Confirm retired `oj-demo.atik.kr` no longer serves the app (for example, HTTP is dropped and HTTPS returns `421` with the new-domain certificate)
 - If you see `401 Unauthorized` in worker logs, verify `JUDGE_AUTH_TOKEN`
 - If `oj.auraedu.me` shows a certificate mismatch, reissue the certificate for `oj.auraedu.me` and reload nginx before treating the cutover as complete
 - If you see the `fsmount:fscontext:proc` container-init error, either restore/fix the repository seccomp profile or explicitly set `JUDGE_DISABLE_CUSTOM_SECCOMP=1` before restarting `online-judge-worker.service`; the worker no longer retries under Docker's default seccomp when the custom run-phase profile is expected
