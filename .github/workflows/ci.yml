@@ -93,7 +93,6 @@ jobs:
                   if (tokens.size >= 2) {
                       println(tokens[0].toInt() + tokens[1].toInt())
                   }
-              }
           }
           """,
               encoding="utf-8",
