@@ -236,7 +236,7 @@ test("submit A+B in all 16 languages and verify judging", async ({ browser }) =>
   for (const language of languages) {
     try {
       // Submit with rate-limit retry
-      let subRes;
+      let subRes!: Awaited<ReturnType<typeof apiPost>>;
       for (let attempt = 1; attempt <= 3; attempt++) {
         subRes = await apiPost(context, "/api/v1/submissions", {
           problemId,

@@ -8,6 +8,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
+function getSafeRedirectUrl(callbackUrl: string | null): string {
+  if (!callbackUrl) return "/dashboard";
+  if (callbackUrl.startsWith("/") && !callbackUrl.startsWith("//")) {
+    return callbackUrl;
+  }
+  return "/dashboard";
+}
+
 export function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -23,7 +31,7 @@ export function LoginForm() {
     const formData = new FormData(e.currentTarget);
     const username = formData.get("username") as string;
     const password = formData.get("password") as string;
-    const redirectTo = searchParams.get("callbackUrl") || "/dashboard";
+    const redirectTo = getSafeRedirectUrl(searchParams.get("callbackUrl"));
 
     try {
       const result = await signIn("credentials", {
