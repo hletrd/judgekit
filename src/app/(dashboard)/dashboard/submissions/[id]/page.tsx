@@ -1,11 +1,9 @@
-import { getLocale, getTranslations } from "next-intl/server";
 import { db } from "@/lib/db";
 import { submissions } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import { canAccessSubmission } from "@/lib/auth/permissions";
 import { getResolvedSystemTimeZone } from "@/lib/system-settings";
-import { formatSubmissionIdPrefix } from "@/lib/submissions/id";
 import { redirect, notFound } from "next/navigation";
 import { SubmissionDetailClient } from "./submission-detail-client";
 
@@ -16,23 +14,8 @@ export default async function SubmissionDetailPage({ params }: { params: Promise
   const resolvedParams = await params;
   const submissionId = resolvedParams.id;
 
-  const t = await getTranslations("submissions");
-  const tCommon = await getTranslations("common");
-  const tComments = await getTranslations("comments");
-  const locale = await getLocale();
   const timeZone = await getResolvedSystemTimeZone();
-  const statusLabels = {
-    pending: t("status.pending"),
-    queued: t("status.queued"),
-    judging: t("status.judging"),
-    accepted: t("status.accepted"),
-    wrong_answer: t("status.wrong_answer"),
-    time_limit: t("status.time_limit"),
-    memory_limit: t("status.memory_limit"),
-    runtime_error: t("status.runtime_error"),
-    compile_error: t("status.compile_error"),
-  };
-  
+
   const submission = await db.query.submissions.findFirst({
     where: eq(submissions.id, submissionId),
     with: {
@@ -103,55 +86,10 @@ export default async function SubmissionDetailPage({ params }: { params: Promise
             : null,
         })),
       }}
-      headingLabel={t("submissionId", { id: formatSubmissionIdPrefix(submission.id) })}
       backHref="/dashboard/submissions"
-      backLabel={tCommon("back")}
-      statusLabels={statusLabels}
-      submittedLabel={t("submitted")}
-      scoreLabel={t("score")}
-      timeLabel={t("time")}
-      memoryLabel={t("memory")}
-      userLabel={t("user")}
-      sourceCodeLabel={t("sourceCode")}
-      compileOutputLabel={t("compileOutput")}
-      testCaseResultsLabel={t("testCaseResults")}
-      testCaseResultsDescription={t("testCaseResultsDesc")}
-      noResultsLabel={t("noResults")}
-      liveUpdatesLabel={t("liveUpdatesActive")}
-      liveUpdatesDelayedLabel={t("liveUpdatesDelayed")}
-      locale={locale}
       timeZone={timeZone}
-      timeValueLabel={t("timeValue", { value: "{value}" })}
-      memoryValueLabel={t("memoryValue", { value: "{value}" })}
-      tableProblemLabel={t("table.problem")}
-      tableLanguageLabel={t("table.language")}
-      testCaseTableLabels={{
-        testCase: t("testCaseTable.testCase"),
-        status: t("testCaseTable.status"),
-        time: t("testCaseTable.time"),
-        memory: t("testCaseTable.memory"),
-      }}
       showDetailedResults={true}
-      detailedResultsHiddenLabel={t("detailedResultsHidden")}
       userRole={session.user.role}
-      commentsLabels={{
-        title: tComments("title"),
-        placeholder: tComments("placeholder"),
-        submit: tComments("submit"),
-        noComments: tComments("noComments"),
-        by: tComments("by", { author: "{author}" }),
-      }}
-      roleLabels={{
-        student: tCommon("roles.student"),
-        instructor: tCommon("roles.instructor"),
-        admin: tCommon("roles.admin"),
-        super_admin: tCommon("roles.super_admin"),
-      }}
-      rejudgeLabels={{
-        rejudge: t("rejudge"),
-        rejudgeSuccess: t("rejudgeSuccess"),
-        rejudgeFailed: t("rejudgeFailed"),
-      }}
     />
   );
 }
