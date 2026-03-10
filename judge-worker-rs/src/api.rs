@@ -8,8 +8,13 @@ pub struct ApiClient {
 
 impl ApiClient {
     pub fn new(poll_url: String, auth_token: String) -> Self {
+        let client = reqwest::Client::builder()
+            .connect_timeout(std::time::Duration::from_secs(10))
+            .timeout(std::time::Duration::from_secs(30))
+            .build()
+            .expect("failed to build HTTP client");
         Self {
-            client: reqwest::Client::new(),
+            client,
             poll_url,
             auth_token,
         }
