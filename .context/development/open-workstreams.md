@@ -36,6 +36,7 @@ The `dashboard-rendering-audit-and-editor-upgrades` batch is now locally verifie
 - Problems, submissions, users, and groups API routes now share one pagination parser instead of duplicating page/limit/offset parsing logic
 - The users PATCH API route now decomposes profile validation, uniqueness checks, role updates, active-state changes, and password-reset handling into focused helpers
 - Judge poll final-verdict calculation and submission-result row shaping now live in a dedicated verdict module instead of staying inline in the route handler
+- The audit-log page now allows instructors to review only the audit events tied to their own groups and related assignment/submission/problem resources, instead of requiring admin access for all audit visibility
 
 ## Still open
 

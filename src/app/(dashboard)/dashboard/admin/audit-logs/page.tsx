@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { and, desc, eq, sql, type SQL } from "drizzle-orm";
+import { and, desc, eq, inArray, or, sql, type SQL } from "drizzle-orm";
 import { getLocale, getTranslations } from "next-intl/server";
 import { redirect } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -76,6 +76,19 @@ function buildPageHref(page: number, resourceType: ResourceFilter, search: strin
   return queryString ? `${PAGE_PATH}?${queryString}` : PAGE_PATH;
 }
 
+function buildGroupMemberScopeFilter(groupIds: string[]) {
+  if (groupIds.length === 0) {
+    return sql`0`;
+  }
+
+  return or(
+    ...groupIds.map(
+      (groupId) =>
+        sql`coalesce(${auditEvents.details}, '') like ${`%"groupId":"${groupId}"%`}`
+    )
+  );
+}
+
 export default async function AdminAuditLogsPage({
   searchParams,
 }: {
@@ -83,7 +96,11 @@ export default async function AdminAuditLogsPage({
 }) {
   const session = await auth();
   if (!session?.user) redirect("/login");
-  if (session.user.role !== "admin" && session.user.role !== "super_admin") redirect("/dashboard");
+  const isAdminViewer =
+    session.user.role === "admin" || session.user.role === "super_admin";
+  const isInstructorViewer = session.user.role === "instructor";
+
+  if (!isAdminViewer && !isInstructorViewer) redirect("/dashboard");
 
   const resolvedSearchParams = searchParams ? await searchParams : undefined;
   const requestedPage = normalizePage(resolvedSearchParams?.page);
@@ -116,6 +133,85 @@ export default async function AdminAuditLogsPage({
   } as const;
 
   const filters: SQL[] = [];
+  if (isInstructorViewer) {
+    const ownedGroups = await db.query.groups.findMany({
+      where: (groups, { eq: equals }) => equals(groups.instructorId, session.user.id),
+      columns: { id: true },
+    });
+    const groupIds = ownedGroups.map((group) => group.id);
+    const assignmentIds =
+      groupIds.length > 0
+        ? (
+            await db.query.assignments.findMany({
+              where: (assignments, { inArray: inArrayOperator }) =>
+                inArrayOperator(assignments.groupId, groupIds),
+              columns: { id: true },
+            })
+          ).map((assignment) => assignment.id)
+        : [];
+    const submissionIds =
+      assignmentIds.length > 0
+        ? (
+            await db.query.submissions.findMany({
+              where: (submissions, { inArray: inArrayOperator }) =>
+                inArrayOperator(submissions.assignmentId, assignmentIds),
+              columns: { id: true },
+            })
+          ).map((submission) => submission.id)
+        : [];
+    const problemIds =
+      groupIds.length > 0
+        ? (
+            await db.query.problems.findMany({
+              where: (problems, { eq: equals }) => equals(problems.authorId, session.user.id),
+              columns: { id: true },
+            })
+          ).map((problem) => problem.id)
+        : [];
+
+    const scopeFilters: SQL[] = [];
+
+    if (groupIds.length > 0) {
+      const groupScope = and(
+        eq(auditEvents.resourceType, "group"),
+        inArray(auditEvents.resourceId, groupIds)
+      );
+      const memberScope = and(
+        eq(auditEvents.resourceType, "group_member"),
+        buildGroupMemberScopeFilter(groupIds)
+      );
+
+      if (groupScope) scopeFilters.push(groupScope);
+      if (memberScope) scopeFilters.push(memberScope);
+    }
+
+    if (assignmentIds.length > 0) {
+      const assignmentScope = and(
+        eq(auditEvents.resourceType, "assignment"),
+        inArray(auditEvents.resourceId, assignmentIds)
+      );
+      if (assignmentScope) scopeFilters.push(assignmentScope);
+    }
+
+    if (submissionIds.length > 0) {
+      const submissionScope = and(
+        eq(auditEvents.resourceType, "submission"),
+        inArray(auditEvents.resourceId, submissionIds)
+      );
+      if (submissionScope) scopeFilters.push(submissionScope);
+    }
+
+    if (problemIds.length > 0) {
+      const problemScope = and(
+        eq(auditEvents.resourceType, "problem"),
+        inArray(auditEvents.resourceId, problemIds)
+      );
+      if (problemScope) scopeFilters.push(problemScope);
+    }
+
+    const scopedInstructorFilter = scopeFilters.length > 0 ? or(...scopeFilters) : sql`0`;
+    if (scopedInstructorFilter) filters.push(scopedInstructorFilter);
+  }
 
   if (resourceTypeFilter !== "all") {
     filters.push(eq(auditEvents.resourceType, resourceTypeFilter));
@@ -272,10 +368,17 @@ export default async function AdminAuditLogsPage({
                   </TableCell>
                   <TableCell className="align-top whitespace-normal">
                     {event.actor?.id ? (
-                      <Link href={`/dashboard/admin/users/${event.actor.id}`} className="block text-primary hover:underline">
-                        <div className="font-medium text-foreground">{event.actor.name}</div>
+                      isAdminViewer ? (
+                        <Link href={`/dashboard/admin/users/${event.actor.id}`} className="block text-primary hover:underline">
+                          <div className="font-medium text-foreground">{event.actor.name}</div>
+                          <div className="text-xs text-muted-foreground">@{event.actor.username}</div>
+                        </Link>
+                      ) : (
+                        <div className="space-y-1">
+                          <div className="font-medium text-foreground">{event.actor.name}</div>
                         <div className="text-xs text-muted-foreground">@{event.actor.username}</div>
-                      </Link>
+                      </div>
+                    )
                     ) : event.actorRole ? (
                       <div className="space-y-1">
                         <div className="font-medium text-foreground">
