@@ -64,60 +64,63 @@ async function syncLanguageConfigs() {
   const insertedLanguages: string[] = [];
   const updatedLanguages: string[] = [];
 
-  for (const language of DEFAULT_JUDGE_LANGUAGES) {
-    const compileCommand = serializeJudgeCommand(language.compileCommand);
-    const existing = existingLanguages.get(language.language);
-    const expectedValues = {
-      displayName: language.displayName,
-      standard: language.standard ?? null,
-      extension: language.extension,
-      dockerImage: language.dockerImage,
-      compiler: language.compiler ?? null,
-      compileCommand: compileCommand ?? null,
-      runCommand: language.runCommand.join(" "),
-    };
+  const syncAll = sqlite.transaction(() => {
+    for (const language of DEFAULT_JUDGE_LANGUAGES) {
+      const compileCommand = serializeJudgeCommand(language.compileCommand);
+      const existing = existingLanguages.get(language.language);
+      const expectedValues = {
+        displayName: language.displayName,
+        standard: language.standard ?? null,
+        extension: language.extension,
+        dockerImage: language.dockerImage,
+        compiler: language.compiler ?? null,
+        compileCommand: compileCommand ?? null,
+        runCommand: language.runCommand.join(" "),
+      };
 
-    if (!existing) {
-      db.insert(schema.languageConfigs)
-        .values({
-          id: nanoid(),
-          language: language.language,
+      if (!existing) {
+        db.insert(schema.languageConfigs)
+          .values({
+            id: nanoid(),
+            language: language.language,
+            displayName: expectedValues.displayName,
+            extension: expectedValues.extension,
+            dockerImage: expectedValues.dockerImage,
+            compiler: expectedValues.compiler,
+            runCommand: expectedValues.runCommand,
+            isEnabled: true,
+            updatedAt: new Date(),
+            ...(expectedValues.standard ? { standard: expectedValues.standard } : {}),
+            ...(expectedValues.compileCommand ? { compileCommand: expectedValues.compileCommand } : {}),
+          })
+          .run();
+
+        insertedLanguages.push(language.language);
+        continue;
+      }
+
+      if (!hasManagedMetadataChanges(existing, expectedValues)) {
+        continue;
+      }
+
+      db.update(schema.languageConfigs)
+        .set({
           displayName: expectedValues.displayName,
+          standard: expectedValues.standard,
           extension: expectedValues.extension,
           dockerImage: expectedValues.dockerImage,
           compiler: expectedValues.compiler,
+          compileCommand: expectedValues.compileCommand,
           runCommand: expectedValues.runCommand,
-          isEnabled: true,
           updatedAt: new Date(),
-          ...(expectedValues.standard ? { standard: expectedValues.standard } : {}),
-          ...(expectedValues.compileCommand ? { compileCommand: expectedValues.compileCommand } : {}),
         })
+        .where(eq(schema.languageConfigs.language, language.language))
         .run();
 
-      insertedLanguages.push(language.language);
-      continue;
+      updatedLanguages.push(language.language);
     }
-
-    if (!hasManagedMetadataChanges(existing, expectedValues)) {
-      continue;
-    }
-
-    db.update(schema.languageConfigs)
-      .set({
-        displayName: expectedValues.displayName,
-        standard: expectedValues.standard,
-        extension: expectedValues.extension,
-        dockerImage: expectedValues.dockerImage,
-        compiler: expectedValues.compiler,
-        compileCommand: expectedValues.compileCommand,
-        runCommand: expectedValues.runCommand,
-        updatedAt: new Date(),
-      })
-      .where(eq(schema.languageConfigs.language, language.language))
-      .run();
-
-    updatedLanguages.push(language.language);
-  }
+  });
+  syncAll();
 
   sqlite.close();
 

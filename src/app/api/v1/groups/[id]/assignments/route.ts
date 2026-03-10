@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { eq } from "drizzle-orm";
+import { eq, desc } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { assignments } from "@/lib/db/schema";
 import { recordAuditEvent } from "@/lib/audit/events";
@@ -35,6 +35,7 @@ export async function GET(
 
     const groupAssignments = await db.query.assignments.findMany({
       where: eq(assignments.groupId, id),
+      orderBy: [desc(assignments.createdAt)],
       with: {
         assignmentProblems: {
           with: {

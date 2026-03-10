@@ -29,6 +29,8 @@ export const GET = createApiHandler({
           extension: definition.extension,
         }];
       }),
+    }, {
+      headers: { "Cache-Control": "public, max-age=300" },
     });
   },
 });
