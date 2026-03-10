@@ -33,6 +33,7 @@ The `dashboard-rendering-audit-and-editor-upgrades` batch is now locally verifie
 - The shared submissions page now switches instructors onto a group-scoped student submission view instead of showing only their personal submissions
 - Problem creation/editing now supports loading test-case input/output from local files directly into each row of the test-case editor
 - Assignment detail pages now show relative deadline countdown text, and assignment-scoped problem pages surface deadline and late-window warning badges from the active assignment context
+- Problems, submissions, users, and groups API routes now share one pagination parser instead of duplicating page/limit/offset parsing logic
 
 ## Still open
 

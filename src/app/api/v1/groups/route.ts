@@ -4,6 +4,7 @@ import { groups, enrollments } from "@/lib/db/schema";
 import { eq, desc, sql } from "drizzle-orm";
 import { getApiUser, unauthorized, forbidden, isAdmin, isInstructor, csrfForbidden } from "@/lib/api/auth";
 import { recordAuditEvent } from "@/lib/audit/events";
+import { parsePagination } from "@/lib/api/pagination";
 import { nanoid } from "nanoid";
 import { createGroupSchema } from "@/lib/validators/groups";
 import { checkApiRateLimit, recordApiRateHit } from "@/lib/security/api-rate-limit";
@@ -14,9 +15,7 @@ export async function GET(request: NextRequest) {
     if (!user) return unauthorized();
 
     const searchParams = request.nextUrl.searchParams;
-    const page = Math.max(1, parseInt(searchParams.get("page") || "1"));
-    const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") || "25")));
-    const offset = (page - 1) * limit;
+    const { page, limit, offset } = parsePagination(searchParams, { defaultLimit: 25 });
 
     let results;
     let total = 0;

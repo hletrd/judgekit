@@ -16,6 +16,7 @@ import type { UserRole } from "@/types";
 import { getPasswordValidationError } from "@/lib/security/password";
 import { userCreateSchema } from "@/lib/validators/profile";
 import { checkApiRateLimit, recordApiRateHit } from "@/lib/security/api-rate-limit";
+import { parsePagination } from "@/lib/api/pagination";
 
 export async function GET(request: NextRequest) {
   try {
@@ -24,9 +25,7 @@ export async function GET(request: NextRequest) {
     if (!isAdmin(user.role)) return forbidden();
 
     const searchParams = request.nextUrl.searchParams;
-    const page = Math.max(1, parseInt(searchParams.get("page") || "1"));
-    const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") || "20")));
-    const offset = (page - 1) * limit;
+    const { page, limit, offset } = parsePagination(searchParams);
     const role = searchParams.get("role");
 
     if (role && !isUserRole(role)) {

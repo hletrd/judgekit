@@ -4,6 +4,7 @@ import { problems, problemGroupAccess, enrollments } from "@/lib/db/schema";
 import { eq, desc, sql, and, or } from "drizzle-orm";
 import { getApiUser, unauthorized, forbidden, isInstructor, isAdmin, csrfForbidden } from "@/lib/api/auth";
 import { recordAuditEvent } from "@/lib/audit/events";
+import { parsePagination } from "@/lib/api/pagination";
 import { createProblemWithTestCases } from "@/lib/problem-management";
 import { problemMutationSchema, problemVisibilityValues } from "@/lib/validators/problem-management";
 import { checkApiRateLimit, recordApiRateHit } from "@/lib/security/api-rate-limit";
@@ -14,9 +15,7 @@ export async function GET(request: NextRequest) {
     if (!user) return unauthorized();
 
     const searchParams = request.nextUrl.searchParams;
-    const page = Math.max(1, parseInt(searchParams.get("page") || "1"));
-    const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") || "20")));
-    const offset = (page - 1) * limit;
+    const { page, limit, offset } = parsePagination(searchParams);
     const visibility = searchParams.get("visibility");
 
     if (visibility && !problemVisibilityValues.includes(visibility as (typeof problemVisibilityValues)[number])) {
