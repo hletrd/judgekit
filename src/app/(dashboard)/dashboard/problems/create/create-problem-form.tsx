@@ -5,8 +5,10 @@ import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { apiFetch } from "@/lib/api/client";
@@ -197,49 +199,30 @@ export default function CreateProblemForm({
       </div>
 
       <div className="space-y-2">
-        <div className="flex items-center justify-between">
-          <Label htmlFor="description">{t("descLabel")}</Label>
-          <div className="flex rounded-md border overflow-hidden text-sm">
-            <button
-              type="button"
-              onClick={() => setDescriptionTab("write")}
-              className={`px-3 py-1 transition-colors ${
-                descriptionTab === "write"
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-background text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              {t("writeTab")}
-            </button>
-            <button
-              type="button"
-              onClick={() => setDescriptionTab("preview")}
-              className={`px-3 py-1 transition-colors ${
-                descriptionTab === "preview"
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-background text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              {t("previewTab")}
-            </button>
-          </div>
-        </div>
-        {descriptionTab === "write" ? (
-          <Textarea
-            id="description"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            className="min-h-[200px]"
-          />
-        ) : (
-          <div className="min-h-[200px] rounded-md border px-3 py-2 text-sm">
-            {description.trim() ? (
-              <ProblemDescription description={description} />
-            ) : (
-              <p className="text-muted-foreground">{t("noDescription")}</p>
-            )}
-          </div>
-        )}
+        <Label htmlFor="description">{t("descLabel")}</Label>
+        <Tabs value={descriptionTab} onValueChange={(v) => setDescriptionTab(v as "write" | "preview")}>
+          <TabsList>
+            <TabsTrigger value="write">{t("writeTab")}</TabsTrigger>
+            <TabsTrigger value="preview">{t("previewTab")}</TabsTrigger>
+          </TabsList>
+          <TabsContent value="write">
+            <Textarea
+              id="description"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              className="min-h-[200px]"
+            />
+          </TabsContent>
+          <TabsContent value="preview">
+            <div className="min-h-[200px] rounded-md border px-3 py-2 text-sm">
+              {description.trim() ? (
+                <ProblemDescription description={description} />
+              ) : (
+                <p className="text-muted-foreground">{t("noDescription")}</p>
+              )}
+            </div>
+          </TabsContent>
+        </Tabs>
       </div>
 
       <div className="grid grid-cols-2 gap-4">
@@ -412,10 +395,9 @@ export default function CreateProblemForm({
                 </div>
 
                 <label className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <input
-                    type="checkbox"
+                  <Checkbox
                     checked={testCase.isVisible}
-                    onChange={(event) => updateTestCase(index, { isVisible: event.target.checked })}
+                    onCheckedChange={(checked) => updateTestCase(index, { isVisible: checked === true })}
                     disabled={isLoading || !areTestCasesEditable}
                   />
                   <span>{t("testCaseVisibleLabel")}</span>
