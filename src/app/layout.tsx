@@ -2,11 +2,18 @@ import type { Metadata } from "next";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages, getTranslations } from "next-intl/server";
 import { headers } from "next/headers";
+import localFont from "next/font/local";
 import { ThemeProvider } from "@/components/theme-provider";
 import { NonceProvider } from "@/components/nonce-provider";
 import { getAuthUrlObject } from "@/lib/security/env";
 import { getResolvedSystemSettings } from "@/lib/system-settings";
 import "./globals.css";
+
+const pretendard = localFont({
+  src: "../../node_modules/pretendard/dist/web/variable/woff2/PretendardVariable.woff2",
+  display: "swap",
+  variable: "--font-pretendard",
+});
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("common");
@@ -33,16 +40,7 @@ export default async function RootLayout({
   const nonce = headersList.get("x-nonce") ?? undefined;
 
   return (
-    <html lang={locale} suppressHydrationWarning>
-      <head>
-        <link
-          rel="stylesheet"
-          as="style"
-          crossOrigin="anonymous"
-          href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"
-          integrity="sha384-GIdEBaqGN9mNkDkMkzMHW8EKUqtpPIe/sLj1X7DIrnc9uPtLROJgmuDlh+3rBw0j"
-        />
-      </head>
+    <html lang={locale} suppressHydrationWarning className={pretendard.variable}>
       <body className="antialiased">
         <NonceProvider nonce={nonce}>
           <NextIntlClientProvider messages={messages}>
