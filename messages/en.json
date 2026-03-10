@@ -211,7 +211,9 @@
     "assignmentSelectionTitle": "Choose an assignment context",
     "assignmentSelectionDescription": "This problem belongs to one of your assignments. Open it from the assignment page so your submission is recorded against the correct class activity.",
     "assignmentSelectionOpenAssignment": "Open {title} ({group})",
-    "assignmentSelectionSubmitHint": "Choose one of the assignments above to submit this problem with the correct assignment context."
+    "assignmentSelectionSubmitHint": "Choose one of the assignments above to submit this problem with the correct assignment context.",
+    "assignmentDeadlineNotice": "Assignment deadline",
+    "assignmentLateDeadlineNotice": "Late submission window"
   },
   "submissions": {
     "title": "My Submissions",
@@ -417,6 +419,8 @@
       "studentSearchPlaceholder": "Search by name, username, or class",
       "lastSubmission": "Last submission",
       "scoreFormat": "{score}/{total}",
+      "deadlineCountdown": "Deadline countdown",
+      "lateDeadlineCountdown": "Late deadline countdown",
       "statsMean": "Mean",
       "statsMedian": "Median",
       "statsSubmitted": "Submitted",

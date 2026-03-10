@@ -30,6 +30,7 @@ The `dashboard-rendering-audit-and-editor-upgrades` batch is now locally verifie
 - The groups index now scopes instructors to their own groups in both the API and the server-rendered page, removing the earlier SSR mismatch that showed every group
 - The shared submissions page now switches instructors onto a group-scoped student submission view instead of showing only their personal submissions
 - Problem creation/editing now supports loading test-case input/output from local files directly into each row of the test-case editor
+- Assignment detail pages now show relative deadline countdown text, and assignment-scoped problem pages surface deadline and late-window warning badges from the active assignment context
 
 ## Still open
 

@@ -147,6 +147,8 @@ export default async function GroupAssignmentDetailPage({
     assignments: tGroups("assignments"),
     problemCount: tGroups("problemCount", { count: sortedProblems.length }),
     titleColumn: tGroups("assignmentTable.title"),
+    deadlineCountdown: tAssignment("deadlineCountdown"),
+    lateDeadlineCountdown: tAssignment("lateDeadlineCountdown"),
   };
 
   if (!canViewBoard) {

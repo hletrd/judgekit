@@ -58,3 +58,36 @@ export function formatDateTimeInKst(
 ) {
   return formatDateTimeInTimeZone(value, locale, DEFAULT_TIME_ZONE);
 }
+
+export function formatRelativeTimeFromNow(
+  value: number | string | Date,
+  locale: string | string[] = DEFAULT_LOCALE,
+  now = Date.now()
+) {
+  const date = normalizeDate(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return "-";
+  }
+
+  const diffMs = date.getTime() - now;
+  const diffSeconds = Math.round(diffMs / 1000);
+  const formatter = new Intl.RelativeTimeFormat(locale, { numeric: "auto" });
+
+  if (Math.abs(diffSeconds) < 60) {
+    return formatter.format(diffSeconds, "second");
+  }
+
+  const diffMinutes = Math.round(diffSeconds / 60);
+  if (Math.abs(diffMinutes) < 60) {
+    return formatter.format(diffMinutes, "minute");
+  }
+
+  const diffHours = Math.round(diffMinutes / 60);
+  if (Math.abs(diffHours) < 24) {
+    return formatter.format(diffHours, "hour");
+  }
+
+  const diffDays = Math.round(diffHours / 24);
+  return formatter.format(diffDays, "day");
+}

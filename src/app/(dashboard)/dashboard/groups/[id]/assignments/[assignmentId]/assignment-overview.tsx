@@ -3,7 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { formatDateTimeInTimeZone } from "@/lib/datetime";
+import { formatDateTimeInTimeZone, formatRelativeTimeFromNow } from "@/lib/datetime";
 
 interface AssignmentProblemEntry {
   id: string;
@@ -32,6 +32,8 @@ export interface AssignmentOverviewLabels {
   assignments: string;
   problemCount: string;
   titleColumn: string;
+  deadlineCountdown: string;
+  lateDeadlineCountdown: string;
 }
 
 export interface AssignmentOverviewProps {
@@ -121,6 +123,11 @@ export function AssignmentOverview({
                   ? formatDateTimeInTimeZone(assignment.deadline, locale, timeZone)
                   : "-"}
               </dd>
+              {assignment.deadline && (
+                <div className="text-xs text-muted-foreground">
+                  {labels.deadlineCountdown}: {formatRelativeTimeFromNow(assignment.deadline, locale)}
+                </div>
+              )}
             </div>
             <div className="space-y-1">
               <dt className="text-sm font-medium">{labels.lateDeadline}</dt>
@@ -129,6 +136,11 @@ export function AssignmentOverview({
                   ? formatDateTimeInTimeZone(assignment.lateDeadline, locale, timeZone)
                   : "-"}
               </dd>
+              {assignment.lateDeadline && (
+                <div className="text-xs text-muted-foreground">
+                  {labels.lateDeadlineCountdown}: {formatRelativeTimeFromNow(assignment.lateDeadline, locale)}
+                </div>
+              )}
             </div>
             <div className="space-y-1">
               <dt className="text-sm font-medium">{labels.latePenalty}</dt>

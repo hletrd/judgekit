@@ -12,6 +12,7 @@ import {
   getStudentAssignmentContextsForProblem,
   validateAssignmentSubmission,
 } from "@/lib/assignments/submissions";
+import { formatRelativeTimeFromNow } from "@/lib/datetime";
 import { ProblemDescription } from "@/components/problem-description";
 import { getTrustedLegacySeededDescription } from "@/lib/problems/legacy-seeded";
 import { ProblemSubmissionForm } from "./problem-submission-form";
@@ -88,6 +89,8 @@ export default async function ProblemDetailPage({
     | {
         id: string;
         title: string;
+        deadline: Date | null;
+        lateDeadline: Date | null;
       }
     | null = null;
   let assignmentChoices: Array<{
@@ -111,13 +114,15 @@ export default async function ProblemDetailPage({
 
     const assignment = await db.query.assignments.findFirst({
       where: (assignments, { eq }) => eq(assignments.id, normalizedAssignmentId),
-      columns: { id: true, title: true },
+      columns: { id: true, title: true, deadline: true, lateDeadline: true },
     });
 
     assignmentContext = assignment
       ? {
           id: assignment.id,
           title: assignment.title,
+          deadline: assignment.deadline ?? null,
+          lateDeadline: assignment.lateDeadline ?? null,
         }
       : null;
   } else if (session.user.role === "student") {
@@ -171,6 +176,16 @@ export default async function ProblemDetailPage({
             <Badge variant="outline">{t("badges.memoryLimit", { value: problem.memoryLimitMb ?? 256 })}</Badge>
             <Badge variant="secondary">{t("badges.author", { name: problem.author?.name || tCommon("system") })}</Badge>
             {assignmentContext && <Badge>{assignmentContext.title}</Badge>}
+            {assignmentContext?.deadline && (
+              <Badge variant="secondary">
+                {t("assignmentDeadlineNotice")}: {formatRelativeTimeFromNow(assignmentContext.deadline)}
+              </Badge>
+            )}
+            {assignmentContext?.lateDeadline && (
+              <Badge variant="outline">
+                {t("assignmentLateDeadlineNotice")}: {formatRelativeTimeFromNow(assignmentContext.lateDeadline)}
+              </Badge>
+            )}
           </div>
         </div>
         <Card>
