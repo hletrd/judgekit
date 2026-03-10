@@ -6,6 +6,7 @@ import {
   bracketMatching,
   defaultHighlightStyle,
   indentOnInput,
+  indentUnit,
   StreamLanguage,
   syntaxHighlighting,
 } from "@codemirror/language";
@@ -82,6 +83,8 @@ const baseTheme = EditorView.theme({
 
 const baseExtensions: Extension[] = [
   baseTheme,
+  EditorState.tabSize.of(4),
+  indentUnit.of("    "),
   history(),
   drawSelection(),
   highlightActiveLine(),
