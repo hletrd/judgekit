@@ -75,6 +75,18 @@ describe("validateAssignmentSubmission", () => {
     });
   });
 
+  it("returns assignmentNotFound when the assignment lookup misses", async () => {
+    dbMock.query.assignments.findFirst.mockResolvedValue(null);
+
+    await expect(
+      validateAssignmentSubmission("assignment-1", "problem-1", "student-1", "student")
+    ).resolves.toEqual({
+      ok: false,
+      status: 404,
+      error: "assignmentNotFound",
+    });
+  });
+
   it("rejects students after the late deadline closes", async () => {
     vi.spyOn(Date, "now").mockReturnValue(new Date("2026-03-10T03:00:00.000Z").valueOf());
     dbMock.query.assignments.findFirst.mockResolvedValue(
@@ -140,6 +152,29 @@ describe("validateAssignmentSubmission", () => {
       },
     });
     expect(dbMock.query.enrollments.findFirst).not.toHaveBeenCalled();
+  });
+
+  it("accepts enrolled students on linked problems during the active window", async () => {
+    vi.spyOn(Date, "now").mockReturnValue(new Date("2026-03-10T01:30:00.000Z").valueOf());
+    dbMock.query.assignments.findFirst.mockResolvedValue(
+      createAssignmentRecord({
+        startsAt: new Date("2026-03-10T01:00:00.000Z"),
+        deadline: new Date("2026-03-10T02:00:00.000Z"),
+      })
+    );
+    dbMock.query.enrollments.findFirst.mockResolvedValue({ id: "enrollment-1" });
+    dbMock.query.assignmentProblems.findFirst.mockResolvedValue({ id: "assignment-problem-1" });
+
+    await expect(
+      validateAssignmentSubmission("assignment-1", "problem-1", "student-1", "student")
+    ).resolves.toEqual({
+      ok: true,
+      assignment: {
+        id: "assignment-1",
+        groupId: "group-1",
+        instructorId: "instructor-1",
+      },
+    });
   });
 });
 
