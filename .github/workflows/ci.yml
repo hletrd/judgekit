@@ -59,6 +59,53 @@ jobs:
       - name: Run production build
         run: npm run build
 
+      - name: Build JVM judge image
+        run: docker build -t judge-jvm -f docker/Dockerfile.judge-jvm .
+
+      - name: Smoke test JVM judge image
+        run: |
+          workspace="$(mktemp -d)"
+          export WORKSPACE="$workspace"
+
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+
+          workspace = Path(os.environ["WORKSPACE"])
+          workspace.joinpath("solution.java").write_text(
+              """public class Main {
+              public static void main(String[] args) throws Exception {
+                  String input = new String(System.in.readAllBytes()).trim();
+                  if (input.isEmpty()) return;
+                  String[] parts = input.split("\\s+");
+                  System.out.println(Integer.parseInt(parts[0]) + Integer.parseInt(parts[1]));
+              }
+          }
+          """,
+              encoding="utf-8",
+          )
+          workspace.joinpath("solution.kt").write_text(
+              """fun main() {
+                  val tokens = generateSequence(::readlnOrNull)
+                      .flatMap { it.split(Regex("\\s+")).asSequence() }
+                      .filter { it.isNotBlank() }
+                      .toList()
+                  if (tokens.size >= 2) {
+                      println(tokens[0].toInt() + tokens[1].toInt())
+                  }
+              }
+          }
+          """,
+              encoding="utf-8",
+          )
+          PY
+
+          java_output="$(docker run --rm -v "$workspace:/workspace" -w /workspace judge-jvm sh -lc "mkdir -p /workspace/out && cp /workspace/solution.java /workspace/Main.java && javac --release 25 -encoding UTF-8 -d /workspace/out /workspace/Main.java && printf '1 2\n' | java -cp /workspace/out Main")"
+          [ "$java_output" = "3" ]
+
+          kotlin_output="$(docker run --rm -v "$workspace:/workspace" -w /workspace judge-jvm sh -lc "kotlinc /workspace/solution.kt -include-runtime -d /workspace/solution.jar && printf '1 2\n' | java -jar /workspace/solution.jar")"
+          [ "$kotlin_output" = "3" ]
+
   e2e:
     name: End-to-end tests
     runs-on: ubuntu-latest
