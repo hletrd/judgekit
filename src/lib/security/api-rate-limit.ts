@@ -40,10 +40,6 @@ export function checkApiRateLimit(
   recordRateLimitFailure(key);
   rememberRequestKey(request, key);
 
-  if (isRateLimited(key)) {
-    return rateLimitedResponse();
-  }
-
   return null;
 }
 
