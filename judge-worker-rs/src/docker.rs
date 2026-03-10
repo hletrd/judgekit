@@ -85,7 +85,7 @@ async fn run_docker_once(
 ) -> Result<DockerRunResult, String> {
     let container_name = format!("oj-{}", Uuid::new_v4());
     let mem_limit = get_memory_limit_mb(options.memory_limit_mb);
-    let pids_limit = if options.read_only_workspace { "4" } else { "16" };
+    let pids_limit = "16";
 
     let workspace_volume = if options.read_only_workspace {
         format!("{}:/workspace:ro", options.workspace_dir)
