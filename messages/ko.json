@@ -756,7 +756,7 @@
     "placeholder": "이 제출에 대한 피드백을 작성하세요...",
     "submit": "댓글 추가",
     "noComments": "아직 피드백이 없습니다.",
-    "by": "{author}"
+    "by": "{author} 작성"
   },
   "judge": {
     "title": "채점 환경",

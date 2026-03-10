@@ -1,5 +1,3 @@
-"use client";
-
 import { AlertTriangle, CheckCircle2, Clock3 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";

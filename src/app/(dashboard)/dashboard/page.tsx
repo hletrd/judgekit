@@ -1,4 +1,4 @@
-import { getTranslations } from "next-intl/server";
+import { getTranslations, getLocale } from "next-intl/server";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -31,7 +31,7 @@ export default async function DashboardPage() {
     siteTitle: tCommon("appName"),
     siteDescription: tCommon("appDescription"),
   });
-  const locale = "en";
+  const locale = await getLocale();
 
   const langs = await db.select().from(languageConfigs).where(eq(languageConfigs.isEnabled, true));
   const enabledLanguages = langs.flatMap((language) => {
