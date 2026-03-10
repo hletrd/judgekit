@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import { loginEvents } from "@/lib/db/schema";
+import { normalizeText, getClientIp, getRequestPath, MAX_PATH_LENGTH } from "@/lib/security/request-context";
 
 export type LoginEventOutcome =
   | "success"
@@ -42,42 +43,6 @@ const MAX_IDENTIFIER_LENGTH = 320;
 const MAX_IP_LENGTH = 128;
 const MAX_USER_AGENT_LENGTH = 512;
 const MAX_METHOD_LENGTH = 16;
-const MAX_PATH_LENGTH = 512;
-
-function normalizeText(value: string | null | undefined, maxLength: number) {
-  if (typeof value !== "string") {
-    return null;
-  }
-
-  const normalized = value.trim();
-  if (!normalized) {
-    return null;
-  }
-
-  return normalized.slice(0, maxLength);
-}
-
-function getClientIp(headers: Headers) {
-  const forwardedFor = headers
-    .get("x-forwarded-for")
-    ?.split(",")[0]
-    ?.trim();
-  const realIp = headers.get("x-real-ip")?.trim();
-
-  return normalizeText(forwardedFor || realIp, MAX_IP_LENGTH);
-}
-
-function getRequestPath(url: string | null | undefined) {
-  if (!url) {
-    return null;
-  }
-
-  try {
-    return normalizeText(new URL(url).pathname, MAX_PATH_LENGTH);
-  } catch {
-    return null;
-  }
-}
 
 export function buildLoginEventContext(
   request: RequestLike,

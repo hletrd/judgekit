@@ -1,7 +1,7 @@
 import { headers } from "next/headers";
 import { db } from "@/lib/db";
 import { auditEvents } from "@/lib/db/schema";
-import { extractClientIp } from "@/lib/security/ip";
+import { normalizeText, getClientIp, getRequestPath, MAX_TEXT_LENGTH, MAX_PATH_LENGTH } from "@/lib/security/request-context";
 
 type RequestLike = {
   headers: Headers;
@@ -37,45 +37,9 @@ type RecordAuditEventInput = {
   context?: AuditRequestContext;
 };
 
-const MAX_TEXT_LENGTH = 512;
-const MAX_PATH_LENGTH = 512;
 const MAX_JSON_LENGTH = 4000;
 let auditEventWriteFailures = 0;
 let lastAuditEventWriteFailureAt: string | null = null;
-
-function normalizeText(value: string | null | undefined, maxLength = MAX_TEXT_LENGTH) {
-  if (typeof value !== "string") {
-    return null;
-  }
-
-  const normalized = value.trim();
-  if (!normalized) {
-    return null;
-  }
-
-  return normalized.slice(0, maxLength);
-}
-
-function getClientIp(headersList: Headers) {
-  const clientIp = extractClientIp(headersList);
-  if (clientIp === "unknown") {
-    return null;
-  }
-
-  return normalizeText(clientIp, 128);
-}
-
-function getRequestPath(url: string | null | undefined) {
-  if (!url) {
-    return null;
-  }
-
-  try {
-    return normalizeText(new URL(url).pathname, MAX_PATH_LENGTH);
-  } catch {
-    return null;
-  }
-}
 
 function serializeDetails(details: JsonValue | null | undefined) {
   if (details == null) {
