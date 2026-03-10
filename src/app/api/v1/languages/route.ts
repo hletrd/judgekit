@@ -3,9 +3,11 @@ import { db } from "@/lib/db";
 import { languageConfigs } from "@/lib/db/schema";
 import { getJudgeLanguageDefinition } from "@/lib/judge/languages";
 import { eq } from "drizzle-orm";
+import { createApiHandler } from "@/lib/api/handler";
 
-export async function GET() {
-  try {
+export const GET = createApiHandler({
+  auth: false,
+  handler: async () => {
     const languages = await db
       .select()
       .from(languageConfigs)
@@ -28,8 +30,5 @@ export async function GET() {
         }];
       }),
     });
-  } catch (error) {
-    console.error("GET /api/v1/languages error:", error);
-    return NextResponse.json({ error: "internalServerError" }, { status: 500 });
-  }
-}
+  },
+});
