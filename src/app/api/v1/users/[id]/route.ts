@@ -326,11 +326,16 @@ export async function DELETE(
     const csrfError = csrfForbidden(request);
     if (csrfError) return csrfError;
 
+    const rateLimitResponse = checkApiRateLimit(request, "users:delete");
+    if (rateLimitResponse) return rateLimitResponse;
+    recordApiRateHit(request, "users:delete");
+
     const user = await getApiUser(request);
     if (!user) return unauthorized();
     if (!isAdmin(user.role)) return forbidden();
 
     const { id } = await params;
+    const permanent = request.nextUrl.searchParams.get("permanent") === "true";
 
     const found = await db
       .select(safeUserSelect)
@@ -341,11 +346,38 @@ export async function DELETE(
     if (!found) return notFound("User");
 
     if (found.id === user.id) {
-      return NextResponse.json({ error: "cannotDeactivateSelf" }, { status: 403 });
+      return NextResponse.json(
+        { error: permanent ? "cannotDeleteSelf" : "cannotDeactivateSelf" },
+        { status: 403 }
+      );
     }
 
     if (found.role === "super_admin") {
-      return NextResponse.json({ error: "cannotDeactivateSuperAdmin" }, { status: 403 });
+      return NextResponse.json(
+        { error: permanent ? "cannotDeleteSuperAdmin" : "cannotDeactivateSuperAdmin" },
+        { status: 403 }
+      );
+    }
+
+    if (permanent) {
+      // Record audit BEFORE deletion since actorId FK gets set-null on cascade
+      recordAuditEvent({
+        actorId: user.id,
+        actorRole: user.role,
+        action: "user.permanently_deleted",
+        resourceType: "user",
+        resourceId: found.id,
+        resourceLabel: found.username,
+        summary: `Permanently deleted user @${found.username}`,
+        details: {
+          role: found.role,
+        },
+        request,
+      });
+
+      await db.delete(users).where(eq(users.id, id));
+
+      return NextResponse.json({ data: { id, deleted: true } });
     }
 
     await db.update(users).set({ isActive: false, updatedAt: new Date() }).where(eq(users.id, id));

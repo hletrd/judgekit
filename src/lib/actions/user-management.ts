@@ -112,6 +112,57 @@ export async function toggleUserActive(userId: string, isActive: boolean): Promi
   }
 }
 
+export async function deleteUserPermanently(userId: string): Promise<UserManagementResult> {
+  if (!(await isTrustedServerActionOrigin())) {
+    return { success: false, error: "unauthorized" };
+  }
+
+  const session = await auth();
+  if (!session?.user || (session.user.role !== "admin" && session.user.role !== "super_admin")) {
+    return { success: false, error: "unauthorized" };
+  }
+
+  if (userId === session.user.id) {
+    return { success: false, error: "cannotDeactivateSelf" };
+  }
+
+  const targetUser = await db.query.users.findFirst({
+    where: eq(users.id, userId),
+    columns: { id: true, username: true, role: true },
+  });
+
+  if (!targetUser) return { success: false, error: "userNotFound" };
+
+  if (targetUser.role === "super_admin") {
+    return { success: false, error: "cannotDeactivateSuperAdmin" };
+  }
+
+  try {
+    // Record audit BEFORE deletion since actorId FK gets set-null on cascade
+    const auditContext = await buildServerActionAuditContext("/dashboard/admin/users");
+    recordAuditEvent({
+      actorId: session.user.id,
+      actorRole: session.user.role,
+      action: "user.permanently_deleted",
+      resourceType: "user",
+      resourceId: targetUser.id,
+      resourceLabel: targetUser.username,
+      summary: `Permanently deleted user @${targetUser.username}`,
+      details: {
+        role: targetUser.role,
+      },
+      context: auditContext,
+    });
+
+    await db.delete(users).where(eq(users.id, userId));
+
+    return { success: true };
+  } catch (error) {
+    console.error("Failed to permanently delete user:", error);
+    return { success: false, error: "updateUserStatusFailed" };
+  }
+}
+
 export async function editUser(userId: string, data: ManagedUserInput): Promise<UserManagementResult> {
   if (!(await isTrustedServerActionOrigin())) {
     return { success: false, error: "unauthorized" };
