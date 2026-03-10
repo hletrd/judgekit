@@ -43,9 +43,9 @@
 - Phase 0 remediation is complete: submission flow works, the judge worker executes submissions, instructors can manage test cases during problem authoring, the problem edit page exists, and the group creation flow is wired
 - High-priority Phase 1 work is also in place: dashboard `loading.tsx` / `error.tsx` / `not-found.tsx`, submission polling, paginated submissions, solved/attempted problem indicators, translated status badges, callback-aware login, sanitized problem descriptions, theme switching, richer code surfaces, and admin-managed site identity/timezone settings
 - Local main also includes the dashboard-rendering-audit-and-editor-upgrades batch plus the classroom-management, broader audit-logging, and operational-hardening follow-up: instructor assignment status boards with scoped submission drill-down, admin login logs, theme-aware CodeMirror surfaces, draft recovery, guarded delete flows, 32-character hex submission IDs, group membership management, assignment create/edit/delete flows, student assignment detail/submission paths, assignment-context enforcement for enrolled students, group deletion guards that preserve assignment-linked history, admin audit logs for privileged and system-driven mutations, a public `/api/health` readiness endpoint, verified SQLite backup/restore scripts, repository-native GitHub Actions CI for lint/build/Playwright checks, and Java/Kotlin judge support with a remote `judge-jvm` smoke step in CI.
-- As of 2026-03-08, `oj-demo.atik.kr` has been reverified after the classroom/audit rollout: the public login page returns HTTP 200, protected dashboard routes redirect through login, and both `online-judge.service` and `online-judge-worker.service` are active.
+- As of 2026-03-09, `oj.auraedu.me` is live over Let's Encrypt HTTPS on `140.238.0.181`, and both `online-judge.service` and `online-judge-worker.service` are healthy on-host.
 - Security hardening now includes login rate limiting, explicit auth/judge env validation, stronger API access checks, problem/test-case exposure fixes, and shared security headers
-- As of 2026-03-07, a remote smoke test against `oj-demo.atik.kr` succeeded with instructor-authenticated `POST /api/v1/problems` calls and left six private Korean practice problems on the demo host for API verification
+- The legacy hostname `oj-demo.atik.kr` is retired at nginx and no longer serves the application.
 - Remaining roadmap items are still open: special judging, contest features, ranking, and community tools
 
 ## Getting Started
@@ -79,7 +79,7 @@ Open [http://localhost:3000](http://localhost:3000) to access the application.
 | Password | `admin123` |
 | Role | `super_admin` |
 
-> **Note:** The seeded admin is forced through `/change-password` on first login. Change the default password immediately in production. On long-lived shared hosts like `oj-demo.atik.kr`, do not assume `admin123` is still valid unless the instance was freshly reset and reseeded.
+> **Note:** The seeded admin is forced through `/change-password` on first login. Change the default password immediately in production. On long-lived shared hosts like `oj.auraedu.me`, do not assume `admin123` is still valid unless the instance was freshly reset and reseeded.
 
 ### Local Production Run
 
@@ -103,7 +103,7 @@ If port `3000` is already occupied, stop the stale process before restarting the
 For browser-driven or same-origin automation, the existing Auth.js session is reused automatically. For external scripts, log in through the credentials callback first and persist the session cookie in a cookie jar before calling protected user-facing `/api/v1/*` routes. The example below is read-only and safe to rerun; instructor/admin-only writes such as `POST /api/v1/problems` use the same cookie-jar flow but mutate remote state.
 
 ```bash
-export OJ_BASE_URL="https://oj-demo.atik.kr"
+export OJ_BASE_URL="https://oj.auraedu.me"
 export OJ_USERNAME="instructor"
 export OJ_PASSWORD="your-password"
 
@@ -126,7 +126,7 @@ curl -s -b "$COOKIE_JAR" \
 rm -f "$COOKIE_JAR"
 ```
 
-As of 2026-03-07, the demo deployment at `oj-demo.atik.kr` includes six instructor-owned private smoke-test problems with Korean titles and descriptions so you can verify the API against non-English content as well.
+The deployment dataset includes six instructor-owned private smoke-test problems with Korean titles and descriptions so you can verify the API against non-English content as well.
 
 ## System Settings
 
@@ -138,9 +138,9 @@ As of 2026-03-07, the demo deployment at `oj-demo.atik.kr` includes six instruct
 
 ## Deployment and Database Reset
 
-- Before touching production, verify that the SSH target matches the public DNS for the environment you intend to change. `oj-demo.atik.kr` should be treated as a separate host from the main `atik.kr` box unless you confirm otherwise.
-- As of 2026-03-07, the demo host runs the web app via `online-judge.service` and the judge worker via `online-judge-worker.service` from `/home/ubuntu/online-judge`.
-- As of 2026-03-08, the demo host has been reverified with the classroom-management and audit rollout live, and `/api/health` is the lightweight readiness endpoint for automated checks after future deploys.
+- Before touching production, verify that public DNS for `oj.auraedu.me` still targets `140.238.0.181`.
+- As of 2026-03-09, the demo host runs the web app via `online-judge.service` and the judge worker via `online-judge-worker.service` from `/home/ubuntu/online-judge`.
+- As of 2026-03-09, `/api/health` is the lightweight readiness endpoint for automated checks after future deploys, and the production host is aligned on `oj.auraedu.me` across nginx, TLS, and `AUTH_URL`.
 - As of 2026-03-07, the demo host also contains six instructor-owned private smoke-test problems created through the API: `두 수의 합 (A+B)`, `두 수의 차 (A-B)`, `두 수의 곱 (A*B)`, `세 수의 합`, `두 수 중 큰 수`, and `절댓값 구하기`.
 - Do not assume the long-lived demo host still uses the seeded `admin` / `admin123` credentials unless it was reset and reseeded immediately beforehand.
 - To reset the SQLite database for a disposable or demo environment, stop the app first, remove `data/judge.db`, `data/judge.db-shm`, and `data/judge.db-wal`, then run:
@@ -167,7 +167,8 @@ Start from `.env.example` and set at least:
 
 ```bash
 AUTH_SECRET=<openssl rand -base64 32>
-AUTH_URL=https://oj-demo.atik.kr
+AUTH_URL=https://oj.auraedu.me
+AUTH_TRUST_HOST=true
 JUDGE_AUTH_TOKEN=<openssl rand -hex 32>
 JUDGE_POLL_URL=http://localhost:3000/api/v1/judge/poll
 POLL_INTERVAL=2000
@@ -196,14 +197,31 @@ npm run build
 
 ### 4. Install systemd services
 
-The web app service is host-specific, but the judge-worker unit is now versioned in the repo.
+Both the web app service and the judge-worker unit are versioned in the repo.
 
 ```bash
+sudo ./scripts/install-online-judge-service.sh
 sudo ./scripts/install-online-judge-worker-service.sh
-sudo systemctl restart online-judge.service
 ```
 
-The worker unit file lives at `scripts/online-judge-worker.service` and expects the repo at `/home/ubuntu/online-judge` with `.env` in the same directory.
+The web app unit lives at `scripts/online-judge.service`, and the worker unit lives at `scripts/online-judge-worker.service`. Both expect the repo at `/home/ubuntu/online-judge` with `.env` in the same directory.
+
+### 4a. Install nginx and TLS config
+
+Bootstrap the hostname with the HTTP-only vhost first, issue the certificate, then switch to the final HTTPS config:
+
+```bash
+sudo install -m 0644 scripts/online-judge.nginx-http.conf /etc/nginx/sites-available/online-judge
+sudo ln -sfn /etc/nginx/sites-available/online-judge /etc/nginx/sites-enabled/online-judge
+sudo nginx -t
+sudo systemctl reload nginx
+sudo certbot certonly --nginx -d oj.auraedu.me --non-interactive
+sudo install -m 0644 scripts/online-judge.nginx.conf /etc/nginx/sites-available/online-judge
+sudo nginx -t
+sudo systemctl reload nginx
+```
+
+The final checked-in HTTPS config serves `oj.auraedu.me` only and rejects requests for unknown or retired hostnames.
 
 ### 5. Deploy updates
 
@@ -233,12 +251,17 @@ systemctl is-active online-judge.service
 systemctl is-active online-judge-worker.service
 curl -I http://127.0.0.1:3000/login
 curl http://127.0.0.1:3000/api/health
+journalctl -u nginx -n 50 --no-pager
+journalctl -u certbot.timer -n 20 --no-pager
 journalctl -u online-judge-worker.service -n 50 --no-pager
 ```
 
 - Confirm submissions progress out of `pending`
 - Confirm `/api/health` returns `{"status":"ok"...}` with `checks.database` set to `ok`
+- Confirm `https://oj.auraedu.me/login` completes TLS validation and serves the app
+- Confirm retired `oj-demo.atik.kr` no longer serves the app (for example, HTTP is dropped and HTTPS returns `421` with the new-domain certificate)
 - If you see `401 Unauthorized` in worker logs, verify `JUDGE_AUTH_TOKEN`
+- If `oj.auraedu.me` shows a certificate mismatch, reissue the certificate for `oj.auraedu.me` and reload nginx before treating the cutover as complete
 - If you see the `fsmount:fscontext:proc` container-init error, either restore/fix the repository seccomp profile or explicitly set `JUDGE_DISABLE_CUSTOM_SECCOMP=1` before restarting `online-judge-worker.service`; the worker no longer retries under Docker's default seccomp when the custom run-phase profile is expected
 - For system settings schema or timezone changes, verify `/dashboard/admin/settings` and at least one timestamped page such as `/dashboard/submissions` or `/dashboard/admin/users/[id]` after deploy
 
