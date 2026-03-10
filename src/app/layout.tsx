@@ -3,6 +3,7 @@ import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages, getTranslations } from "next-intl/server";
 import { headers } from "next/headers";
 import { ThemeProvider } from "@/components/theme-provider";
+import { NonceProvider } from "@/components/nonce-provider";
 import { getAuthUrlObject } from "@/lib/security/env";
 import { getResolvedSystemSettings } from "@/lib/system-settings";
 import "./globals.css";
@@ -43,17 +44,19 @@ export default async function RootLayout({
         />
       </head>
       <body className="antialiased">
-        <NextIntlClientProvider messages={messages}>
-          <ThemeProvider
-            attribute="class"
-            defaultTheme="system"
-            enableSystem
-            disableTransitionOnChange
-            nonce={nonce}
-          >
-            {children}
-          </ThemeProvider>
-        </NextIntlClientProvider>
+        <NonceProvider nonce={nonce}>
+          <NextIntlClientProvider messages={messages}>
+            <ThemeProvider
+              attribute="class"
+              defaultTheme="system"
+              enableSystem
+              disableTransitionOnChange
+              nonce={nonce}
+            >
+              {children}
+            </ThemeProvider>
+          </NextIntlClientProvider>
+        </NonceProvider>
       </body>
     </html>
   );

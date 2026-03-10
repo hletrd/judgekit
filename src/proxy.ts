@@ -31,7 +31,7 @@ function createSecuredNextResponse(request: NextRequest) {
   const csp = [
     "default-src 'self'",
     `script-src ${scriptSrc}`,
-    "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net",
+    `style-src 'self' 'nonce-${nonce}' https://cdn.jsdelivr.net`,
     "font-src 'self' https://cdn.jsdelivr.net data:",
     "img-src 'self' data: blob:",
     "connect-src 'self'",

@@ -31,6 +31,7 @@ import {
   placeholder,
 } from "@codemirror/view";
 import { useTheme } from "next-themes";
+import { useNonce } from "@/components/nonce-provider";
 import { getCodeSurfaceLanguage } from "@/lib/code/language-map";
 import { cn } from "@/lib/utils";
 
@@ -182,6 +183,7 @@ export function CodeSurface({
   value,
 }: CodeSurfaceProps) {
   const { resolvedTheme } = useTheme();
+  const nonce = useNonce();
   const editorHostRef = useRef<HTMLDivElement | null>(null);
   const editorViewRef = useRef<EditorView | null>(null);
   const onValueChangeRef = useRef(onValueChangeAction);
@@ -198,6 +200,7 @@ export function CodeSurface({
     id,
     language,
     minHeight,
+    nonce,
     placeholderText,
     readOnly,
     resolvedTheme,
@@ -238,6 +241,7 @@ export function CodeSurface({
             )
           )
         ),
+        EditorView.cspNonce.of(initialEditorConfig.nonce ?? ""),
         EditorView.updateListener.of((update) => {
           if (!update.docChanged || isSyncingRef.current) {
             return;
