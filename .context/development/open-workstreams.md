@@ -40,7 +40,9 @@ The `dashboard-rendering-audit-and-editor-upgrades` batch is now locally verifie
 
 ## Still open
 
-- No active local workstreams remain in the checked-in plan set.
+- `P3.6` composite unique index on `problem_group_access` is still blocked pending explicit approval for the destructive `db:push` step that wants to remove the unrelated `problems.show_detailed_results` column
+- `P1.7` tutor/TA infrastructure remains open
+- `P2.2`, `P2.4`, `P2.9`, `P2.11`, `P3.3`, `P3.14`, and `P3.27` remain open as the main non-destructive work still left in the checked-in remediation plan
 
 ## Safety note
 
