@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { auth, unstable_update } from "@/lib/auth";
 import { buildServerActionAuditContext, recordAuditEvent } from "@/lib/audit/events";
+import { isTrustedServerActionOrigin } from "@/lib/security/server-actions";
 import {
   type UpdateProfileInput,
   updateProfileSchema,
@@ -13,6 +14,10 @@ import {
 export async function updateProfile(
   input: UpdateProfileInput
 ): Promise<{ success: boolean; error?: string }> {
+  if (!(await isTrustedServerActionOrigin())) {
+    return { success: false, error: "unauthorized" };
+  }
+
   const session = await auth();
   if (!session?.user?.id) {
     return { success: false, error: "notAuthenticated" };

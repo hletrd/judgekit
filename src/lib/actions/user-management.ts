@@ -15,6 +15,7 @@ import {
   validateAndHashPassword,
   validateRoleChange,
 } from "@/lib/users/core";
+import { isTrustedServerActionOrigin } from "@/lib/security/server-actions";
 
 type UserUpdates = Partial<typeof users.$inferInsert>;
 
@@ -48,6 +49,10 @@ type ManagedUserInput = {
 };
 
 export async function toggleUserActive(userId: string, isActive: boolean): Promise<UserManagementResult> {
+  if (!(await isTrustedServerActionOrigin())) {
+    return { success: false, error: "unauthorized" };
+  }
+
   const session = await auth();
   if (!session?.user || (session.user.role !== "admin" && session.user.role !== "super_admin")) {
     return { success: false, error: "unauthorized" };
@@ -108,6 +113,10 @@ export async function toggleUserActive(userId: string, isActive: boolean): Promi
 }
 
 export async function editUser(userId: string, data: ManagedUserInput): Promise<UserManagementResult> {
+  if (!(await isTrustedServerActionOrigin())) {
+    return { success: false, error: "unauthorized" };
+  }
+
   const session = await auth();
   if (!session?.user || (session.user.role !== "admin" && session.user.role !== "super_admin")) {
     return { success: false, error: "unauthorized" };
@@ -204,6 +213,10 @@ export async function editUser(userId: string, data: ManagedUserInput): Promise<
 }
 
 export async function createUser(data: ManagedUserInput): Promise<UserManagementResult> {
+  if (!(await isTrustedServerActionOrigin())) {
+    return { success: false, error: "unauthorized" };
+  }
+
   const session = await auth();
   if (!session?.user || (session.user.role !== "admin" && session.user.role !== "super_admin")) {
     return { success: false, error: "unauthorized" };

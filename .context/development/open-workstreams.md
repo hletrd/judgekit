@@ -38,12 +38,14 @@ The `dashboard-rendering-audit-and-editor-upgrades` batch is now locally verifie
 - Judge poll final-verdict calculation and submission-result row shaping now live in a dedicated verdict module instead of staying inline in the route handler
 - The audit-log page now allows instructors to review only the audit events tied to their own groups and related assignment/submission/problem resources, instead of requiring admin access for all audit visibility
 - The dashboard now serves role-specific student/instructor/admin overview cards, and the request-context normalization logic is shared between audit and login event recording
+- Server actions now perform shared origin validation before privileged mutations, closing the remaining CSRF gap outside the API-route surface
+- Bulk grading, feedback, and admin tool batch: submission comments/feedback, rejudge capability, bulk student enrollment, bulk user creation with CSV upload, grade override/manual scoring, problem search/filtering, markdown preview, admin users pagination/search/role-filter, student progress indicators, assignment scoreboard drill-down, student-oriented dashboard, shared request-context utility consolidation, user management core unification, and API route handler wrapper
 
 ## Still open
 
 - `P3.6` composite unique index on `problem_group_access` is still blocked pending explicit approval for the destructive `db:push` step that wants to remove the unrelated `problems.show_detailed_results` column
 - `P1.7` tutor/TA infrastructure remains open
-- `P2.2`, `P2.4`, `P2.9`, `P2.11`, `P3.3`, `P3.14`, and `P3.27` remain open as the main non-destructive work still left in the checked-in remediation plan
+- `P2.2` and `P2.4` remain open as the main non-destructive work still left in the checked-in remediation plan
 
 ## Safety note
 

@@ -6,6 +6,7 @@ import { buildServerActionAuditContext, recordAuditEvent } from "@/lib/audit/eve
 import { db } from "@/lib/db";
 import { systemSettings } from "@/lib/db/schema";
 import { GLOBAL_SETTINGS_ID } from "@/lib/system-settings";
+import { isTrustedServerActionOrigin } from "@/lib/security/server-actions";
 import {
   type SystemSettingsInput,
   systemSettingsSchema,
@@ -19,6 +20,10 @@ type UpdateSystemSettingsResult = {
 export async function updateSystemSettings(
   input: SystemSettingsInput
 ): Promise<UpdateSystemSettingsResult> {
+  if (!(await isTrustedServerActionOrigin())) {
+    return { success: false, error: "unauthorized" };
+  }
+
   const session = await auth();
 
   if (!session?.user || (session.user.role !== "admin" && session.user.role !== "super_admin")) {

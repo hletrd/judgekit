@@ -9,6 +9,7 @@ import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { clearRateLimit, isRateLimited, recordRateLimitFailure } from "@/lib/security/rate-limit";
 import { getPasswordValidationError } from "@/lib/security/password";
+import { isTrustedServerActionOrigin } from "@/lib/security/server-actions";
 
 function getChangePasswordRateLimitKey(userId: string) {
   return `change-password:user:${userId}`;
@@ -18,6 +19,10 @@ export async function changePassword(
   currentPassword: string,
   newPassword: string
 ): Promise<{ success: boolean; error?: string }> {
+  if (!(await isTrustedServerActionOrigin())) {
+    return { success: false, error: "unauthorized" };
+  }
+
   const session = await auth();
 
   if (!hasSessionIdentity(session)) {
