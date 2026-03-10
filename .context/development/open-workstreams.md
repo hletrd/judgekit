@@ -1,6 +1,6 @@
 # Open Workstreams
 
-Last updated: 2026-03-09
+Last updated: 2026-03-10
 
 The `dashboard-rendering-audit-and-editor-upgrades` batch is now locally verified and its plan docs are reconciled. The items below remain open outside that completed batch.
 
