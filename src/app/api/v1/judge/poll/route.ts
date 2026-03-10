@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
     }
 
     const claimToken = nanoid();
-    const claimCreatedAt = new Date();
+    const claimCreatedAt = Date.now();
 
     const claimed = sqlite
       .prepare(
