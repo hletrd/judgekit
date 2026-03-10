@@ -436,6 +436,17 @@ test("group assignment management supports member add, assignment CRUD, and stud
       throw new Error("Expected assignment-linked submission to exist after student submission flow");
     }
 
+    const claimToken = `playwright-claim-${runtimeSuffix}`;
+
+    await db
+      .update(submissions)
+      .set({
+        judgeClaimToken: claimToken,
+        judgeClaimedAt: new Date(),
+        status: "queued",
+      })
+      .where(eq(submissions.id, assignmentSubmission.id));
+
     const submissionCreatedAudit = await db.query.auditEvents.findFirst({
       where: and(
         eq(auditEvents.action, "submission.created"),
@@ -452,6 +463,7 @@ test("group assignment management supports member add, assignment CRUD, and stud
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
+        claimToken,
         submissionId: assignmentSubmission.id,
         status: "judging",
       }),
@@ -468,6 +480,7 @@ test("group assignment management supports member add, assignment CRUD, and stud
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
+        claimToken,
         compileOutput: hiddenCompileOutput,
         submissionId: assignmentSubmission.id,
         status: "accepted",
