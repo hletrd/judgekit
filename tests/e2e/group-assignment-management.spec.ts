@@ -408,7 +408,10 @@ test("group assignment management supports member add, assignment CRUD, and stud
     await studentPage.goto(`/dashboard/groups/${fixtures.groupId}`, { waitUntil: "networkidle" });
     await studentPage.getByRole("link", { name: updatedAssignmentTitle }).click();
 
-    await expect(studentPage.getByRole("heading", { name: updatedAssignmentTitle })).toBeVisible();
+    await expect(studentPage).toHaveURL(
+      new RegExp(`/dashboard/groups/${fixtures.groupId}/assignments/${createdAssignment.id}$`)
+    );
+    await expect(studentPage.getByRole("button", { name: "Open problem" })).toBeVisible();
     await studentPage.getByRole("button", { name: "Open problem" }).click();
     await expect(studentPage).toHaveURL(
       new RegExp(`/dashboard/problems/${fixtures.problemId}\\?assignmentId=${createdAssignment.id}`)
