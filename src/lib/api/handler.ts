@@ -148,10 +148,14 @@ export function createApiHandler<T = unknown>(config: HandlerConfig<T>) {
       const params = routeCtx?.params ? await routeCtx.params : {};
 
       // --- Call the inner handler ---
-      // user is non-null here when auth !== false; cast is safe because
-      // if auth is false we never set user but the handler signature still
-      // accepts AuthUser — callers with auth: false should type user as
-      // AuthUser | null themselves. We cast to satisfy TypeScript here.
+      // When auth is enabled (default), user is guaranteed non-null here.
+      // When auth is false, user may be null — handlers must check.
+      if (auth !== false && !user) {
+        // This should never happen since we return unauthorized() above,
+        // but guard against logic errors.
+        return unauthorized();
+      }
+
       return await handler(req, {
         user: user as AuthUser,
         body,
