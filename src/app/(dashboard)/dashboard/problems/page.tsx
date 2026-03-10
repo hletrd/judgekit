@@ -10,9 +10,10 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { db } from "@/lib/db";
 import { problems, submissions, users } from "@/lib/db/schema";
-import { desc, eq } from "drizzle-orm";
+import { desc, eq, and, like } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import { getAccessibleProblemIds } from "@/lib/auth/permissions";
 import { redirect } from "next/navigation";
@@ -21,8 +22,13 @@ import { Button } from "@/components/ui/button";
 
 type ProblemProgress = "solved" | "attempted" | "untried";
 type ProblemFilter = "all" | "solved" | "unsolved" | "attempted";
+type VisibilityFilter = "all" | "public" | "private" | "hidden";
 
 const FILTER_VALUES: readonly ProblemFilter[] = ["all", "solved", "unsolved", "attempted"];
+const VISIBILITY_FILTER_VALUES: readonly VisibilityFilter[] = ["all", "public", "private", "hidden"];
+
+const PAGE_SIZE = 50;
+const PAGE_PATH = "/dashboard/problems";
 
 function getProblemProgress(statuses: Array<string | null>): ProblemProgress {
   if (statuses.some((status) => status === "accepted")) {
@@ -36,10 +42,47 @@ function getProblemProgress(statuses: Array<string | null>): ProblemProgress {
   return "untried";
 }
 
+function normalizePage(value?: string) {
+  const parsed = Number(value ?? "1");
+  if (!Number.isFinite(parsed) || parsed < 1) return 1;
+  return Math.floor(parsed);
+}
+
+function normalizeVisibilityFilter(value?: string): VisibilityFilter {
+  if (VISIBILITY_FILTER_VALUES.includes(value as VisibilityFilter)) {
+    return value as VisibilityFilter;
+  }
+  return "all";
+}
+
+function normalizeSearch(value?: string) {
+  if (typeof value !== "string") return "";
+  return value.trim().slice(0, 200);
+}
+
+function escapeLike(value: string) {
+  return value.replaceAll("\\", "\\\\").replaceAll("%", "\\%").replaceAll("_", "\\_");
+}
+
+function buildPageHref(
+  page: number,
+  progressFilter: ProblemFilter,
+  visibilityFilter: VisibilityFilter,
+  search: string
+) {
+  const params = new URLSearchParams();
+  if (page > 1) params.set("page", String(page));
+  if (progressFilter !== "all") params.set("progress", progressFilter);
+  if (visibilityFilter !== "all") params.set("visibility", visibilityFilter);
+  if (search) params.set("search", search);
+  const qs = params.toString();
+  return qs ? `${PAGE_PATH}?${qs}` : PAGE_PATH;
+}
+
 export default async function ProblemsPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ progress?: string }>;
+  searchParams?: Promise<{ progress?: string; page?: string; search?: string; visibility?: string }>;
 }) {
   const session = await auth();
   if (!session?.user) redirect("/login");
@@ -49,6 +92,9 @@ export default async function ProblemsPage({
   const currentFilter = FILTER_VALUES.includes(rawFilter as ProblemFilter)
     ? (rawFilter as ProblemFilter)
     : "all";
+  const currentPage = normalizePage(resolvedSearchParams?.page);
+  const searchQuery = normalizeSearch(resolvedSearchParams?.search);
+  const currentVisibility = normalizeVisibilityFilter(resolvedSearchParams?.visibility);
 
   const t = await getTranslations("problems");
   const tCommon = await getTranslations("common");
@@ -61,6 +107,23 @@ export default async function ProblemsPage({
     session.user.role === "admin" ||
     session.user.role === "super_admin" ||
     session.user.role === "instructor";
+
+  // Build title search filter
+  const searchFilter =
+    searchQuery
+      ? like(problems.title, `%${escapeLike(searchQuery)}%`)
+      : undefined;
+
+  // Build visibility filter (only for managers; students always see accessible problems regardless)
+  const visibilityDbFilter =
+    canManageProblems && currentVisibility !== "all"
+      ? eq(problems.visibility, currentVisibility)
+      : undefined;
+
+  const baseWhereClause =
+    searchFilter && visibilityDbFilter
+      ? and(searchFilter, visibilityDbFilter)
+      : searchFilter ?? visibilityDbFilter;
 
   const allProblems = await db
     .select({
@@ -77,6 +140,7 @@ export default async function ProblemsPage({
     })
     .from(problems)
     .leftJoin(users, eq(problems.authorId, users.id))
+    .where(baseWhereClause)
     .orderBy(desc(problems.createdAt));
 
   let accessibleProblems: typeof allProblems;
@@ -115,21 +179,21 @@ export default async function ProblemsPage({
     progress: getProblemProgress(problemStatuses.get(problem.id) ?? []),
   }));
 
-  const filteredProblems = problemsWithProgress.filter((problem) => {
-    if (currentFilter === "all") {
-      return true;
-    }
-
-    if (currentFilter === "solved") {
-      return problem.progress === "solved";
-    }
-
-    if (currentFilter === "attempted") {
-      return problem.progress === "attempted";
-    }
-
+  const progressFiltered = problemsWithProgress.filter((problem) => {
+    if (currentFilter === "all") return true;
+    if (currentFilter === "solved") return problem.progress === "solved";
+    if (currentFilter === "attempted") return problem.progress === "attempted";
     return problem.progress !== "solved";
   });
+
+  // Pagination (applied after all in-memory filters)
+  const totalCount = progressFiltered.length;
+  const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
+  const clampedPage = Math.min(currentPage, totalPages);
+  const offset = (clampedPage - 1) * PAGE_SIZE;
+  const filteredProblems = progressFiltered.slice(offset, offset + PAGE_SIZE);
+  const rangeStart = totalCount === 0 ? 0 : offset + 1;
+  const rangeEnd = offset + filteredProblems.length;
 
   const progressLabels = {
     solved: t("progress.solved"),
@@ -141,6 +205,12 @@ export default async function ProblemsPage({
     solved: t("filters.solved"),
     unsolved: t("filters.unsolved"),
     attempted: t("filters.attempted"),
+  };
+  const visibilityFilterLabels: Record<VisibilityFilter, string> = {
+    all: t("visibilityFilter.all"),
+    public: t("visibilityOptions.public"),
+    private: t("visibilityOptions.private"),
+    hidden: t("visibilityOptions.hidden"),
   };
 
   function renderProgress(problemProgress: ProblemProgress) {
@@ -171,7 +241,7 @@ export default async function ProblemsPage({
   }
 
   function getFilterHref(filter: ProblemFilter) {
-    return filter === "all" ? "/dashboard/problems" : `/dashboard/problems?progress=${filter}`;
+    return buildPageHref(1, filter, currentVisibility, searchQuery);
   }
 
   return (
@@ -184,6 +254,62 @@ export default async function ProblemsPage({
           </Link>
         )}
       </div>
+
+      {/* Search & Filter card */}
+      <Card>
+        <CardHeader>
+          <CardTitle>{t("filtersTitle")}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form className="flex flex-col gap-3 md:flex-row md:items-end" method="get">
+            <div className="flex-1 space-y-2">
+              <label className="text-sm font-medium" htmlFor="problem-search">
+                {t("searchLabel")}
+              </label>
+              <Input
+                id="problem-search"
+                name="search"
+                type="search"
+                defaultValue={searchQuery}
+                placeholder={t("searchPlaceholder")}
+              />
+            </div>
+
+            {canManageProblems && (
+              <div className="space-y-2">
+                <label className="text-sm font-medium" htmlFor="problem-visibility">
+                  {t("filterByVisibility")}
+                </label>
+                <select
+                  id="problem-visibility"
+                  name="visibility"
+                  defaultValue={currentVisibility}
+                  className="flex h-8 min-w-40 rounded-lg border border-input bg-background px-3 py-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+                >
+                  {VISIBILITY_FILTER_VALUES.map((v) => (
+                    <option key={v} value={v}>
+                      {visibilityFilterLabels[v]}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {/* Preserve progress filter when submitting the form */}
+            {currentFilter !== "all" && (
+              <input type="hidden" name="progress" value={currentFilter} />
+            )}
+
+            <div className="flex gap-2">
+              <Button type="submit">{t("applyFilters")}</Button>
+              <Link href={PAGE_PATH}>
+                <Button type="button" variant="outline">{t("resetFilters")}</Button>
+              </Link>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader>
           <CardTitle>{t("available")}</CardTitle>
@@ -198,6 +324,12 @@ export default async function ProblemsPage({
               </Link>
             ))}
           </div>
+
+          {totalCount > 0 && (
+            <p className="mb-4 text-sm text-muted-foreground">
+              {t("pagination.showingRange", { start: rangeStart, end: rangeEnd, total: totalCount })}
+            </p>
+          )}
 
           <Table>
             <TableHeader>
@@ -255,6 +387,31 @@ export default async function ProblemsPage({
           </Table>
         </CardContent>
       </Card>
+
+      {/* Pagination controls */}
+      {totalPages > 1 && (
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm text-muted-foreground">
+            {t("pagination.page", { current: clampedPage, total: totalPages })}
+          </p>
+          <div className="flex items-center gap-2">
+            {clampedPage > 1 ? (
+              <Link href={buildPageHref(clampedPage - 1, currentFilter, currentVisibility, searchQuery)}>
+                <Button variant="outline">{tCommon("previous")}</Button>
+              </Link>
+            ) : (
+              <Button variant="outline" disabled>{tCommon("previous")}</Button>
+            )}
+            {clampedPage < totalPages ? (
+              <Link href={buildPageHref(clampedPage + 1, currentFilter, currentVisibility, searchQuery)}>
+                <Button variant="outline">{tCommon("next")}</Button>
+              </Link>
+            ) : (
+              <Button variant="outline" disabled>{tCommon("next")}</Button>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
