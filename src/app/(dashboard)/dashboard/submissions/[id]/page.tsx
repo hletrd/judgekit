@@ -18,6 +18,7 @@ export default async function SubmissionDetailPage({ params }: { params: Promise
 
   const t = await getTranslations("submissions");
   const tCommon = await getTranslations("common");
+  const tComments = await getTranslations("comments");
   const locale = await getLocale();
   const timeZone = await getResolvedSystemTimeZone();
   const statusLabels = {
@@ -132,6 +133,20 @@ export default async function SubmissionDetailPage({ params }: { params: Promise
       }}
       showDetailedResults={true}
       detailedResultsHiddenLabel={t("detailedResultsHidden")}
+      userRole={session.user.role}
+      commentsLabels={{
+        title: tComments("title"),
+        placeholder: tComments("placeholder"),
+        submit: tComments("submit"),
+        noComments: tComments("noComments"),
+        by: tComments("by", { author: "{author}" }),
+      }}
+      roleLabels={{
+        student: tCommon("roles.student"),
+        instructor: tCommon("roles.instructor"),
+        admin: tCommon("roles.admin"),
+        super_admin: tCommon("roles.super_admin"),
+      }}
     />
   );
 }

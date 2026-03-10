@@ -1,10 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { CodeViewer } from "@/components/code/code-viewer";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import { SubmissionStatusBadge } from "@/components/submission-status-badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -43,6 +45,16 @@ type SubmissionDetailView = {
   results: SubmissionResultView[];
 };
 
+type CommentView = {
+  id: string;
+  content: string;
+  createdAt: string | number | null;
+  author: {
+    name: string | null;
+    role: string;
+  } | null;
+};
+
 type SubmissionDetailClientProps = {
   showDetailedResults: boolean;
   initialSubmission: SubmissionDetailView;
@@ -75,6 +87,15 @@ type SubmissionDetailClientProps = {
     memory: string;
   };
   detailedResultsHiddenLabel: string;
+  userRole: string;
+  commentsLabels: {
+    title: string;
+    placeholder: string;
+    submit: string;
+    noComments: string;
+    by: string;
+  };
+  roleLabels: Record<string, string>;
 };
 
 function normalizeSubmission(data: Record<string, unknown>): SubmissionDetailView {
@@ -136,9 +157,28 @@ function normalizeSubmission(data: Record<string, unknown>): SubmissionDetailVie
   };
 }
 
+function formatRelativeTime(timestamp: string | number | null): string {
+  if (timestamp == null) return "";
+  const ms = typeof timestamp === "string" ? Date.parse(timestamp) : timestamp;
+  if (Number.isNaN(ms)) return "";
+  const diff = Date.now() - ms;
+  const seconds = Math.floor(diff / 1000);
+  if (seconds < 60) return "<1m";
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h`;
+  const days = Math.floor(hours / 24);
+  return `${days}d`;
+}
+
 export function SubmissionDetailClient(props: SubmissionDetailClientProps) {
   const [submission, setSubmission] = useState(props.initialSubmission);
   const [pollingError, setPollingError] = useState(false);
+  const [comments, setComments] = useState<CommentView[]>([]);
+  const [commentContent, setCommentContent] = useState("");
+  const [commentSubmitting, setCommentSubmitting] = useState(false);
+  const canComment = props.userRole === "instructor" || props.userRole === "admin" || props.userRole === "super_admin";
   const isLive = ACTIVE_SUBMISSION_STATUSES.has(submission.status);
   const problemHref =
     submission.problem === null
@@ -247,6 +287,46 @@ export function SubmissionDetailClient(props: SubmissionDetailClientProps) {
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
   }, [isLive, submission.id]);
+
+  const fetchComments = useCallback(async () => {
+    try {
+      const response = await apiFetch(`/api/v1/submissions/${submission.id}/comments`);
+      if (response.ok) {
+        const payload = (await response.json()) as { data?: CommentView[] };
+        if (payload.data) {
+          setComments(payload.data);
+        }
+      }
+    } catch {
+      // silently ignore comment fetch errors
+    }
+  }, [submission.id]);
+
+  useEffect(() => {
+    void fetchComments();
+  }, [fetchComments]);
+
+  async function handleCommentSubmit() {
+    if (!commentContent.trim() || commentSubmitting) return;
+
+    setCommentSubmitting(true);
+    try {
+      const response = await apiFetch(`/api/v1/submissions/${submission.id}/comments`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: commentContent.trim() }),
+      });
+
+      if (response.ok) {
+        setCommentContent("");
+        void fetchComments();
+      }
+    } catch {
+      // silently ignore comment submit errors
+    } finally {
+      setCommentSubmitting(false);
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -394,6 +474,55 @@ export function SubmissionDetailClient(props: SubmissionDetailClientProps) {
           </CardContent>
         </Card>
       )}
+
+      <Card>
+        <CardHeader>
+          <CardTitle>{props.commentsLabels.title}</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {comments.length === 0 && (
+            <p className="text-sm text-muted-foreground">{props.commentsLabels.noComments}</p>
+          )}
+
+          {comments.map((comment) => (
+            <div key={comment.id} className="rounded-md border p-3 space-y-1">
+              <div className="flex items-center gap-2 text-sm">
+                <span className="font-medium">
+                  {props.commentsLabels.by.replace("{author}", comment.author?.name ?? "-")}
+                </span>
+                {comment.author?.role && (
+                  <Badge variant="secondary" className="text-xs">
+                    {props.roleLabels[comment.author.role] ?? comment.author.role}
+                  </Badge>
+                )}
+                <span className="text-muted-foreground text-xs">
+                  {formatRelativeTime(comment.createdAt)}
+                </span>
+              </div>
+              <p className="text-sm whitespace-pre-wrap">{comment.content}</p>
+            </div>
+          ))}
+
+          {canComment && (
+            <div className="space-y-2 pt-2">
+              <Textarea
+                placeholder={props.commentsLabels.placeholder}
+                value={commentContent}
+                onChange={(e) => setCommentContent(e.target.value)}
+                maxLength={2000}
+                rows={3}
+              />
+              <Button
+                onClick={() => void handleCommentSubmit()}
+                disabled={commentSubmitting || !commentContent.trim()}
+                size="sm"
+              >
+                {props.commentsLabels.submit}
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
