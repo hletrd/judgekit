@@ -51,6 +51,8 @@ export async function GET(request: NextRequest) {
             SELECT id
             FROM submissions
             WHERE status = 'pending'
+               OR (status IN ('queued', 'judging')
+                   AND judge_claimed_at < (unixepoch('now') * 1000 - 300000))
             ORDER BY submitted_at ASC
             LIMIT 1
           )
@@ -75,6 +77,12 @@ export async function GET(request: NextRequest) {
 
     if (!claimed) {
       return NextResponse.json({ data: null });
+    }
+
+    if (claimed.status !== null && claimed.status !== 'pending') {
+      console.warn(
+        `[judge/poll] Reclaimed stale submission ${claimed.id} with previous status '${claimed.status}' (judge_claimed_at was stale)`
+      );
     }
 
     recordAuditEvent({
@@ -197,10 +205,8 @@ export async function POST(request: NextRequest) {
 
     const { score, maxExecutionTimeMs, maxMemoryUsedKb } = computeFinalJudgeMetrics(results);
 
-    // Update submission
-    await db
-      .update(submissions)
-      .set({
+    sqlite.transaction(() => {
+      db.update(submissions).set({
         status,
         judgeClaimToken: null,
         judgeClaimedAt: null,
@@ -209,16 +215,15 @@ export async function POST(request: NextRequest) {
         executionTimeMs: maxExecutionTimeMs,
         memoryUsedKb: maxMemoryUsedKb,
         judgedAt: new Date(),
-      })
-      .where(eq(submissions.id, submissionId));
+      }).where(eq(submissions.id, submissionId)).run();
 
-    await db.delete(submissionResults).where(eq(submissionResults.submissionId, submissionId));
+      db.delete(submissionResults).where(eq(submissionResults.submissionId, submissionId)).run();
 
-    // Insert per-test-case results
-    const rows = buildSubmissionResultRows(submissionId, results);
-    if (rows.length > 0) {
-      await db.insert(submissionResults).values(rows);
-    }
+      const rows = buildSubmissionResultRows(submissionId, results);
+      if (rows.length > 0) {
+        db.insert(submissionResults).values(rows).run();
+      }
+    })();
 
     const updated = await db.query.submissions.findFirst({
       where: eq(submissions.id, submissionId),
