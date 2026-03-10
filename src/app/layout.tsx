@@ -3,6 +3,7 @@ import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages, getTranslations } from "next-intl/server";
 import { headers } from "next/headers";
 import { ThemeProvider } from "@/components/theme-provider";
+import { getAuthUrlObject } from "@/lib/security/env";
 import { getResolvedSystemSettings } from "@/lib/system-settings";
 import "./globals.css";
 
@@ -16,6 +17,7 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     title: settings.siteTitle,
     description: settings.siteDescription,
+    metadataBase: getAuthUrlObject() ?? undefined,
   };
 }
 
