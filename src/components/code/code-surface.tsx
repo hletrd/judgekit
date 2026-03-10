@@ -1,3 +1,5 @@
+"use client";
+
 import { useEffect, useRef, useState } from "react";
 import { defaultKeymap, history, historyKeymap, indentWithTab } from "@codemirror/commands";
 import { cpp } from "@codemirror/lang-cpp";
@@ -58,7 +60,6 @@ const baseTheme = EditorView.theme({
   },
   ".cm-content": {
     caretColor: "var(--code-surface-caret)",
-    minHeight: "var(--code-surface-min-height)",
     padding: "0.875rem",
   },
   ".cm-line": {
@@ -124,9 +125,7 @@ function getLanguageExtension(language: string | null | undefined): LanguageSupp
 }
 
 function getHighlightExtension(isDark: boolean) {
-  return syntaxHighlighting(isDark ? oneDarkHighlightStyle : defaultHighlightStyle, {
-    fallback: true,
-  });
+  return syntaxHighlighting(isDark ? oneDarkHighlightStyle : defaultHighlightStyle);
 }
 
 function getEditabilityExtension(readOnly: boolean) {
@@ -343,6 +342,7 @@ export function CodeSurface({
         readOnly ? "focus-within:border-border" : "focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/15",
         className
       )}
+      style={{ minHeight: minHeight + 16 }}
     >
       <div ref={editorHostRef} />
     </div>

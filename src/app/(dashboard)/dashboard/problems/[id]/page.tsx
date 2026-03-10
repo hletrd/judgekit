@@ -165,7 +165,7 @@ export default async function ProblemDetailPage({
             {canEdit && (
               <div className="flex flex-wrap gap-2">
                 <Link href={`/dashboard/problems/${problem.id}/edit`}>
-                  <Button variant="outline">{tCommon("edit")}</Button>
+                  <Button variant="outline" size="sm">{tCommon("edit")}</Button>
                 </Link>
                 <ProblemDeleteButton problemId={problem.id} problemTitle={problem.title} />
               </div>
