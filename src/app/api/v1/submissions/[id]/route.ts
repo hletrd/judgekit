@@ -52,6 +52,14 @@ export async function GET(
 
     if (!submission) return notFound("Submission");
 
+    const isOwner = submission.userId === user.id;
+    const isPrivileged = user.role === "admin" || user.role === "super_admin" || user.role === "instructor";
+
+    if (!isOwner && !isPrivileged) {
+      const { sourceCode: _, ...rest } = submission;
+      return NextResponse.json({ data: rest });
+    }
+
     return NextResponse.json({ data: submission });
   } catch (error) {
     console.error("GET /api/v1/submissions/[id] error:", error);
