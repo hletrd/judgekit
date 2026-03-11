@@ -148,10 +148,12 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    return NextResponse.json(
+    const response = NextResponse.json(
       { data: created, passwordGenerated: password === undefined },
       { status: 201 }
     );
+    response.headers.set("Cache-Control", "no-store, no-cache");
+    return response;
   } catch (error) {
     console.error("POST /api/v1/users error:", error);
     return NextResponse.json({ error: "internalServerError" }, { status: 500 });
