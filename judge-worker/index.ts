@@ -5,7 +5,7 @@ const POLL_URL = getJudgePollUrl();
 const POLL_INTERVAL = getJudgePollIntervalMs();
 const AUTH_TOKEN = getJudgeAuthToken();
 
-if (POLL_URL.startsWith("http://") && !POLL_URL.startsWith("http://localhost") && !POLL_URL.startsWith("http://127.0.0.1")) {
+if (POLL_URL.startsWith("http://") && !POLL_URL.startsWith("http://localhost") && !POLL_URL.startsWith("http://127.0.0.1") && !POLL_URL.startsWith("http://[::1]")) {
   console.warn(
     "WARNING: JUDGE_POLL_URL uses unencrypted HTTP for a non-localhost address. " +
     "This exposes the auth token and submission data in transit. Use HTTPS in production."

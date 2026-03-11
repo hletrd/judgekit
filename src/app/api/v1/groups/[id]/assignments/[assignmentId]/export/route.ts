@@ -88,7 +88,7 @@ export async function GET(
 
     const csv = BOM + [header, ...dataRows].join("\r\n") + "\r\n";
 
-    const safeTitle = assignment.title.replace(/[^\w\s-]/g, "").replace(/"/g, "").trim().replace(/\s+/g, "-");
+    const safeTitle = assignment.title.replace(/[^\w\s-]/g, "").trim().replace(/\s+/g, "-");
     const filename = `assignment-${safeTitle}-grades.csv`;
 
     return new NextResponse(csv, {
