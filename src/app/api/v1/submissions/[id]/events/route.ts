@@ -99,6 +99,7 @@ export async function GET(
           const count = activeConnections.get(userId) ?? 1;
           if (count <= 1) {
             activeConnections.delete(userId);
+            connectionLastActivity.delete(userId);
           } else {
             activeConnections.set(userId, count - 1);
           }
