@@ -12,6 +12,22 @@ Environment=NODE_ENV=production
 ExecStart=/usr/bin/npx tsx judge-worker/index.ts
 Restart=always
 RestartSec=5
+# Security hardening
+ProtectSystem=strict
+ProtectHome=read-only
+PrivateTmp=true
+NoNewPrivileges=true
+ReadWritePaths=/home/ubuntu/online-judge/data
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+CapabilityBoundingSet=
+RestrictNamespaces=true
+RestrictRealtime=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+SystemCallArchitectures=native
 
 [Install]
 WantedBy=multi-user.target
