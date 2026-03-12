@@ -23,14 +23,14 @@ export function computeFinalJudgeMetrics(results: JudgeResultInput[] | undefined
       .map((result) => result.executionTimeMs)
       .filter((value): value is number => typeof value === "number");
     if (times.length > 0) {
-      maxExecutionTimeMs = Math.max(...times);
+      maxExecutionTimeMs = times.reduce((max, t) => Math.max(max, t), 0);
     }
 
     const memories = results
       .map((result) => result.memoryUsedKb)
       .filter((value): value is number => typeof value === "number");
     if (memories.length > 0) {
-      maxMemoryUsedKb = Math.max(...memories);
+      maxMemoryUsedKb = memories.reduce((max, m) => Math.max(max, m), 0);
     }
   }
 
