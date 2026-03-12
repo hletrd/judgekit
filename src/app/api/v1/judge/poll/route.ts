@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db, sqlite } from "@/lib/db";
 import { problems, submissions, submissionResults, testCases } from "@/lib/db/schema";
-import { eq, asc } from "drizzle-orm";
+import { eq, asc, and } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { recordAuditEvent } from "@/lib/audit/events";
 import { isJudgeAuthorized } from "@/lib/judge/auth";
@@ -168,18 +168,21 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "submissionNotFound" }, { status: 404 });
     }
 
-    if (!submission.judgeClaimToken || submission.judgeClaimToken !== claimToken) {
-      return NextResponse.json({ error: "invalidJudgeClaim" }, { status: 403 });
-    }
-
     if (IN_PROGRESS_JUDGE_STATUSES.has(status)) {
-      await db
+      const inProgressResult = db
         .update(submissions)
         .set({
           status,
           judgeClaimedAt: submission.judgeClaimedAt ?? new Date(),
         })
-        .where(eq(submissions.id, submissionId));
+        .where(
+          and(eq(submissions.id, submissionId), eq(submissions.judgeClaimToken, claimToken))
+        )
+        .run();
+
+      if (inProgressResult.changes === 0) {
+        return NextResponse.json({ error: "invalidJudgeClaim" }, { status: 403 });
+      }
 
       const updatedInProgress = await db.query.submissions.findFirst({
         where: eq(submissions.id, submissionId),
@@ -205,25 +208,38 @@ export async function POST(request: NextRequest) {
 
     const { score, maxExecutionTimeMs, maxMemoryUsedKb } = computeFinalJudgeMetrics(results);
 
-    sqlite.transaction(() => {
-      db.update(submissions).set({
-        status,
-        judgeClaimToken: null,
-        judgeClaimedAt: null,
-        compileOutput: compileOutput ?? null,
-        score,
-        executionTimeMs: maxExecutionTimeMs,
-        memoryUsedKb: maxMemoryUsedKb,
-        judgedAt: new Date(),
-      }).where(eq(submissions.id, submissionId)).run();
+    try {
+      sqlite.transaction(() => {
+        const finalResult = db.update(submissions).set({
+          status,
+          judgeClaimToken: null,
+          judgeClaimedAt: null,
+          compileOutput: compileOutput ?? null,
+          score,
+          executionTimeMs: maxExecutionTimeMs,
+          memoryUsedKb: maxMemoryUsedKb,
+          judgedAt: new Date(),
+        }).where(
+          and(eq(submissions.id, submissionId), eq(submissions.judgeClaimToken, claimToken))
+        ).run();
 
-      db.delete(submissionResults).where(eq(submissionResults.submissionId, submissionId)).run();
+        if (finalResult.changes === 0) {
+          throw new Error("claim_mismatch");
+        }
 
-      const rows = buildSubmissionResultRows(submissionId, results);
-      if (rows.length > 0) {
-        db.insert(submissionResults).values(rows).run();
+        db.delete(submissionResults).where(eq(submissionResults.submissionId, submissionId)).run();
+
+        const rows = buildSubmissionResultRows(submissionId, results);
+        if (rows.length > 0) {
+          db.insert(submissionResults).values(rows).run();
+        }
+      })();
+    } catch (txError) {
+      if (txError instanceof Error && txError.message === "claim_mismatch") {
+        return NextResponse.json({ error: "invalidJudgeClaim" }, { status: 403 });
       }
-    })();
+      throw txError;
+    }
 
     const updated = await db.query.submissions.findFirst({
       where: eq(submissions.id, submissionId),
