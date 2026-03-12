@@ -22,6 +22,11 @@ ProtectKernelTunables=true
 ProtectKernelModules=true
 ProtectControlGroups=true
 RestrictSUIDSGID=true
+CapabilityBoundingSet=
+RestrictNamespaces=true
+RestrictRealtime=true
+LockPersonality=true
+SystemCallArchitectures=native
 MemoryMax=2G
 CPUQuota=200%
 

@@ -10,6 +10,7 @@ use tracing::Instrument;
 
 const COMPILATION_MEMORY_LIMIT_MB: u32 = 1024;
 const COMPILATION_TIMEOUT_MS: u64 = 20_000;
+const MAX_COMPILATION_TIMEOUT_MS: u64 = 60_000;
 const MIN_TIMEOUT_MS: u64 = 100;
 const MAX_TIME_LIMIT_MS: u64 = 30_000;
 const MAX_MEMORY_LIMIT_MB: u32 = 1024;
@@ -100,7 +101,7 @@ async fn execute_inner(client: &ApiClient, config: &Config, submission: Submissi
     // Compile phase (if language requires compilation)
     if let Some(compile_command) = lang_config.compile_command {
         let clamped_time = submission.time_limit_ms.min(MAX_TIME_LIMIT_MS);
-        let compile_timeout_ms = COMPILATION_TIMEOUT_MS.max(clamped_time.saturating_mul(5));
+        let compile_timeout_ms = COMPILATION_TIMEOUT_MS.max(clamped_time.saturating_mul(5)).min(MAX_COMPILATION_TIMEOUT_MS);
         let compile_memory_mb =
             COMPILATION_MEMORY_LIMIT_MB.max(submission.memory_limit_mb.min(MAX_MEMORY_LIMIT_MB));
 
@@ -285,7 +286,6 @@ async fn report_result(
 #[derive(Serialize)]
 struct DeadLetterEntry<'a> {
     submission_id: &'a str,
-    claim_token: &'a str,
     status: &'a str,
     compile_output: &'a str,
     results: &'a [TestResult],
@@ -365,7 +365,6 @@ async fn report_with_retry(
     };
     let entry = DeadLetterEntry {
         submission_id,
-        claim_token,
         status,
         compile_output,
         results: &results,
@@ -412,6 +411,31 @@ async fn report_with_retry(
                         dead_letter_path = ?file_path,
                         "All report attempts exhausted; result written to dead-letter file"
                     );
+                    // Prune dead-letter directory if it exceeds 1000 files
+                    if let Ok(entries) = std::fs::read_dir(&config.dead_letter_dir) {
+                        let mut files: Vec<_> = entries
+                            .filter_map(|e| e.ok())
+                            .filter(|e| {
+                                e.path()
+                                    .extension()
+                                    .map_or(false, |ext| ext == "json")
+                            })
+                            .collect();
+                        if files.len() > 1000 {
+                            files.sort_by_key(|e| {
+                                e.metadata()
+                                    .and_then(|m| m.modified())
+                                    .unwrap_or(std::time::SystemTime::UNIX_EPOCH)
+                            });
+                            for entry in &files[..files.len() - 1000] {
+                                let _ = std::fs::remove_file(entry.path());
+                                tracing::info!(
+                                    path = ?entry.path(),
+                                    "Pruned old dead-letter file"
+                                );
+                            }
+                        }
+                    }
                 }
             },
         },
