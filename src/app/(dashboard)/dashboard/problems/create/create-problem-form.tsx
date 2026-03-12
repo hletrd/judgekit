@@ -148,8 +148,7 @@ export default function CreateProblemForm({
       const fileContents = await selectedFile.text();
       updateTestCase(index, { [field]: fileContents });
       toast.success(t("testCaseFileLoaded", { name: selectedFile.name }));
-    } catch (error) {
-      console.error("Failed to read test case file:", error);
+    } catch {
       toast.error(t("testCaseFileLoadFailed"));
     } finally {
       event.target.value = "";
@@ -235,7 +234,7 @@ export default function CreateProblemForm({
         </Tabs>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <div className="space-y-2">
           <Label htmlFor="timeLimit">{t("timeLimitLabel")}</Label>
           <Input
