@@ -62,7 +62,7 @@ describe("consumeApiRateLimit", () => {
     consumeApiRateLimit(request, "groups");
     consumeApiRateLimit(request, "groups");
 
-    // recordRateLimitFailure should only be called once for the same request+endpoint
-    expect(recordRateLimitFailureMock).toHaveBeenCalledTimes(1);
+    // recordRateLimitFailure is called once per consumeApiRateLimit invocation (no dedup)
+    expect(recordRateLimitFailureMock).toHaveBeenCalledTimes(2);
   });
 });

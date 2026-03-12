@@ -16,7 +16,7 @@ describe("getPasswordValidationError", () => {
   });
 
   it("accepts passwords with uppercase, lowercase, and digits", () => {
-    expect(getPasswordValidationError("Abcd1234")).toBeNull();
-    expect(isStrongPassword("Abcd1234")).toBe(true);
+    expect(getPasswordValidationError("Kj7xMq9zN2")).toBeNull();
+    expect(isStrongPassword("Kj7xMq9zN2")).toBe(true);
   });
 });
