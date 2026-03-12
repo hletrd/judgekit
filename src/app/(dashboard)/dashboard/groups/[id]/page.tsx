@@ -13,6 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { canManageGroupResources, getManageableProblemsForGroup } from "@/lib/assignments/management";
 import type { UserRole } from "@/types";
+import { assertUserRole } from "@/lib/security/constants";
 import AssignmentFormDialog, { type AssignmentEditorValue } from "./assignment-form-dialog";
 import { AssignmentDeleteButton } from "./assignment-delete-button";
 import { GroupMembersManager } from "./group-members-manager";
@@ -67,7 +68,7 @@ export default async function GroupDetailPage({ params }: { params: Promise<{ id
     getLocale(),
     getResolvedSystemTimeZone(),
   ]);
-  const role = session.user.role as UserRole;
+  const role = assertUserRole(session.user.role as string);
 
   const group = await db.query.groups.findFirst({
     where: eq(groups.id, groupId),
