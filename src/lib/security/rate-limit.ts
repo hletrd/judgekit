@@ -31,9 +31,21 @@ function evictStaleEntries() {
 // Run eviction periodically instead of on every rate limit check
 // to reduce SQLite write contention under load
 const EVICTION_INTERVAL_MS = 60_000; // 1 minute
-setInterval(() => {
-  evictStaleEntries();
-}, EVICTION_INTERVAL_MS);
+let evictionTimer: ReturnType<typeof setInterval> | null = null;
+
+export function startRateLimitEviction() {
+  if (evictionTimer) return;
+  evictionTimer = setInterval(() => {
+    evictStaleEntries();
+  }, EVICTION_INTERVAL_MS);
+}
+
+export function stopRateLimitEviction() {
+  if (evictionTimer) {
+    clearInterval(evictionTimer);
+    evictionTimer = null;
+  }
+}
 
 function getEntry(key: string) {
   const now = Date.now();

@@ -143,4 +143,16 @@ async function pruneOldAuditEvents() {
 }
 
 // Run retention cleanup once per day
-setInterval(pruneOldAuditEvents, 24 * 60 * 60 * 1000);
+let pruneTimer: ReturnType<typeof setInterval> | null = null;
+
+export function startAuditEventPruning() {
+  if (pruneTimer) return;
+  pruneTimer = setInterval(pruneOldAuditEvents, 24 * 60 * 60 * 1000);
+}
+
+export function stopAuditEventPruning() {
+  if (pruneTimer) {
+    clearInterval(pruneTimer);
+    pruneTimer = null;
+  }
+}
