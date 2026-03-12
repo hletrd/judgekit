@@ -10,6 +10,7 @@ import { users } from "@/lib/db/schema";
 import { clearRateLimit, isRateLimited, recordRateLimitFailure } from "@/lib/security/rate-limit";
 import { getPasswordValidationError } from "@/lib/security/password";
 import { isTrustedServerActionOrigin } from "@/lib/security/server-actions";
+import { logger } from "@/lib/logger";
 
 function getChangePasswordRateLimitKey(userId: string) {
   return `change-password:user:${userId}`;
@@ -69,7 +70,7 @@ export async function changePassword(
       .where(eq(users.id, user.id))
       .run();
   } catch (error) {
-    console.error("Failed to change password:", error);
+    logger.error({ err: error }, "Failed to change password");
     return { success: false, error: "error" };
   }
 

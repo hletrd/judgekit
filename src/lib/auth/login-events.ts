@@ -1,6 +1,7 @@
 import { db } from "@/lib/db";
 import { loginEvents } from "@/lib/db/schema";
 import { normalizeText, getClientIp, getRequestPath, MAX_PATH_LENGTH } from "@/lib/security/request-context";
+import { logger } from "@/lib/logger";
 
 export type LoginEventOutcome =
   | "success"
@@ -108,10 +109,6 @@ export function recordLoginEventWithContext({
       })
       .run();
   } catch (error) {
-    console.warn("Failed to persist login event", {
-      outcome,
-      userId: normalizeText(userId, 64),
-      error: error instanceof Error ? error.message : "unknown_error",
-    });
+    logger.warn({ outcome, userId: normalizeText(userId, 64), err: error }, "Failed to persist login event");
   }
 }

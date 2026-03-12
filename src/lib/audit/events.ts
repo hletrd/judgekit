@@ -2,6 +2,7 @@ import { headers } from "next/headers";
 import { db } from "@/lib/db";
 import { auditEvents } from "@/lib/db/schema";
 import { normalizeText, getClientIp, getRequestPath, MAX_TEXT_LENGTH, MAX_PATH_LENGTH } from "@/lib/security/request-context";
+import { logger } from "@/lib/logger";
 
 type RequestLike = {
   headers: Headers;
@@ -110,12 +111,7 @@ export function recordAuditEvent({
   } catch (error) {
     auditEventWriteFailures += 1;
     lastAuditEventWriteFailureAt = new Date().toISOString();
-    console.warn("Failed to persist audit event", {
-      action,
-      actorId: normalizeText(actorId, 64),
-      resourceType,
-      error: error instanceof Error ? error.message : "unknown_error",
-    });
+    logger.warn({ action, actorId: normalizeText(actorId, 64), resourceType, err: error }, "Failed to persist audit event");
   }
 }
 

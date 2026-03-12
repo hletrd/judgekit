@@ -11,6 +11,7 @@ import {
 } from "@/lib/api/auth";
 import { consumeApiRateLimit } from "@/lib/security/api-rate-limit";
 import { isUserRole } from "@/lib/security/constants";
+import { logger } from "@/lib/logger";
 
 /** Shape returned by getApiUser */
 export type AuthUser = NonNullable<Awaited<ReturnType<typeof getApiUser>>>;
@@ -161,7 +162,7 @@ export function createApiHandler<T = unknown>(config: HandlerConfig<T>) {
         params,
       });
     } catch (error) {
-      console.error(`[${req.method} ${req.nextUrl.pathname}] Unhandled error:`, error);
+      logger.error({ err: error, method: req.method, path: req.nextUrl.pathname }, "Unhandled error");
       return NextResponse.json({ error: "internalServerError" }, { status: 500 });
     }
   };

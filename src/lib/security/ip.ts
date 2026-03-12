@@ -1,4 +1,5 @@
 import { isIP } from "net";
+import { logger } from "@/lib/logger";
 
 type HeaderCarrier = {
   get(name: string): string | null;
@@ -38,9 +39,7 @@ export function extractClientIp(headers: HeaderCarrier) {
   }
 
   if (process.env.NODE_ENV === "production" && !forwardedFor) {
-    console.warn(
-      "[security] No X-Forwarded-For header in production — ensure a trusted reverse proxy is configured"
-    );
+    logger.warn("[security] No X-Forwarded-For header in production — ensure a trusted reverse proxy is configured");
   }
 
   return "0.0.0.0";

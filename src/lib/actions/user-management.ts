@@ -18,6 +18,7 @@ import {
 import { isUserRole } from "@/lib/security/constants";
 import { isTrustedServerActionOrigin } from "@/lib/security/server-actions";
 import { checkServerActionRateLimit } from "@/lib/security/api-rate-limit";
+import { logger } from "@/lib/logger";
 
 type UserUpdates = Partial<typeof users.$inferInsert>;
 
@@ -119,7 +120,7 @@ export async function toggleUserActive(userId: string, isActive: boolean): Promi
 
     return { success: true };
   } catch (error) {
-    console.error("Failed to update user status:", error);
+    logger.error({ err: error }, "Failed to update user status");
     return { success: false, error: "updateUserStatusFailed" };
   }
 }
@@ -177,7 +178,7 @@ export async function deleteUserPermanently(userId: string, confirmUsername: str
 
     return { success: true };
   } catch (error) {
-    console.error("Failed to permanently delete user:", error);
+    logger.error({ err: error }, "Failed to permanently delete user");
     return { success: false, error: "deleteUserFailed" };
   }
 }
@@ -299,7 +300,7 @@ export async function editUser(userId: string, data: ManagedUserInput): Promise<
 
     return { success: true };
   } catch (error) {
-    console.error("Failed to update user:", error);
+    logger.error({ err: error }, "Failed to update user");
     return { success: false, error: "updateUserFailed" };
   }
 }
@@ -394,7 +395,7 @@ export async function createUser(data: ManagedUserInput): Promise<UserManagement
       generatedPassword: data.password ? undefined : generatedPassword,
     };
   } catch (error) {
-    console.error("Failed to create user:", error);
+    logger.error({ err: error }, "Failed to create user");
     return { success: false, error: "createUserFailed" };
   }
 }
