@@ -1,3 +1,8 @@
+// NOTE: This route is named "poll" for historical reasons — the original worker
+// architecture polled this endpoint. The current Rust worker (judge-worker-rs)
+// instead POSTs results here when judging is complete or progressing. The path
+// /api/v1/judge/poll is baked into the deployed worker binary, so renaming the
+// directory would break production without a coordinated redeploy.
 import { NextRequest } from "next/server";
 import { apiSuccess, apiError } from "@/lib/api/responses";
 import { db, sqlite } from "@/lib/db";
