@@ -15,7 +15,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { auth } from "@/lib/auth";
-import { LogFilterSelect } from "./log-filter-select";
+import { FilterSelect } from "@/components/filter-select";
 import { db } from "@/lib/db";
 import { loginEvents, users } from "@/lib/db/schema";
 import { formatDateTimeInTimeZone } from "@/lib/datetime";
@@ -216,7 +216,7 @@ export default async function AdminLoginLogsPage({
               <label className="text-sm font-medium" htmlFor="login-log-outcome">
                 {t("filters.outcomeLabel")}
               </label>
-              <LogFilterSelect
+              <FilterSelect
                 name="outcome"
                 defaultValue={outcomeFilter}
                 placeholder={t("filters.allOutcomes")}

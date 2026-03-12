@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { auth } from "@/lib/auth";
-import { AuditFilterSelect } from "./audit-filter-select";
+import { FilterSelect } from "@/components/filter-select";
 import { db } from "@/lib/db";
 import { auditEvents, users } from "@/lib/db/schema";
 import { formatDateTimeInTimeZone } from "@/lib/datetime";
@@ -306,7 +306,7 @@ export default async function AdminAuditLogsPage({
               <label className="text-sm font-medium" htmlFor="audit-log-resource-type">
                 {t("filters.resourceTypeLabel")}
               </label>
-              <AuditFilterSelect
+              <FilterSelect
                 name="resource"
                 defaultValue={resourceTypeFilter}
                 placeholder={resourceLabels.all}

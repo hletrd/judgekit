@@ -10,7 +10,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { RoleFilterSelect } from "./role-filter-select";
+import { FilterSelect } from "@/components/filter-select";
 import { Badge } from "@/components/ui/badge";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
@@ -139,10 +139,14 @@ export default async function UserManagementPage({
               <label className="text-sm font-medium" htmlFor="users-role">
                 {t("filters.roleLabel")}
               </label>
-              <RoleFilterSelect
+              <FilterSelect
+                name="role"
                 defaultValue={roleFilter && roleFilter in roleLabels ? roleFilter : ""}
                 placeholder={t("allRoles")}
-                options={Object.entries(roleLabels).map(([value, label]) => ({ value, label }))}
+                options={[
+                  { value: "", label: t("allRoles") },
+                  ...Object.entries(roleLabels).map(([value, label]) => ({ value, label })),
+                ]}
               />
             </div>
             <div className="flex gap-2">
