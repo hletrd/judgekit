@@ -9,6 +9,7 @@ import { hash } from "bcryptjs";
 import { generateSecurePassword } from "@/lib/auth/generated-password";
 import { bulkUserCreateSchema } from "@/lib/validators/bulk-users";
 import { consumeApiRateLimit } from "@/lib/security/api-rate-limit";
+import { validateRoleChange } from "@/lib/users/core";
 import { logger } from "@/lib/logger";
 
 export async function POST(request: NextRequest) {
@@ -31,6 +32,16 @@ export async function POST(request: NextRequest) {
     }
 
     const { users: userList } = parsed.data;
+
+    // Validate role escalation for each user
+    for (const entry of userList) {
+      if (entry.role && entry.role !== "student") {
+        const roleError = validateRoleChange(user.role, entry.role);
+        if (roleError) {
+          return apiError(roleError, 403);
+        }
+      }
+    }
 
     // Check for duplicate usernames within the request itself
     const requestUsernames = userList.map((u) => u.username);
