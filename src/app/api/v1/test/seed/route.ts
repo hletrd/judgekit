@@ -60,7 +60,7 @@ const createUserSchema = z.object({
     username: z.string().min(1).startsWith("e2e-"),
     name: z.string().min(1).optional(),
     password: z.string().min(1).optional(),
-    role: z.enum(["student", "instructor", "admin", "super_admin"]).optional(),
+    role: z.enum(["student", "instructor"]).optional(),
   }),
 });
 
