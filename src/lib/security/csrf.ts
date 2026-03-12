@@ -8,6 +8,10 @@ function getExpectedHost(request: NextRequest) {
   if (authUrl) {
     return authUrl.host;
   }
+  // In production, refuse to fall back to request headers — AUTH_URL must be configured.
+  if (process.env.NODE_ENV === "production") {
+    return null;
+  }
   return request.headers.get("x-forwarded-host")?.split(",")[0]?.trim() ?? request.headers.get("host")?.trim() ?? null;
 }
 
