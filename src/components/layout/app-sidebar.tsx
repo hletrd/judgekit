@@ -81,17 +81,21 @@ export function AppSidebar({ user, siteTitle }: AppSidebarProps) {
           <SidebarGroupLabel>{t("navigation")}</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {filteredNav.map((item) => (
-                <SidebarMenuItem key={item.href}>
-                  <SidebarMenuButton
-                    isActive={pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href + "/"))}
-                    render={<Link href={item.href} />}
-                  >
-                    <item.icon className="h-4 w-4" />
-                    <span>{t(item.titleKey)}</span>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
+              {filteredNav.map((item) => {
+                const isActive = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href + "/"));
+                return (
+                  <SidebarMenuItem key={item.href}>
+                    <SidebarMenuButton
+                      isActive={isActive}
+                      aria-current={isActive ? "page" : undefined}
+                      render={<Link href={item.href} />}
+                    >
+                      <item.icon className="h-4 w-4" aria-hidden="true" />
+                      <span>{t(item.titleKey)}</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
@@ -100,17 +104,21 @@ export function AppSidebar({ user, siteTitle }: AppSidebarProps) {
             <SidebarGroupLabel>{t("administration")}</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
-                {filteredAdmin.map((item) => (
-                  <SidebarMenuItem key={item.href}>
-                    <SidebarMenuButton
-                      isActive={pathname === item.href || pathname.startsWith(item.href + "/")}
-                      render={<Link href={item.href} />}
-                    >
-                      <item.icon className="h-4 w-4" />
-                      <span>{t(item.titleKey)}</span>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
+                {filteredAdmin.map((item) => {
+                  const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
+                  return (
+                    <SidebarMenuItem key={item.href}>
+                      <SidebarMenuButton
+                        isActive={isActive}
+                        aria-current={isActive ? "page" : undefined}
+                        render={<Link href={item.href} />}
+                      >
+                        <item.icon className="h-4 w-4" aria-hidden="true" />
+                        <span>{t(item.titleKey)}</span>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  );
+                })}
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
