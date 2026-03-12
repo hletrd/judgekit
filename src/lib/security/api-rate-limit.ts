@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getRateLimitKey, isRateLimited, recordRateLimitFailure } from "./rate-limit";
+import { getRateLimitKey, isRateLimited } from "./rate-limit";
 import { db } from "@/lib/db";
 import { rateLimits } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
@@ -20,6 +20,56 @@ function hasConsumedRequestKey(request: NextRequest, key: string) {
   return consumedRequestKeys.get(request)?.has(key) ?? false;
 }
 
+/**
+ * Record an API request attempt without escalating backoff.
+ * Unlike recordRateLimitFailure, this simply increments the counter
+ * without applying exponential blocking on threshold breach.
+ */
+function recordApiAttempt(key: string) {
+  const now = Date.now();
+  const existing = db.select().from(rateLimits).where(eq(rateLimits.key, key)).get();
+
+  const windowMs = API_RATE_LIMIT_WINDOW_MS;
+
+  if (!existing) {
+    db.insert(rateLimits)
+      .values({
+        id: nanoid(),
+        key,
+        attempts: 1,
+        windowStartedAt: now,
+        blockedUntil: null,
+        consecutiveBlocks: 0,
+        lastAttempt: now,
+      })
+      .run();
+    return;
+  }
+
+  if (existing.windowStartedAt + windowMs <= now) {
+    // Window expired, reset
+    db.update(rateLimits)
+      .set({ attempts: 1, windowStartedAt: now, lastAttempt: now })
+      .where(eq(rateLimits.key, key))
+      .run();
+    return;
+  }
+
+  // Simply increment without escalating backoff
+  const blocked = existing.attempts + 1 >= API_RATE_LIMIT_MAX
+    ? now + windowMs
+    : null;
+
+  db.update(rateLimits)
+    .set({
+      attempts: existing.attempts + 1,
+      lastAttempt: now,
+      blockedUntil: blocked,
+    })
+    .where(eq(rateLimits.key, key))
+    .run();
+}
+
 function rateLimitedResponse() {
   return NextResponse.json(
     { error: "rateLimited" },
@@ -37,11 +87,15 @@ export function consumeApiRateLimit(
 ): NextResponse | null {
   const key = getRateLimitKey(`api:${endpoint}`, request.headers);
 
+  if (hasConsumedRequestKey(request, key)) {
+    return null;
+  }
+
   if (isRateLimited(key)) {
     return rateLimitedResponse();
   }
 
-  recordRateLimitFailure(key);
+  recordApiAttempt(key);
   rememberRequestKey(request, key);
 
   return null;

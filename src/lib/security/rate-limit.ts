@@ -1,4 +1,4 @@
-import { db } from "@/lib/db";
+import { db, sqlite } from "@/lib/db";
 import { rateLimits } from "@/lib/db/schema";
 import { extractClientIp } from "@/lib/security/ip";
 import { eq, lt } from "drizzle-orm";
@@ -80,44 +80,45 @@ export function isAnyKeyRateLimited(...keys: string[]) {
 }
 
 export function recordRateLimitFailure(key: string) {
-  const { now, entry, exists } = getEntry(key);
-  const attempts = entry.attempts + 1;
+  sqlite.transaction(() => {
+    const { now, entry, exists } = getEntry(key);
+    const attempts = entry.attempts + 1;
 
-  let blockedUntil = entry.blockedUntil;
-  let consecutiveBlocks = entry.consecutiveBlocks;
+    let blockedUntil = entry.blockedUntil;
+    let consecutiveBlocks = entry.consecutiveBlocks;
 
-  if (attempts >= RATE_LIMIT_MAX_ATTEMPTS) {
-    // Escalating backoff: 2^consecutiveBlocks multiplier, capped at 2^4 = 16x (~4 hours)
-    const multiplier = Math.pow(2, Math.min(consecutiveBlocks, 4));
-    const blockDuration = RATE_LIMIT_BLOCK_MS * multiplier;
-    blockedUntil = now + blockDuration;
-    consecutiveBlocks += 1;
-  }
+    if (attempts >= RATE_LIMIT_MAX_ATTEMPTS) {
+      const multiplier = Math.pow(2, Math.min(consecutiveBlocks, 4));
+      const blockDuration = RATE_LIMIT_BLOCK_MS * multiplier;
+      blockedUntil = now + blockDuration;
+      consecutiveBlocks += 1;
+    }
 
-  if (exists) {
-    db.update(rateLimits)
-      .set({
-        attempts,
-        windowStartedAt: entry.windowStartedAt,
-        blockedUntil: blockedUntil || null,
-        consecutiveBlocks,
-        lastAttempt: now,
-      })
-      .where(eq(rateLimits.key, key))
-      .run();
-  } else {
-    db.insert(rateLimits)
-      .values({
-        id: nanoid(),
-        key,
-        attempts,
-        windowStartedAt: entry.windowStartedAt,
-        blockedUntil: blockedUntil || null,
-        consecutiveBlocks,
-        lastAttempt: now,
-      })
-      .run();
-  }
+    if (exists) {
+      db.update(rateLimits)
+        .set({
+          attempts,
+          windowStartedAt: entry.windowStartedAt,
+          blockedUntil: blockedUntil || null,
+          consecutiveBlocks,
+          lastAttempt: now,
+        })
+        .where(eq(rateLimits.key, key))
+        .run();
+    } else {
+      db.insert(rateLimits)
+        .values({
+          id: nanoid(),
+          key,
+          attempts,
+          windowStartedAt: entry.windowStartedAt,
+          blockedUntil: blockedUntil || null,
+          consecutiveBlocks,
+          lastAttempt: now,
+        })
+        .run();
+    }
+  })();
 
   evictStaleEntries();
 }
