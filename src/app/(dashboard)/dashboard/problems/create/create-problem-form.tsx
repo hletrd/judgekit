@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { nanoid } from "nanoid";
 import { Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -18,6 +19,7 @@ import { ProblemDescription } from "@/components/problem-description";
 type ProblemVisibility = "public" | "private" | "hidden";
 
 type ProblemTestCaseDraft = {
+  _key?: string;
   input: string;
   expectedOutput: string;
   isVisible: boolean;
@@ -42,6 +44,7 @@ type CreateProblemFormProps = {
 
 function createEmptyTestCase(): ProblemTestCaseDraft {
   return {
+    _key: nanoid(),
     input: "",
     expectedOutput: "",
     isVisible: false,
@@ -72,7 +75,9 @@ export default function CreateProblemForm({
   const [visibility, setVisibility] = useState<ProblemVisibility>(initialProblem?.visibility ?? "private");
   const [testCaseOverrideEnabled, setTestCaseOverrideEnabled] = useState(false);
   const [testCases, setTestCases] = useState<ProblemTestCaseDraft[]>(
-    initialProblem?.testCases.length ? initialProblem.testCases : []
+    initialProblem?.testCases.length
+      ? initialProblem.testCases.map((tc) => ({ ...tc, _key: nanoid() }))
+      : []
   );
   const areTestCasesEditable = !testCasesLocked || testCaseOverrideEnabled;
 
@@ -166,7 +171,9 @@ export default function CreateProblemForm({
           timeLimitMs,
           memoryLimitMb,
           visibility,
-          ...(areTestCasesEditable ? { testCases } : {}),
+          ...(areTestCasesEditable
+            ? { testCases: testCases.map(({ _key: _, ...rest }) => rest) }
+            : {}),
           ...(testCaseOverrideEnabled ? { allowLockedTestCases: true } : {}),
         }),
       });
@@ -310,7 +317,7 @@ export default function CreateProblemForm({
         ) : (
           <div className="space-y-4">
             {testCases.map((testCase, index) => (
-              <div key={`${mode}-test-case-${index}`} className="space-y-4 rounded-lg border bg-muted/20 p-4">
+              <div key={testCase._key} className="space-y-4 rounded-lg border bg-muted/20 p-4">
                 <div className="flex items-center justify-between gap-4">
                   <h4 className="font-medium">{t("testCaseLabel", { number: index + 1 })}</h4>
                   <Button

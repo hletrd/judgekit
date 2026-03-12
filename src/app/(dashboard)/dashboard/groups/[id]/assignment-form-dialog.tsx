@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { nanoid } from "nanoid";
 import { Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { apiFetch } from "@/lib/api/client";
@@ -27,6 +28,7 @@ type AvailableProblem = {
 };
 
 type AssignmentProblemDraft = {
+  _key?: string;
   problemId: string;
   points: number;
 };
@@ -52,6 +54,7 @@ type AssignmentFormDialogProps = {
 
 function createEmptyProblemDraft(availableProblems: AvailableProblem[]): AssignmentProblemDraft {
   return {
+    _key: nanoid(),
     problemId: availableProblems[0]?.id ?? "",
     points: 100,
   };
@@ -103,7 +106,9 @@ export default function AssignmentFormDialog({
   );
   const [latePenalty, setLatePenalty] = useState(initialAssignment?.latePenalty ?? 0);
   const [problemRows, setProblemRows] = useState<AssignmentProblemDraft[]>(
-    initialAssignment?.problems.length ? initialAssignment.problems : []
+    initialAssignment?.problems.length
+      ? initialAssignment.problems.map((p) => ({ ...p, _key: nanoid() }))
+      : []
   );
 
   function resetState() {
@@ -113,7 +118,11 @@ export default function AssignmentFormDialog({
     setDeadline(formatDateTimeInput(initialAssignment?.deadline ?? null));
     setLateDeadline(formatDateTimeInput(initialAssignment?.lateDeadline ?? null));
     setLatePenalty(initialAssignment?.latePenalty ?? 0);
-    setProblemRows(initialAssignment?.problems.length ? initialAssignment.problems : []);
+    setProblemRows(
+      initialAssignment?.problems.length
+        ? initialAssignment.problems.map((p) => ({ ...p, _key: nanoid() }))
+        : []
+    );
   }
 
   function getErrorMessage(error: unknown) {
@@ -187,7 +196,9 @@ export default function AssignmentFormDialog({
             deadline: parseDateTimeInput(deadline),
             lateDeadline: parseDateTimeInput(lateDeadline),
             latePenalty,
-            ...(areProblemsEditable ? { problems: problemRows } : {}),
+            ...(areProblemsEditable
+              ? { problems: problemRows.map(({ _key: _, ...rest }) => rest) }
+              : {}),
             ...(problemOverrideEnabled ? { allowLockedProblems: true } : {}),
           }),
         }
@@ -361,7 +372,7 @@ export default function AssignmentFormDialog({
               <div className="space-y-4">
                 {problemRows.map((row, index) => (
                   <div
-                    key={`${initialAssignment?.id ?? "new"}-assignment-problem-${index}`}
+                    key={row._key}
                     className="space-y-4 rounded-lg border bg-muted/20 p-4"
                   >
                     <div className="flex items-center justify-between gap-3">
