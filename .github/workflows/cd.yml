@@ -13,7 +13,7 @@ jobs:
     environment: production
     steps:
       - name: Deploy to server
-        uses: appleboy/ssh-action@v1
+        uses: appleboy/ssh-action@2dc9d598b8a29380f4812a743a75a0e78ba2a258 # v1.2.0
         with:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
