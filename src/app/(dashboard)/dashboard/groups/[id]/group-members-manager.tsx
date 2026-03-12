@@ -11,6 +11,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { useRouter } from "next/navigation";
 
 type GroupMember = {
   id: string;
@@ -55,6 +56,7 @@ export function GroupMembersManager({
 }: GroupMembersManagerProps) {
   const t = useTranslations("groups");
   const tCommon = useTranslations("common");
+  const router = useRouter();
   const [isAdding, setIsAdding] = useState(false);
   const [isBulkAdding, setIsBulkAdding] = useState(false);
   const [selectedStudentId, setSelectedStudentId] = useState(availableStudents[0]?.id ?? "");
@@ -181,6 +183,8 @@ export function GroupMembersManager({
       setSelectedBulkIds(new Set());
 
       toast.success(t("bulkAddSuccess", { count: enrolled, skipped }));
+      // Refresh server data to show accurate member list
+      router.refresh();
     } catch (error) {
       toast.error(getErrorMessage(error));
     } finally {
