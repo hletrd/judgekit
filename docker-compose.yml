@@ -1,0 +1,81 @@
+# Judge Docker images for local development
+#
+# Build all images with latest tag:
+#   docker compose build
+#
+# Build with git SHA version tag (SEC-M13):
+#   GIT_SHA=$(git rev-parse --short HEAD) docker compose build
+#   This tags each image as both `judge-<lang>:latest` and `judge-<lang>:<GIT_SHA>`
+#
+# Build a single image:
+#   docker compose build judge-cpp
+#
+# Push all images (if using a registry):
+#   docker compose push
+
+services:
+  judge-cpp:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.judge-cpp
+    image: judge-cpp:${GIT_SHA:-latest}
+
+  judge-python:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.judge-python
+    image: judge-python:${GIT_SHA:-latest}
+
+  judge-node:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.judge-node
+    image: judge-node:${GIT_SHA:-latest}
+
+  judge-jvm:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.judge-jvm
+    image: judge-jvm:${GIT_SHA:-latest}
+
+  judge-rust:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.judge-rust
+    image: judge-rust:${GIT_SHA:-latest}
+
+  judge-go:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.judge-go
+    image: judge-go:${GIT_SHA:-latest}
+
+  judge-swift:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.judge-swift
+    image: judge-swift:${GIT_SHA:-latest}
+
+  judge-csharp:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.judge-csharp
+    image: judge-csharp:${GIT_SHA:-latest}
+
+  judge-r:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.judge-r
+    image: judge-r:${GIT_SHA:-latest}
+
+  judge-perl:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.judge-perl
+    image: judge-perl:${GIT_SHA:-latest}
+
+  judge-php:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.judge-php
+    image: judge-php:${GIT_SHA:-latest}
