@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -35,6 +35,17 @@ export default function EditUserDialog({ user }: EditUserDialogProps) {
   const [className, setClassName] = useState(user.className || "");
   const [role, setRole] = useState(user.role);
   const [password, setPassword] = useState("");
+
+  useEffect(() => {
+    if (open) {
+      setUsername(user.username);
+      setEmail(user.email || "");
+      setName(user.name);
+      setClassName(user.className || "");
+      setRole(user.role);
+      setPassword("");
+    }
+  }, [open, user]);
 
   const roleLabels = {
     student: t("roleOptions.student"),
