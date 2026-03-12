@@ -3,28 +3,75 @@ use std::path::PathBuf;
 use std::time::Duration;
 
 pub struct Config {
-    pub poll_url: String,
+    pub claim_url: String,
+    pub report_url: String,
     pub poll_interval: Duration,
     pub auth_token: String,
     pub disable_custom_seccomp: bool,
     pub seccomp_profile_path: PathBuf,
+    /// Directory where failed result payloads are written as JSON for manual recovery.
+    /// Defaults to `./dead-letter`. Configurable via `DEAD_LETTER_DIR` env var.
+    pub dead_letter_dir: PathBuf,
+    /// Maximum number of submissions to judge concurrently.
+    /// Defaults to 1. Configurable via `JUDGE_CONCURRENCY` env var (1..=16).
+    pub judge_concurrency: usize,
 }
 
 impl Config {
     pub fn from_env() -> Result<Self, String> {
-        let poll_url = env::var("JUDGE_POLL_URL")
-            .unwrap_or_else(|_| "http://localhost:3000/api/v1/judge/poll".to_string());
+        // Derive claim and report URLs.
+        //
+        // Preferred: JUDGE_BASE_URL (e.g. "http://localhost:3000/api/v1")
+        //   -> claim_url = {base}/judge/claim
+        //   -> report_url = {base}/judge/poll
+        //
+        // Legacy fallback: JUDGE_POLL_URL (e.g. "http://localhost:3000/api/v1/judge/poll")
+        //   -> report_url = JUDGE_POLL_URL (unchanged)
+        //   -> claim_url  = JUDGE_POLL_URL with "/judge/poll" replaced by "/judge/claim"
+        //
+        // Default: http://localhost:3000/api/v1
+        let (claim_url, report_url) = if let Ok(base) = env::var("JUDGE_BASE_URL") {
+            let base = base.trim_end_matches('/');
+            (
+                format!("{base}/judge/claim"),
+                format!("{base}/judge/poll"),
+            )
+        } else if let Ok(poll_url) = env::var("JUDGE_POLL_URL") {
+            // Backward compatibility: derive claim URL from poll URL
+            let claim = if let Some(base) = poll_url.strip_suffix("/judge/poll") {
+                format!("{base}/judge/claim")
+            } else {
+                tracing::warn!(
+                    "JUDGE_POLL_URL does not end with /judge/poll; \
+                     cannot derive claim URL. Falling back to replacing last path segment."
+                );
+                // Best-effort: replace the last path segment
+                match poll_url.rfind('/') {
+                    Some(pos) => format!("{}/claim", &poll_url[..pos]),
+                    None => poll_url.replace("poll", "claim"),
+                }
+            };
+            (claim, poll_url)
+        } else {
+            (
+                "http://localhost:3000/api/v1/judge/claim".to_string(),
+                "http://localhost:3000/api/v1/judge/poll".to_string(),
+            )
+        };
 
-        if poll_url.starts_with("http://")
-            && !poll_url.starts_with("http://localhost")
-            && !poll_url.starts_with("http://127.0.0.1")
-            && !poll_url.starts_with("http://[::1]")
-        {
-            tracing::warn!(
-                "JUDGE_POLL_URL uses unencrypted HTTP for a non-localhost address. \
-                 This exposes the auth token and submission data in transit. \
-                 Use HTTPS in production."
-            );
+        for url in [&claim_url, &report_url] {
+            if url.starts_with("http://")
+                && !url.starts_with("http://localhost")
+                && !url.starts_with("http://127.0.0.1")
+                && !url.starts_with("http://[::1]")
+            {
+                tracing::warn!(
+                    "Judge URL uses unencrypted HTTP for a non-localhost address ({url}). \
+                     This exposes the auth token and submission data in transit. \
+                     Use HTTPS in production."
+                );
+                break;
+            }
         }
 
         let poll_interval_ms: u64 = match env::var("POLL_INTERVAL") {
@@ -81,12 +128,37 @@ impl Config {
                 .join("docker/seccomp-profile.json"),
         };
 
+        let dead_letter_dir = match env::var("DEAD_LETTER_DIR") {
+            Ok(path) => PathBuf::from(path),
+            Err(_) => std::env::current_dir()
+                .map_err(|e| format!("Failed to determine current working directory: {e}"))?
+                .join("dead-letter"),
+        };
+
+        let judge_concurrency: usize = match env::var("JUDGE_CONCURRENCY") {
+            Ok(val) => {
+                let n = val
+                    .parse::<usize>()
+                    .map_err(|_| format!("JUDGE_CONCURRENCY must be a positive integer, got: {val}"))?;
+                if n < 1 || n > 16 {
+                    return Err(
+                        "JUDGE_CONCURRENCY must be between 1 and 16 (inclusive)".to_string(),
+                    );
+                }
+                n
+            }
+            Err(_) => 1,
+        };
+
         Ok(Config {
-            poll_url,
+            claim_url,
+            report_url,
             poll_interval,
             auth_token,
             disable_custom_seccomp,
             seccomp_profile_path,
+            dead_letter_dir,
+            judge_concurrency,
         })
     }
 }

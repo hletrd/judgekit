@@ -32,7 +32,7 @@ vi.mock("@/lib/db", () => ({
   },
 }));
 
-import { GET } from "@/app/api/v1/judge/poll/route";
+import { POST } from "@/app/api/v1/judge/claim/route";
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -55,7 +55,7 @@ beforeEach(() => {
   });
 });
 
-describe("GET /api/v1/judge/poll", () => {
+describe("POST /api/v1/judge/claim", () => {
   it("binds a primitive timestamp when claiming submissions", async () => {
     prepareGetMock.mockReturnValue({
       id: "submission-1",
@@ -74,11 +74,14 @@ describe("GET /api/v1/judge/poll", () => {
       submittedAt: Date.now(),
     });
 
-    const response = await GET(
-      new NextRequest("http://localhost:3000/api/v1/judge/poll", {
+    const response = await POST(
+      new NextRequest("http://localhost:3000/api/v1/judge/claim", {
+        method: "POST",
         headers: {
           Authorization: "Bearer test-token",
+          "Content-Type": "application/json",
         },
+        body: JSON.stringify({}),
       })
     );
 

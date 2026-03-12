@@ -2,12 +2,13 @@ use crate::types::{PollResponse, Submission, StatusReport, ResultReport, TestRes
 
 pub struct ApiClient {
     client: reqwest::Client,
-    poll_url: String,
+    claim_url: String,
+    report_url: String,
     auth_token: String,
 }
 
 impl ApiClient {
-    pub fn new(poll_url: String, auth_token: String) -> Self {
+    pub fn new(claim_url: String, report_url: String, auth_token: String) -> Self {
         let client = reqwest::Client::builder()
             .connect_timeout(std::time::Duration::from_secs(10))
             .timeout(std::time::Duration::from_secs(30))
@@ -15,18 +16,21 @@ impl ApiClient {
             .expect("failed to build HTTP client");
         Self {
             client,
-            poll_url,
+            claim_url,
+            report_url,
             auth_token,
         }
     }
 
-    /// GET poll_url with Bearer auth. Returns Ok(Some(submission)) if work available,
+    /// POST claim_url with Bearer auth and empty JSON body.
+    /// Returns Ok(Some(submission)) if work available,
     /// Ok(None) if no work, Err on network/parse error.
     pub async fn poll(&self) -> Result<Option<Submission>, String> {
         let response = self.client
-            .get(&self.poll_url)
+            .post(&self.claim_url)
             .header("Authorization", format!("Bearer {}", self.auth_token))
             .header("Content-Type", "application/json")
+            .body("{}")
             .send()
             .await
             .map_err(|e| format!("Poll request failed: {e}"))?;
@@ -52,7 +56,7 @@ impl ApiClient {
         };
 
         let response = self.client
-            .post(&self.poll_url)
+            .post(&self.report_url)
             .header("Authorization", format!("Bearer {}", self.auth_token))
             .json(&body)
             .send()
@@ -85,7 +89,7 @@ impl ApiClient {
         };
 
         let response = self.client
-            .post(&self.poll_url)
+            .post(&self.report_url)
             .header("Authorization", format!("Bearer {}", self.auth_token))
             .json(&body)
             .send()
