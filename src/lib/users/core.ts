@@ -43,11 +43,13 @@ export async function isEmailTaken(
 /**
  * Validates `password` against the password policy and hashes it.
  * Returns `{ hash }` on success or `{ error }` on validation failure.
+ * Pass `context` to also reject passwords that contain the username or email prefix.
  */
 export async function validateAndHashPassword(
-  password: string
+  password: string,
+  context?: { username?: string; email?: string | null }
 ): Promise<{ hash: string; error?: never } | { error: PasswordValidationError; hash?: never }> {
-  const validationError = getPasswordValidationError(password);
+  const validationError = getPasswordValidationError(password, context);
   if (validationError) {
     return { error: validationError };
   }

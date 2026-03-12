@@ -34,6 +34,7 @@ type UserManagementErrorKey =
   | "passwordTooShort"
   | "passwordTooWeak"
   | "passwordTooCommon"
+  | "passwordTooContextual"
   | "updateUserFailed"
   | "createUserFailed"
   | "cannotDeleteSelf"
@@ -219,7 +220,10 @@ export async function editUser(userId: string, data: ManagedUserInput): Promise<
 
     let passwordHash: string | undefined;
     if (data.password) {
-      const passwordResult = await validateAndHashPassword(data.password);
+      const passwordResult = await validateAndHashPassword(data.password, {
+        username: data.username,
+        email: normalizedEmail,
+      });
       if (passwordResult.error) {
         return { success: false, error: passwordResult.error };
       }
@@ -315,7 +319,10 @@ export async function createUser(data: ManagedUserInput): Promise<UserManagement
     let passwordHash: string;
     let generatedPassword: string | undefined;
     if (data.password) {
-      const result = await validateAndHashPassword(data.password);
+      const result = await validateAndHashPassword(data.password, {
+        username: data.username,
+        email: normalizedEmail,
+      });
       if (result.error) return { success: false, error: result.error };
       passwordHash = result.hash!;
     } else {

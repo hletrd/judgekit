@@ -68,7 +68,6 @@ export function ProblemSubmissionForm({
       setSourceCode(fileContents);
       toast.success(t("sourceFileLoaded", { name: selectedFile.name }));
     } catch (error) {
-      console.error("Failed to read source file:", error);
       toast.error(t("sourceFileLoadFailed"));
     } finally {
       event.target.value = "";
@@ -140,7 +139,6 @@ export function ProblemSubmissionForm({
       router.push(`/dashboard/submissions/${submissionId}`);
       clearAllDrafts();
     } catch (error) {
-      console.error("Failed to submit solution:", error);
       toast.error(tCommon("error"));
     } finally {
       setIsSubmitting(false);

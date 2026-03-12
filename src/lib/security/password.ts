@@ -26,9 +26,38 @@ const COMMON_PASSWORDS = new Set([
   "killer", "george", "andrew", "andrea", "joshua", "student",
 ]);
 
-export type PasswordValidationError = "passwordTooShort" | "passwordTooWeak" | "passwordTooCommon";
+export type PasswordValidationError = "passwordTooShort" | "passwordTooWeak" | "passwordTooCommon" | "passwordTooContextual";
 
-export function getPasswordValidationError(password: string): PasswordValidationError | null {
+/**
+ * Returns true if the password contains the username or the local part of the
+ * email address (case-insensitive). Used to prevent context-aware weak passwords
+ * such as "Alice123!" when the username is "alice".
+ */
+export function isPasswordContextual(
+  password: string,
+  username: string,
+  email?: string | null
+): boolean {
+  const lower = password.toLowerCase();
+
+  if (username && lower.includes(username.toLowerCase())) {
+    return true;
+  }
+
+  if (email) {
+    const emailPrefix = email.split("@")[0];
+    if (emailPrefix && lower.includes(emailPrefix.toLowerCase())) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+export function getPasswordValidationError(
+  password: string,
+  context?: { username?: string; email?: string | null }
+): PasswordValidationError | null {
   if (password.length < MIN_PASSWORD_LENGTH) {
     return "passwordTooShort";
   }
@@ -45,9 +74,13 @@ export function getPasswordValidationError(password: string): PasswordValidation
     return "passwordTooWeak";
   }
 
+  if (context?.username && isPasswordContextual(password, context.username, context.email)) {
+    return "passwordTooContextual";
+  }
+
   return null;
 }
 
-export function isStrongPassword(password: string) {
-  return getPasswordValidationError(password) === null;
+export function isStrongPassword(password: string, context?: { username?: string; email?: string | null }) {
+  return getPasswordValidationError(password, context) === null;
 }

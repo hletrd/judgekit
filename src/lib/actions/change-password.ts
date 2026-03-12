@@ -47,7 +47,10 @@ export async function changePassword(
     return { success: false, error: "currentPasswordIncorrect" };
   }
 
-  const passwordValidationError = getPasswordValidationError(newPassword);
+  const passwordValidationError = getPasswordValidationError(newPassword, {
+    username: user.username,
+    email: user.email,
+  });
 
   if (passwordValidationError) {
     return { success: false, error: passwordValidationError };
