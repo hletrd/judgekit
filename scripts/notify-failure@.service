@@ -1,0 +1,8 @@
+[Unit]
+Description=Service failure notification for %i
+
+[Service]
+Type=oneshot
+ExecStart=/bin/sh -c 'echo "Service %i failed on $(hostname) at $(date)" | systemd-cat -t service-failure -p crit'
+# To enable email notifications, uncomment and configure:
+# ExecStart=/usr/bin/mail -s "Service %i failed on $(hostname)" admin@example.com < /dev/null

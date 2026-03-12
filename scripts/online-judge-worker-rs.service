@@ -2,6 +2,7 @@
 Description=Online Judge Worker (Rust)
 After=network.target docker.service online-judge.service
 Requires=online-judge.service
+OnFailure=notify-failure@%n.service
 
 [Service]
 Type=simple
