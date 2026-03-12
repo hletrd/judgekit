@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { apiSuccess, apiError } from "@/lib/api/responses";
 import { eq } from "drizzle-orm";
 import { recordAuditEvent } from "@/lib/audit/events";
 import { db } from "@/lib/db";
@@ -7,6 +8,7 @@ import { getApiUser, unauthorized, forbidden, notFound, csrfForbidden, isInstruc
 import { canAccessSubmission } from "@/lib/auth/permissions";
 import { commentCreateSchema } from "@/lib/validators/comments";
 import { consumeApiRateLimit } from "@/lib/security/api-rate-limit";
+import { logger } from "@/lib/logger";
 
 export async function GET(
   request: NextRequest,
@@ -42,10 +44,10 @@ export async function GET(
       orderBy: (sc, { asc }) => [asc(sc.createdAt)],
     });
 
-    return NextResponse.json({ data: comments });
+    return apiSuccess(comments);
   } catch (error) {
-    console.error("GET /api/v1/submissions/[id]/comments error:", error);
-    return NextResponse.json({ error: "internalServerError" }, { status: 500 });
+    logger.error({ err: error }, "GET /api/v1/submissions/[id]/comments error");
+    return apiError("internalServerError", 500);
   }
 }
 
@@ -82,10 +84,7 @@ export async function POST(
     const parsed = commentCreateSchema.safeParse(body);
 
     if (!parsed.success) {
-      return NextResponse.json(
-        { error: parsed.error.issues[0]?.message ?? "invalidComment" },
-        { status: 400 }
-      );
+      return apiError(parsed.error.issues[0]?.message ?? "invalidComment", 400);
     }
 
     const [created] = await db
@@ -121,9 +120,9 @@ export async function POST(
       },
     });
 
-    return NextResponse.json({ data: comment }, { status: 201 });
+    return apiSuccess(comment, { status: 201 });
   } catch (error) {
-    console.error("POST /api/v1/submissions/[id]/comments error:", error);
-    return NextResponse.json({ error: "internalServerError" }, { status: 500 });
+    logger.error({ err: error }, "POST /api/v1/submissions/[id]/comments error");
+    return apiError("internalServerError", 500);
   }
 }

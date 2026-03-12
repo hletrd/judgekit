@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { sqlite } from "@/lib/db";
 import { getAuditEventHealthSnapshot } from "@/lib/audit/events";
 import { getApiUser, isAdmin } from "@/lib/api/auth";
+import { logger } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 
@@ -51,7 +52,7 @@ export async function GET(request: NextRequest) {
       }
     );
   } catch (error) {
-    console.error("GET /api/health error:", error);
+    logger.error({ err: error }, "GET /api/health error");
 
     const user = await getApiUser(request).catch(() => null);
     const isAdminUser = user && isAdmin(user.role);

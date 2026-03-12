@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { apiSuccess, apiError } from "@/lib/api/responses";
 import { eq, desc } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { assignments } from "@/lib/db/schema";
@@ -13,6 +14,7 @@ import { getApiUser, forbidden, notFound, unauthorized, csrfForbidden } from "@/
 import { canAccessGroup } from "@/lib/auth/permissions";
 import { assertUserRole } from "@/lib/security/constants";
 import { consumeApiRateLimit } from "@/lib/security/api-rate-limit";
+import { logger } from "@/lib/logger";
 
 export async function GET(
   request: NextRequest,
@@ -47,10 +49,10 @@ export async function GET(
       },
     });
 
-    return NextResponse.json({ data: groupAssignments });
+    return apiSuccess(groupAssignments);
   } catch (error) {
-    console.error("GET /api/v1/groups/[id]/assignments error:", error);
-    return NextResponse.json({ error: "assignmentLoadFailed" }, { status: 500 });
+    logger.error({ err: error }, "GET /api/v1/groups/[id]/assignments error");
+    return apiError("assignmentLoadFailed", 500);
   }
 }
 
@@ -96,10 +98,7 @@ export async function POST(
     });
 
     if (!parsedInput.success) {
-      return NextResponse.json(
-        { error: parsedInput.error.issues[0]?.message ?? "assignmentCreateFailed" },
-        { status: 400 }
-      );
+      return apiError(parsedInput.error.issues[0]?.message ?? "assignmentCreateFailed", 400);
     }
 
     const manageableProblemIds = new Set(
@@ -111,7 +110,7 @@ export async function POST(
     if (
       parsedInput.data.problems.some((problem) => !manageableProblemIds.has(problem.problemId))
     ) {
-      return NextResponse.json({ error: "assignmentProblemForbidden" }, { status: 403 });
+      return apiError("assignmentProblemForbidden", 403);
     }
 
     const assignmentId = createAssignmentWithProblems(id, parsedInput.data);
@@ -146,9 +145,9 @@ export async function POST(
       });
     }
 
-    return NextResponse.json({ data: createdAssignment }, { status: 201 });
+    return apiSuccess(createdAssignment, { status: 201 });
   } catch (error) {
-    console.error("POST /api/v1/groups/[id]/assignments error:", error);
-    return NextResponse.json({ error: "assignmentCreateFailed" }, { status: 500 });
+    logger.error({ err: error }, "POST /api/v1/groups/[id]/assignments error");
+    return apiError("assignmentCreateFailed", 500);
   }
 }

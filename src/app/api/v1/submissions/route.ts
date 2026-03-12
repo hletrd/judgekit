@@ -21,6 +21,7 @@ import { generateSubmissionId } from "@/lib/submissions/id";
 import { submissionCreateSchema } from "@/lib/validators/api";
 import { parsePagination } from "@/lib/api/pagination";
 import { apiError, apiPaginated, apiSuccess } from "@/lib/api/responses";
+import { logger } from "@/lib/logger";
 
 export async function GET(request: NextRequest) {
   try {
@@ -76,7 +77,7 @@ export async function GET(request: NextRequest) {
 
     return apiPaginated(results, page, limit, Number(totalRow?.count ?? 0));
   } catch (error) {
-    console.error("GET /api/v1/submissions error:", error);
+    logger.error({ err: error }, "GET /api/v1/submissions error");
     return apiError("submissionLoadFailed", 500);
   }
 }
@@ -244,7 +245,7 @@ export async function POST(request: NextRequest) {
 
     return apiSuccess(submission, { status: 201 });
   } catch (error) {
-    console.error("POST /api/v1/submissions error:", error);
+    logger.error({ err: error }, "POST /api/v1/submissions error");
     return apiError("submissionCreateFailed", 500);
   }
 }

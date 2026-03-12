@@ -1,4 +1,5 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
+import { apiSuccess, apiError } from "@/lib/api/responses";
 import { db } from "@/lib/db";
 import { assignments, groups, submissions, enrollments } from "@/lib/db/schema";
 import { eq, sql } from "drizzle-orm";
@@ -7,6 +8,7 @@ import { getApiUser, unauthorized, forbidden, notFound, isAdmin, csrfForbidden }
 import { recordAuditEvent } from "@/lib/audit/events";
 import { updateGroupSchema } from "@/lib/validators/groups";
 import { consumeApiRateLimit } from "@/lib/security/api-rate-limit";
+import { logger } from "@/lib/logger";
 
 export async function GET(
   request: NextRequest,
@@ -71,28 +73,26 @@ export async function GET(
 
     const canViewEmails = isAdmin(user.role) || group.instructorId === user.id;
 
-    return NextResponse.json({
-      data: {
-        ...group,
-        memberCount,
-        instructor: group.instructor
-          ? {
-              ...group.instructor,
-              email: canViewEmails ? group.instructor.email : null,
-            }
-          : null,
-        enrollments: group.enrollments.map((enrollment) => ({
-          ...enrollment,
-          user: {
-            ...enrollment.user,
-            email: canViewEmails ? enrollment.user.email : null,
-          },
-        })),
-      },
+    return apiSuccess({
+      ...group,
+      memberCount,
+      instructor: group.instructor
+        ? {
+            ...group.instructor,
+            email: canViewEmails ? group.instructor.email : null,
+          }
+        : null,
+      enrollments: group.enrollments.map((enrollment) => ({
+        ...enrollment,
+        user: {
+          ...enrollment.user,
+          email: canViewEmails ? enrollment.user.email : null,
+        },
+      })),
     });
   } catch (error) {
-    console.error("GET /api/v1/groups/[id] error:", error);
-    return NextResponse.json({ error: "internalServerError" }, { status: 500 });
+    logger.error({ err: error }, "GET /api/v1/groups/[id] error");
+    return apiError("internalServerError", 500);
   }
 }
 
@@ -120,10 +120,7 @@ export async function PATCH(
     const parsed = updateGroupSchema.safeParse(body);
 
     if (!parsed.success) {
-      return NextResponse.json(
-        { error: parsed.error.issues[0]?.message ?? "validationError" },
-        { status: 400 }
-      );
+      return apiError(parsed.error.issues[0]?.message ?? "validationError", 400);
     }
 
     const { name, description, isArchived } = parsed.data;
@@ -154,10 +151,10 @@ export async function PATCH(
       });
     }
 
-    return NextResponse.json({ data: updated });
+    return apiSuccess(updated);
   } catch (error) {
-    console.error("PATCH /api/v1/groups/[id] error:", error);
-    return NextResponse.json({ error: "internalServerError" }, { status: 500 });
+    logger.error({ err: error }, "PATCH /api/v1/groups/[id] error");
+    return apiError("internalServerError", 500);
   }
 }
 
@@ -190,15 +187,7 @@ export async function DELETE(
     const assignmentSubmissionCount = Number(assignmentSubmissionCountRow.total ?? 0);
 
     if (assignmentSubmissionCount > 0) {
-      return NextResponse.json(
-        {
-          error: "groupDeleteBlocked",
-          details: {
-            assignmentSubmissionCount,
-          },
-        },
-        { status: 409 }
-      );
+      return apiError("groupDeleteBlocked", 409);
     }
 
     await db.delete(groups).where(eq(groups.id, id));
@@ -217,9 +206,9 @@ export async function DELETE(
       request,
     });
 
-    return NextResponse.json({ data: { id } });
+    return apiSuccess({ id });
   } catch (error) {
-    console.error("DELETE /api/v1/groups/[id] error:", error);
-    return NextResponse.json({ error: "internalServerError" }, { status: 500 });
+    logger.error({ err: error }, "DELETE /api/v1/groups/[id] error");
+    return apiError("internalServerError", 500);
   }
 }

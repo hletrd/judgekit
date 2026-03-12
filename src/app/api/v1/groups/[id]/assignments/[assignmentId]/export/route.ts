@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
+import { apiError } from "@/lib/api/responses";
 import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { assignments, groups } from "@/lib/db/schema";
 import { getApiUser, unauthorized, forbidden, notFound, isAdmin, isInstructor } from "@/lib/api/auth";
 import { getAssignmentStatusRows } from "@/lib/assignments/submissions";
+import { logger } from "@/lib/logger";
 
 function escapeCsvField(value: string | null | undefined): string {
   let str = value == null ? "" : String(value);
@@ -102,7 +104,7 @@ export async function GET(
       },
     });
   } catch (error) {
-    console.error("GET /api/v1/groups/[id]/assignments/[assignmentId]/export error:", error);
-    return NextResponse.json({ error: "exportFailed" }, { status: 500 });
+    logger.error({ err: error }, "GET /api/v1/groups/[id]/assignments/[assignmentId]/export error");
+    return apiError("exportFailed", 500);
   }
 }

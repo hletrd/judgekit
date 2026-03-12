@@ -1,10 +1,12 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { db, sqlite } from "@/lib/db";
 import { submissions, submissionResults } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { getApiUser, unauthorized, forbidden, notFound, isInstructor, csrfForbidden } from "@/lib/api/auth";
 import { recordAuditEvent } from "@/lib/audit/events";
 import { consumeApiRateLimit } from "@/lib/security/api-rate-limit";
+import { apiSuccess, apiError } from "@/lib/api/responses";
+import { logger } from "@/lib/logger";
 
 export async function POST(
   request: NextRequest,
@@ -60,6 +62,7 @@ export async function POST(
 
     const updated = await db.query.submissions.findFirst({
       where: eq(submissions.id, id),
+      columns: { sourceCode: false },
       with: {
         user: {
           columns: { name: true },
@@ -93,9 +96,9 @@ export async function POST(
       request,
     });
 
-    return NextResponse.json({ data: updated });
+    return apiSuccess(updated);
   } catch (error) {
-    console.error("POST /api/v1/submissions/[id]/rejudge error:", error);
-    return NextResponse.json({ error: "internalServerError" }, { status: 500 });
+    logger.error({ err: error }, "POST /api/v1/submissions/[id]/rejudge error");
+    return apiError("internalServerError", 500);
   }
 }

@@ -8,6 +8,8 @@ import { bulkEnrollmentSchema } from "@/lib/validators/groups";
 import { getApiUser, forbidden, notFound, unauthorized, csrfForbidden } from "@/lib/api/auth";
 import { isUserRole } from "@/lib/security/constants";
 import { consumeApiRateLimit } from "@/lib/security/api-rate-limit";
+import { apiSuccess, apiError } from "@/lib/api/responses";
+import { logger } from "@/lib/logger";
 
 export async function POST(
   request: NextRequest,
@@ -44,10 +46,7 @@ export async function POST(
     const parsedInput = bulkEnrollmentSchema.safeParse(body);
 
     if (!parsedInput.success) {
-      return NextResponse.json(
-        { error: parsedInput.error.issues[0]?.message ?? "bulkEnrollFailed" },
-        { status: 400 }
-      );
+      return apiError(parsedInput.error.issues[0]?.message ?? "bulkEnrollFailed", 400);
     }
 
     const { userIds } = parsedInput.data;
@@ -67,7 +66,7 @@ export async function POST(
     const skippedInvalid = userIds.filter((id) => !validStudentIds.has(id)).length;
 
     if (validStudents.length === 0) {
-      return NextResponse.json({ enrolled: 0, skipped: userIds.length });
+      return apiSuccess({ enrolled: 0, skipped: userIds.length });
     }
 
     // Check existing enrollments to count skipped duplicates
@@ -121,9 +120,9 @@ export async function POST(
       request,
     });
 
-    return NextResponse.json({ enrolled, skipped });
+    return apiSuccess({ enrolled, skipped });
   } catch (error) {
-    console.error("POST /api/v1/groups/[id]/members/bulk error:", error);
-    return NextResponse.json({ error: "bulkEnrollFailed" }, { status: 500 });
+    logger.error({ err: error }, "POST /api/v1/groups/[id]/members/bulk error");
+    return apiError("bulkEnrollFailed", 500);
   }
 }

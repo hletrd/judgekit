@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { apiSuccess, apiError } from "@/lib/api/responses";
 import { eq } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { recordAuditEvent } from "@/lib/audit/events";
@@ -10,6 +11,7 @@ import { getApiUser, forbidden, notFound, unauthorized, csrfForbidden } from "@/
 import { canAccessGroup } from "@/lib/auth/permissions";
 import { assertUserRole } from "@/lib/security/constants";
 import { consumeApiRateLimit } from "@/lib/security/api-rate-limit";
+import { logger } from "@/lib/logger";
 
 export async function GET(
   request: NextRequest,
@@ -38,10 +40,10 @@ export async function GET(
       },
     });
 
-    return NextResponse.json({ data: members });
+    return apiSuccess(members);
   } catch (error) {
-    console.error("GET /api/v1/groups/[id]/members error:", error);
-    return NextResponse.json({ error: "memberLoadFailed" }, { status: 500 });
+    logger.error({ err: error }, "GET /api/v1/groups/[id]/members error");
+    return apiError("memberLoadFailed", 500);
   }
 }
 
@@ -79,10 +81,7 @@ export async function POST(
     const parsedInput = groupMembershipSchema.safeParse(body);
 
     if (!parsedInput.success) {
-      return NextResponse.json(
-        { error: parsedInput.error.issues[0]?.message ?? "memberAddFailed" },
-        { status: 400 }
-      );
+      return apiError(parsedInput.error.issues[0]?.message ?? "memberAddFailed", 400);
     }
 
     const student = await db.query.users.findFirst({
@@ -98,15 +97,15 @@ export async function POST(
     });
 
     if (!student) {
-      return NextResponse.json({ error: "studentNotFound" }, { status: 404 });
+      return apiError("studentNotFound", 404);
     }
 
     if (!student.isActive) {
-      return NextResponse.json({ error: "studentInactive" }, { status: 409 });
+      return apiError("studentInactive", 409);
     }
 
     if (student.role !== "student") {
-      return NextResponse.json({ error: "studentRoleInvalid" }, { status: 409 });
+      return apiError("studentRoleInvalid", 409);
     }
 
     const existingEnrollment = await db.query.enrollments.findFirst({
@@ -119,7 +118,7 @@ export async function POST(
     });
 
     if (existingEnrollment) {
-      return NextResponse.json({ error: "studentAlreadyEnrolled" }, { status: 409 });
+      return apiError("studentAlreadyEnrolled", 409);
     }
 
     const enrollmentId = nanoid();
@@ -162,9 +161,9 @@ export async function POST(
       });
     }
 
-    return NextResponse.json({ data: createdEnrollment }, { status: 201 });
+    return apiSuccess(createdEnrollment, { status: 201 });
   } catch (error) {
-    console.error("POST /api/v1/groups/[id]/members error:", error);
-    return NextResponse.json({ error: "memberAddFailed" }, { status: 500 });
+    logger.error({ err: error }, "POST /api/v1/groups/[id]/members error");
+    return apiError("memberAddFailed", 500);
   }
 }

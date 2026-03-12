@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { apiError } from "@/lib/api/responses";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { getApiUser, unauthorized, forbidden, isAdmin, csrfForbidden } from "@/lib/api/auth";
@@ -8,6 +9,7 @@ import { hash } from "bcryptjs";
 import { generateSecurePassword } from "@/lib/auth/generated-password";
 import { bulkUserCreateSchema } from "@/lib/validators/bulk-users";
 import { consumeApiRateLimit } from "@/lib/security/api-rate-limit";
+import { logger } from "@/lib/logger";
 
 export async function POST(request: NextRequest) {
   try {
@@ -25,10 +27,7 @@ export async function POST(request: NextRequest) {
     const parsed = bulkUserCreateSchema.safeParse(body);
 
     if (!parsed.success) {
-      return NextResponse.json(
-        { error: parsed.error.issues[0]?.message ?? "invalidInput" },
-        { status: 400 }
-      );
+      return apiError(parsed.error.issues[0]?.message ?? "invalidInput", 400);
     }
 
     const { users: userList } = parsed.data;
@@ -37,10 +36,7 @@ export async function POST(request: NextRequest) {
     const requestUsernames = userList.map((u) => u.username);
     const uniqueRequestUsernames = new Set(requestUsernames);
     if (uniqueRequestUsernames.size !== requestUsernames.length) {
-      return NextResponse.json(
-        { error: "duplicateUsernamesInRequest" },
-        { status: 400 }
-      );
+      return apiError("duplicateUsernamesInRequest", 400);
     }
 
     // Check existing usernames in DB
@@ -156,7 +152,7 @@ export async function POST(request: NextRequest) {
     response.headers.set("Pragma", "no-cache");
     return response;
   } catch (error) {
-    console.error("POST /api/v1/users/bulk error:", error);
-    return NextResponse.json({ error: "internalServerError" }, { status: 500 });
+    logger.error({ err: error }, "POST /api/v1/users/bulk error");
+    return apiError("internalServerError", 500);
   }
 }

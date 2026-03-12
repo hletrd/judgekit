@@ -1,4 +1,5 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
+import { apiSuccess, apiError } from "@/lib/api/responses";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { db, sqlite } from "@/lib/db";
@@ -8,6 +9,7 @@ import { canManageGroupResources } from "@/lib/assignments/management";
 import { getApiUser, forbidden, notFound, unauthorized, csrfForbidden } from "@/lib/api/auth";
 import { assertUserRole } from "@/lib/security/constants";
 import { consumeApiRateLimit } from "@/lib/security/api-rate-limit";
+import { logger } from "@/lib/logger";
 
 const scoreOverrideBodySchema = z.object({
   problemId: z.string().min(1),
@@ -80,10 +82,7 @@ export async function POST(
     const parsed = scoreOverrideBodySchema.safeParse(body);
 
     if (!parsed.success) {
-      return NextResponse.json(
-        { error: parsed.error.issues[0]?.message ?? "invalidInput" },
-        { status: 400 }
-      );
+      return apiError(parsed.error.issues[0]?.message ?? "invalidInput", 400);
     }
 
     const { problemId, userId, overrideScore, reason } = parsed.data;
@@ -131,10 +130,10 @@ export async function POST(
       request,
     });
 
-    return NextResponse.json({ data: { assignmentId: assignment.id, problemId, userId, overrideScore, reason } });
+    return apiSuccess({ assignmentId: assignment.id, problemId, userId, overrideScore, reason });
   } catch (error) {
-    console.error("POST /api/v1/groups/[id]/assignments/[assignmentId]/overrides error:", error);
-    return NextResponse.json({ error: "overrideCreateFailed" }, { status: 500 });
+    logger.error({ err: error }, "POST /api/v1/groups/[id]/assignments/[assignmentId]/overrides error");
+    return apiError("overrideCreateFailed", 500);
   }
 }
 
@@ -154,10 +153,10 @@ export async function GET(
       .where(eq(scoreOverrides.assignmentId, assignment.id))
       .all();
 
-    return NextResponse.json({ data: overrides });
+    return apiSuccess(overrides);
   } catch (error) {
-    console.error("GET /api/v1/groups/[id]/assignments/[assignmentId]/overrides error:", error);
-    return NextResponse.json({ error: "overrideLoadFailed" }, { status: 500 });
+    logger.error({ err: error }, "GET /api/v1/groups/[id]/assignments/[assignmentId]/overrides error");
+    return apiError("overrideLoadFailed", 500);
   }
 }
 
@@ -184,10 +183,7 @@ export async function DELETE(
     });
 
     if (!queryParsed.success) {
-      return NextResponse.json(
-        { error: queryParsed.error.issues[0]?.message ?? "invalidInput" },
-        { status: 400 }
-      );
+      return apiError(queryParsed.error.issues[0]?.message ?? "invalidInput", 400);
     }
 
     const { problemId, userId } = queryParsed.data;
@@ -223,9 +219,9 @@ export async function DELETE(
       request,
     });
 
-    return NextResponse.json({ data: { assignmentId: assignment.id, problemId, userId } });
+    return apiSuccess({ assignmentId: assignment.id, problemId, userId });
   } catch (error) {
-    console.error("DELETE /api/v1/groups/[id]/assignments/[assignmentId]/overrides error:", error);
-    return NextResponse.json({ error: "overrideDeleteFailed" }, { status: 500 });
+    logger.error({ err: error }, "DELETE /api/v1/groups/[id]/assignments/[assignmentId]/overrides error");
+    return apiError("overrideDeleteFailed", 500);
   }
 }

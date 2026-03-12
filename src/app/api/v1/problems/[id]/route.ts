@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { apiSuccess, apiError } from "@/lib/api/responses";
 import { db } from "@/lib/db";
 import { assignmentProblems, problems, submissions, testCases } from "@/lib/db/schema";
 import { eq, sql } from "drizzle-orm";
@@ -8,6 +9,7 @@ import { canAccessProblem } from "@/lib/auth/permissions";
 import { updateProblemWithTestCases } from "@/lib/problem-management";
 import { problemMutationSchema } from "@/lib/validators/problem-management";
 import { consumeApiRateLimit } from "@/lib/security/api-rate-limit";
+import { logger } from "@/lib/logger";
 
 export async function GET(
   request: NextRequest,
@@ -27,7 +29,7 @@ export async function GET(
     const canManageProblem = isAdmin(user.role) || problem.authorId === user.id;
 
     if (!canManageProblem) {
-      return NextResponse.json({ data: problem });
+      return apiSuccess(problem);
     }
 
     // Only fetch test cases for managers (single additional query instead of re-fetching problem)
@@ -35,10 +37,10 @@ export async function GET(
       where: eq(testCases.problemId, id),
     });
 
-    return NextResponse.json({ data: { ...problem, testCases: problemTestCases } });
+    return apiSuccess({ ...problem, testCases: problemTestCases });
   } catch (error) {
-    console.error("GET /api/v1/problems/[id] error:", error);
-    return NextResponse.json({ error: "internalServerError" }, { status: 500 });
+    logger.error({ err: error }, "GET /api/v1/problems/[id] error");
+    return apiError("internalServerError", 500);
   }
 }
 
@@ -76,7 +78,7 @@ export async function PATCH(
     );
 
     if (body.testCases !== undefined && hasExistingSubmissions && !(allowLockedTestCases && isAdmin(user.role))) {
-      return NextResponse.json({ error: "testCasesLocked" }, { status: 409 });
+      return apiError("testCasesLocked", 409);
     }
 
     const parsedInput = problemMutationSchema.safeParse({
@@ -97,10 +99,7 @@ export async function PATCH(
     });
 
     if (!parsedInput.success) {
-      return NextResponse.json(
-        { error: parsedInput.error.issues[0]?.message ?? "updateError" },
-        { status: 400 }
-      );
+      return apiError(parsedInput.error.issues[0]?.message ?? "updateError", 400);
     }
 
     await updateProblemWithTestCases(id, parsedInput.data);
@@ -133,10 +132,10 @@ export async function PATCH(
       });
     }
 
-    return NextResponse.json({ data: updated });
+    return apiSuccess(updated);
   } catch (error) {
-    console.error("PATCH /api/v1/problems/[id] error:", error);
-    return NextResponse.json({ error: "updateError" }, { status: 500 });
+    logger.error({ err: error }, "PATCH /api/v1/problems/[id] error");
+    return apiError("updateError", 500);
   }
 }
 
@@ -178,16 +177,7 @@ export async function DELETE(
     const assignmentLinkCount = Number(assignmentLinkCountRow.total ?? 0);
 
     if (submissionCount > 0 || assignmentLinkCount > 0) {
-      return NextResponse.json(
-        {
-          error: "problemDeleteBlocked",
-          details: {
-            submissionCount,
-            assignmentLinkCount,
-          },
-        },
-        { status: 409 }
-      );
+      return apiError("problemDeleteBlocked", 409);
     }
 
     await db.delete(problems).where(eq(problems.id, id));
@@ -206,9 +196,9 @@ export async function DELETE(
       request,
     });
 
-    return NextResponse.json({ data: { id } });
+    return apiSuccess({ id });
   } catch (error) {
-    console.error("DELETE /api/v1/problems/[id] error:", error);
-    return NextResponse.json({ error: "problemDeleteFailed" }, { status: 500 });
+    logger.error({ err: error }, "DELETE /api/v1/problems/[id] error");
+    return apiError("problemDeleteFailed", 500);
   }
 }

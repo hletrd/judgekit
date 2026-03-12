@@ -1,4 +1,5 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
+import { apiSuccess, apiError } from "@/lib/api/responses";
 import { eq, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { assignments, submissions } from "@/lib/db/schema";
@@ -15,6 +16,7 @@ import { canAccessGroup } from "@/lib/auth/permissions";
 import type { UserRole } from "@/types";
 import { consumeApiRateLimit } from "@/lib/security/api-rate-limit";
 import { assertUserRole, isUserRole } from "@/lib/security/constants";
+import { logger } from "@/lib/logger";
 
 export async function GET(
   request: NextRequest,
@@ -46,10 +48,10 @@ export async function GET(
       return notFound("Assignment");
     }
 
-    return NextResponse.json({ data: assignment });
+    return apiSuccess(assignment);
   } catch (error) {
-    console.error("GET /api/v1/groups/[id]/assignments/[assignmentId] error:", error);
-    return NextResponse.json({ error: "assignmentLoadFailed" }, { status: 500 });
+    logger.error({ err: error }, "GET /api/v1/groups/[id]/assignments/[assignmentId] error");
+    return apiError("assignmentLoadFailed", 500);
   }
 }
 
@@ -114,7 +116,7 @@ export async function PATCH(
       hasExistingSubmissions &&
       !(allowLockedProblems && isAdmin(user.role))
     ) {
-      return NextResponse.json({ error: "assignmentProblemsLocked" }, { status: 409 });
+      return apiError("assignmentProblemsLocked", 409);
     }
 
     const parsedInput = assignmentMutationSchema.safeParse({
@@ -150,10 +152,7 @@ export async function PATCH(
     });
 
     if (!parsedInput.success) {
-      return NextResponse.json(
-        { error: parsedInput.error.issues[0]?.message ?? "assignmentUpdateFailed" },
-        { status: 400 }
-      );
+      return apiError(parsedInput.error.issues[0]?.message ?? "assignmentUpdateFailed", 400);
     }
 
     if (body.problems !== undefined) {
@@ -166,7 +165,7 @@ export async function PATCH(
       if (
         parsedInput.data.problems.some((problem) => !manageableProblemIds.has(problem.problemId))
       ) {
-        return NextResponse.json({ error: "assignmentProblemForbidden" }, { status: 403 });
+        return apiError("assignmentProblemForbidden", 403);
       }
     }
 
@@ -205,10 +204,10 @@ export async function PATCH(
       });
     }
 
-    return NextResponse.json({ data: updatedAssignment });
+    return apiSuccess(updatedAssignment);
   } catch (error) {
-    console.error("PATCH /api/v1/groups/[id]/assignments/[assignmentId] error:", error);
-    return NextResponse.json({ error: "assignmentUpdateFailed" }, { status: 500 });
+    logger.error({ err: error }, "PATCH /api/v1/groups/[id]/assignments/[assignmentId] error");
+    return apiError("assignmentUpdateFailed", 500);
   }
 }
 
@@ -260,15 +259,7 @@ export async function DELETE(
     const submissionCount = Number(submissionCountRow.total ?? 0);
 
     if (submissionCount > 0) {
-      return NextResponse.json(
-        {
-          error: "assignmentDeleteBlocked",
-          details: {
-            submissionCount,
-          },
-        },
-        { status: 409 }
-      );
+      return apiError("assignmentDeleteBlocked", 409);
     }
 
     deleteAssignmentWithProblems(assignmentId);
@@ -287,9 +278,9 @@ export async function DELETE(
       request,
     });
 
-    return NextResponse.json({ data: { id: assignmentId } });
+    return apiSuccess({ id: assignmentId });
   } catch (error) {
-    console.error("DELETE /api/v1/groups/[id]/assignments/[assignmentId] error:", error);
-    return NextResponse.json({ error: "assignmentDeleteFailed" }, { status: 500 });
+    logger.error({ err: error }, "DELETE /api/v1/groups/[id]/assignments/[assignmentId] error");
+    return apiError("assignmentDeleteFailed", 500);
   }
 }

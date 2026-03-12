@@ -9,6 +9,7 @@ import { apiError, apiPaginated, apiSuccess } from "@/lib/api/responses";
 import { createProblemWithTestCases } from "@/lib/problem-management";
 import { problemMutationSchema, problemVisibilityValues } from "@/lib/validators/problem-management";
 import { consumeApiRateLimit } from "@/lib/security/api-rate-limit";
+import { logger } from "@/lib/logger";
 
 export async function GET(request: NextRequest) {
   try {
@@ -73,7 +74,7 @@ export async function GET(request: NextRequest) {
 
     return apiPaginated(paginatedProblems, page, limit, total);
   } catch (error) {
-    console.error("GET /api/v1/problems error:", error);
+    logger.error({ err: error }, "GET /api/v1/problems error");
     return apiError("internalServerError", 500);
   }
 }
@@ -134,7 +135,7 @@ export async function POST(request: NextRequest) {
 
     return apiSuccess(problem, { status: 201 });
   } catch (error) {
-    console.error("POST /api/v1/problems error:", error);
+    logger.error({ err: error }, "POST /api/v1/problems error");
     return apiError("createError", 500);
   }
 }

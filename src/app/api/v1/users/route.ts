@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { apiSuccess, apiError, apiPaginated } from "@/lib/api/responses";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { eq, desc, sql } from "drizzle-orm";
@@ -18,6 +19,7 @@ import {
   validateAndHashPassword,
   validateRoleChange,
 } from "@/lib/users/core";
+import { logger } from "@/lib/logger";
 
 export async function GET(request: NextRequest) {
   try {
@@ -30,7 +32,7 @@ export async function GET(request: NextRequest) {
     const role = searchParams.get("role");
 
     if (role && !isUserRole(role)) {
-      return NextResponse.json({ error: "invalidRole" }, { status: 400 });
+      return apiError("invalidRole", 400);
     }
 
     const whereClause = role ? eq(users.role, assertUserRole(role)) : undefined;
@@ -48,10 +50,10 @@ export async function GET(request: NextRequest) {
       .limit(limit)
       .offset(offset);
 
-    return NextResponse.json({ data: results, page, limit, total: Number(totalRow?.count ?? 0) });
+    return apiPaginated(results, page, limit, Number(totalRow?.count ?? 0));
   } catch (error) {
-    console.error("GET /api/v1/users error:", error);
-    return NextResponse.json({ error: "internalServerError" }, { status: 500 });
+    logger.error({ err: error }, "GET /api/v1/users error");
+    return apiError("internalServerError", 500);
   }
 }
 
@@ -70,10 +72,7 @@ export async function POST(request: NextRequest) {
     const parsed = userCreateSchema.safeParse(await request.json());
 
     if (!parsed.success) {
-      return NextResponse.json(
-        { error: parsed.error.issues[0]?.message ?? "createUserFailed" },
-        { status: 400 }
-      );
+      return apiError(parsed.error.issues[0]?.message ?? "createUserFailed", 400);
     }
 
     const { username, email, name, className, password, role } = parsed.data;
@@ -83,25 +82,25 @@ export async function POST(request: NextRequest) {
 
     const roleError = validateRoleChange(user.role, requestedRole);
     if (roleError === "invalidRole") {
-      return NextResponse.json({ error: "invalidRole" }, { status: 400 });
+      return apiError("invalidRole", 400);
     }
     if (roleError) {
-      return NextResponse.json({ error: roleError }, { status: 403 });
+      return apiError(roleError, 403);
     }
 
     if (password) {
       const passwordResult = await validateAndHashPassword(password);
       if (passwordResult.error) {
-        return NextResponse.json({ error: passwordResult.error }, { status: 400 });
+        return apiError(passwordResult.error, 400);
       }
     }
 
     if (await isUsernameTaken(username)) {
-      return NextResponse.json({ error: "usernameInUse" }, { status: 409 });
+      return apiError("usernameInUse", 409);
     }
 
     if (normalizedEmail && await isEmailTaken(normalizedEmail)) {
-      return NextResponse.json({ error: "emailInUse" }, { status: 409 });
+      return apiError("emailInUse", 409);
     }
 
     const generatedPassword = generateSecurePassword();
@@ -146,14 +145,11 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    const response = NextResponse.json(
-      { data: created, passwordGenerated: password === undefined },
-      { status: 201 }
-    );
+    const response = apiSuccess({ user: created, passwordGenerated: password === undefined }, { status: 201 });
     response.headers.set("Cache-Control", "no-store, no-cache");
     return response;
   } catch (error) {
-    console.error("POST /api/v1/users error:", error);
-    return NextResponse.json({ error: "internalServerError" }, { status: 500 });
+    logger.error({ err: error }, "POST /api/v1/users error");
+    return apiError("internalServerError", 500);
   }
 }

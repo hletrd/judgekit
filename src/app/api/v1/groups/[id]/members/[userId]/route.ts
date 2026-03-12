@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { apiSuccess, apiError } from "@/lib/api/responses";
 import { and, eq } from "drizzle-orm";
 import { recordAuditEvent } from "@/lib/audit/events";
 import { db } from "@/lib/db";
@@ -7,6 +8,7 @@ import { canManageGroupResources } from "@/lib/assignments/management";
 import { getApiUser, forbidden, notFound, unauthorized, csrfForbidden } from "@/lib/api/auth";
 import { assertUserRole } from "@/lib/security/constants";
 import { consumeApiRateLimit } from "@/lib/security/api-rate-limit";
+import { logger } from "@/lib/logger";
 
 export async function DELETE(
   request: NextRequest,
@@ -44,7 +46,7 @@ export async function DELETE(
     });
 
     if (!enrollment) {
-      return NextResponse.json({ error: "studentEnrollmentNotFound" }, { status: 404 });
+      return apiError("studentEnrollmentNotFound", 404);
     }
 
     const member = await db.query.users.findFirst({
@@ -60,7 +62,7 @@ export async function DELETE(
       .then((rows) => rows[0] ?? null);
 
     if (assignmentSubmission) {
-      return NextResponse.json({ error: "groupMemberRemovalBlocked" }, { status: 409 });
+      return apiError("groupMemberRemovalBlocked", 409);
     }
 
     await db.delete(enrollments).where(eq(enrollments.id, enrollment.id));
@@ -80,9 +82,9 @@ export async function DELETE(
       request,
     });
 
-    return NextResponse.json({ data: { userId } });
+    return apiSuccess({ userId });
   } catch (error) {
-    console.error("DELETE /api/v1/groups/[id]/members/[userId] error:", error);
-    return NextResponse.json({ error: "memberRemoveFailed" }, { status: 500 });
+    logger.error({ err: error }, "DELETE /api/v1/groups/[id]/members/[userId] error");
+    return apiError("memberRemoveFailed", 500);
   }
 }

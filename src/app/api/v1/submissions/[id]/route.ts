@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
+import { apiSuccess, apiError } from "@/lib/api/responses";
 import { db } from "@/lib/db";
 import { submissions } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { getApiUser, unauthorized, forbidden, notFound } from "@/lib/api/auth";
 import { canAccessSubmission } from "@/lib/auth/permissions";
+import { logger } from "@/lib/logger";
 
 export async function GET(
   request: NextRequest,
@@ -57,12 +59,12 @@ export async function GET(
 
     if (!isOwner && !isPrivileged) {
       const { sourceCode: _, ...rest } = submission;
-      return NextResponse.json({ data: rest });
+      return apiSuccess(rest);
     }
 
-    return NextResponse.json({ data: submission });
+    return apiSuccess(submission);
   } catch (error) {
-    console.error("GET /api/v1/submissions/[id] error:", error);
-    return NextResponse.json({ error: "internalServerError" }, { status: 500 });
+    logger.error({ err: error }, "GET /api/v1/submissions/[id] error");
+    return apiError("internalServerError", 500);
   }
 }

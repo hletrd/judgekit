@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { apiSuccess, apiError } from "@/lib/api/responses";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
@@ -16,12 +17,13 @@ import {
   isEmailTaken,
   validateAndHashPassword,
 } from "@/lib/users/core";
+import { logger } from "@/lib/logger";
 
 type ApiUser = NonNullable<Awaited<ReturnType<typeof getApiUser>>>;
 type UserUpdates = Record<string, unknown>;
 
 function jsonError(error: string, status: number) {
-  return NextResponse.json({ error }, { status });
+  return apiError(error, status);
 }
 
 function normalizeOptionalText(value: unknown) {
@@ -224,10 +226,10 @@ export async function GET(
 
     if (!found) return notFound("User");
 
-    return NextResponse.json({ data: found });
+    return apiSuccess(found);
   } catch (error) {
-    console.error("GET /api/v1/users/[id] error:", error);
-    return NextResponse.json({ error: "internalServerError" }, { status: 500 });
+    logger.error({ err: error }, "GET /api/v1/users/[id] error");
+    return apiError("internalServerError", 500);
   }
 }
 
@@ -319,10 +321,10 @@ export async function PATCH(
       });
     }
 
-    return NextResponse.json({ data: updated });
+    return apiSuccess(updated);
   } catch (error) {
-    console.error("PATCH /api/v1/users/[id] error:", error);
-    return NextResponse.json({ error: "internalServerError" }, { status: 500 });
+    logger.error({ err: error }, "PATCH /api/v1/users/[id] error");
+    return apiError("internalServerError", 500);
   }
 }
 
@@ -353,17 +355,11 @@ export async function DELETE(
     if (!found) return notFound("User");
 
     if (found.id === user.id) {
-      return NextResponse.json(
-        { error: permanent ? "cannotDeleteSelf" : "cannotDeactivateSelf" },
-        { status: 403 }
-      );
+      return apiError(permanent ? "cannotDeleteSelf" : "cannotDeactivateSelf", 403);
     }
 
     if (found.role === "super_admin") {
-      return NextResponse.json(
-        { error: permanent ? "cannotDeleteSuperAdmin" : "cannotDeactivateSuperAdmin" },
-        { status: 403 }
-      );
+      return apiError(permanent ? "cannotDeleteSuperAdmin" : "cannotDeactivateSuperAdmin", 403);
     }
 
     if (permanent) {
@@ -396,7 +392,7 @@ export async function DELETE(
 
       await db.delete(users).where(eq(users.id, id));
 
-      return NextResponse.json({ data: { id, deleted: true } });
+      return apiSuccess({ id, deleted: true });
     }
 
     await db.update(users).set({ isActive: false, updatedAt: new Date() }).where(eq(users.id, id));
@@ -415,9 +411,9 @@ export async function DELETE(
       request,
     });
 
-    return NextResponse.json({ data: { id, isActive: false } });
+    return apiSuccess({ id, isActive: false });
   } catch (error) {
-    console.error("DELETE /api/v1/users/[id] error:", error);
-    return NextResponse.json({ error: "internalServerError" }, { status: 500 });
+    logger.error({ err: error }, "DELETE /api/v1/users/[id] error");
+    return apiError("internalServerError", 500);
   }
 }

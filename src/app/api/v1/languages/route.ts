@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { apiSuccess } from "@/lib/api/responses";
 import { db } from "@/lib/db";
 import { languageConfigs } from "@/lib/db/schema";
 import { getJudgeLanguageDefinition } from "@/lib/judge/languages";
@@ -13,23 +14,21 @@ export const GET = createApiHandler({
       .from(languageConfigs)
       .where(eq(languageConfigs.isEnabled, true));
 
-    return NextResponse.json({
-      data: languages.flatMap((language) => {
-        const definition = getJudgeLanguageDefinition(language.language);
+    return apiSuccess(languages.flatMap((language) => {
+      const definition = getJudgeLanguageDefinition(language.language);
 
-        if (!definition) {
-          return [];
-        }
+      if (!definition) {
+        return [];
+      }
 
-        return [{
-          id: language.id,
-          language: definition.language,
-          displayName: definition.displayName,
-          standard: definition.standard,
-          extension: definition.extension,
-        }];
-      }),
-    }, {
+      return [{
+        id: language.id,
+        language: definition.language,
+        displayName: definition.displayName,
+        standard: definition.standard,
+        extension: definition.extension,
+      }];
+    }), {
       headers: { "Cache-Control": "public, max-age=300" },
     });
   },

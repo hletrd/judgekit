@@ -9,6 +9,7 @@ import { apiError, apiPaginated, apiSuccess } from "@/lib/api/responses";
 import { nanoid } from "nanoid";
 import { createGroupSchema } from "@/lib/validators/groups";
 import { consumeApiRateLimit } from "@/lib/security/api-rate-limit";
+import { logger } from "@/lib/logger";
 
 export async function GET(request: NextRequest) {
   try {
@@ -77,7 +78,7 @@ export async function GET(request: NextRequest) {
 
     return apiPaginated(results, page, limit, total);
   } catch (error) {
-    console.error("GET /api/v1/groups error:", error);
+    logger.error({ err: error }, "GET /api/v1/groups error");
     return apiError("internalServerError", 500);
   }
 }
@@ -133,7 +134,7 @@ export async function POST(request: NextRequest) {
 
     return apiSuccess(group, { status: 201 });
   } catch (error) {
-    console.error("POST /api/v1/groups error:", error);
+    logger.error({ err: error }, "POST /api/v1/groups error");
     return apiError("createError", 500);
   }
 }
