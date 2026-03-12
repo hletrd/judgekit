@@ -6,6 +6,11 @@ import { eq } from "drizzle-orm";
 import { getApiUser, unauthorized, forbidden, notFound, isAdmin } from "@/lib/api/auth";
 import { IN_PROGRESS_JUDGE_STATUSES } from "@/lib/judge/verdict";
 import { logger } from "@/lib/logger";
+import { consumeApiRateLimit } from "@/lib/security/api-rate-limit";
+
+// Track active SSE connections per user to prevent resource exhaustion
+const activeConnections = new Map<string, number>();
+const MAX_SSE_CONNECTIONS_PER_USER = 5;
 
 const POLL_INTERVAL_MS = 2000;
 const TIMEOUT_MS = 5 * 60 * 1000;
@@ -18,6 +23,18 @@ export async function GET(
   try {
     const user = await getApiUser(request);
     if (!user) return unauthorized();
+
+    const rateLimitResponse = consumeApiRateLimit(request, "submissions:events");
+    if (rateLimitResponse) return rateLimitResponse;
+
+    // Enforce per-user SSE connection cap
+    const currentCount = activeConnections.get(user.id) ?? 0;
+    if (currentCount >= MAX_SSE_CONNECTIONS_PER_USER) {
+      return apiError("tooManyConnections", 429);
+    }
+    activeConnections.set(user.id, currentCount + 1);
+
+    const userId = user.id;
 
     const { id } = await params;
 
@@ -40,6 +57,13 @@ export async function GET(
     if (!IN_PROGRESS_JUDGE_STATUSES.has(submission.status ?? "")) {
       const fullSubmission = await queryFullSubmission(id);
       const body = `event: result\ndata: ${JSON.stringify(fullSubmission)}\n\n`;
+      // Decrement connection count for non-streaming early return
+      const count = activeConnections.get(userId) ?? 1;
+      if (count <= 1) {
+        activeConnections.delete(userId);
+      } else {
+        activeConnections.set(userId, count - 1);
+      }
       return new Response(body, {
         headers: sseHeaders(),
       });
@@ -55,6 +79,13 @@ export async function GET(
           closed = true;
           clearInterval(pollTimer);
           clearTimeout(timeoutTimer);
+          // Decrement active connection count
+          const count = activeConnections.get(userId) ?? 1;
+          if (count <= 1) {
+            activeConnections.delete(userId);
+          } else {
+            activeConnections.set(userId, count - 1);
+          }
           try {
             controller.close();
           } catch {
