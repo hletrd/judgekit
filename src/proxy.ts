@@ -110,9 +110,10 @@ export async function proxy(request: NextRequest) {
     }
   }
 
-  // SEC2-L1: Log suspicious User-Agent mismatch as a session binding signal.
-  // Hard-rejection is intentionally omitted — UA changes legitimately on browser
-  // updates, corporate proxies, and mobile networks.
+  // SEC-M5: Log suspicious User-Agent mismatch as a session binding signal.
+  // For admin/super_admin roles, hard-reject to force re-authentication.
+  // For student/instructor roles, audit-only (UA changes legitimately on browser
+  // updates, corporate proxies, and mobile networks).
   if (token?.uaHash && activeUser) {
     const currentUaHash = crypto
       .createHash("sha256")
@@ -130,6 +131,19 @@ export async function proxy(request: NextRequest) {
         details: { storedUaHash: token.uaHash, currentUaHash },
         context: buildAuditRequestContext(request),
       });
+
+      // Hard-reject for admin roles — force re-authentication
+      const role = typeof token.role === "string" ? token.role : "";
+      if (role === "admin" || role === "super_admin") {
+        if (isApiRoute) {
+          return clearAuthSessionCookies(
+            NextResponse.json({ error: "SessionUaMismatch" }, { status: 401 })
+          );
+        }
+        const loginUrl = new URL("/login", request.url);
+        loginUrl.searchParams.set("callbackUrl", request.nextUrl.pathname);
+        return clearAuthSessionCookies(NextResponse.redirect(loginUrl));
+      }
     }
   }
 
