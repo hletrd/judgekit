@@ -1,0 +1,144 @@
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import Link from "next/link";
+import { db } from "@/lib/db";
+import { assignments, groups, submissions, users } from "@/lib/db/schema";
+import { and, desc, eq, inArray, sql } from "drizzle-orm";
+import { SubmissionStatusBadge } from "@/components/submission-status-badge";
+import { getTranslations } from "next-intl/server";
+
+type InstructorDashboardProps = {
+  userId: string;
+};
+
+export async function InstructorDashboard({ userId }: InstructorDashboardProps) {
+  const t = await getTranslations("dashboard");
+  const tCommon = await getTranslations("common");
+
+  const instructorGroups = await db.query.groups.findMany({
+    where: eq(groups.instructorId, userId),
+    columns: { id: true, name: true },
+  });
+  const instructorGroupIds = instructorGroups.map((group) => group.id);
+
+  const instructorAssignments =
+    instructorGroupIds.length > 0
+      ? await db.query.assignments.findMany({
+          where: (assignments, { inArray: inArrayOperator }) =>
+            inArrayOperator(assignments.groupId, instructorGroupIds),
+          columns: { id: true, title: true, groupId: true, deadline: true, lateDeadline: true },
+        })
+      : [];
+  const instructorAssignmentIds = instructorAssignments.map((assignment) => assignment.id);
+
+  const [pendingQueueCount, recentGroupActivity] = await Promise.all([
+    instructorAssignmentIds.length > 0
+      ? db
+          .select({ total: sql<number>`count(*)` })
+          .from(submissions)
+          .where(
+            and(
+              inArray(submissions.assignmentId, instructorAssignmentIds),
+              sql`${submissions.status} IN ('pending', 'queued', 'judging')`
+            )
+          )
+          .then((rows) => Number(rows[0]?.total ?? 0))
+      : Promise.resolve(0),
+    instructorAssignmentIds.length > 0
+      ? db
+          .select({
+            id: submissions.id,
+            status: submissions.status,
+            submittedAt: submissions.submittedAt,
+            assignment: {
+              id: assignments.id,
+              title: assignments.title,
+            },
+            group: {
+              id: groups.id,
+              name: groups.name,
+            },
+            student: {
+              id: users.id,
+              name: users.name,
+            },
+          })
+          .from(submissions)
+          .innerJoin(assignments, eq(submissions.assignmentId, assignments.id))
+          .innerJoin(groups, eq(assignments.groupId, groups.id))
+          .leftJoin(users, eq(submissions.userId, users.id))
+          .where(inArray(submissions.assignmentId, instructorAssignmentIds))
+          .orderBy(desc(submissions.submittedAt))
+          .limit(6)
+      : Promise.resolve([]),
+  ]);
+
+  return (
+    <>
+      <div className="grid gap-4 md:grid-cols-3">
+        <Card>
+          <CardHeader>
+            <CardTitle>{t("myGroups")}</CardTitle>
+          </CardHeader>
+          <CardContent className="text-3xl font-semibold">{instructorGroups.length}</CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle>{t("activeAssignments")}</CardTitle>
+          </CardHeader>
+          <CardContent className="text-3xl font-semibold">{instructorAssignments.length}</CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle>{t("queuedSubmissions")}</CardTitle>
+          </CardHeader>
+          <CardContent className="text-3xl font-semibold">{pendingQueueCount}</CardContent>
+        </Card>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>{t("recentGroupActivity")}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {recentGroupActivity.length === 0 ? (
+            <p className="text-sm text-muted-foreground">{t("noRecentGroupActivity")}</p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>{t("studentLabel")}</TableHead>
+                  <TableHead>{t("groupLabel")}</TableHead>
+                  <TableHead>{t("assignmentLabel")}</TableHead>
+                  <TableHead>{t("statusLabel")}</TableHead>
+                  <TableHead>{t("recentSubmissions")}</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {recentGroupActivity.map((submission) => (
+                  <TableRow key={submission.id}>
+                    <TableCell>{submission.student?.name ?? tCommon("unknown")}</TableCell>
+                    <TableCell>{submission.group.name}</TableCell>
+                    <TableCell>{submission.assignment?.title ?? tCommon("unknown")}</TableCell>
+                    <TableCell>
+                      <SubmissionStatusBadge
+                        label={submission.status ?? tCommon("unknown")}
+                        status={submission.status}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <Link href={`/dashboard/submissions/${submission.id}`}>
+                        <Button size="sm" variant="outline">{t("viewSubmission")}</Button>
+                      </Link>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+    </>
+  );
+}
