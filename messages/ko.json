@@ -573,6 +573,7 @@
       "downloadCredentials": "자격 증명 다운로드",
       "bulkCreateSuccess": "{count}명 사용자 생성됨",
       "csvPreview": "CSV 미리보기",
+      "bulkCsvParseError": "CSV 파싱 실패: {message}",
       "bulkCsvEmpty": "CSV 파일이 비어 있거나 데이터 행이 없습니다.",
       "bulkRowInvalidUsername": "행 {row}: 사용자명이 없거나 올바르지 않습니다",
       "bulkRowMissingName": "행 {row}: 이름이 없습니다",

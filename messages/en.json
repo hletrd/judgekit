@@ -573,6 +573,7 @@
       "downloadCredentials": "Download Credentials",
       "bulkCreateSuccess": "{count} users created",
       "csvPreview": "CSV Preview",
+      "bulkCsvParseError": "Failed to parse CSV: {message}",
       "bulkCsvEmpty": "CSV file is empty or has no data rows.",
       "bulkRowInvalidUsername": "Row {row}: missing or invalid username",
       "bulkRowMissingName": "Row {row}: missing name",
