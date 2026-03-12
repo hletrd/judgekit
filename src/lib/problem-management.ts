@@ -3,6 +3,7 @@ import { nanoid } from "nanoid";
 import { db, sqlite } from "@/lib/db";
 import { problems, testCases } from "@/lib/db/schema";
 import type { ProblemMutationInput } from "@/lib/validators/problem-management";
+import { sanitizeHtml } from "@/lib/security/sanitize-html";
 
 function mapTestCases(problemId: string, values: ProblemMutationInput["testCases"]) {
   return values.map((testCase, index) => ({
@@ -24,7 +25,7 @@ export function createProblemWithTestCases(input: ProblemMutationInput, authorId
       .values({
         id,
         title: input.title,
-        description: input.description,
+        description: sanitizeHtml(input.description),
         timeLimitMs: input.timeLimitMs,
         memoryLimitMb: input.memoryLimitMb,
         visibility: input.visibility,
@@ -52,7 +53,7 @@ export function updateProblemWithTestCases(problemId: string, input: ProblemMuta
     db.update(problems)
       .set({
         title: input.title,
-        description: input.description,
+        description: sanitizeHtml(input.description),
         timeLimitMs: input.timeLimitMs,
         memoryLimitMb: input.memoryLimitMb,
         visibility: input.visibility,
