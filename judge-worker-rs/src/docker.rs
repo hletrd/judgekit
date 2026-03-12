@@ -102,6 +102,8 @@ async fn run_docker_once(
         "none".into(),
         "--memory".into(),
         format!("{}m", mem_limit),
+        "--memory-swap".into(),
+        format!("{}m", mem_limit),
         "--cpus".into(),
         EXECUTION_CPU_LIMIT.into(),
         "--pids-limit".into(),
@@ -226,7 +228,7 @@ pub async fn run_docker(
     seccomp_profile_path: &Path,
     disable_custom_seccomp: bool,
 ) -> Result<DockerRunResult, JudgeEnvironmentError> {
-    let use_custom_seccomp = options.phase == Phase::Run && !disable_custom_seccomp;
+    let use_custom_seccomp = !disable_custom_seccomp;
 
     let seccomp_profile = if use_custom_seccomp {
         if !seccomp_profile_path.exists() {
