@@ -4,6 +4,7 @@ import { languageConfigs, problems, submissions } from "@/lib/db/schema";
 import { isJudgeLanguage } from "@/lib/judge/languages";
 import { and, desc, eq, gt, lt, sql } from "drizzle-orm";
 import { getApiUser, unauthorized, isAdmin, csrfForbidden } from "@/lib/api/auth";
+import { consumeApiRateLimit } from "@/lib/security/api-rate-limit";
 import { recordAuditEvent } from "@/lib/audit/events";
 import { canAccessProblem } from "@/lib/auth/permissions";
 import {
@@ -143,6 +144,9 @@ export async function POST(request: NextRequest) {
     const csrfError = csrfForbidden(request);
     if (csrfError) return csrfError;
 
+    const rateLimitResponse = consumeApiRateLimit(request, "submissions:create");
+    if (rateLimitResponse) return rateLimitResponse;
+
     const user = await getApiUser(request);
     if (!user) return unauthorized();
 
@@ -264,7 +268,7 @@ export async function POST(request: NextRequest) {
     }
 
     const id = generateSubmissionId();
-    await db.insert(submissions).values({
+    const [submission] = await db.insert(submissions).values({
       id,
       userId: user.id,
       problemId,
@@ -273,11 +277,21 @@ export async function POST(request: NextRequest) {
       assignmentId: normalizedAssignmentId,
       status: "pending",
       submittedAt: new Date(),
-    });
-
-    const submission = await db.query.submissions.findFirst({
-      where: eq(submissions.id, id),
-      columns: { sourceCode: false },
+    }).returning({
+      id: submissions.id,
+      userId: submissions.userId,
+      problemId: submissions.problemId,
+      assignmentId: submissions.assignmentId,
+      language: submissions.language,
+      status: submissions.status,
+      judgeClaimToken: submissions.judgeClaimToken,
+      judgeClaimedAt: submissions.judgeClaimedAt,
+      compileOutput: submissions.compileOutput,
+      executionTimeMs: submissions.executionTimeMs,
+      memoryUsedKb: submissions.memoryUsedKb,
+      score: submissions.score,
+      judgedAt: submissions.judgedAt,
+      submittedAt: submissions.submittedAt,
     });
 
     if (submission) {
