@@ -1,11 +1,12 @@
 import { getRequestConfig } from "next-intl/server";
 import { cookies, headers } from "next/headers";
+import { LOCALE_COOKIE_NAME, SUPPORTED_LOCALES, DEFAULT_LOCALE } from "@/lib/i18n/constants";
 
 export default getRequestConfig(async () => {
   const cookieStore = await cookies();
   const headerStore = await headers();
 
-  const cookieLocale = cookieStore.get("locale")?.value;
+  const cookieLocale = cookieStore.get(LOCALE_COOKIE_NAME)?.value;
   const acceptLanguage = headerStore.get("accept-language");
 
   let locale = cookieLocale;
@@ -17,9 +18,9 @@ export default getRequestConfig(async () => {
     }
   }
 
-  locale = locale || "en";
+  locale = locale || DEFAULT_LOCALE;
 
-  if (!["en", "ko"].includes(locale)) {
+  if (!(SUPPORTED_LOCALES as readonly string[]).includes(locale)) {
     locale = "en";
   }
 

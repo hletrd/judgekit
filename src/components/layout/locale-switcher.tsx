@@ -9,6 +9,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Languages } from "lucide-react";
+import { LOCALE_COOKIE_NAME } from "@/lib/i18n/constants";
 
 export function LocaleSwitcher() {
   const t = useTranslations("common");
@@ -16,7 +17,7 @@ export function LocaleSwitcher() {
   const currentLocale = useLocale();
 
   function setLocale(locale: string) {
-    document.cookie = `NEXT_LOCALE=${locale}; Path=/; SameSite=Lax; ${location.protocol === "https:" ? "Secure; " : ""}Max-Age=${60 * 60 * 24 * 365}`;
+    document.cookie = `${LOCALE_COOKIE_NAME}=${locale}; Path=/; SameSite=Lax; ${location.protocol === "https:" ? "Secure; " : ""}Max-Age=${60 * 60 * 24 * 365}`;
     router.refresh();
   }
 
