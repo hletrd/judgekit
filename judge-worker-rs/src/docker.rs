@@ -131,6 +131,7 @@ async fn run_docker_once(
         args.push("-i".into());
     }
 
+    args.push("--init".into());
     args.push(options.image.clone());
     for part in &options.command {
         args.push(part.clone());
