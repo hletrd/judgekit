@@ -102,6 +102,32 @@ export function consumeApiRateLimit(
 }
 
 /**
+ * Consume one rate limit token keyed on authenticated user ID.
+ * Use for authenticated API endpoints where IP-based limiting is insufficient
+ * (shared IPs, VPNs). Returns a 429 response if rate limited, or null if allowed.
+ */
+export function consumeUserApiRateLimit(
+  request: NextRequest,
+  userId: string,
+  endpoint: string,
+): NextResponse | null {
+  const key = `api:${endpoint}:user:${userId}`;
+
+  if (hasConsumedRequestKey(request, key)) {
+    return null;
+  }
+
+  if (isRateLimited(key)) {
+    return rateLimitedResponse();
+  }
+
+  recordApiAttempt(key);
+  rememberRequestKey(request, key);
+
+  return null;
+}
+
+/**
  * Check and record a rate limit for a server action.
  * Keyed on userId + actionName so each user has their own counter.
  * Returns { error: "rateLimited" } if the limit is exceeded, or null if allowed.
