@@ -6,7 +6,7 @@ import { submissions, submissionComments } from "@/lib/db/schema";
 import { getApiUser, unauthorized, forbidden, notFound, csrfForbidden, isInstructor } from "@/lib/api/auth";
 import { canAccessSubmission } from "@/lib/auth/permissions";
 import { commentCreateSchema } from "@/lib/validators/comments";
-import { checkApiRateLimit, recordApiRateHit } from "@/lib/security/api-rate-limit";
+import { consumeApiRateLimit } from "@/lib/security/api-rate-limit";
 
 export async function GET(
   request: NextRequest,
@@ -57,9 +57,8 @@ export async function POST(
     const csrfError = csrfForbidden(request);
     if (csrfError) return csrfError;
 
-    const rateLimitResponse = checkApiRateLimit(request, "comments:add");
+    const rateLimitResponse = consumeApiRateLimit(request, "comments:add");
     if (rateLimitResponse) return rateLimitResponse;
-    recordApiRateHit(request, "comments:add");
 
     const user = await getApiUser(request);
     if (!user) return unauthorized();

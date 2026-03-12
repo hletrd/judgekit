@@ -7,7 +7,7 @@ import { recordAuditEvent } from "@/lib/audit/events";
 import { canAccessProblem } from "@/lib/auth/permissions";
 import { updateProblemWithTestCases } from "@/lib/problem-management";
 import { problemMutationSchema } from "@/lib/validators/problem-management";
-import { checkApiRateLimit, recordApiRateHit } from "@/lib/security/api-rate-limit";
+import { consumeApiRateLimit } from "@/lib/security/api-rate-limit";
 
 export async function GET(
   request: NextRequest,
@@ -50,9 +50,8 @@ export async function PATCH(
     const csrfError = csrfForbidden(request);
     if (csrfError) return csrfError;
 
-    const rateLimitResponse = checkApiRateLimit(request, "problems:update");
+    const rateLimitResponse = consumeApiRateLimit(request, "problems:update");
     if (rateLimitResponse) return rateLimitResponse;
-    recordApiRateHit(request, "problems:update");
 
     const user = await getApiUser(request);
     if (!user) return unauthorized();
@@ -149,9 +148,8 @@ export async function DELETE(
     const csrfError = csrfForbidden(request);
     if (csrfError) return csrfError;
 
-    const rateLimitError = checkApiRateLimit(request, "problems:delete");
+    const rateLimitError = consumeApiRateLimit(request, "problems:delete");
     if (rateLimitError) return rateLimitError;
-    recordApiRateHit(request, "problems:delete");
 
     const user = await getApiUser(request);
     if (!user) return unauthorized();

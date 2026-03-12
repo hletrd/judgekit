@@ -7,16 +7,15 @@ import { nanoid } from "nanoid";
 import { hash } from "bcryptjs";
 import { generateSecurePassword } from "@/lib/auth/generated-password";
 import { bulkUserCreateSchema } from "@/lib/validators/bulk-users";
-import { checkApiRateLimit, recordApiRateHit } from "@/lib/security/api-rate-limit";
+import { consumeApiRateLimit } from "@/lib/security/api-rate-limit";
 
 export async function POST(request: NextRequest) {
   try {
     const csrfError = csrfForbidden(request);
     if (csrfError) return csrfError;
 
-    const rateLimitResponse = checkApiRateLimit(request, "users:bulk-create");
+    const rateLimitResponse = consumeApiRateLimit(request, "users:bulk-create");
     if (rateLimitResponse) return rateLimitResponse;
-    recordApiRateHit(request, "users:bulk-create");
 
     const user = await getApiUser(request);
     if (!user) return unauthorized();

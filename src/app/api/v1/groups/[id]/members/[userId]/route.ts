@@ -6,7 +6,7 @@ import { assignments, enrollments, submissions } from "@/lib/db/schema";
 import { canManageGroupResources } from "@/lib/assignments/management";
 import { getApiUser, forbidden, notFound, unauthorized, csrfForbidden } from "@/lib/api/auth";
 import { assertUserRole } from "@/lib/security/constants";
-import { checkApiRateLimit, recordApiRateHit } from "@/lib/security/api-rate-limit";
+import { consumeApiRateLimit } from "@/lib/security/api-rate-limit";
 
 export async function DELETE(
   request: NextRequest,
@@ -16,9 +16,8 @@ export async function DELETE(
     const csrfError = csrfForbidden(request);
     if (csrfError) return csrfError;
 
-    const rateLimitResponse = checkApiRateLimit(request, "members:remove");
+    const rateLimitResponse = consumeApiRateLimit(request, "members:remove");
     if (rateLimitResponse) return rateLimitResponse;
-    recordApiRateHit(request, "members:remove");
 
     const user = await getApiUser(request);
     if (!user) return unauthorized();

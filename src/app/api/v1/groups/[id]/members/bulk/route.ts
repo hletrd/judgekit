@@ -7,7 +7,7 @@ import { canManageGroupResources } from "@/lib/assignments/management";
 import { bulkEnrollmentSchema } from "@/lib/validators/groups";
 import { getApiUser, forbidden, notFound, unauthorized, csrfForbidden } from "@/lib/api/auth";
 import { assertUserRole } from "@/lib/security/constants";
-import { checkApiRateLimit, recordApiRateHit } from "@/lib/security/api-rate-limit";
+import { consumeApiRateLimit } from "@/lib/security/api-rate-limit";
 
 export async function POST(
   request: NextRequest,
@@ -17,9 +17,8 @@ export async function POST(
     const csrfError = csrfForbidden(request);
     if (csrfError) return csrfError;
 
-    const rateLimitResponse = checkApiRateLimit(request, "members:bulk-add");
+    const rateLimitResponse = consumeApiRateLimit(request, "members:bulk-add");
     if (rateLimitResponse) return rateLimitResponse;
-    recordApiRateHit(request, "members:bulk-add");
 
     const user = await getApiUser(request);
     if (!user) return unauthorized();

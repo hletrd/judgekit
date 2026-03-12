@@ -6,7 +6,7 @@ import { canAccessGroup } from "@/lib/auth/permissions";
 import { getApiUser, unauthorized, forbidden, notFound, isAdmin, csrfForbidden } from "@/lib/api/auth";
 import { recordAuditEvent } from "@/lib/audit/events";
 import { updateGroupSchema } from "@/lib/validators/groups";
-import { checkApiRateLimit, recordApiRateHit } from "@/lib/security/api-rate-limit";
+import { consumeApiRateLimit } from "@/lib/security/api-rate-limit";
 
 export async function GET(
   request: NextRequest,
@@ -104,9 +104,8 @@ export async function PATCH(
     const csrfError = csrfForbidden(request);
     if (csrfError) return csrfError;
 
-    const rateLimitResponse = checkApiRateLimit(request, "groups:update");
+    const rateLimitResponse = consumeApiRateLimit(request, "groups:update");
     if (rateLimitResponse) return rateLimitResponse;
-    recordApiRateHit(request, "groups:update");
 
     const user = await getApiUser(request);
     if (!user) return unauthorized();
@@ -170,9 +169,8 @@ export async function DELETE(
     const csrfError = csrfForbidden(request);
     if (csrfError) return csrfError;
 
-    const rateLimitResponse = checkApiRateLimit(request, "groups:delete");
+    const rateLimitResponse = consumeApiRateLimit(request, "groups:delete");
     if (rateLimitResponse) return rateLimitResponse;
-    recordApiRateHit(request, "groups:delete");
 
     const user = await getApiUser(request);
     if (!user) return unauthorized();

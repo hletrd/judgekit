@@ -9,7 +9,7 @@ import {
   isAdmin,
   isInstructor,
 } from "@/lib/api/auth";
-import { checkApiRateLimit, recordApiRateHit } from "@/lib/security/api-rate-limit";
+import { consumeApiRateLimit } from "@/lib/security/api-rate-limit";
 import { isUserRole } from "@/lib/security/constants";
 
 /** Shape returned by getApiUser */
@@ -38,7 +38,7 @@ type AuthConfig =
  *
  * - auth       — enable auth check (default: true)
  * - csrf       — enable CSRF check for mutation methods (default: auto for POST/PUT/PATCH/DELETE)
- * - rateLimit  — rate limit key; when provided, checkApiRateLimit + recordApiRateHit are called
+ * - rateLimit  — rate limit key; when provided, consumeApiRateLimit is called
  * - schema     — Zod schema to parse and validate the request body
  * - handler    — the actual business logic; receives (req, ctx)
  */
@@ -105,9 +105,8 @@ export function createApiHandler<T = unknown>(config: HandlerConfig<T>) {
 
       // --- Rate limiting ---
       if (rateLimit) {
-        const rateLimitResponse = checkApiRateLimit(req, rateLimit);
+        const rateLimitResponse = consumeApiRateLimit(req, rateLimit);
         if (rateLimitResponse) return rateLimitResponse;
-        recordApiRateHit(req, rateLimit);
       }
 
       // --- Auth check ---

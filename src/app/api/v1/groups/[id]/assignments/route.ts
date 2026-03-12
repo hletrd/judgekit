@@ -12,7 +12,7 @@ import { assignmentMutationSchema } from "@/lib/validators/assignments";
 import { getApiUser, forbidden, notFound, unauthorized, csrfForbidden } from "@/lib/api/auth";
 import { canAccessGroup } from "@/lib/auth/permissions";
 import { assertUserRole } from "@/lib/security/constants";
-import { checkApiRateLimit, recordApiRateHit } from "@/lib/security/api-rate-limit";
+import { consumeApiRateLimit } from "@/lib/security/api-rate-limit";
 
 export async function GET(
   request: NextRequest,
@@ -62,9 +62,8 @@ export async function POST(
     const csrfError = csrfForbidden(request);
     if (csrfError) return csrfError;
 
-    const rateLimitResponse = checkApiRateLimit(request, "assignments:create");
+    const rateLimitResponse = consumeApiRateLimit(request, "assignments:create");
     if (rateLimitResponse) return rateLimitResponse;
-    recordApiRateHit(request, "assignments:create");
 
     const user = await getApiUser(request);
     if (!user) return unauthorized();

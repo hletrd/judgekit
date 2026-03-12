@@ -24,10 +24,10 @@ function rateLimitedResponse() {
 }
 
 /**
- * Check API rate limit for a mutation endpoint.
+ * Consume one rate limit token for a mutation endpoint.
  * Returns a 429 response if rate limited, or null if allowed.
  */
-export function checkApiRateLimit(
+export function consumeApiRateLimit(
   request: NextRequest,
   endpoint: string
 ): NextResponse | null {
@@ -41,18 +41,4 @@ export function checkApiRateLimit(
   rememberRequestKey(request, key);
 
   return null;
-}
-
-/**
- * Record a rate limit hit (call on every mutation request).
- */
-export function recordApiRateHit(request: NextRequest, endpoint: string) {
-  const key = getRateLimitKey(`api:${endpoint}`, request.headers);
-
-  if (hasConsumedRequestKey(request, key)) {
-    return;
-  }
-
-  recordRateLimitFailure(key);
-  rememberRequestKey(request, key);
 }

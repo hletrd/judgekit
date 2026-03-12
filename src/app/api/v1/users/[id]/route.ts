@@ -10,7 +10,7 @@ import {
 } from "@/lib/security/constants";
 import { safeUserSelect } from "@/lib/db/selects";
 import { updateProfileSchema, adminUpdateUserSchema } from "@/lib/validators/profile";
-import { checkApiRateLimit, recordApiRateHit } from "@/lib/security/api-rate-limit";
+import { consumeApiRateLimit } from "@/lib/security/api-rate-limit";
 import {
   isUsernameTaken,
   isEmailTaken,
@@ -239,9 +239,8 @@ export async function PATCH(
     const csrfError = csrfForbidden(request);
     if (csrfError) return csrfError;
 
-    const rateLimitResponse = checkApiRateLimit(request, "users:update");
+    const rateLimitResponse = consumeApiRateLimit(request, "users:update");
     if (rateLimitResponse) return rateLimitResponse;
-    recordApiRateHit(request, "users:update");
 
     const user = await getApiUser(request);
     if (!user) return unauthorized();
@@ -335,9 +334,8 @@ export async function DELETE(
     const csrfError = csrfForbidden(request);
     if (csrfError) return csrfError;
 
-    const rateLimitResponse = checkApiRateLimit(request, "users:delete");
+    const rateLimitResponse = consumeApiRateLimit(request, "users:delete");
     if (rateLimitResponse) return rateLimitResponse;
-    recordApiRateHit(request, "users:delete");
 
     const user = await getApiUser(request);
     if (!user) return unauthorized();

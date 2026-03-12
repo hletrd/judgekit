@@ -7,7 +7,7 @@ import { recordAuditEvent } from "@/lib/audit/events";
 import { canManageGroupResources } from "@/lib/assignments/management";
 import { getApiUser, forbidden, notFound, unauthorized, csrfForbidden } from "@/lib/api/auth";
 import { assertUserRole } from "@/lib/security/constants";
-import { checkApiRateLimit, recordApiRateHit } from "@/lib/security/api-rate-limit";
+import { consumeApiRateLimit } from "@/lib/security/api-rate-limit";
 
 const scoreOverrideBodySchema = z.object({
   problemId: z.string().min(1),
@@ -68,9 +68,8 @@ export async function POST(
     const csrfError = csrfForbidden(request);
     if (csrfError) return csrfError;
 
-    const rateLimitResponse = checkApiRateLimit(request, "overrides:upsert");
+    const rateLimitResponse = consumeApiRateLimit(request, "overrides:upsert");
     if (rateLimitResponse) return rateLimitResponse;
-    recordApiRateHit(request, "overrides:upsert");
 
     const result = await resolveAssignmentAndAuthorize(request, params);
     if ("error" in result) return result.error;
@@ -170,9 +169,8 @@ export async function DELETE(
     const csrfError = csrfForbidden(request);
     if (csrfError) return csrfError;
 
-    const rateLimitResponse = checkApiRateLimit(request, "overrides:delete");
+    const rateLimitResponse = consumeApiRateLimit(request, "overrides:delete");
     if (rateLimitResponse) return rateLimitResponse;
-    recordApiRateHit(request, "overrides:delete");
 
     const result = await resolveAssignmentAndAuthorize(request, params);
     if ("error" in result) return result.error;

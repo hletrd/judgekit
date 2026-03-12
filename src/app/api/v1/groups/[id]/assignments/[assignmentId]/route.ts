@@ -13,7 +13,7 @@ import { assignmentMutationSchema } from "@/lib/validators/assignments";
 import { getApiUser, forbidden, notFound, unauthorized, csrfForbidden, isAdmin } from "@/lib/api/auth";
 import { canAccessGroup } from "@/lib/auth/permissions";
 import type { UserRole } from "@/types";
-import { checkApiRateLimit, recordApiRateHit } from "@/lib/security/api-rate-limit";
+import { consumeApiRateLimit } from "@/lib/security/api-rate-limit";
 import { assertUserRole, isUserRole } from "@/lib/security/constants";
 
 export async function GET(
@@ -61,9 +61,8 @@ export async function PATCH(
     const csrfError = csrfForbidden(request);
     if (csrfError) return csrfError;
 
-    const rateLimitResponse = checkApiRateLimit(request, "assignments:update");
+    const rateLimitResponse = consumeApiRateLimit(request, "assignments:update");
     if (rateLimitResponse) return rateLimitResponse;
-    recordApiRateHit(request, "assignments:update");
 
     const user = await getApiUser(request);
     if (!user) return unauthorized();
@@ -221,9 +220,8 @@ export async function DELETE(
     const csrfError = csrfForbidden(request);
     if (csrfError) return csrfError;
 
-    const rateLimitResponse = checkApiRateLimit(request, "assignments:delete");
+    const rateLimitResponse = consumeApiRateLimit(request, "assignments:delete");
     if (rateLimitResponse) return rateLimitResponse;
-    recordApiRateHit(request, "assignments:delete");
 
     const user = await getApiUser(request);
     if (!user) return unauthorized();

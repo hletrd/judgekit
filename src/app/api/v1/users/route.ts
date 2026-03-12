@@ -10,7 +10,7 @@ import { generateSecurePassword } from "@/lib/auth/generated-password";
 import { safeUserSelect } from "@/lib/db/selects";
 import { assertUserRole, isUserRole } from "@/lib/security/constants";
 import { userCreateSchema } from "@/lib/validators/profile";
-import { checkApiRateLimit, recordApiRateHit } from "@/lib/security/api-rate-limit";
+import { consumeApiRateLimit } from "@/lib/security/api-rate-limit";
 import { parsePagination } from "@/lib/api/pagination";
 import {
   isUsernameTaken,
@@ -60,9 +60,8 @@ export async function POST(request: NextRequest) {
     const csrfError = csrfForbidden(request);
     if (csrfError) return csrfError;
 
-    const rateLimitResponse = checkApiRateLimit(request, "users:create");
+    const rateLimitResponse = consumeApiRateLimit(request, "users:create");
     if (rateLimitResponse) return rateLimitResponse;
-    recordApiRateHit(request, "users:create");
 
     const user = await getApiUser(request);
     if (!user) return unauthorized();

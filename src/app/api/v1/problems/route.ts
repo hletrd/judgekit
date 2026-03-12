@@ -8,7 +8,7 @@ import { parsePagination } from "@/lib/api/pagination";
 import { apiError, apiPaginated, apiSuccess } from "@/lib/api/responses";
 import { createProblemWithTestCases } from "@/lib/problem-management";
 import { problemMutationSchema, problemVisibilityValues } from "@/lib/validators/problem-management";
-import { checkApiRateLimit, recordApiRateHit } from "@/lib/security/api-rate-limit";
+import { consumeApiRateLimit } from "@/lib/security/api-rate-limit";
 
 export async function GET(request: NextRequest) {
   try {
@@ -83,9 +83,8 @@ export async function POST(request: NextRequest) {
     const csrfError = csrfForbidden(request);
     if (csrfError) return csrfError;
 
-    const rateLimitResponse = checkApiRateLimit(request, "problems:create");
+    const rateLimitResponse = consumeApiRateLimit(request, "problems:create");
     if (rateLimitResponse) return rateLimitResponse;
-    recordApiRateHit(request, "problems:create");
 
     const user = await getApiUser(request);
     if (!user) return unauthorized();

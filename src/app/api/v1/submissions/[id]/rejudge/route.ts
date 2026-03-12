@@ -4,7 +4,7 @@ import { submissions, submissionResults } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { getApiUser, unauthorized, forbidden, notFound, isInstructor, csrfForbidden } from "@/lib/api/auth";
 import { recordAuditEvent } from "@/lib/audit/events";
-import { checkApiRateLimit, recordApiRateHit } from "@/lib/security/api-rate-limit";
+import { consumeApiRateLimit } from "@/lib/security/api-rate-limit";
 
 export async function POST(
   request: NextRequest,
@@ -21,9 +21,8 @@ export async function POST(
       return forbidden();
     }
 
-    const rateLimitError = checkApiRateLimit(request, "submissions.rejudge");
+    const rateLimitError = consumeApiRateLimit(request, "submissions.rejudge");
     if (rateLimitError) return rateLimitError;
-    recordApiRateHit(request, "submissions.rejudge");
 
     const { id } = await params;
 
