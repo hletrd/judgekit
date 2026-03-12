@@ -108,7 +108,7 @@ export async function POST(request: NextRequest) {
     const passwordHash = await hash(passwordToHash, 12);
     const id = nanoid();
 
-    await db.insert(users).values({
+    const [created] = await db.insert(users).values({
       id,
       username,
       email: normalizedEmail,
@@ -120,13 +120,7 @@ export async function POST(request: NextRequest) {
       mustChangePassword: true,
       createdAt: new Date(),
       updatedAt: new Date(),
-    });
-
-    const created = await db
-      .select(safeUserSelect)
-      .from(users)
-      .where(eq(users.id, id))
-      .then((r) => r[0]);
+    }).returning(safeUserSelect);
 
     if (created) {
       recordAuditEvent({

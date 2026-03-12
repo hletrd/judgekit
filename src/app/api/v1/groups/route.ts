@@ -105,16 +105,14 @@ export async function POST(request: NextRequest) {
     const { name, description } = parsedInput.data;
 
     const id = nanoid();
-    await db.insert(groups).values({
+    const [group] = await db.insert(groups).values({
       id,
       name,
       description: description || null,
       instructorId: user.id,
       createdAt: new Date(),
       updatedAt: new Date(),
-    });
-
-    const group = await db.query.groups.findFirst({ where: eq(groups.id, id) });
+    }).returning();
 
     if (group) {
       recordAuditEvent({

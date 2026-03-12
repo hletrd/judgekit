@@ -107,6 +107,9 @@ export async function POST(request: NextRequest) {
 
     const id = createProblemWithTestCases(parsedInput.data, user.id);
 
+    // Cannot use .returning() here: createProblemWithTestCases uses a raw
+    // sqlite transaction with .run() (not async Drizzle), and the response
+    // needs the testCases relation via a join that .returning() cannot provide.
     const problem = await db.query.problems.findFirst({
       where: eq(problems.id, id),
       with: {
