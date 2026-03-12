@@ -6,7 +6,11 @@ import { getApiUser, unauthorized, forbidden, notFound, isAdmin, isInstructor } 
 import { getAssignmentStatusRows } from "@/lib/assignments/submissions";
 
 function escapeCsvField(value: string | null | undefined): string {
-  const str = value == null ? "" : String(value);
+  let str = value == null ? "" : String(value);
+  // Prevent CSV injection: prefix formula-triggering characters with a single quote
+  if (typeof str === "string" && /^[=+\-@\t\r]/.test(str)) {
+    str = "'" + str;
+  }
   if (str.includes(",") || str.includes('"') || str.includes("\n") || str.includes("\r")) {
     return '"' + str.replace(/"/g, '""') + '"';
   }
