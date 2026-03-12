@@ -8,7 +8,8 @@ import { getValidatedAuthSecret } from "@/lib/security/env";
 import { recordAuditEvent, buildAuditRequestContext } from "@/lib/audit/events";
 import crypto from "crypto";
 
-// In-process LRU cache for proxy auth lookups.
+// In-process FIFO cache for proxy auth lookups (Map preserves insertion order;
+// eviction deletes the oldest entry first, making this FIFO rather than LRU).
 // Security tradeoff: revoked or deactivated users may retain access for up to
 // AUTH_CACHE_TTL_MS (2 seconds) after the change is applied to the database.
 // Negative results (user not found / inactive / token invalidated) are NOT cached.
