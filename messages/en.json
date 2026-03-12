@@ -589,7 +589,8 @@
       "deleteFailed": "Failed to delete user",
       "cannotDeleteSuperAdmin": "The super admin account cannot be deleted",
       "cannotDeleteSelf": "You cannot delete your own account",
-      "deleteUserFailed": "Failed to delete user. Please try again."
+      "deleteUserFailed": "Failed to delete user. Please try again.",
+      "confirmUsernameMismatch": "Username confirmation does not match"
     },
     "submissions": {
       "title": "All Submissions",
