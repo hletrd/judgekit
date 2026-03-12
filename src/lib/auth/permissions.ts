@@ -167,6 +167,10 @@ export async function canAccessSubmission(
     return true;
   }
 
+  // Design decision: students retain access to their own submission history
+  // even after being removed from a group. This is intentional — students
+  // should always be able to review their own past work.
+  // See: docs/plan/security-v2-plan.md SEC2-M7
   if (submission.userId === userId) {
     return true;
   }

@@ -36,6 +36,10 @@ export async function GET(request: NextRequest) {
       return apiError("invalidSubmissionStatus", 400);
     }
 
+    // Design decision: students retain access to their own submission history
+    // even after being removed from a group. This is intentional — students
+    // should always be able to review their own past work.
+    // See: docs/plan/security-v2-plan.md SEC2-M7
     const userFilter = isAdmin(user.role) ? undefined : eq(submissions.userId, user.id);
     const problemFilter = problemId ? eq(submissions.problemId, problemId) : undefined;
     const statusFilter = status ? eq(submissions.status, status) : undefined;
@@ -216,6 +220,7 @@ export async function POST(request: NextRequest) {
 
     const submission = await db.query.submissions.findFirst({
       where: eq(submissions.id, id),
+      columns: { sourceCode: false },
     });
 
     if (submission) {
