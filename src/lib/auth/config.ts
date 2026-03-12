@@ -23,9 +23,9 @@ import {
   getAuthSessionCookieName,
   getValidatedAuthSecret,
   shouldTrustAuthHost,
-  shouldUseSecureSessionCookie,
   validateAuthUrl,
 } from "@/lib/security/env";
+import { shouldUseSecureAuthCookie } from "@/lib/auth/secure-cookie";
 import { getTokenUserId } from "@/lib/api/auth";
 import {
   getLoginEventContextFromUser,
@@ -88,7 +88,7 @@ function syncTokenWithUser(
 }
 
 validateAuthUrl();
-const secureSessionCookie = shouldUseSecureSessionCookie();
+const secureSessionCookie = shouldUseSecureAuthCookie();
 
 export const authConfig: NextAuthConfig = {
   secret: getValidatedAuthSecret(),
