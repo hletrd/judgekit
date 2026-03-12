@@ -12,6 +12,7 @@ import {
 import { safeUserSelect } from "@/lib/db/selects";
 import { updateProfileSchema, adminUpdateUserSchema } from "@/lib/validators/profile";
 import { consumeApiRateLimit } from "@/lib/security/api-rate-limit";
+import { withUpdatedAt } from "@/lib/db/helpers";
 import {
   isUsernameTaken,
   isEmailTaken,
@@ -269,7 +270,7 @@ export async function PATCH(
       return jsonError("emailChangeNotAllowed", 403);
     }
 
-    const updates: Record<string, unknown> = { updatedAt: new Date() };
+    const updates: Record<string, unknown> = {};
     const { normalizedEmail } = applyBasicFieldUpdates(updates, body, isAdminActor);
 
     const uniqueIdentityError = await ensureUniqueIdentityFields(
@@ -295,7 +296,7 @@ export async function PATCH(
     );
     if (passwordUpdateError) return passwordUpdateError;
 
-    await db.update(users).set(updates).where(eq(users.id, id));
+    await db.update(users).set(withUpdatedAt(updates)).where(eq(users.id, id));
 
     const updated = await findSafeUserById(id);
 
@@ -395,7 +396,7 @@ export async function DELETE(
       return apiSuccess({ id, deleted: true });
     }
 
-    await db.update(users).set({ isActive: false, tokenInvalidatedAt: new Date(), updatedAt: new Date() }).where(eq(users.id, id));
+    await db.update(users).set(withUpdatedAt({ isActive: false, tokenInvalidatedAt: new Date() })).where(eq(users.id, id));
 
     recordAuditEvent({
       actorId: user.id,

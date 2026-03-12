@@ -4,21 +4,14 @@ import { db } from "@/lib/db";
 import { assignments, groups, submissions, enrollments } from "@/lib/db/schema";
 import { eq, sql } from "drizzle-orm";
 import { canAccessGroup } from "@/lib/auth/permissions";
-import { getApiUser, unauthorized, forbidden, notFound, isAdmin, csrfForbidden } from "@/lib/api/auth";
 import { recordAuditEvent } from "@/lib/audit/events";
 import { updateGroupSchema } from "@/lib/validators/groups";
-import { consumeApiRateLimit } from "@/lib/security/api-rate-limit";
-import { logger } from "@/lib/logger";
+import { withUpdatedAt } from "@/lib/db/helpers";
+import { createApiHandler, isAdmin, notFound, forbidden } from "@/lib/api/handler";
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const user = await getApiUser(request);
-    if (!user) return unauthorized();
-
-    const { id } = await params;
+export const GET = createApiHandler({
+  handler: async (_req: NextRequest, { user, params }) => {
+    const { id } = params;
     const existingGroup = await db.query.groups.findFirst({
       where: eq(groups.id, id),
       columns: { id: true },
@@ -90,47 +83,27 @@ export async function GET(
         },
       })),
     });
-  } catch (error) {
-    logger.error({ err: error }, "GET /api/v1/groups/[id] error");
-    return apiError("internalServerError", 500);
-  }
-}
+  },
+});
 
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const csrfError = csrfForbidden(request);
-    if (csrfError) return csrfError;
-
-    const rateLimitResponse = consumeApiRateLimit(request, "groups:update");
-    if (rateLimitResponse) return rateLimitResponse;
-
-    const user = await getApiUser(request);
-    if (!user) return unauthorized();
-
-    const { id } = await params;
+export const PATCH = createApiHandler({
+  rateLimit: "groups:update",
+  schema: updateGroupSchema,
+  handler: async (req: NextRequest, { user, body, params }) => {
+    const { id } = params;
     const group = await db.query.groups.findFirst({ where: eq(groups.id, id) });
     if (!group) return notFound("Group");
 
     if (!isAdmin(user.role) && group.instructorId !== user.id) return forbidden();
 
-    const body = await request.json();
-    const parsed = updateGroupSchema.safeParse(body);
+    const { name, description, isArchived } = body;
 
-    if (!parsed.success) {
-      return apiError(parsed.error.issues[0]?.message ?? "validationError", 400);
-    }
-
-    const { name, description, isArchived } = parsed.data;
-
-    const updates: Record<string, unknown> = { updatedAt: new Date() };
+    const updates: Record<string, unknown> = {};
     if (name !== undefined) updates.name = name;
     if (description !== undefined) updates.description = description ?? null;
     if (isArchived !== undefined) updates.isArchived = isArchived;
 
-    await db.update(groups).set(updates).where(eq(groups.id, id));
+    await db.update(groups).set(withUpdatedAt(updates)).where(eq(groups.id, id));
 
     const updated = await db.query.groups.findFirst({ where: eq(groups.id, id) });
 
@@ -147,33 +120,19 @@ export async function PATCH(
           changedFields: Object.keys(body).filter((key) => ["name", "description", "isArchived"].includes(key)),
           isArchived: updated.isArchived,
         },
-        request,
+        request: req,
       });
     }
 
     return apiSuccess(updated);
-  } catch (error) {
-    logger.error({ err: error }, "PATCH /api/v1/groups/[id] error");
-    return apiError("internalServerError", 500);
-  }
-}
+  },
+});
 
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const csrfError = csrfForbidden(request);
-    if (csrfError) return csrfError;
-
-    const rateLimitResponse = consumeApiRateLimit(request, "groups:delete");
-    if (rateLimitResponse) return rateLimitResponse;
-
-    const user = await getApiUser(request);
-    if (!user) return unauthorized();
-    if (!isAdmin(user.role)) return forbidden();
-
-    const { id } = await params;
+export const DELETE = createApiHandler({
+  auth: { roles: ["admin", "super_admin"] },
+  rateLimit: "groups:delete",
+  handler: async (req: NextRequest, { user, params }) => {
+    const { id } = params;
     const group = await db.query.groups.findFirst({ where: eq(groups.id, id) });
     if (!group) return notFound("Group");
 
@@ -203,12 +162,9 @@ export async function DELETE(
       details: {
         isArchived: group.isArchived,
       },
-      request,
+      request: req,
     });
 
     return apiSuccess({ id });
-  } catch (error) {
-    logger.error({ err: error }, "DELETE /api/v1/groups/[id] error");
-    return apiError("internalServerError", 500);
-  }
-}
+  },
+});

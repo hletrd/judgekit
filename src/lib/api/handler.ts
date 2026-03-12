@@ -5,6 +5,7 @@ import {
   getApiUser,
   unauthorized,
   forbidden,
+  notFound,
   csrfForbidden,
   isAdmin,
   isInstructor,
@@ -169,4 +170,4 @@ export function createApiHandler<T = unknown>(config: HandlerConfig<T>) {
 }
 
 // Re-export helpers so routes that use the wrapper don't need two imports
-export { isAdmin, isInstructor, unauthorized, forbidden };
+export { isAdmin, isInstructor, unauthorized, forbidden, notFound };
