@@ -8,14 +8,16 @@ import { cn } from "@/lib/utils";
 interface PaginationControlsProps {
   currentPage: number;
   hasNextPage: boolean;
-  buildHref: (page: number) => string;
+  prevHref?: string;
+  nextHref?: string;
   rangeText?: string;
 }
 
 export function PaginationControls({
   currentPage,
   hasNextPage,
-  buildHref,
+  prevHref,
+  nextHref,
   rangeText,
 }: PaginationControlsProps) {
   return (
@@ -24,18 +26,18 @@ export function PaginationControls({
         <span className="text-sm text-muted-foreground">{rangeText}</span>
       )}
       <div className="flex gap-2 ml-auto">
-        {currentPage > 1 && (
+        {currentPage > 1 && prevHref && (
           <Link
-            href={buildHref(currentPage - 1)}
+            href={prevHref}
             aria-label="Previous page"
             className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
           >
             <ChevronLeft className="size-4" aria-hidden="true" />
           </Link>
         )}
-        {hasNextPage && (
+        {hasNextPage && nextHref && (
           <Link
-            href={buildHref(currentPage + 1)}
+            href={nextHref}
             aria-label="Next page"
             className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
           >

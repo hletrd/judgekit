@@ -526,7 +526,8 @@ export default async function ProblemsPage({
       <PaginationControls
         currentPage={clampedPage}
         hasNextPage={hasNextPage}
-        buildHref={(page) => buildPageHref(page, currentFilter, currentVisibility, searchQuery)}
+        prevHref={clampedPage > 1 ? buildPageHref(clampedPage - 1, currentFilter, currentVisibility, searchQuery) : undefined}
+        nextHref={hasNextPage ? buildPageHref(clampedPage + 1, currentFilter, currentVisibility, searchQuery) : undefined}
         rangeText={
           totalCount > 0
             ? t("pagination.page", { current: clampedPage, total: totalPages })
