@@ -76,7 +76,7 @@ function normalizeSubmission(data: Record<string, unknown>): SubmissionDetailVie
     assignmentId: typeof data.assignmentId === "string" ? data.assignmentId : null,
     language: String(data.language),
     status: String(data.status),
-    sourceCode: String(data.sourceCode),
+    sourceCode: typeof data.sourceCode === "string" ? data.sourceCode : "",
     compileOutput: typeof data.compileOutput === "string" ? data.compileOutput : null,
     executionTimeMs: typeof data.executionTimeMs === "number" ? data.executionTimeMs : null,
     memoryUsedKb: typeof data.memoryUsedKb === "number" ? data.memoryUsedKb : null,
@@ -129,7 +129,8 @@ export function useSubmissionPolling(initialSubmission: SubmissionDetailView) {
         if (!sseActive) return;
         try {
           const data = JSON.parse(event.data as string) as Record<string, unknown>;
-          setSubmission(normalizeSubmission(data));
+          const normalized = normalizeSubmission(data);
+          setSubmission((prev) => ({ ...normalized, sourceCode: normalized.sourceCode || prev.sourceCode }));
           setError(false);
           setIsPolling(false);
         } catch {
@@ -237,7 +238,7 @@ function initFetchPolling(
       }
 
       const nextSubmission = normalizeSubmission(payload.data);
-      setSubmission(nextSubmission);
+      setSubmission((prev) => ({ ...nextSubmission, sourceCode: nextSubmission.sourceCode || prev.sourceCode }));
       setError(false);
       delayMs = 3000;
 

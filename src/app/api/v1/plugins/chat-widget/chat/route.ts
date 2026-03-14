@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { eq } from "drizzle-orm";
 import { auth } from "@/lib/auth";
-import { getLocale } from "next-intl/server";
 import { isPluginEnabled, getPluginState } from "@/lib/plugins/data";
 import { getProvider, type ChatMessage } from "@/lib/plugins/chat-widget/providers";
 import { AGENT_TOOLS, executeTool, type AgentContext } from "@/lib/plugins/chat-widget/tools";
@@ -226,7 +225,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "notConfigured" }, { status: 500 });
     }
 
-    const locale = await getLocale();
+    // Detect locale from Accept-Language header (getLocale() doesn't work in API routes)
+    const acceptLang = request.headers.get("accept-language") ?? "";
+    const locale = acceptLang.startsWith("ko") ? "ko" : "en";
     const siteName = "JudgeKit"; // TODO: read from system settings if needed
 
     // Build system prompt

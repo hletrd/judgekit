@@ -467,7 +467,7 @@ export function CodeSurface({
         readOnly ? "focus-within:border-border" : "focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/15",
         className
       )}
-      style={{ minHeight: minHeight + 16 }}
+      style={{ minHeight }}
     >
       <div ref={editorHostRef} />
     </div>
