@@ -22,6 +22,7 @@ import { formatDateTimeInTimeZone } from "@/lib/datetime";
 import { getResolvedSystemTimeZone } from "@/lib/system-settings";
 import { formatSubmissionIdPrefix } from "@/lib/submissions/id";
 import { buildStatusLabels } from "@/lib/judge/status-labels";
+import { SubmissionListAutoRefresh } from "@/components/submission-list-auto-refresh";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("admin.submissions");
@@ -89,6 +90,9 @@ export default async function AdminSubmissionsPage({
   const visibleSubmissions = hasNextPage ? allSubmissions.slice(0, PAGE_SIZE) : allSubmissions;
   const rangeStart = visibleSubmissions.length === 0 ? 0 : offset + 1;
   const rangeEnd = offset + visibleSubmissions.length;
+  const hasActiveSubmissions = visibleSubmissions.some(
+    (sub) => sub.status === "pending" || sub.status === "queued" || sub.status === "judging"
+  );
 
   const buildPageHref = (page: number) => {
     const params = new URLSearchParams();
@@ -100,6 +104,7 @@ export default async function AdminSubmissionsPage({
 
   return (
     <div className="space-y-4">
+      <SubmissionListAutoRefresh hasActiveSubmissions={hasActiveSubmissions} />
       <h2 className="text-2xl font-bold mb-4">{t("title")}</h2>
       <Card>
         <CardHeader>
@@ -212,7 +217,7 @@ export default async function AdminSubmissionsPage({
         </CardContent>
       </Card>
 
-      <div className="flex items-center justify-end gap-2">
+      <div className="flex items-center justify-center gap-2">
         {currentPage > 1 ? (
           <Link href={buildPageHref(currentPage - 1)}>
             <Button variant="outline">{tCommon("previous")}</Button>

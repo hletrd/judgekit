@@ -11,7 +11,8 @@ import {
 } from "@/components/ui/table";
 import { SubmissionStatusBadge } from "@/components/submission-status-badge";
 import { db } from "@/lib/db";
-import { assignments, groups, problems, submissions, users } from "@/lib/db/schema";
+import { problems, submissions, users } from "@/lib/db/schema";
+import { isInstructor } from "@/lib/api/auth";
 import { and, desc, eq, like, or } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
@@ -22,6 +23,7 @@ import { formatDateTimeInTimeZone } from "@/lib/datetime";
 import { getResolvedSystemTimeZone } from "@/lib/system-settings";
 import { formatSubmissionIdPrefix } from "@/lib/submissions/id";
 import { buildStatusLabels } from "@/lib/judge/status-labels";
+import { SubmissionListAutoRefresh } from "@/components/submission-list-auto-refresh";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("submissions");
@@ -30,7 +32,7 @@ export async function generateMetadata(): Promise<Metadata> {
 
 const PAGE_SIZE = 25;
 
-type StudentSubmissionRow = {
+type SubmissionRow = {
   id: string;
   language: string;
   status: string | null;
@@ -40,16 +42,9 @@ type StudentSubmissionRow = {
     id: string | null;
     title: string | null;
   } | null;
-};
-
-type InstructorSubmissionRow = StudentSubmissionRow & {
-  student: {
+  user: {
     id: string | null;
     name: string | null;
-  } | null;
-  assignment: {
-    id: string | null;
-    title: string | null;
   } | null;
 };
 
@@ -73,7 +68,7 @@ export default async function SubmissionsPage({
   const tCommon = await getTranslations("common");
   const locale = await getLocale();
   const timeZone = await getResolvedSystemTimeZone();
-  const isInstructorView = session.user.role === "instructor";
+  const isPrivileged = isInstructor(session.user.role);
   const statusLabels = buildStatusLabels(t);
 
   const searchFilter = searchQuery
@@ -83,68 +78,43 @@ export default async function SubmissionsPage({
       )
     : undefined;
 
-  const userSubmissions: InstructorSubmissionRow[] | StudentSubmissionRow[] = isInstructorView
-    ? await db
-        .select({
-          id: submissions.id,
-          language: submissions.language,
-          status: submissions.status,
-          submittedAt: submissions.submittedAt,
-          score: submissions.score,
-          student: {
-            id: users.id,
-            name: users.name,
-          },
-          assignment: {
-            id: assignments.id,
-            title: assignments.title,
-          },
-          problem: {
-            id: problems.id,
-            title: problems.title,
-          },
-        })
-        .from(submissions)
-        .innerJoin(assignments, eq(submissions.assignmentId, assignments.id))
-        .innerJoin(groups, eq(assignments.groupId, groups.id))
-        .leftJoin(users, eq(submissions.userId, users.id))
-        .leftJoin(problems, eq(submissions.problemId, problems.id))
-        .where(
-          searchFilter
-            ? and(eq(groups.instructorId, session.user.id), searchFilter)
-            : eq(groups.instructorId, session.user.id)
-        )
-        .orderBy(desc(submissions.submittedAt))
-        .limit(PAGE_SIZE + 1)
-        .offset(offset)
-    : await db
-        .select({
-          id: submissions.id,
-          language: submissions.language,
-          status: submissions.status,
-          submittedAt: submissions.submittedAt,
-          score: submissions.score,
-          problem: {
-            id: problems.id,
-            title: problems.title,
-          },
-        })
-        .from(submissions)
-        .leftJoin(problems, eq(submissions.problemId, problems.id))
-        .leftJoin(users, eq(submissions.userId, users.id))
-        .where(
-          searchFilter
-            ? and(eq(submissions.userId, session.user.id), searchFilter)
-            : eq(submissions.userId, session.user.id)
-        )
-        .orderBy(desc(submissions.submittedAt))
-        .limit(PAGE_SIZE + 1)
-        .offset(offset);
+  // Instructors/admins see ALL submissions; students see only their own
+  const userFilter = isPrivileged ? undefined : eq(submissions.userId, session.user.id);
+  const whereClause = userFilter && searchFilter
+    ? and(userFilter, searchFilter)
+    : userFilter ?? searchFilter ?? undefined;
 
-  const hasNextPage = userSubmissions.length > PAGE_SIZE;
-  const visibleSubmissions = hasNextPage ? userSubmissions.slice(0, PAGE_SIZE) : userSubmissions;
+  const allSubmissions: SubmissionRow[] = await db
+    .select({
+      id: submissions.id,
+      language: submissions.language,
+      status: submissions.status,
+      submittedAt: submissions.submittedAt,
+      score: submissions.score,
+      problem: {
+        id: problems.id,
+        title: problems.title,
+      },
+      user: {
+        id: users.id,
+        name: users.name,
+      },
+    })
+    .from(submissions)
+    .leftJoin(problems, eq(submissions.problemId, problems.id))
+    .leftJoin(users, eq(submissions.userId, users.id))
+    .where(whereClause)
+    .orderBy(desc(submissions.submittedAt))
+    .limit(PAGE_SIZE + 1)
+    .offset(offset);
+
+  const hasNextPage = allSubmissions.length > PAGE_SIZE;
+  const visibleSubmissions = hasNextPage ? allSubmissions.slice(0, PAGE_SIZE) : allSubmissions;
   const rangeStart = visibleSubmissions.length === 0 ? 0 : offset + 1;
   const rangeEnd = offset + visibleSubmissions.length;
+  const hasActiveSubmissions = visibleSubmissions.some(
+    (sub) => sub.status === "pending" || sub.status === "queued" || sub.status === "judging"
+  );
 
   const buildPageHref = (page: number) => {
     const params = new URLSearchParams();
@@ -156,8 +126,9 @@ export default async function SubmissionsPage({
 
   return (
     <div className="space-y-4">
+      <SubmissionListAutoRefresh hasActiveSubmissions={hasActiveSubmissions} />
       <h2 className="text-2xl font-bold mb-4">
-        {isInstructorView ? t("instructorTitle") : t("title")}
+        {t("title")}
       </h2>
       <Card>
         <CardHeader>
@@ -188,7 +159,7 @@ export default async function SubmissionsPage({
       </Card>
       <Card>
         <CardHeader>
-          <CardTitle>{isInstructorView ? t("groupSubmissions") : t("mySubmissions")}</CardTitle>
+          <CardTitle>{isPrivileged ? t("allSubmissions") : t("mySubmissions")}</CardTitle>
         </CardHeader>
         <CardContent>
           {visibleSubmissions.length > 0 && (
@@ -202,8 +173,7 @@ export default async function SubmissionsPage({
             <TableHeader>
               <TableRow>
                 <TableHead>{t("table.id")}</TableHead>
-                {isInstructorView && <TableHead>{t("table.student")}</TableHead>}
-                {isInstructorView && <TableHead>{t("table.assignment")}</TableHead>}
+                {isPrivileged && <TableHead>{t("table.student")}</TableHead>}
                 <TableHead>{t("table.problem")}</TableHead>
                 <TableHead>{t("table.language")}</TableHead>
                 <TableHead>{t("table.status")}</TableHead>
@@ -220,14 +190,9 @@ export default async function SubmissionsPage({
                       {formatSubmissionIdPrefix(sub.id)}
                     </Link>
                   </TableCell>
-                  {isInstructorView && (
+                  {isPrivileged && (
                     <TableCell>
-                      {(sub as InstructorSubmissionRow).student?.name || tCommon("unknown")}
-                    </TableCell>
-                  )}
-                  {isInstructorView && (
-                    <TableCell>
-                      {(sub as InstructorSubmissionRow).assignment?.title || tCommon("unknown")}
+                      {sub.user?.name ?? tCommon("unknown")}
                     </TableCell>
                   )}
                   <TableCell>
@@ -261,7 +226,7 @@ export default async function SubmissionsPage({
               ))}
               {visibleSubmissions.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={isInstructorView ? 9 : 7} className="text-center text-muted-foreground">
+                  <TableCell colSpan={isPrivileged ? 8 : 7} className="text-center text-muted-foreground">
                     {t("noSubmissions")}
                   </TableCell>
                 </TableRow>
@@ -272,7 +237,7 @@ export default async function SubmissionsPage({
         </CardContent>
       </Card>
 
-      <div className="flex items-center justify-end gap-2">
+      <div className="flex items-center justify-center gap-2">
         {currentPage > 1 ? (
           <Link href={buildPageHref(currentPage - 1)}>
             <Button variant="outline">{tCommon("previous")}</Button>
