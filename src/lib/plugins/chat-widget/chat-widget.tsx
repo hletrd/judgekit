@@ -268,10 +268,10 @@ export default function ChatWidget(_props: PluginWidgetProps) {
             className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
           >
             <div
-              className={`max-w-[85%] rounded-lg px-3 py-2 text-sm break-words ${
+              className={`max-w-[85%] rounded-lg px-3 py-2 text-sm break-words overflow-hidden ${
                 msg.role === "user"
                   ? "bg-primary text-primary-foreground whitespace-pre-wrap"
-                  : "bg-muted text-foreground prose prose-sm dark:prose-invert max-w-none prose-p:my-1 prose-pre:my-1 prose-ul:my-1 prose-ol:my-1 prose-li:my-0.5 prose-headings:my-1.5 prose-code:text-xs prose-pre:text-xs"
+                  : "bg-muted text-foreground prose prose-sm dark:prose-invert max-w-none prose-p:my-1 prose-pre:my-1 prose-pre:overflow-x-auto prose-ul:my-1 prose-ol:my-1 prose-li:my-0.5 prose-headings:my-1.5 prose-code:text-xs prose-pre:text-xs prose-code:break-all"
               }`}
             >
               {msg.role === "assistant" ? (

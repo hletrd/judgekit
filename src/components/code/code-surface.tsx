@@ -462,7 +462,7 @@ export function CodeSurface({
   return (
     <div
       className={cn(
-        "code-surface overflow-hidden rounded-xl border bg-card shadow-sm transition-colors",
+        "code-surface overflow-hidden rounded-xl border bg-[var(--code-surface-background)] shadow-sm transition-colors",
         tone === "danger" ? "code-surface-danger" : "code-surface-default",
         readOnly ? "focus-within:border-border" : "focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/15",
         className
