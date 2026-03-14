@@ -59,18 +59,82 @@ fn get_memory_limit_mb(limit: u32) -> u32 {
     limit.max(MIN_MEMORY_LIMIT_MB)
 }
 
-async fn inspect_oom_killed(container_name: &str) -> bool {
+struct ContainerInspect {
+    oom_killed: bool,
+    duration_ms: Option<u64>,
+}
+
+/// Parse the time-of-day portion of a Docker RFC 3339 timestamp into
+/// nanoseconds since midnight.  Accepts `2024-01-15T10:30:45.123456789Z`.
+fn parse_timestamp_nanos_since_midnight(s: &str) -> Option<u128> {
+    let after_t = s.split('T').nth(1)?;
+    let end = after_t
+        .find(|c: char| !c.is_ascii_digit() && c != ':' && c != '.')
+        .unwrap_or(after_t.len());
+    let time_part = &after_t[..end];
+
+    let mut parts = time_part.split(':');
+    let hours: u64 = parts.next()?.parse().ok()?;
+    let minutes: u64 = parts.next()?.parse().ok()?;
+    let sec_frac = parts.next()?;
+
+    let (secs, nanos) = if let Some(dot) = sec_frac.find('.') {
+        let secs: u64 = sec_frac[..dot].parse().ok()?;
+        let frac = &sec_frac[dot + 1..];
+        let padded = format!("{:0<9}", &frac[..frac.len().min(9)]);
+        let nanos: u64 = padded.parse().ok()?;
+        (secs, nanos)
+    } else {
+        (sec_frac.parse().ok()?, 0u64)
+    };
+
+    Some(u128::from(hours * 3600 + minutes * 60 + secs) * 1_000_000_000 + u128::from(nanos))
+}
+
+/// Inspect a stopped container for OOM status and actual runtime (from
+/// Docker's `State.StartedAt` / `State.FinishedAt` timestamps).  This
+/// excludes container creation and namespace/cgroup setup overhead.
+async fn inspect_container_state(container_name: &str) -> ContainerInspect {
     let result = tokio::process::Command::new("docker")
-        .args(["inspect", "--format", "{{json .State.OOMKilled}}", container_name])
+        .args([
+            "inspect",
+            "--format",
+            "{{json .State.OOMKilled}} {{.State.StartedAt}} {{.State.FinishedAt}}",
+            container_name,
+        ])
         .output()
         .await;
 
     match result {
         Ok(output) => {
             let stdout = String::from_utf8_lossy(&output.stdout);
-            stdout.trim() == "true"
+            let parts: Vec<&str> = stdout.trim().splitn(3, ' ').collect();
+
+            let oom_killed = parts.first().is_some_and(|s| s.trim() == "true");
+
+            let duration_ms = if parts.len() >= 3 {
+                match (
+                    parse_timestamp_nanos_since_midnight(parts[1]),
+                    parse_timestamp_nanos_since_midnight(parts[2]),
+                ) {
+                    (Some(start), Some(end)) if end >= start => {
+                        Some(((end - start) / 1_000_000) as u64)
+                    }
+                    _ => None,
+                }
+            } else {
+                None
+            };
+
+            ContainerInspect {
+                oom_killed,
+                duration_ms,
+            }
         }
-        Err(_) => false,
+        Err(_) => ContainerInspect {
+            oom_killed: false,
+            duration_ms: None,
+        },
     }
 }
 
@@ -201,18 +265,18 @@ async fn run_docker_once(
 
     match wait_result {
         Ok(Ok(exit_status)) => {
-            let duration_ms = u64::try_from(start.elapsed().as_millis()).unwrap_or(u64::MAX);
+            let wall_duration_ms = u64::try_from(start.elapsed().as_millis()).unwrap_or(u64::MAX);
             let stdout = stdout_handle.await.unwrap_or_default();
             let stderr = stderr_handle.await.unwrap_or_default();
-            let oom_killed = inspect_oom_killed(&container_name).await;
+            let state = inspect_container_state(&container_name).await;
             remove_container(&container_name).await;
             Ok(DockerRunResult {
                 stdout,
                 stderr,
                 exit_code: exit_status.code(),
                 timed_out: false,
-                oom_killed,
-                duration_ms,
+                oom_killed: state.oom_killed,
+                duration_ms: state.duration_ms.unwrap_or(wall_duration_ms),
             })
         }
         Ok(Err(e)) => {
@@ -222,17 +286,17 @@ async fn run_docker_once(
         }
         Err(_) => {
             // Timeout
-            let duration_ms = u64::try_from(start.elapsed().as_millis()).unwrap_or(u64::MAX);
+            let wall_duration_ms = u64::try_from(start.elapsed().as_millis()).unwrap_or(u64::MAX);
             kill_container(&container_name).await;
-            let oom_killed = inspect_oom_killed(&container_name).await;
+            let state = inspect_container_state(&container_name).await;
             remove_container(&container_name).await;
             Ok(DockerRunResult {
                 stdout: Vec::new(),
                 stderr: String::new(),
                 exit_code: None,
                 timed_out: true,
-                oom_killed,
-                duration_ms,
+                oom_killed: state.oom_killed,
+                duration_ms: state.duration_ms.unwrap_or(wall_duration_ms),
             })
         }
     }
