@@ -668,7 +668,11 @@
         "score": "점수",
         "submittedAt": "제출 일시"
       },
-      "noSubmissions": "제출 내역이 없습니다."
+      "noSubmissions": "제출 내역이 없습니다.",
+      "search": "검색",
+      "searchLabel": "제출 검색",
+      "searchPlaceholder": "사용자 이름 또는 문제 제목으로 검색...",
+      "resetSearch": "초기화"
     },
     "loginLogs": {
       "title": "로그인 기록",

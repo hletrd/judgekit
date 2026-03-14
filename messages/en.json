@@ -668,7 +668,11 @@
         "score": "Score",
         "submittedAt": "Submitted At"
       },
-      "noSubmissions": "No submissions found."
+      "noSubmissions": "No submissions found.",
+      "search": "Search",
+      "searchLabel": "Search submissions",
+      "searchPlaceholder": "Search by user name or problem title...",
+      "resetSearch": "Reset"
     },
     "loginLogs": {
       "title": "Login Logs",

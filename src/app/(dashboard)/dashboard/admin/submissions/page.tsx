@@ -12,11 +12,12 @@ import {
 import { SubmissionStatusBadge } from "@/components/submission-status-badge";
 import { db } from "@/lib/db";
 import { submissions, users, problems } from "@/lib/db/schema";
-import { desc, eq } from "drizzle-orm";
+import { desc, eq, like, or } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { formatDateTimeInTimeZone } from "@/lib/datetime";
 import { getResolvedSystemTimeZone } from "@/lib/system-settings";
 import { formatSubmissionIdPrefix } from "@/lib/submissions/id";
@@ -32,7 +33,7 @@ const PAGE_SIZE = 50;
 export default async function AdminSubmissionsPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ page?: string }>;
+  searchParams?: Promise<{ page?: string; search?: string }>;
 }) {
   const session = await auth();
   if (!session?.user) redirect("/login");
@@ -40,6 +41,7 @@ export default async function AdminSubmissionsPage({
 
   const resolvedSearchParams = searchParams ? await searchParams : undefined;
   const currentPage = Math.max(1, Number(resolvedSearchParams?.page ?? "1") || 1);
+  const searchQuery = (resolvedSearchParams?.search ?? "").trim().slice(0, 200);
   const offset = (currentPage - 1) * PAGE_SIZE;
   const t = await getTranslations("admin.submissions");
   const tCommon = await getTranslations("common");
@@ -47,6 +49,11 @@ export default async function AdminSubmissionsPage({
   const locale = await getLocale();
   const timeZone = await getResolvedSystemTimeZone();
   const statusLabels = buildStatusLabels(tSubmissions);
+
+  function escapeLike(value: string) {
+    return value.replaceAll("\\", "\\\\").replaceAll("%", "\\%").replaceAll("_", "\\_");
+  }
+
   const allSubmissions = await db
     .select({
       id: submissions.id,
@@ -66,6 +73,14 @@ export default async function AdminSubmissionsPage({
     .from(submissions)
     .leftJoin(users, eq(submissions.userId, users.id))
     .leftJoin(problems, eq(submissions.problemId, problems.id))
+    .where(
+      searchQuery
+        ? or(
+            like(users.name, `%${escapeLike(searchQuery)}%`),
+            like(problems.title, `%${escapeLike(searchQuery)}%`)
+          )
+        : undefined
+    )
     .orderBy(desc(submissions.submittedAt))
     .limit(PAGE_SIZE + 1)
     .offset(offset);
@@ -75,9 +90,44 @@ export default async function AdminSubmissionsPage({
   const rangeStart = visibleSubmissions.length === 0 ? 0 : offset + 1;
   const rangeEnd = offset + visibleSubmissions.length;
 
+  const buildPageHref = (page: number) => {
+    const params = new URLSearchParams();
+    if (page > 1) params.set("page", String(page));
+    if (searchQuery) params.set("search", searchQuery);
+    const qs = params.toString();
+    return qs ? `/dashboard/admin/submissions?${qs}` : "/dashboard/admin/submissions";
+  };
+
   return (
     <div className="space-y-4">
       <h2 className="text-2xl font-bold mb-4">{t("title")}</h2>
+      <Card>
+        <CardHeader>
+          <CardTitle>{t("search")}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form className="flex flex-col gap-3 md:flex-row md:items-end" method="get">
+            <div className="flex-1 space-y-2">
+              <label className="text-sm font-medium" htmlFor="submissions-search">
+                {t("searchLabel")}
+              </label>
+              <Input
+                id="submissions-search"
+                name="search"
+                type="search"
+                defaultValue={searchQuery}
+                placeholder={t("searchPlaceholder")}
+              />
+            </div>
+            <div className="flex gap-2">
+              <Button type="submit">{tCommon("search")}</Button>
+              <Link href="/dashboard/admin/submissions">
+                <Button type="button" variant="outline">{t("resetSearch")}</Button>
+              </Link>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
       <Card>
         <CardHeader>
           <CardTitle>{t("recent")}</CardTitle>
@@ -164,7 +214,7 @@ export default async function AdminSubmissionsPage({
 
       <div className="flex items-center justify-end gap-2">
         {currentPage > 1 ? (
-          <Link href={`/dashboard/admin/submissions?page=${currentPage - 1}`}>
+          <Link href={buildPageHref(currentPage - 1)}>
             <Button variant="outline">{tCommon("previous")}</Button>
           </Link>
         ) : (
@@ -174,7 +224,7 @@ export default async function AdminSubmissionsPage({
         )}
 
         {hasNextPage ? (
-          <Link href={`/dashboard/admin/submissions?page=${currentPage + 1}`}>
+          <Link href={buildPageHref(currentPage + 1)}>
             <Button variant="outline">{tCommon("next")}</Button>
           </Link>
         ) : (
