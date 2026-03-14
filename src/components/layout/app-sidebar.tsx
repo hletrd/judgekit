@@ -17,7 +17,7 @@ import {
   SidebarFooter,
   SidebarHeader,
 } from "@/components/ui/sidebar";
-import { BookOpen, FileCode, Send, Users, User, LayoutDashboard, GraduationCap, Shield, LogOut, LogIn, History, FolderOpen, Blocks, Trophy } from "lucide-react";
+import { BookOpen, FileCode, Send, Users, User, LayoutDashboard, GraduationCap, Shield, LogOut, LogIn, History, FolderOpen, Blocks, Trophy, MessageCircle } from "lucide-react";
 import type { UserRole } from "@/types";
 
 interface AppSidebarProps {
@@ -48,6 +48,7 @@ const adminItems: Array<{ titleKey: string; href: string; icon: typeof Shield; r
   { titleKey: "loginLogs" as const, href: "/dashboard/admin/login-logs", icon: LogIn, roles: ["super_admin", "admin"] },
   { titleKey: "systemSettings" as const, href: "/dashboard/admin/settings", icon: GraduationCap, roles: ["super_admin", "admin"] },
   { titleKey: "plugins" as const, href: "/dashboard/admin/plugins", icon: Blocks, roles: ["super_admin", "admin"] },
+  { titleKey: "chatLogs" as const, href: "/dashboard/admin/plugins/chat-logs", icon: MessageCircle, roles: ["super_admin", "admin"] },
 ];
 
 export function AppSidebar({ user, siteTitle }: AppSidebarProps) {

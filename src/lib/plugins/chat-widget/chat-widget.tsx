@@ -8,6 +8,9 @@ import { Button } from "@/components/ui/button";
 import type { PluginWidgetProps } from "@/lib/plugins/types";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import remarkMath from "remark-math";
+import rehypeKatex from "rehype-katex";
+import "katex/dist/katex.min.css";
 
 interface Message {
   role: "user" | "assistant";
@@ -223,7 +226,7 @@ export default function ChatWidget(_props: PluginWidgetProps) {
   }
 
   return (
-    <div className="fixed bottom-0 right-0 z-50 flex h-[100dvh] w-full flex-col overflow-hidden border-border/60 bg-background shadow-2xl sm:bottom-6 sm:right-6 sm:h-[560px] sm:w-[380px] sm:rounded-xl sm:border">
+    <div className="fixed bottom-0 right-0 z-50 flex h-[100dvh] w-full flex-col overflow-hidden border-border/60 bg-background shadow-2xl animate-in fade-in slide-in-from-bottom-4 duration-200 sm:bottom-6 sm:right-6 sm:h-[560px] sm:w-[380px] sm:rounded-xl sm:border sm:slide-in-from-bottom-2">
       {/* Header */}
       <div className="flex items-center justify-between border-b bg-primary px-4 py-3 text-primary-foreground">
         <span className="text-sm font-semibold">{t("name")}</span>
@@ -268,7 +271,7 @@ export default function ChatWidget(_props: PluginWidgetProps) {
               }`}
             >
               {msg.role === "assistant" ? (
-                <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
+                <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]}>{msg.content}</ReactMarkdown>
               ) : (
                 msg.content
               )}
