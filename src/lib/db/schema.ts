@@ -170,6 +170,9 @@ export const problems = sqliteTable("problems", {
   showDetailedResults: integer("show_detailed_results", { mode: "boolean" }).notNull().default(true),
   showRuntimeErrors: integer("show_runtime_errors", { mode: "boolean" }).notNull().default(true),
   allowAiAssistant: integer("allow_ai_assistant", { mode: "boolean" }).notNull().default(true),
+  comparisonMode: text("comparison_mode").notNull().default("exact"),
+  floatAbsoluteError: real("float_absolute_error"),
+  floatRelativeError: real("float_relative_error"),
   authorId: text("author_id").references(() => users.id, {
     onDelete: "set null",
   }),

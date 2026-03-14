@@ -117,6 +117,9 @@ export async function POST(request: NextRequest) {
       columns: {
         timeLimitMs: true,
         memoryLimitMb: true,
+        comparisonMode: true,
+        floatAbsoluteError: true,
+        floatRelativeError: true,
       },
     });
 
@@ -135,6 +138,9 @@ export async function POST(request: NextRequest) {
       ...claimed,
       timeLimitMs: problem.timeLimitMs,
       memoryLimitMb: problem.memoryLimitMb,
+      comparisonMode: problem.comparisonMode ?? "exact",
+      floatAbsoluteError: problem.floatAbsoluteError ?? null,
+      floatRelativeError: problem.floatRelativeError ?? null,
       testCases: cases,
     });
   } catch (error) {

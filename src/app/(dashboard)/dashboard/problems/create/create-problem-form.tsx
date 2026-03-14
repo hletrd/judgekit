@@ -36,6 +36,9 @@ export type ProblemFormInitialData = {
   showDetailedResults: boolean;
   showRuntimeErrors: boolean;
   allowAiAssistant: boolean;
+  comparisonMode: "exact" | "float";
+  floatAbsoluteError: number | null;
+  floatRelativeError: number | null;
   testCases: ProblemTestCaseDraft[];
 };
 
@@ -81,6 +84,9 @@ export default function CreateProblemForm({
   const [showDetailedResults, setShowDetailedResults] = useState(initialProblem?.showDetailedResults ?? true);
   const [showRuntimeErrors, setShowRuntimeErrors] = useState(initialProblem?.showRuntimeErrors ?? true);
   const [allowAiAssistant, setAllowAiAssistant] = useState(initialProblem?.allowAiAssistant ?? true);
+  const [comparisonMode, setComparisonMode] = useState<"exact" | "float">(initialProblem?.comparisonMode ?? "exact");
+  const [floatAbsoluteError, setFloatAbsoluteError] = useState<string>(initialProblem?.floatAbsoluteError?.toString() ?? "1e-6");
+  const [floatRelativeError, setFloatRelativeError] = useState<string>(initialProblem?.floatRelativeError?.toString() ?? "1e-6");
   const [testCaseOverrideEnabled, setTestCaseOverrideEnabled] = useState(false);
   const [testCases, setTestCases] = useState<ProblemTestCaseDraft[]>(
     initialProblem?.testCases.length
@@ -182,6 +188,9 @@ export default function CreateProblemForm({
           showDetailedResults,
           showRuntimeErrors,
           allowAiAssistant,
+          comparisonMode,
+          floatAbsoluteError: comparisonMode === "float" ? parseFloat(floatAbsoluteError) || null : null,
+          floatRelativeError: comparisonMode === "float" ? parseFloat(floatRelativeError) || null : null,
           ...(areTestCasesEditable
             ? { testCases: testCases.map(({ _key: _, ...rest }) => rest) }
             : {}),
@@ -285,6 +294,49 @@ export default function CreateProblemForm({
             <SelectItem value="hidden" label={visibilityLabels.hidden}>{visibilityLabels.hidden}</SelectItem>
           </SelectContent>
         </Select>
+      </div>
+
+      <div className="space-y-3 rounded-lg border p-4">
+        <h3 className="text-base font-semibold">{t("comparisonModeLabel")}</h3>
+        <div className="space-y-2">
+          <Select value={comparisonMode} onValueChange={(v) => setComparisonMode(v as "exact" | "float")}>
+            <SelectTrigger className="w-64">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="exact" label={t("comparisonExact")}>{t("comparisonExact")}</SelectItem>
+              <SelectItem value="float" label={t("comparisonFloat")}>{t("comparisonFloat")}</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        {comparisonMode === "float" && (
+          <div className="ml-4 space-y-3 border-l-2 pl-4">
+            <div className="space-y-1">
+              <Label htmlFor="float-abs-error">{t("floatAbsoluteError")}</Label>
+              <Input
+                id="float-abs-error"
+                value={floatAbsoluteError}
+                onChange={(e) => setFloatAbsoluteError(e.target.value)}
+                placeholder="1e-6"
+                className="w-48"
+                disabled={isLoading}
+              />
+              <p className="text-xs text-muted-foreground">{t("floatAbsoluteErrorHint")}</p>
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="float-rel-error">{t("floatRelativeError")}</Label>
+              <Input
+                id="float-rel-error"
+                value={floatRelativeError}
+                onChange={(e) => setFloatRelativeError(e.target.value)}
+                placeholder="1e-6"
+                className="w-48"
+                disabled={isLoading}
+              />
+              <p className="text-xs text-muted-foreground">{t("floatRelativeErrorHint")}</p>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="space-y-3 rounded-lg border p-4">

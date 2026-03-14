@@ -74,6 +74,9 @@ export default async function EditProblemPage({ params }: { params: Promise<{ id
               showDetailedResults: problem.showDetailedResults ?? true,
               showRuntimeErrors: problem.showRuntimeErrors ?? true,
               allowAiAssistant: problem.allowAiAssistant ?? true,
+              comparisonMode: (problem.comparisonMode ?? "exact") as "exact" | "float",
+              floatAbsoluteError: problem.floatAbsoluteError ?? null,
+              floatRelativeError: problem.floatRelativeError ?? null,
               testCases: sortedTestCases.map((testCase) => ({
                 input: testCase.input,
                 expectedOutput: testCase.expectedOutput,

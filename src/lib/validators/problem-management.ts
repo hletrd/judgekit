@@ -19,6 +19,9 @@ export const problemMutationSchema = z.object({
   showDetailedResults: z.boolean().optional().default(true),
   showRuntimeErrors: z.boolean().optional().default(true),
   allowAiAssistant: z.boolean().optional().default(true),
+  comparisonMode: z.enum(["exact", "float"]).optional().default("exact"),
+  floatAbsoluteError: z.number().min(0).max(1).optional().nullable(),
+  floatRelativeError: z.number().min(0).max(1).optional().nullable(),
   testCases: z.array(problemTestCaseSchema).max(100, "tooManyTestCases").default([]),
 });
 
