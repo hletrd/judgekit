@@ -31,6 +31,7 @@ const requestSchema = z.object({
     editorCode: z.string().max(100000).nullish(),
     editorLanguage: z.string().max(50).nullish(),
     sessionId: z.string().max(50).nullish(),
+    skipLog: z.boolean().nullish(),
   }).optional(),
 });
 
@@ -151,9 +152,10 @@ export async function POST(request: Request) {
 
     const sessionId = context?.sessionId || generateSessionId();
 
-    // Save the latest user message
+    // Save the latest user message (skip for auto-analysis)
+    const skipLog = context?.skipLog === true;
     const lastUserMessage = [...parsed.data.messages].reverse().find(m => m.role === "user");
-    if (lastUserMessage) {
+    if (lastUserMessage && !skipLog) {
       try {
         await db.insert(chatMessages).values({
           userId: session.user.id,
@@ -172,7 +174,7 @@ export async function POST(request: Request) {
 
     // Also save any previous assistant message that wasn't saved yet
     // (the client sends full history, so the second-to-last message from assistant is the previous response)
-    if (parsed.data.messages.length >= 2) {
+    if (parsed.data.messages.length >= 2 && !skipLog) {
       const prevAssistant = parsed.data.messages[parsed.data.messages.length - 2];
       if (prevAssistant?.role === "assistant" && prevAssistant.content) {
         try {

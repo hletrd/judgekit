@@ -119,12 +119,12 @@ export default function ChatWidget(_props: PluginWidgetProps) {
         ? t("autoAnalysisError")
         : t("autoAnalysisReview");
       setPendingAutoAnalysis(null);
-      void sendMessage(apiPrompt, displayText);
+      void sendMessage(apiPrompt, displayText, true);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pendingAutoAnalysis, isStreaming, problemContext]);
 
-  async function sendMessage(text: string, displayText?: string) {
+  async function sendMessage(text: string, displayText?: string, skipLog?: boolean) {
     if (!text || isStreaming) return;
 
     setError(null);
@@ -154,6 +154,7 @@ export default function ChatWidget(_props: PluginWidgetProps) {
             editorCode: editorState?.code,
             editorLanguage: editorState?.language,
             sessionId: sessionId ?? undefined,
+            skipLog: skipLog || undefined,
           } : sessionId ? { sessionId } : undefined,
         }),
         signal: controller.signal,
