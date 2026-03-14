@@ -65,14 +65,31 @@ function formatFrequency(speedMHz: number | undefined) {
   return `${Math.round(speedMHz)} MHz`;
 }
 
+/** Map microarchitecture names to actual chip names where known. */
+const CHIP_NAME_MAP: Record<string, string> = {
+  "neoverse-n1": "Ampere Altra (Neoverse-N1)",
+  "neoverse-n2": "Ampere AmpereOne (Neoverse-N2)",
+  "neoverse-v1": "AWS Graviton3 (Neoverse-V1)",
+  "neoverse-v2": "AWS Graviton4 (Neoverse-V2)",
+};
+
 function formatCpuLabel(model: string | null, speedMHz: number | undefined) {
   const frequency = formatFrequency(speedMHz);
+  let displayModel = model;
 
-  if (model && frequency && !model.includes(frequency)) {
-    return `${model} @ ${frequency}`;
+  // Map microarchitecture to chip name
+  if (model) {
+    const key = model.trim().toLowerCase();
+    if (CHIP_NAME_MAP[key]) {
+      displayModel = CHIP_NAME_MAP[key];
+    }
   }
 
-  return model ?? "Unknown";
+  if (displayModel && frequency && !displayModel.includes(frequency)) {
+    return `${displayModel} @ ${frequency}`;
+  }
+
+  return displayModel ?? "Unknown";
 }
 
 function formatInstructionSet(rawArchitecture: string) {

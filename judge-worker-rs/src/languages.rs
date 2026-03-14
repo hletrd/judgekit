@@ -160,7 +160,7 @@ static CLANG_C23_COMPILE: &[&str] = &["clang", "-O2", "-std=c23", "-o", "/worksp
 static CLANG_C23_RUN: &[&str] = &["/workspace/solution"];
 
 // Clang C++23
-static CLANG_CPP23_COMPILE: &[&str] = &["clang++", "-O2", "-std=c++23", "-stdlib=libc++", "-o", "/workspace/solution", "/workspace/solution.cpp"];
+static CLANG_CPP23_COMPILE: &[&str] = &["clang++", "-O2", "-std=c++23", "-o", "/workspace/solution", "/workspace/solution.cpp"];
 static CLANG_CPP23_RUN: &[&str] = &["/workspace/solution"];
 
 // Scala
