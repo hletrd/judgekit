@@ -1,0 +1,14 @@
+FROM eclipse-temurin:25.0.2_10-jdk-noble
+
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends curl && \
+    curl -fsSL "https://github.com/coursier/coursier/releases/latest/download/cs-aarch64-pc-linux" -o /usr/local/bin/cs && \
+    chmod +x /usr/local/bin/cs && \
+    cs setup --yes --install-dir /usr/local/bin && \
+    cs install scala:3.6.4 scalac:3.6.4 --install-dir /usr/local/bin && \
+    rm -rf /var/lib/apt/lists/* && \
+    useradd --create-home --shell /usr/sbin/nologin judge && \
+    mkdir -p /workspace && chown judge:judge /workspace
+
+WORKDIR /workspace
+USER judge

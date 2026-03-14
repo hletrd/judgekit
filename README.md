@@ -35,7 +35,7 @@
 - **Problem management** — Sanitized descriptions, configurable time/memory limits, public/private/hidden visibility, and test-case editing before submissions exist
 - **Admin login history** — Credential login outcomes with safe filtering and pagination for admin-only review
 - **Secure code execution** — Docker containers with no network, seccomp profiles, memory/CPU limits, and non-root users
-- **Multi-language support** — C, C++, Java, Kotlin, Python, JavaScript, TypeScript, Rust, Go, Swift, C#, R, Perl, and PHP with admin-customizable compile options
+- **Multi-language support** — 40 languages including C (C89/C99/C17/C23, GCC & Clang), C++ (C++20/C++23, GCC & Clang), Java, Kotlin, Python, JavaScript, TypeScript, Rust, Go, Swift, C#, Ruby, Lua, Haskell, Dart, Zig, Nim, OCaml, Elixir, Julia, D, Racket, V, Fortran, Pascal, COBOL, Brainfuck, Scala, Erlang, Common Lisp, Bash, R, Perl, PHP with admin-customizable compile options
 - **Submission workflow** — JSON submission flow, live status polling, per-test-case results, paginated submission history, draft recovery, and mixed legacy/hex submission ID support
 
 ## Getting Started

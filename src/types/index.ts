@@ -44,4 +44,10 @@ export type Language =
   | "fortran"
   | "pascal"
   | "brainfuck"
-  | "cobol";
+  | "cobol"
+  | "clang_c23"
+  | "clang_cpp23"
+  | "scala"
+  | "erlang"
+  | "commonlisp"
+  | "bash";

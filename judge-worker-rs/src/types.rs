@@ -88,6 +88,14 @@ pub enum Language {
     Pascal,
     Brainfuck,
     Cobol,
+    #[serde(rename = "clang_c23")]
+    ClangC23,
+    #[serde(rename = "clang_cpp23")]
+    ClangCpp23,
+    Scala,
+    Erlang,
+    Commonlisp,
+    Bash,
     #[serde(other)]
     Unknown,
 }

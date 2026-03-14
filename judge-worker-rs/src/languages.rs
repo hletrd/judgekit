@@ -155,6 +155,28 @@ static BRAINFUCK_RUN: &[&str] = &["bf", "/workspace/solution.bf"];
 static COBOL_COMPILE: &[&str] = &["cobc", "-x", "-O2", "-o", "/workspace/solution", "/workspace/solution.cob"];
 static COBOL_RUN: &[&str] = &["/workspace/solution"];
 
+// Clang C23
+static CLANG_C23_COMPILE: &[&str] = &["clang", "-O2", "-std=c23", "-o", "/workspace/solution", "/workspace/solution.c", "-lm"];
+static CLANG_C23_RUN: &[&str] = &["/workspace/solution"];
+
+// Clang C++23
+static CLANG_CPP23_COMPILE: &[&str] = &["clang++", "-O2", "-std=c++23", "-stdlib=libc++", "-o", "/workspace/solution", "/workspace/solution.cpp"];
+static CLANG_CPP23_RUN: &[&str] = &["/workspace/solution"];
+
+// Scala
+static SCALA_COMPILE: &[&str] = &["scalac", "-d", "/workspace/out", "/workspace/solution.scala"];
+static SCALA_RUN: &[&str] = &["scala", "-classpath", "/workspace/out", "solution"];
+
+// Erlang
+static ERLANG_COMPILE: &[&str] = &["erlc", "-o", "/workspace", "/workspace/solution.erl"];
+static ERLANG_RUN: &[&str] = &["erl", "-noshell", "-pa", "/workspace", "-s", "solution", "main", "-s", "init", "stop"];
+
+// Common Lisp
+static COMMONLISP_RUN: &[&str] = &["sbcl", "--script", "/workspace/solution.lisp"];
+
+// Bash
+static BASH_RUN: &[&str] = &["bash", "/workspace/solution.sh"];
+
 static C17_CONFIG: LanguageConfig = LanguageConfig {
     extension: ".c",
     docker_image: "judge-cpp:latest",
@@ -393,6 +415,48 @@ static COBOL_CONFIG: LanguageConfig = LanguageConfig {
     run_command: COBOL_RUN,
 };
 
+static CLANG_C23_CONFIG: LanguageConfig = LanguageConfig {
+    extension: ".c",
+    docker_image: "judge-clang:latest",
+    compile_command: Some(CLANG_C23_COMPILE),
+    run_command: CLANG_C23_RUN,
+};
+
+static CLANG_CPP23_CONFIG: LanguageConfig = LanguageConfig {
+    extension: ".cpp",
+    docker_image: "judge-clang:latest",
+    compile_command: Some(CLANG_CPP23_COMPILE),
+    run_command: CLANG_CPP23_RUN,
+};
+
+static SCALA_CONFIG: LanguageConfig = LanguageConfig {
+    extension: ".scala",
+    docker_image: "judge-scala:latest",
+    compile_command: Some(SCALA_COMPILE),
+    run_command: SCALA_RUN,
+};
+
+static ERLANG_CONFIG: LanguageConfig = LanguageConfig {
+    extension: ".erl",
+    docker_image: "judge-erlang:latest",
+    compile_command: Some(ERLANG_COMPILE),
+    run_command: ERLANG_RUN,
+};
+
+static COMMONLISP_CONFIG: LanguageConfig = LanguageConfig {
+    extension: ".lisp",
+    docker_image: "judge-commonlisp:latest",
+    compile_command: None,
+    run_command: COMMONLISP_RUN,
+};
+
+static BASH_CONFIG: LanguageConfig = LanguageConfig {
+    extension: ".sh",
+    docker_image: "judge-bash:latest",
+    compile_command: None,
+    run_command: BASH_RUN,
+};
+
 pub fn get_config(language: &Language) -> Option<&'static LanguageConfig> {
     match language {
         Language::C17 => Some(&C17_CONFIG),
@@ -429,6 +493,12 @@ pub fn get_config(language: &Language) -> Option<&'static LanguageConfig> {
         Language::Pascal => Some(&PASCAL_CONFIG),
         Language::Brainfuck => Some(&BRAINFUCK_CONFIG),
         Language::Cobol => Some(&COBOL_CONFIG),
+        Language::ClangC23 => Some(&CLANG_C23_CONFIG),
+        Language::ClangCpp23 => Some(&CLANG_CPP23_CONFIG),
+        Language::Scala => Some(&SCALA_CONFIG),
+        Language::Erlang => Some(&ERLANG_CONFIG),
+        Language::Commonlisp => Some(&COMMONLISP_CONFIG),
+        Language::Bash => Some(&BASH_CONFIG),
         Language::Unknown => None,
     }
 }
@@ -475,6 +545,12 @@ mod tests {
             Language::Pascal,
             Language::Brainfuck,
             Language::Cobol,
+            Language::ClangC23,
+            Language::ClangCpp23,
+            Language::Scala,
+            Language::Erlang,
+            Language::Commonlisp,
+            Language::Bash,
         ];
 
         for lang in &languages {
