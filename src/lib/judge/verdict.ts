@@ -1,6 +1,6 @@
 import { nanoid } from "nanoid";
 
-export const IN_PROGRESS_JUDGE_STATUSES = new Set(["queued", "judging"]);
+export const IN_PROGRESS_JUDGE_STATUSES = new Set(["pending", "queued", "judging"]);
 
 type JudgeResultInput = {
   testCaseId: string;
