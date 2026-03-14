@@ -34,9 +34,38 @@ export default function ChatWidgetAdminConfig({ config, onSave }: PluginAdminPro
   const [maxTokens, setMaxTokens] = useState((config.maxTokens as number) ?? 2048);
   const [rateLimitPerMinute, setRateLimitPerMinute] = useState((config.rateLimitPerMinute as number) ?? 10);
   const [isLoading, setIsLoading] = useState(false);
+  const [isTesting, setIsTesting] = useState(false);
+  const [testResult, setTestResult] = useState<{ success: boolean; error?: string } | null>(null);
 
   const currentApiKey = provider === "claude" ? claudeApiKey : provider === "gemini" ? geminiApiKey : openaiApiKey;
   const currentModel = provider === "claude" ? claudeModel : provider === "gemini" ? geminiModel : openaiModel;
+
+  function maskApiKey(key: string): string {
+    if (!key || key.length <= 8) return key ? "••••••••" : "";
+    return `${key.slice(0, 3)}...${key.slice(-4)}`;
+  }
+
+  async function handleTestConnection() {
+    setIsTesting(true);
+    setTestResult(null);
+    try {
+      const response = await fetch("/api/v1/plugins/chat-widget/test-connection", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          provider,
+          apiKey: currentApiKey,
+          model: currentModel,
+        }),
+      });
+      const data = await response.json();
+      setTestResult(data);
+    } catch {
+      setTestResult({ success: false, error: "Network error" });
+    } finally {
+      setIsTesting(false);
+    }
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -102,6 +131,11 @@ export default function ChatWidgetAdminConfig({ config, onSave }: PluginAdminPro
               placeholder={t("apiKeyPlaceholder")}
             />
             <p className="text-xs text-muted-foreground">{t("apiKeyHint")}</p>
+            {currentApiKey && (
+              <p className="text-xs font-mono text-muted-foreground">
+                {t("currentKey")}: {maskApiKey(currentApiKey)}
+              </p>
+            )}
           </div>
 
           <div className="space-y-2">
@@ -110,6 +144,17 @@ export default function ChatWidgetAdminConfig({ config, onSave }: PluginAdminPro
               value={currentModel}
               onChange={(e) => setCurrentModel(e.target.value)}
             />
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Button type="button" variant="outline" size="sm" onClick={() => void handleTestConnection()} disabled={isTesting || !currentApiKey}>
+              {isTesting ? tCommon("loading") : t("testConnection")}
+            </Button>
+            {testResult && (
+              <span className={`text-sm ${testResult.success ? "text-green-600" : "text-destructive"}`}>
+                {testResult.success ? t("testSuccess") : t("testFailed", { error: testResult.error ?? "" })}
+              </span>
+            )}
           </div>
         </CardContent>
       </Card>

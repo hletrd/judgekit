@@ -911,6 +911,7 @@
       "apiKey": "API Key",
       "apiKeyPlaceholder": "Enter API key",
       "apiKeyHint": "Enter the API key for the selected provider.",
+      "currentKey": "Current key",
       "model": "Model",
       "systemPrompt": "System Prompt",
       "systemPromptHint": "Instructions for the AI assistant.",

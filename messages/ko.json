@@ -911,6 +911,7 @@
       "apiKey": "API 키",
       "apiKeyPlaceholder": "API 키를 입력하세요",
       "apiKeyHint": "선택한 제공자의 API 키를 입력하세요.",
+      "currentKey": "현재 키",
       "model": "모델",
       "systemPrompt": "시스템 프롬프트",
       "systemPromptHint": "AI 도우미에게 전달할 지시사항입니다.",
