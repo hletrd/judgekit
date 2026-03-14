@@ -18,6 +18,8 @@ const problemPatchSchema = z.object({
   timeLimitMs: z.number().int().min(100).max(30000).optional(),
   memoryLimitMb: z.number().int().min(16).max(1024).optional(),
   visibility: z.enum(["public", "private", "hidden"]).optional(),
+  showCompileOutput: z.boolean().optional(),
+  showDetailedResults: z.boolean().optional(),
   testCases: z.array(z.object({
     id: z.string().optional(),
     input: z.string(),
@@ -108,6 +110,8 @@ export async function PATCH(
       timeLimitMs: body.timeLimitMs ?? problem.timeLimitMs ?? 2000,
       memoryLimitMb: body.memoryLimitMb ?? problem.memoryLimitMb ?? 256,
       visibility: body.visibility ?? problem.visibility ?? "private",
+      showCompileOutput: body.showCompileOutput ?? problem.showCompileOutput,
+      showDetailedResults: body.showDetailedResults ?? problem.showDetailedResults,
       testCases:
         body.testCases ??
         existingTestCases

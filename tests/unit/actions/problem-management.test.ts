@@ -82,6 +82,8 @@ function makeInput(overrides: Partial<ProblemMutationInput> = {}): ProblemMutati
     timeLimitMs: 1000,
     memoryLimitMb: 256,
     visibility: "public",
+    showCompileOutput: true,
+    showDetailedResults: true,
     testCases: [],
     ...overrides,
   };

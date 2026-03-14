@@ -15,6 +15,8 @@ export const problemMutationSchema = z.object({
   timeLimitMs: z.number().int().min(100, "invalidTimeLimit").max(10000, "invalidTimeLimit"),
   memoryLimitMb: z.number().int().min(16, "invalidMemoryLimit").max(1024, "invalidMemoryLimit"),
   visibility: z.enum(problemVisibilityValues),
+  showCompileOutput: z.boolean().optional().default(true),
+  showDetailedResults: z.boolean().optional().default(true),
   testCases: z.array(problemTestCaseSchema).max(100, "tooManyTestCases").default([]),
 });
 

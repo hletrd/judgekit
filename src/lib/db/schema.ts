@@ -166,6 +166,8 @@ export const problems = sqliteTable("problems", {
   timeLimitMs: integer("time_limit_ms").default(2000),
   memoryLimitMb: integer("memory_limit_mb").default(256),
   visibility: text("visibility").default("private"),
+  showCompileOutput: integer("show_compile_output", { mode: "boolean" }).notNull().default(true),
+  showDetailedResults: integer("show_detailed_results", { mode: "boolean" }).notNull().default(true),
   authorId: text("author_id").references(() => users.id, {
     onDelete: "set null",
   }),

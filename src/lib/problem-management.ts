@@ -29,6 +29,8 @@ export function createProblemWithTestCases(input: ProblemMutationInput, authorId
         timeLimitMs: input.timeLimitMs,
         memoryLimitMb: input.memoryLimitMb,
         visibility: input.visibility,
+        showCompileOutput: input.showCompileOutput,
+        showDetailedResults: input.showDetailedResults,
         authorId,
         createdAt: now,
         updatedAt: now,
@@ -57,6 +59,8 @@ export function updateProblemWithTestCases(problemId: string, input: ProblemMuta
         timeLimitMs: input.timeLimitMs,
         memoryLimitMb: input.memoryLimitMb,
         visibility: input.visibility,
+        showCompileOutput: input.showCompileOutput,
+        showDetailedResults: input.showDetailedResults,
         updatedAt: now,
       })
       .where(eq(problems.id, problemId))

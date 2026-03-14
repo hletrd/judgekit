@@ -70,6 +70,8 @@ export default async function EditProblemPage({ params }: { params: Promise<{ id
               timeLimitMs: problem.timeLimitMs ?? 2000,
               memoryLimitMb: problem.memoryLimitMb ?? 256,
               visibility: (problem.visibility ?? "private") as "public" | "private" | "hidden",
+              showCompileOutput: problem.showCompileOutput ?? true,
+              showDetailedResults: problem.showDetailedResults ?? true,
               testCases: sortedTestCases.map((testCase) => ({
                 input: testCase.input,
                 expectedOutput: testCase.expectedOutput,

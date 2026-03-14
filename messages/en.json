@@ -183,6 +183,8 @@
     "testCasesLockedNotice": "Test cases are locked because this problem already has submissions. You can still edit the statement and limits.",
     "testCasesUnlockForAdmin": "Unlock test cases",
     "testCasesUnlockWarning": "Admin override is enabled. Changing test cases can invalidate earlier submission results.",
+    "showCompileOutput": "Show compile errors to students",
+    "showDetailedResults": "Show test case results to students",
     "createError": "Failed to create problem",
     "updateError": "Failed to update problem",
     "timeLimitValue": "{value} ms",
@@ -359,6 +361,7 @@
       "runtime_error": "Runtime Error",
       "compile_error": "Compile Error"
     },
+    "compileOutputHidden": "Compile error details are not available for this submission.",
     "detailedResultsHidden": "Detailed test case results are not available for this submission.",
     "rejudge": "Rejudge",
     "rejudgeSuccess": "Submission queued for rejudging.",

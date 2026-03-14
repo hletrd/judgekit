@@ -32,6 +32,8 @@ export type ProblemFormInitialData = {
   timeLimitMs: number;
   memoryLimitMb: number;
   visibility: ProblemVisibility;
+  showCompileOutput: boolean;
+  showDetailedResults: boolean;
   testCases: ProblemTestCaseDraft[];
 };
 
@@ -73,6 +75,8 @@ export default function CreateProblemForm({
   const [timeLimitMs, setTimeLimitMs] = useState(initialProblem?.timeLimitMs ?? 2000);
   const [memoryLimitMb, setMemoryLimitMb] = useState(initialProblem?.memoryLimitMb ?? 256);
   const [visibility, setVisibility] = useState<ProblemVisibility>(initialProblem?.visibility ?? "private");
+  const [showCompileOutput, setShowCompileOutput] = useState(initialProblem?.showCompileOutput ?? true);
+  const [showDetailedResults, setShowDetailedResults] = useState(initialProblem?.showDetailedResults ?? true);
   const [testCaseOverrideEnabled, setTestCaseOverrideEnabled] = useState(false);
   const [testCases, setTestCases] = useState<ProblemTestCaseDraft[]>(
     initialProblem?.testCases.length
@@ -170,6 +174,8 @@ export default function CreateProblemForm({
           timeLimitMs,
           memoryLimitMb,
           visibility,
+          showCompileOutput,
+          showDetailedResults,
           ...(areTestCasesEditable
             ? { testCases: testCases.map(({ _key: _, ...rest }) => rest) }
             : {}),
@@ -273,6 +279,26 @@ export default function CreateProblemForm({
             <SelectItem value="hidden">{visibilityLabels.hidden}</SelectItem>
           </SelectContent>
         </Select>
+      </div>
+
+      <div className="space-y-3 rounded-lg border p-4">
+        <h3 className="text-base font-semibold">{t("visibilityLabel")}</h3>
+        <label className="flex items-center gap-2 text-sm">
+          <Checkbox
+            checked={showCompileOutput}
+            onCheckedChange={(checked) => setShowCompileOutput(checked === true)}
+            disabled={isLoading}
+          />
+          <span>{t("showCompileOutput")}</span>
+        </label>
+        <label className="flex items-center gap-2 text-sm">
+          <Checkbox
+            checked={showDetailedResults}
+            onCheckedChange={(checked) => setShowDetailedResults(checked === true)}
+            disabled={isLoading}
+          />
+          <span>{t("showDetailedResults")}</span>
+        </label>
       </div>
 
       <div className="space-y-4 rounded-lg border p-4">

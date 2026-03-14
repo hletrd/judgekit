@@ -98,6 +98,8 @@ export async function POST(request: NextRequest) {
       timeLimitMs: body.timeLimitMs ?? 2000,
       memoryLimitMb: body.memoryLimitMb ?? 256,
       visibility: body.visibility ?? "private",
+      showCompileOutput: body.showCompileOutput,
+      showDetailedResults: body.showDetailedResults,
       testCases: body.testCases ?? [],
     });
 

@@ -25,7 +25,7 @@ export default async function SubmissionDetailPage({ params, searchParams }: { p
         columns: { name: true },
       },
       problem: {
-        columns: { id: true, title: true },
+        columns: { id: true, title: true, showCompileOutput: true, showDetailedResults: true },
       },
       results: {
         with: {
@@ -90,7 +90,16 @@ export default async function SubmissionDetailPage({ params, searchParams }: { p
       }}
       backHref={backHref}
       timeZone={timeZone}
-      showDetailedResults={true}
+      showCompileOutput={
+        session.user.role === "admin" || session.user.role === "super_admin" || session.user.role === "instructor"
+          ? true
+          : submission.problem?.showCompileOutput ?? true
+      }
+      showDetailedResults={
+        session.user.role === "admin" || session.user.role === "super_admin" || session.user.role === "instructor"
+          ? true
+          : submission.problem?.showDetailedResults ?? true
+      }
       userRole={session.user.role}
       userId={session.user.id}
     />

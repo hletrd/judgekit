@@ -21,6 +21,7 @@ import { SubmissionResultPanel } from "./_components/submission-result-panel";
 import { CommentSection } from "./_components/comment-section";
 
 type SubmissionDetailClientProps = {
+  showCompileOutput: boolean;
   showDetailedResults: boolean;
   initialSubmission: SubmissionDetailView;
   backHref: string;
@@ -186,6 +187,7 @@ export function SubmissionDetailClient(props: SubmissionDetailClientProps) {
       </Card>
 
       <SubmissionResultPanel
+        showCompileOutput={props.showCompileOutput}
         showDetailedResults={props.showDetailedResults}
         compileOutput={submission.compileOutput}
         results={submission.results}
