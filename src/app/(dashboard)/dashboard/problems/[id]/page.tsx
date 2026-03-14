@@ -180,7 +180,7 @@ export default async function ProblemDetailPage({
               )}
             </div>
           </div>
-          <div className="mb-4 flex gap-2 text-sm text-muted-foreground">
+          <div className="mb-4 flex flex-wrap gap-2 text-sm text-muted-foreground">
             <Badge variant="outline">{t("badges.timeLimit", { value: problem.timeLimitMs ?? 2000 })}</Badge>
             <Badge variant="outline">{t("badges.memoryLimit", { value: problem.memoryLimitMb ?? 256 })}</Badge>
             <Badge variant="secondary">{t("badges.author", { name: problem.author?.name || tCommon("system") })}</Badge>
