@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { buttonVariants } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import { auth } from "@/lib/auth";
 import { getAllPluginStates } from "@/lib/plugins/data";
 import { PluginToggle } from "./plugin-toggle";
@@ -35,11 +35,8 @@ export default async function AdminPluginsPage() {
               <CardContent>
                 <div className="flex items-center justify-between">
                   <PluginToggle pluginId={plugin.id} enabled={plugin.enabled} />
-                  <Link
-                    href={`/dashboard/admin/plugins/${plugin.id}`}
-                    className={buttonVariants({ variant: "outline", size: "sm" })}
-                  >
-                    {t("configure")}
+                  <Link href={`/dashboard/admin/plugins/${plugin.id}`}>
+                    <Button variant="outline" size="sm">{t("configure")}</Button>
                   </Link>
                 </div>
               </CardContent>
