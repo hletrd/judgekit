@@ -1,6 +1,6 @@
 import { eq, desc } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { problems, submissions, submissionResults } from "@/lib/db/schema";
+import { problems, submissions, submissionResults, assignments } from "@/lib/db/schema";
 import { canAccessProblem } from "@/lib/auth/permissions";
 import type { UserRole } from "@/types";
 
@@ -52,6 +52,11 @@ export const AGENT_TOOLS: ToolDefinition[] = [
     description: "Get the code currently in the student's editor along with the selected programming language.",
     parameters: { type: "object", properties: {}, required: [] },
   },
+  {
+    name: "get_assignment_info",
+    description: "Get assignment details (title, deadlines) if this problem is accessed through an assignment.",
+    parameters: { type: "object", properties: {}, required: [] },
+  },
 ];
 
 export async function executeTool(
@@ -68,6 +73,8 @@ export async function executeTool(
       return handleGetSubmissionDetail(context, toolArgs);
     case "get_current_code":
       return handleGetCurrentCode(context);
+    case "get_assignment_info":
+      return handleGetAssignmentInfo(context);
     default:
       return JSON.stringify({ error: "Unknown tool" });
   }
@@ -201,7 +208,6 @@ async function handleGetSubmissionDetail(
         status: true,
         executionTimeMs: true,
         memoryUsedKb: true,
-        actualOutput: true,
       },
       with: {
         testCase: {
@@ -230,5 +236,31 @@ function handleGetCurrentCode(context: AgentContext): string {
   return JSON.stringify({
     code: context.editorCode,
     language: context.editorLanguage || "unknown",
+  });
+}
+
+async function handleGetAssignmentInfo(context: AgentContext): Promise<string> {
+  if (!context.assignmentId) {
+    return JSON.stringify({ info: "This problem is not accessed through an assignment" });
+  }
+
+  const assignment = await db.query.assignments.findFirst({
+    where: eq(assignments.id, context.assignmentId),
+    columns: {
+      id: true,
+      title: true,
+      deadline: true,
+      lateDeadline: true,
+    },
+  });
+
+  if (!assignment) {
+    return JSON.stringify({ error: "Assignment not found" });
+  }
+
+  return JSON.stringify({
+    title: assignment.title,
+    deadline: assignment.deadline,
+    lateDeadline: assignment.lateDeadline,
   });
 }
