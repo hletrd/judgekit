@@ -26,6 +26,7 @@ export default function ChatWidget(_props: PluginWidgetProps) {
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
   const [aiDisabled, setAiDisabled] = useState<string | null>(null);
+  const [sessionId, setSessionId] = useState<string | null>(null);
 
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -59,44 +60,59 @@ export default function ChatWidget(_props: PluginWidgetProps) {
     }
   }, [isOpen, isMinimized]);
 
-  // Auto-open on submission errors and capture problem context
+  // Track pending auto-analysis request
+  const [pendingAutoAnalysis, setPendingAutoAnalysis] = useState<{ status: string; submissionId: string } | null>(null);
+
+  // Auto-open on submission results and trigger proactive analysis
   useEffect(() => {
-    function handleSubmissionError(e: CustomEvent) {
-      if (e.detail?.hasError) {
-        if (e.detail.problemId) {
-          setEventContext({
-            problemId: e.detail.problemId,
-            assignmentId: e.detail.assignmentId,
-            submissionId: e.detail.submissionId,
-          });
-        }
+    function handleSubmissionResult(e: CustomEvent) {
+      if (e.detail?.problemId) {
+        setEventContext({
+          problemId: e.detail.problemId,
+          assignmentId: e.detail.assignmentId,
+          submissionId: e.detail.submissionId,
+        });
+        setPendingAutoAnalysis({
+          status: e.detail.status,
+          submissionId: e.detail.submissionId,
+        });
         setIsOpen(true);
         setIsMinimized(false);
       }
     }
-    window.addEventListener("oj:submission-error", handleSubmissionError as EventListener);
-    return () => window.removeEventListener("oj:submission-error", handleSubmissionError as EventListener);
+    window.addEventListener("oj:submission-result", handleSubmissionResult as EventListener);
+    return () => window.removeEventListener("oj:submission-result", handleSubmissionResult as EventListener);
   }, []);
 
-  const handleSend = useCallback(async () => {
-    const trimmed = input.trim();
-    if (!trimmed || isStreaming) return;
+  // Auto-send proactive analysis when triggered by submission result
+  const autoAnalysisTriggered = useRef(false);
+  useEffect(() => {
+    if (pendingAutoAnalysis && !isStreaming && problemContext && !autoAnalysisTriggered.current) {
+      autoAnalysisTriggered.current = true;
+      const isError = pendingAutoAnalysis.status !== "accepted";
+      const autoMessage = isError
+        ? `My submission (${pendingAutoAnalysis.submissionId}) got "${pendingAutoAnalysis.status}". Please analyze my code and the submission results to help me find and fix the issue.`
+        : `My submission (${pendingAutoAnalysis.submissionId}) was accepted! Please review my code for any improvements, edge cases, or better practices.`;
+      setPendingAutoAnalysis(null);
+      void sendMessage(autoMessage);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingAutoAnalysis, isStreaming, problemContext]);
+
+  async function sendMessage(text: string) {
+    if (!text || isStreaming) return;
 
     setError(null);
-    const userMessage: Message = { role: "user", content: trimmed };
+    const userMessage: Message = { role: "user", content: text };
     const newMessages = [...messages, userMessage];
     setMessages(newMessages);
     setInput("");
     setIsStreaming(true);
-
-    // Add empty assistant message for streaming
     setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
 
     try {
       const controller = new AbortController();
       abortControllerRef.current = controller;
-
-      // Read editor code from global bridge (set by problem submission form)
       const editorState = typeof window !== "undefined" ? (window as any).__ojEditorContent : null;
 
       const response = await fetch("/api/v1/plugins/chat-widget/chat", {
@@ -109,28 +125,22 @@ export default function ChatWidget(_props: PluginWidgetProps) {
             assignmentId: problemContext.assignmentId,
             editorCode: editorState?.code,
             editorLanguage: editorState?.language,
-          } : undefined,
+            sessionId: sessionId ?? undefined,
+          } : sessionId ? { sessionId } : undefined,
         }),
         signal: controller.signal,
       });
 
       if (!response.ok) {
         const data = await response.json().catch(() => ({}));
-        if (response.status === 429) {
-          setError(t("errorRateLimit"));
-        } else if (data.error === "notConfigured") {
-          setError(t("errorNotConfigured"));
-        } else if (data.error === "aiDisabled" || data.error === "aiDisabledForProblem") {
-          setAiDisabled(data.error);
-          setError(t(data.error === "aiDisabledForProblem" ? "aiDisabledForProblem" : "aiDisabledGlobally"));
-        } else {
-          setError(t("errorGeneric"));
-        }
-        // Remove empty assistant message
+        setError(data.error === "rateLimit" ? t("errorRateLimit") : t("errorGeneric"));
         setMessages((prev) => prev.slice(0, -1));
         setIsStreaming(false);
         return;
       }
+
+      const responseSessionId = response.headers.get("X-Chat-Session-Id");
+      if (responseSessionId) setSessionId(responseSessionId);
 
       if (!response.body) {
         setError(t("errorGeneric"));
@@ -141,31 +151,25 @@ export default function ChatWidget(_props: PluginWidgetProps) {
 
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
-
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
-
-        const text = decoder.decode(value, { stream: true });
+        const chunk = decoder.decode(value, { stream: true });
         setMessages((prev) => {
           const updated = [...prev];
           const last = updated[updated.length - 1];
-          if (last && last.role === "assistant") {
-            updated[updated.length - 1] = { ...last, content: last.content + text };
+          if (last?.role === "assistant") {
+            updated[updated.length - 1] = { ...last, content: last.content + chunk };
           }
           return updated;
         });
       }
     } catch (err) {
-      if (err instanceof DOMException && err.name === "AbortError") {
-        // User cancelled
-      } else {
+      if (!(err instanceof DOMException && err.name === "AbortError")) {
         setError(t("errorGeneric"));
         setMessages((prev) => {
           const last = prev[prev.length - 1];
-          if (last?.role === "assistant" && !last.content) {
-            return prev.slice(0, -1);
-          }
+          if (last?.role === "assistant" && !last.content) return prev.slice(0, -1);
           return prev;
         });
       }
@@ -173,7 +177,11 @@ export default function ChatWidget(_props: PluginWidgetProps) {
       setIsStreaming(false);
       abortControllerRef.current = null;
     }
-  }, [input, isStreaming, messages, t]);
+  }
+
+  const handleSend = useCallback(async () => {
+    void sendMessage(input.trim());
+  }, [input, isStreaming, messages, problemContext, sessionId, t]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
