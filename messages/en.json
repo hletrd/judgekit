@@ -363,6 +363,7 @@
     "rejudge": "Rejudge",
     "rejudgeSuccess": "Submission queued for rejudging.",
     "rejudgeFailed": "Failed to rejudge submission.",
+    "resubmit": "Resubmit",
     "pagination": {
       "showingRange": "Showing {start}-{end}"
     }

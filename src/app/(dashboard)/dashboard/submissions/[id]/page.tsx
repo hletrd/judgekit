@@ -7,12 +7,14 @@ import { getResolvedSystemTimeZone } from "@/lib/system-settings";
 import { redirect, notFound } from "next/navigation";
 import { SubmissionDetailClient } from "./submission-detail-client";
 
-export default async function SubmissionDetailPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function SubmissionDetailPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams?: Promise<{ from?: string }> }) {
   const session = await auth();
   if (!session?.user) redirect("/login");
 
   const resolvedParams = await params;
+  const resolvedSearchParams = searchParams ? await searchParams : undefined;
   const submissionId = resolvedParams.id;
+  const backHref = resolvedSearchParams?.from === "admin" ? "/dashboard/admin/submissions" : "/dashboard/submissions";
 
   const timeZone = await getResolvedSystemTimeZone();
 
@@ -86,10 +88,11 @@ export default async function SubmissionDetailPage({ params }: { params: Promise
             : null,
         })),
       }}
-      backHref="/dashboard/submissions"
+      backHref={backHref}
       timeZone={timeZone}
       showDetailedResults={true}
       userRole={session.user.role}
+      userId={session.user.id}
     />
   );
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { CodeViewer } from "@/components/code/code-viewer";
@@ -25,12 +26,14 @@ type SubmissionDetailClientProps = {
   backHref: string;
   timeZone: string;
   userRole: string;
+  userId: string;
 };
 
 export function SubmissionDetailClient(props: SubmissionDetailClientProps) {
   const t = useTranslations("submissions");
   const tCommon = useTranslations("common");
   const locale = useLocale();
+  const router = useRouter();
 
   const { submission, setSubmission, error: pollingError } = useSubmissionPolling(props.initialSubmission);
   const [rejudging, setRejudging] = useState(false);
@@ -44,6 +47,21 @@ export function SubmissionDetailClient(props: SubmissionDetailClientProps) {
       : submission.assignmentId
         ? `/dashboard/problems/${submission.problem.id}?assignmentId=${submission.assignmentId}`
         : `/dashboard/problems/${submission.problem.id}`;
+
+  function handleResubmit() {
+    if (!problemHref) return;
+    const key = `oj:submission-draft:${props.userId}:${submission.problem!.id}`;
+    const payload = {
+      version: 1,
+      updatedAt: Date.now(),
+      latestLanguage: submission.language,
+      drafts: {
+        [submission.language]: submission.sourceCode,
+      },
+    };
+    localStorage.setItem(key, JSON.stringify(payload));
+    router.push(problemHref);
+  }
 
   async function handleRejudge() {
     if (rejudging) return;
@@ -78,7 +96,7 @@ export function SubmissionDetailClient(props: SubmissionDetailClientProps) {
               {tCommon("back")}
             </Link>
             <h2 className="mb-2 text-2xl font-bold">{t("submissionId", { id: formatSubmissionIdPrefix(submission.id) })}</h2>
-            <div className="flex flex-wrap gap-2" role="status" aria-live="polite">
+            <div className="flex flex-wrap items-center gap-2" role="status" aria-live="polite">
               <Badge variant="outline">
                 {t("user")}: {submission.user?.name ?? "-"}
               </Badge>
@@ -139,6 +157,15 @@ export function SubmissionDetailClient(props: SubmissionDetailClientProps) {
               disabled={rejudging}
             >
               {t("rejudge")}
+            </Button>
+          )}
+          {problemHref && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleResubmit}
+            >
+              {t("resubmit")}
             </Button>
           )}
         </div>

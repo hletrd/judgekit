@@ -363,6 +363,7 @@
     "rejudge": "재채점",
     "rejudgeSuccess": "재채점 대기열에 추가되었습니다.",
     "rejudgeFailed": "재채점 요청에 실패했습니다.",
+    "resubmit": "수정 제출",
     "pagination": {
       "showingRange": "{start}-{end}개 표시 중"
     }
