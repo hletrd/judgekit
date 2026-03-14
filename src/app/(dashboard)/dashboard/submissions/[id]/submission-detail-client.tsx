@@ -101,7 +101,7 @@ export function SubmissionDetailClient(props: SubmissionDetailClientProps) {
                 {t("user")}: {submission.user?.name ?? "-"}
               </Badge>
               {problemHref ? (
-                <Link href={problemHref} className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-md">
+                <Link href={problemHref} className="inline-flex focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-md">
                   <Badge variant="outline" className="cursor-pointer transition-opacity hover:opacity-80">
                     {t("table.problem")}: {submission.problem?.title ?? "-"}
                   </Badge>
