@@ -24,11 +24,11 @@ export default function ChatWidgetAdminConfig({ config, onSave }: PluginAdminPro
 
   const [provider, setProvider] = useState<Provider>((config.provider as Provider) ?? "openai");
   const [openaiApiKey, setOpenaiApiKey] = useState((config.openaiApiKey as string) ?? "");
-  const [openaiModel, setOpenaiModel] = useState((config.openaiModel as string) ?? "gpt-4o-mini");
+  const [openaiModel, setOpenaiModel] = useState((config.openaiModel as string) ?? "gpt-5-mini");
   const [claudeApiKey, setClaudeApiKey] = useState((config.claudeApiKey as string) ?? "");
-  const [claudeModel, setClaudeModel] = useState((config.claudeModel as string) ?? "claude-sonnet-4-20250514");
+  const [claudeModel, setClaudeModel] = useState((config.claudeModel as string) ?? "claude-haiku-4-5-20251001");
   const [geminiApiKey, setGeminiApiKey] = useState((config.geminiApiKey as string) ?? "");
-  const [geminiModel, setGeminiModel] = useState((config.geminiModel as string) ?? "gemini-2.0-flash");
+  const [geminiModel, setGeminiModel] = useState((config.geminiModel as string) ?? "gemini-3.1-flash-lite-preview");
   const [systemPrompt, setSystemPrompt] = useState((config.systemPrompt as string) ?? "");
   const [knowledgeBase, setKnowledgeBase] = useState((config.knowledgeBase as string) ?? "");
   const [maxTokens, setMaxTokens] = useState((config.maxTokens as number) ?? 2048);
@@ -140,10 +140,48 @@ export default function ChatWidgetAdminConfig({ config, onSave }: PluginAdminPro
 
           <div className="space-y-2">
             <Label>{t("model")}</Label>
-            <Input
-              value={currentModel}
-              onChange={(e) => setCurrentModel(e.target.value)}
-            />
+            <Select value={currentModel} onValueChange={(v) => { if (v) setCurrentModel(v); }}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {provider === "openai" && (
+                  <>
+                    <SelectItem value="gpt-5-mini" label="GPT-5 Mini">GPT-5 Mini</SelectItem>
+                    <SelectItem value="gpt-5.4" label="GPT-5.4">GPT-5.4</SelectItem>
+                    <SelectItem value="gpt-5.4-pro" label="GPT-5.4 Pro">GPT-5.4 Pro</SelectItem>
+                    <SelectItem value="gpt-4.1" label="GPT-4.1">GPT-4.1</SelectItem>
+                    <SelectItem value="gpt-4.1-mini" label="GPT-4.1 Mini">GPT-4.1 Mini</SelectItem>
+                    <SelectItem value="gpt-4.1-nano" label="GPT-4.1 Nano">GPT-4.1 Nano</SelectItem>
+                    <SelectItem value="o4-mini" label="o4-mini (Reasoning)">o4-mini (Reasoning)</SelectItem>
+                    <SelectItem value="o3-mini" label="o3-mini (Reasoning)">o3-mini (Reasoning)</SelectItem>
+                    <SelectItem value="gpt-4o" label="GPT-4o">GPT-4o</SelectItem>
+                    <SelectItem value="gpt-4o-mini" label="GPT-4o Mini">GPT-4o Mini</SelectItem>
+                  </>
+                )}
+                {provider === "claude" && (
+                  <>
+                    <SelectItem value="claude-haiku-4-5-20251001" label="Claude Haiku 4.5">Claude Haiku 4.5</SelectItem>
+                    <SelectItem value="claude-sonnet-4-6" label="Claude Sonnet 4.6">Claude Sonnet 4.6</SelectItem>
+                    <SelectItem value="claude-opus-4-6" label="Claude Opus 4.6">Claude Opus 4.6</SelectItem>
+                    <SelectItem value="claude-sonnet-4-20250514" label="Claude Sonnet 4">Claude Sonnet 4</SelectItem>
+                    <SelectItem value="claude-opus-4-20250514" label="Claude Opus 4">Claude Opus 4</SelectItem>
+                    <SelectItem value="claude-sonnet-4-5-20250929" label="Claude Sonnet 4.5">Claude Sonnet 4.5</SelectItem>
+                    <SelectItem value="claude-opus-4-5-20251101" label="Claude Opus 4.5">Claude Opus 4.5</SelectItem>
+                  </>
+                )}
+                {provider === "gemini" && (
+                  <>
+                    <SelectItem value="gemini-3.1-flash-lite-preview" label="Gemini 3.1 Flash Lite">Gemini 3.1 Flash Lite</SelectItem>
+                    <SelectItem value="gemini-3.1-pro-preview" label="Gemini 3.1 Pro">Gemini 3.1 Pro</SelectItem>
+                    <SelectItem value="gemini-2.5-pro" label="Gemini 2.5 Pro">Gemini 2.5 Pro</SelectItem>
+                    <SelectItem value="gemini-2.5-flash" label="Gemini 2.5 Flash">Gemini 2.5 Flash</SelectItem>
+                    <SelectItem value="gemini-2.5-flash-lite" label="Gemini 2.5 Flash Lite">Gemini 2.5 Flash Lite</SelectItem>
+                    <SelectItem value="gemini-2.0-flash" label="Gemini 2.0 Flash">Gemini 2.0 Flash</SelectItem>
+                  </>
+                )}
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="flex items-center gap-2">
