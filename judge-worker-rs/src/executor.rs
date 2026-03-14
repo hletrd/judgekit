@@ -1,5 +1,5 @@
 use crate::api::ApiClient;
-use crate::comparator::compare_output;
+use crate::comparator::{compare_output, compare_float_output};
 use crate::config::Config;
 use crate::docker::{self, DockerRunOptions, Phase};
 use crate::languages;
@@ -207,10 +207,19 @@ async fn execute_inner(client: &ApiClient, config: &Config, submission: Submissi
         };
 
         // Compare raw bytes directly (avoids double conversion and UTF-8 lossy artifacts)
-        let is_correct = compare_output(
-            test_case.expected_output.as_bytes(),
-            &execution.stdout,
-        );
+        let is_correct = if submission.comparison_mode == "float" {
+            compare_float_output(
+                test_case.expected_output.as_bytes(),
+                &execution.stdout,
+                submission.float_absolute_error,
+                submission.float_relative_error,
+            )
+        } else {
+            compare_output(
+                test_case.expected_output.as_bytes(),
+                &execution.stdout,
+            )
+        };
 
         // Convert to string for reporting (separate from comparison)
         let actual_output = String::from_utf8_lossy(&execution.stdout).into_owned();

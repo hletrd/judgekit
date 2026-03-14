@@ -96,6 +96,16 @@ pub struct Submission {
     pub memory_limit_mb: u32,
     #[serde(rename = "testCases")]
     pub test_cases: Vec<TestCase>,
+    #[serde(rename = "comparisonMode", default = "default_comparison_mode")]
+    pub comparison_mode: String,
+    #[serde(rename = "floatAbsoluteError")]
+    pub float_absolute_error: Option<f64>,
+    #[serde(rename = "floatRelativeError")]
+    pub float_relative_error: Option<f64>,
+}
+
+fn default_comparison_mode() -> String {
+    "exact".to_string()
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

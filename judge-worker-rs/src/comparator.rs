@@ -105,9 +105,59 @@ pub fn compare_output(expected: &[u8], actual: &[u8]) -> bool {
     }
 }
 
+/// Compare outputs using floating-point tolerance.
+///
+/// Tokens are compared pairwise. If both tokens parse as f64, they are
+/// considered equal if EITHER the absolute error OR relative error is
+/// within the given tolerances. Non-numeric tokens are compared exactly.
+pub fn compare_float_output(
+    expected: &[u8],
+    actual: &[u8],
+    abs_error: Option<f64>,
+    rel_error: Option<f64>,
+) -> bool {
+    let abs_eps = abs_error.unwrap_or(1e-9);
+    let rel_eps = rel_error.unwrap_or(1e-9);
+
+    let exp_str = String::from_utf8_lossy(expected);
+    let act_str = String::from_utf8_lossy(actual);
+
+    let exp_tokens: Vec<&str> = exp_str.split_whitespace().collect();
+    let act_tokens: Vec<&str> = act_str.split_whitespace().collect();
+
+    if exp_tokens.len() != act_tokens.len() {
+        return false;
+    }
+
+    for (exp_tok, act_tok) in exp_tokens.iter().zip(act_tokens.iter()) {
+        match (exp_tok.parse::<f64>(), act_tok.parse::<f64>()) {
+            (Ok(exp_val), Ok(act_val)) => {
+                let diff = (exp_val - act_val).abs();
+                let abs_ok = diff <= abs_eps;
+                let rel_ok = if exp_val.abs() > f64::EPSILON {
+                    diff <= rel_eps * exp_val.abs()
+                } else {
+                    diff <= abs_eps
+                };
+                if !abs_ok && !rel_ok {
+                    return false;
+                }
+            }
+            _ => {
+                // Non-numeric tokens: exact comparison (trimmed)
+                if exp_tok != act_tok {
+                    return false;
+                }
+            }
+        }
+    }
+
+    true
+}
+
 #[cfg(test)]
 mod tests {
-    use super::compare_output;
+    use super::{compare_output, compare_float_output};
 
     #[test]
     fn exact_match() {
@@ -223,5 +273,108 @@ mod tests {
         assert!(!compare_output(b"a\n\nb", b"a\n\n\nb"));
         assert!(!compare_output(b"a\nb", b"a\n\nb"));
         assert!(!compare_output(b"a\n\nb", b"a\nb"));
+    }
+
+    #[test]
+    fn float_exact_match() {
+        assert!(compare_float_output(b"1.0 2.0 3.0", b"1.0 2.0 3.0", None, None));
+    }
+
+    #[test]
+    fn float_within_absolute_error() {
+        assert!(compare_float_output(
+            b"1.000000",
+            b"1.000001",
+            Some(1e-5),
+            None,
+        ));
+    }
+
+    #[test]
+    fn float_exceeds_absolute_error() {
+        assert!(!compare_float_output(
+            b"1.000000",
+            b"1.001000",
+            Some(1e-5),
+            None,
+        ));
+    }
+
+    #[test]
+    fn float_within_relative_error() {
+        assert!(compare_float_output(
+            b"1000.0",
+            b"1000.001",
+            None,
+            Some(1e-5),
+        ));
+    }
+
+    #[test]
+    fn float_exceeds_relative_error() {
+        assert!(!compare_float_output(
+            b"1000.0",
+            b"1010.0",
+            None,
+            Some(1e-5),
+        ));
+    }
+
+    #[test]
+    fn float_mixed_numeric_and_text() {
+        assert!(compare_float_output(
+            b"YES 3.14159",
+            b"YES 3.14159",
+            Some(1e-6),
+            None,
+        ));
+        assert!(!compare_float_output(
+            b"YES 3.14159",
+            b"NO 3.14159",
+            Some(1e-6),
+            None,
+        ));
+    }
+
+    #[test]
+    fn float_different_token_count() {
+        assert!(!compare_float_output(
+            b"1.0 2.0",
+            b"1.0 2.0 3.0",
+            Some(1e-6),
+            None,
+        ));
+    }
+
+    #[test]
+    fn float_multiline() {
+        assert!(compare_float_output(
+            b"1.0\n2.0\n3.0",
+            b"1.0000001\n2.0000001\n3.0000001",
+            Some(1e-6),
+            None,
+        ));
+    }
+
+    #[test]
+    fn float_zero_expected() {
+        // When expected is 0, relative error doesn't apply well,
+        // should fall back to absolute error
+        assert!(compare_float_output(
+            b"0.0",
+            b"0.0000001",
+            Some(1e-6),
+            Some(1e-6),
+        ));
+    }
+
+    #[test]
+    fn float_negative_values() {
+        assert!(compare_float_output(
+            b"-1.5",
+            b"-1.5000001",
+            Some(1e-6),
+            None,
+        ));
     }
 }
