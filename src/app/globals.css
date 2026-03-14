@@ -141,6 +141,7 @@
     --code-surface-caret: var(--foreground);
     --code-surface-foreground: var(--card-foreground);
     --code-surface-placeholder: var(--muted-foreground);
+    --code-surface-gutter: var(--muted-foreground);
   }
 
   .code-surface-default {
@@ -150,6 +151,7 @@
     --code-surface-caret: var(--foreground);
     --code-surface-foreground: var(--card-foreground);
     --code-surface-placeholder: var(--muted-foreground);
+    --code-surface-gutter: var(--muted-foreground);
     --code-surface-selection: color-mix(in oklch, var(--ring) 18%, var(--card));
   }
 

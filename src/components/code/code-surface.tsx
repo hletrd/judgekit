@@ -12,12 +12,13 @@ import {
 } from "@codemirror/language";
 import { tags } from "@lezer/highlight";
 import { oneDarkHighlightStyle } from "@codemirror/theme-one-dark";
-import { EditorState, type Extension } from "@codemirror/state";
+import { EditorSelection, EditorState, type Extension } from "@codemirror/state";
 import {
   drawSelection,
   EditorView,
   highlightSpecialChars,
   keymap,
+  lineNumbers,
   placeholder,
 } from "@codemirror/view";
 import { useTheme } from "next-themes";
@@ -76,6 +77,14 @@ const baseTheme = EditorView.theme({
     borderColor: "var(--code-surface-border)",
     color: "var(--code-surface-foreground)",
   },
+  ".cm-gutters": {
+    backgroundColor: "var(--code-surface-background)",
+    borderRight: "1px solid var(--code-surface-border)",
+    color: "var(--code-surface-gutter)",
+  },
+  ".cm-activeLineGutter": {
+    backgroundColor: "transparent",
+  },
 });
 
 // Material Lighter highlight style (based on JetBrains Material Theme - Lighter)
@@ -119,6 +128,24 @@ const materialLightHighlightStyle = HighlightStyle.define([
   { tag: tags.invalid, color: "#FF5370" },
 ]);
 
+// GNU-style newline: only auto-indent after `{`, otherwise keep current indent.
+function insertNewlineGnuStyle(view: EditorView): boolean {
+  const { state } = view;
+  const changes = state.changeByRange((range) => {
+    const line = state.doc.lineAt(range.head);
+    const indent = /^[\t ]*/.exec(line.text)?.[0] ?? "";
+    const textBeforeCursor = line.text.slice(0, range.head - line.from).trimEnd();
+    const endsWithBrace = textBeforeCursor.endsWith("{");
+    const insert = state.lineBreak + indent + (endsWithBrace ? "    " : "");
+    return {
+      changes: { from: range.from, to: range.to, insert },
+      range: EditorSelection.cursor(range.from + insert.length),
+    };
+  });
+  view.dispatch(changes, { scrollIntoView: true, userEvent: "input" });
+  return true;
+}
+
 // drawSelection() replaces native selection rendering with CodeMirror's own layer,
 // which conflicts with iOS Safari's UIKit selection handles and touch input.
 const isIOS =
@@ -127,6 +154,7 @@ const isIOS =
 
 const baseExtensions: Extension[] = [
   baseTheme,
+  lineNumbers(),
   EditorState.tabSize.of(4),
   indentUnit.of("    "),
   history(),
@@ -134,7 +162,12 @@ const baseExtensions: Extension[] = [
   highlightSpecialChars(),
   bracketMatching(),
   EditorView.lineWrapping,
-  keymap.of([indentWithTab, ...defaultKeymap, ...historyKeymap]),
+  keymap.of([
+    { key: "Enter", run: insertNewlineGnuStyle },
+    indentWithTab,
+    ...defaultKeymap,
+    ...historyKeymap,
+  ]),
 ];
 
 async function getLanguageExtension(language: string | null | undefined): Promise<Extension[]> {
