@@ -91,7 +91,9 @@ export function SubmissionDetailClient(props: SubmissionDetailClientProps) {
       if (response.ok) {
         const payload = (await response.json()) as { data?: Record<string, unknown> };
         if (payload.data) {
-          setSubmission(normalizeSubmission(payload.data));
+          const updated = normalizeSubmission(payload.data);
+          // Preserve sourceCode since rejudge response excludes it
+          setSubmission((prev) => ({ ...updated, sourceCode: updated.sourceCode ?? prev.sourceCode }));
         }
         toast.success(t("rejudgeSuccess"));
       } else {

@@ -15,6 +15,7 @@ import "katex/dist/katex.min.css";
 interface Message {
   role: "user" | "assistant";
   content: string;
+  displayContent?: string; // shown in UI instead of content (for auto-prompts)
 }
 
 export default function ChatWidget(_props: PluginWidgetProps) {
@@ -93,20 +94,23 @@ export default function ChatWidget(_props: PluginWidgetProps) {
     if (pendingAutoAnalysis && !isStreaming && problemContext && !autoAnalysisTriggered.current) {
       autoAnalysisTriggered.current = true;
       const isError = pendingAutoAnalysis.status !== "accepted";
-      const autoMessage = isError
+      const apiPrompt = isError
         ? `My submission (${pendingAutoAnalysis.submissionId}) got "${pendingAutoAnalysis.status}". Please analyze my code and the submission results to help me find and fix the issue.`
         : `My submission (${pendingAutoAnalysis.submissionId}) was accepted! Please review my code for any improvements, edge cases, or better practices.`;
+      const displayText = isError
+        ? t("autoAnalysisError")
+        : t("autoAnalysisReview");
       setPendingAutoAnalysis(null);
-      void sendMessage(autoMessage);
+      void sendMessage(apiPrompt, displayText);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pendingAutoAnalysis, isStreaming, problemContext]);
 
-  async function sendMessage(text: string) {
+  async function sendMessage(text: string, displayText?: string) {
     if (!text || isStreaming) return;
 
     setError(null);
-    const userMessage: Message = { role: "user", content: text };
+    const userMessage: Message = { role: "user", content: text, displayContent: displayText };
     const newMessages = [...messages, userMessage];
     setMessages(newMessages);
     setInput("");
@@ -273,7 +277,7 @@ export default function ChatWidget(_props: PluginWidgetProps) {
               {msg.role === "assistant" ? (
                 <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]}>{msg.content}</ReactMarkdown>
               ) : (
-                msg.content
+                msg.displayContent ?? msg.content
               )}
               {msg.role === "assistant" && !msg.content && isStreaming && i === messages.length - 1 && (
                 <span className="inline-flex gap-1">

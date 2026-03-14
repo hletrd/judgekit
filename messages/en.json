@@ -949,6 +949,8 @@
       "configError": "Failed to save configuration.",
       "aiDisabledGlobally": "AI assistance is currently disabled.",
       "aiDisabledForProblem": "AI assistance is not available for this problem.",
+      "autoAnalysisError": "Analyzing submission errors...",
+      "autoAnalysisReview": "Reviewing accepted solution...",
       "providerOptions": {
         "openai": "OpenAI",
         "claude": "Claude (Anthropic)",

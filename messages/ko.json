@@ -949,6 +949,8 @@
       "configError": "설정 저장에 실패했습니다.",
       "aiDisabledGlobally": "AI 도우미가 현재 비활성화되어 있습니다.",
       "aiDisabledForProblem": "이 문제에서는 AI 도우미를 사용할 수 없습니다.",
+      "autoAnalysisError": "제출 오류를 분석하는 중...",
+      "autoAnalysisReview": "정답 코드를 리뷰하는 중...",
       "providerOptions": {
         "openai": "OpenAI",
         "claude": "Claude (Anthropic)",
