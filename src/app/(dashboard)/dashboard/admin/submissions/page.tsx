@@ -107,7 +107,7 @@ export default async function AdminSubmissionsPage({
               {visibleSubmissions.map((sub) => (
                 <TableRow key={sub.id}>
                   <TableCell className="font-mono text-xs">
-                    <Link href={`/dashboard/submissions/${sub.id}`} className="text-primary hover:underline">
+                    <Link href={`/dashboard/submissions/${sub.id}?from=admin`} className="text-primary hover:underline">
                       {formatSubmissionIdPrefix(sub.id)}
                     </Link>
                   </TableCell>
@@ -143,7 +143,7 @@ export default async function AdminSubmissionsPage({
                       : "-"}
                   </TableCell>
                   <TableCell>
-                    <Link href={`/dashboard/submissions/${sub.id}`}>
+                    <Link href={`/dashboard/submissions/${sub.id}?from=admin`}>
                       <Button variant="outline" size="sm">{tCommon("view")}</Button>
                     </Link>
                   </TableCell>
