@@ -44,11 +44,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 #   whitespace      - Whitespace interpreter (https://pypi.org/project/whitespace/)
 RUN pip install --no-cache-dir shakespearelang aheui whitespace
 
-# Rockstar (Satriani - official JS interpreter)
-# https://github.com/RockstarLang/rockstar
-RUN git clone --depth 1 https://github.com/RockstarLang/rockstar.git /opt/rockstar && \
-    cd /opt/rockstar/satriani && npm install --production && \
-    printf '#!/bin/sh\nnode /opt/rockstar/satriani/rockstar "$@"\n' > /usr/local/bin/rockstar && \
+# Rockstar (Satriani - JS interpreter by Dylan Beattie)
+# https://github.com/dylanbeattie/satriani
+RUN git clone --depth 1 https://github.com/dylanbeattie/satriani.git /opt/satriani && \
+    cd /opt/satriani && npm install --production && \
+    printf '#!/bin/sh\nnode /opt/satriani/rockstar.js "$@"\n' > /usr/local/bin/rockstar && \
     chmod +x /usr/local/bin/rockstar
 
 # Create wspace wrapper (whitespace pip package may not install CLI as 'wspace')
