@@ -49,6 +49,7 @@ next-env.d.ts
 
 # internal docs (deployment secrets, infra details)
 docs/
+ENV.md
 
 # database
 data/*.db
