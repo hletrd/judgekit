@@ -63,4 +63,16 @@ export type Language =
   | "bash"
   | "befunge"
   | "aheui"
-  | "hyeong";
+  | "hyeong"
+  | "whitespace"
+  | "ada"
+  | "clojure"
+  | "prolog"
+  | "tcl"
+  | "awk"
+  | "scheme"
+  | "groovy"
+  | "octave"
+  | "crystal"
+  | "powershell"
+  | "postscript";

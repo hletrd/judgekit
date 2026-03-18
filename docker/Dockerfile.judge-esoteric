@@ -40,6 +40,9 @@ COPY --from=rust-builder /usr/local/cargo/bin/hyeong /usr/local/bin/hyeong
 # Copy C-built binaries (Befunge-93)
 COPY --from=c-builder /usr/local/bin/befunge93 /usr/local/bin/befunge93
 
+# Whitespace interpreter (Python)
+COPY docker/interpreters/whitespace.py /usr/local/bin/whitespace.py
+
 # Create judge user
 RUN adduser --disabled-password --gecos "" --shell /bin/false judge && \
     mkdir -p /workspace && \

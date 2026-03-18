@@ -487,6 +487,129 @@ static HYEONG_CONFIG: LanguageConfig = LanguageConfig {
     run_command: HYEONG_RUN,
 };
 
+// Whitespace
+static WHITESPACE_RUN: &[&str] = &["python3", "/usr/local/bin/whitespace.py", "/workspace/solution.ws"];
+
+static WHITESPACE_CONFIG: LanguageConfig = LanguageConfig {
+    extension: ".ws",
+    docker_image: "judge-esoteric:latest",
+    compile_command: None,
+    run_command: WHITESPACE_RUN,
+};
+
+// Ada
+static ADA_COMPILE: &[&str] = &["gnatmake", "-O2", "/workspace/solution.adb"];
+static ADA_RUN: &[&str] = &["/workspace/solution"];
+
+static ADA_CONFIG: LanguageConfig = LanguageConfig {
+    extension: ".adb",
+    docker_image: "judge-ada:latest",
+    compile_command: Some(ADA_COMPILE),
+    run_command: ADA_RUN,
+};
+
+// Clojure
+static CLOJURE_RUN: &[&str] = &["java", "-cp", "/usr/local/lib/clojure/*", "clojure.main", "/workspace/solution.clj"];
+
+static CLOJURE_CONFIG: LanguageConfig = LanguageConfig {
+    extension: ".clj",
+    docker_image: "judge-clojure:latest",
+    compile_command: None,
+    run_command: CLOJURE_RUN,
+};
+
+// Prolog
+static PROLOG_RUN: &[&str] = &["swipl", "-q", "-g", "main", "-t", "halt", "/workspace/solution.pro"];
+
+static PROLOG_CONFIG: LanguageConfig = LanguageConfig {
+    extension: ".pro",
+    docker_image: "judge-prolog:latest",
+    compile_command: None,
+    run_command: PROLOG_RUN,
+};
+
+// Tcl
+static TCL_RUN: &[&str] = &["tclsh", "/workspace/solution.tcl"];
+
+static TCL_CONFIG: LanguageConfig = LanguageConfig {
+    extension: ".tcl",
+    docker_image: "judge-tcl:latest",
+    compile_command: None,
+    run_command: TCL_RUN,
+};
+
+// AWK
+static AWK_RUN: &[&str] = &["gawk", "-f", "/workspace/solution.awk"];
+
+static AWK_CONFIG: LanguageConfig = LanguageConfig {
+    extension: ".awk",
+    docker_image: "judge-awk:latest",
+    compile_command: None,
+    run_command: AWK_RUN,
+};
+
+// Scheme (Chicken)
+static SCHEME_COMPILE: &[&str] = &["csc", "-O2", "-o", "/workspace/solution", "/workspace/solution.scm"];
+static SCHEME_RUN: &[&str] = &["/workspace/solution"];
+
+static SCHEME_CONFIG: LanguageConfig = LanguageConfig {
+    extension: ".scm",
+    docker_image: "judge-scheme:latest",
+    compile_command: Some(SCHEME_COMPILE),
+    run_command: SCHEME_RUN,
+};
+
+// Groovy
+static GROOVY_RUN: &[&str] = &["groovy", "/workspace/solution.groovy"];
+
+static GROOVY_CONFIG: LanguageConfig = LanguageConfig {
+    extension: ".groovy",
+    docker_image: "judge-groovy:latest",
+    compile_command: None,
+    run_command: GROOVY_RUN,
+};
+
+// Octave
+static OCTAVE_RUN: &[&str] = &["octave-cli", "--norc", "--quiet", "/workspace/solution.m"];
+
+static OCTAVE_CONFIG: LanguageConfig = LanguageConfig {
+    extension: ".m",
+    docker_image: "judge-octave:latest",
+    compile_command: None,
+    run_command: OCTAVE_RUN,
+};
+
+// Crystal
+static CRYSTAL_COMPILE: &[&str] = &["crystal", "build", "--release", "-o", "/workspace/solution", "/workspace/solution.cr"];
+static CRYSTAL_RUN: &[&str] = &["/workspace/solution"];
+
+static CRYSTAL_CONFIG: LanguageConfig = LanguageConfig {
+    extension: ".cr",
+    docker_image: "judge-crystal:latest",
+    compile_command: Some(CRYSTAL_COMPILE),
+    run_command: CRYSTAL_RUN,
+};
+
+// PowerShell
+static POWERSHELL_RUN: &[&str] = &["pwsh", "-NoProfile", "-File", "/workspace/solution.ps1"];
+
+static POWERSHELL_CONFIG: LanguageConfig = LanguageConfig {
+    extension: ".ps1",
+    docker_image: "judge-powershell:latest",
+    compile_command: None,
+    run_command: POWERSHELL_RUN,
+};
+
+// PostScript
+static POSTSCRIPT_RUN: &[&str] = &["gs", "-q", "-dNODISPLAY", "-dBATCH", "-dNOPAUSE", "/workspace/solution.ps"];
+
+static POSTSCRIPT_CONFIG: LanguageConfig = LanguageConfig {
+    extension: ".ps",
+    docker_image: "judge-postscript:latest",
+    compile_command: None,
+    run_command: POSTSCRIPT_RUN,
+};
+
 pub fn get_config(language: &Language) -> Option<&'static LanguageConfig> {
     match language {
         Language::C17 => Some(&C17_CONFIG),
@@ -532,6 +655,18 @@ pub fn get_config(language: &Language) -> Option<&'static LanguageConfig> {
         Language::Befunge => Some(&BEFUNGE_CONFIG),
         Language::Aheui => Some(&AHEUI_CONFIG),
         Language::Hyeong => Some(&HYEONG_CONFIG),
+        Language::Whitespace => Some(&WHITESPACE_CONFIG),
+        Language::Ada => Some(&ADA_CONFIG),
+        Language::Clojure => Some(&CLOJURE_CONFIG),
+        Language::Prolog => Some(&PROLOG_CONFIG),
+        Language::Tcl => Some(&TCL_CONFIG),
+        Language::Awk => Some(&AWK_CONFIG),
+        Language::Scheme => Some(&SCHEME_CONFIG),
+        Language::Groovy => Some(&GROOVY_CONFIG),
+        Language::Octave => Some(&OCTAVE_CONFIG),
+        Language::Crystal => Some(&CRYSTAL_CONFIG),
+        Language::Powershell => Some(&POWERSHELL_CONFIG),
+        Language::Postscript => Some(&POSTSCRIPT_CONFIG),
         Language::Unknown => None,
     }
 }
@@ -587,6 +722,18 @@ mod tests {
             Language::Befunge,
             Language::Aheui,
             Language::Hyeong,
+            Language::Whitespace,
+            Language::Ada,
+            Language::Clojure,
+            Language::Prolog,
+            Language::Tcl,
+            Language::Awk,
+            Language::Scheme,
+            Language::Groovy,
+            Language::Octave,
+            Language::Crystal,
+            Language::Powershell,
+            Language::Postscript,
         ];
 
         for lang in &languages {

@@ -1,0 +1,16 @@
+FROM debian:bookworm-slim
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl gnupg ca-certificates gcc libc6-dev libpcre2-dev libevent-dev libssl-dev pkg-config && \
+    curl -fsSL https://packagecloud.io/84codes/crystal/gpgkey | gpg --dearmor -o /etc/apt/keyrings/crystal.gpg && \
+    echo "deb [signed-by=/etc/apt/keyrings/crystal.gpg] https://packagecloud.io/84codes/crystal/any any main" > /etc/apt/sources.list.d/crystal.list && \
+    apt-get update && \
+    apt-get install -y --no-install-recommends crystal && \
+    apt-get remove -y curl gnupg && apt-get autoremove -y && \
+    rm -rf /var/lib/apt/lists/*
+
+RUN adduser --disabled-password --gecos "" --shell /bin/false judge && \
+    mkdir -p /workspace && chown judge:judge /workspace
+
+WORKDIR /workspace
+USER judge

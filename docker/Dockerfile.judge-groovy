@@ -1,0 +1,19 @@
+FROM eclipse-temurin:25-jdk-noble
+
+RUN apt-get update && apt-get install -y --no-install-recommends curl zip unzip && \
+    curl -sL -o /tmp/groovy.zip \
+      https://groovy.jfrog.io/artifactory/dist-release-local/groovy-zips/apache-groovy-binary-4.0.24.zip && \
+    unzip -q /tmp/groovy.zip -d /opt && \
+    ln -s /opt/groovy-4.0.24 /opt/groovy && \
+    rm /tmp/groovy.zip && \
+    apt-get remove -y curl zip unzip && apt-get autoremove -y && \
+    rm -rf /var/lib/apt/lists/*
+
+ENV GROOVY_HOME=/opt/groovy
+ENV PATH="$GROOVY_HOME/bin:$PATH"
+
+RUN adduser --disabled-password --gecos "" --shell /bin/false judge && \
+    mkdir -p /workspace && chown judge:judge /workspace
+
+WORKDIR /workspace
+USER judge

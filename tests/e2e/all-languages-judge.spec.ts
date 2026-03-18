@@ -112,6 +112,56 @@ int main() {
   befunge: `&&+.@`,
   aheui: `방방다망하`,
   hyeong: `혀엉...혀엉....형타형타`,
+  whitespace: [
+    "   \n",          // push 0
+    "\t\n\t\t",       // readnum → heap[0]
+    "   \t\n",        // push 1
+    "\t\n\t\t",       // readnum → heap[1]
+    "   \n",          // push 0
+    "\t\t\t",         // retrieve heap[0]
+    "   \t\n",        // push 1
+    "\t\t\t",         // retrieve heap[1]
+    "\t   ",          // add
+    "\t\n \t",        // output number
+    "   \t \t \n",    // push 10 (newline)
+    "\t\n  ",         // output char
+    "\n\n\n",         // end
+  ].join(""),
+  ada: `with Ada.Text_IO; use Ada.Text_IO;
+with Ada.Integer_Text_IO; use Ada.Integer_Text_IO;
+procedure Solution is
+   A, B : Integer;
+begin
+   Get(A); Get(B);
+   Put(A + B, Width => 0);
+   New_Line;
+end Solution;`,
+  clojure: `(let [a (read) b (read)]
+  (println (+ a b)))`,
+  prolog: `:- use_module(library(readutil)).
+main :-
+    read_line_to_string(user_input, Line),
+    split_string(Line, " ", "", Parts),
+    maplist(number_string, [A, B], Parts),
+    S is A + B,
+    format("~d~n", [S]).`,
+  tcl: `gets stdin line
+lassign [split $line " "] a b
+puts [expr {$a + $b}]`,
+  awk: `{ print $1 + $2 }`,
+  scheme: `(let ((a (read)) (b (read)))
+  (display (+ a b))
+  (newline))`,
+  groovy: `def parts = System.in.newReader().readLine().split(" ")
+println(parts[0].toInteger() + parts[1].toInteger())`,
+  octave: `ab = scanf("%d", 2);
+printf("%d\\n", ab(1) + ab(2));`,
+  crystal: `a, b = read_line.split.map(&.to_i)
+puts a + b`,
+  powershell: `$line = [Console]::ReadLine()
+$parts = $line -split " "
+[int]$parts[0] + [int]$parts[1]`,
+  postscript: `(%stdin) (r) file dup token pop exch token pop exch pop add =`,
 };
 
 const TEST_CASES = [
@@ -184,7 +234,7 @@ async function waitForJudging(
   throw new Error(`Submission ${submissionId} did not finish within ${timeoutMs}ms`);
 }
 
-test("submit A+B in all 24 languages and verify judging", async ({ browser }) => {
+test("submit A+B in all 36 languages and verify judging", async ({ browser }) => {
   test.setTimeout(600_000); // 10 minutes total
 
   const context = await browser.newContext();

@@ -1,0 +1,18 @@
+FROM eclipse-temurin:25-jre-noble
+
+RUN apt-get update && apt-get install -y --no-install-recommends curl ca-certificates && \
+    mkdir -p /usr/local/lib/clojure && \
+    curl -sL -o /usr/local/lib/clojure/clojure-1.12.0.jar \
+      https://repo1.maven.org/maven2/org/clojure/clojure/1.12.0/clojure-1.12.0.jar && \
+    curl -sL -o /usr/local/lib/clojure/spec.alpha-0.5.238.jar \
+      https://repo1.maven.org/maven2/org/clojure/spec.alpha/0.5.238/spec.alpha-0.5.238.jar && \
+    curl -sL -o /usr/local/lib/clojure/core.specs.alpha-0.4.74.jar \
+      https://repo1.maven.org/maven2/org/clojure/core.specs.alpha/0.4.74/core.specs.alpha-0.4.74.jar && \
+    apt-get remove -y curl && apt-get autoremove -y && \
+    rm -rf /var/lib/apt/lists/*
+
+RUN adduser --disabled-password --gecos "" --shell /bin/false judge && \
+    mkdir -p /workspace && chown judge:judge /workspace
+
+WORKDIR /workspace
+USER judge

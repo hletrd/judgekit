@@ -99,6 +99,18 @@ pub enum Language {
     Befunge,
     Aheui,
     Hyeong,
+    Whitespace,
+    Ada,
+    Clojure,
+    Prolog,
+    Tcl,
+    Awk,
+    Scheme,
+    Groovy,
+    Octave,
+    Crystal,
+    Powershell,
+    Postscript,
     #[serde(other)]
     Unknown,
 }
