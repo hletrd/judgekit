@@ -15,7 +15,7 @@ export default async function ProfilePage() {
 
   const t = await getTranslations("profile");
   const tCommon = await getTranslations("common");
-  const roleLabels = {
+  const roleLabels: Record<string, string> = {
     student: tCommon("roles.student"),
     instructor: tCommon("roles.instructor"),
     admin: tCommon("roles.admin"),

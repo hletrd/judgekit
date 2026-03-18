@@ -25,6 +25,8 @@ const mocks = vi.hoisted(() => {
     dbUpdateWhere: vi.fn(),
     dbDeleteWhere: vi.fn(),
     dbInsertValues: vi.fn(),
+
+    resolveCapabilitiesMock: vi.fn(),
   };
 });
 
@@ -137,6 +139,13 @@ vi.mock("next/cache", () => ({
   revalidatePath: vi.fn(),
 }));
 
+vi.mock("@/lib/capabilities/cache", () => ({
+  resolveCapabilities: mocks.resolveCapabilitiesMock,
+  invalidateRoleCache: vi.fn(),
+  getRoleLevel: vi.fn().mockResolvedValue(0),
+  isValidRole: vi.fn().mockResolvedValue(true),
+}));
+
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 function setupAuthorizedAdmin(role: "admin" | "super_admin" = "admin") {
@@ -163,8 +172,13 @@ const defaultUserInput = {
 
 // ── Tests ────────────────────────────────────────────────────────────────────
 
-beforeEach(() => {
+beforeEach(async () => {
   vi.clearAllMocks();
+  mocks.resolveCapabilitiesMock.mockImplementation(async (role: string) => {
+    const { DEFAULT_ROLE_CAPABILITIES } = await import("@/lib/capabilities/defaults");
+    const caps = DEFAULT_ROLE_CAPABILITIES[role as keyof typeof DEFAULT_ROLE_CAPABILITIES];
+    return new Set(caps ?? []);
+  });
 });
 
 afterEach(() => {
@@ -643,11 +657,11 @@ describe("createUser", () => {
     expect(result).toEqual({ success: false, error: "unauthorized" });
   });
 
-  it("returns unauthorized for non-admin session", async () => {
+  it("returns unauthorized for student session", async () => {
     const { createUser } = await import("@/lib/actions/user-management");
     mocks.isTrustedServerActionOrigin.mockResolvedValue(true);
     mocks.auth.mockResolvedValue({
-      user: { id: "u1", role: "instructor", username: "inst1" },
+      user: { id: "u1", role: "student", username: "stu1" },
     });
 
     const result = await createUser(defaultUserInput);

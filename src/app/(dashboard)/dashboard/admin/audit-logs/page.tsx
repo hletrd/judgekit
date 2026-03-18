@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { auth } from "@/lib/auth";
-import { canManageUsers, isInstructorOrAbove } from "@/lib/auth/role-helpers";
+import { resolveCapabilities } from "@/lib/capabilities/cache";
 import { FilterSelect } from "@/components/filter-select";
 import { db } from "@/lib/db";
 import { auditEvents, users } from "@/lib/db/schema";
@@ -99,10 +99,10 @@ export default async function AdminAuditLogsPage({
 }) {
   const session = await auth();
   if (!session?.user) redirect("/login");
-  const isAdminViewer = canManageUsers(session.user.role);
-  const isInstructorViewer = session.user.role === "instructor";
-
-  if (!isInstructorOrAbove(session.user.role)) redirect("/dashboard");
+  const caps = await resolveCapabilities(session.user.role);
+  if (!caps.has("system.audit_logs")) redirect("/dashboard");
+  const isAdminViewer = caps.has("users.edit");
+  const isInstructorViewer = !caps.has("users.edit");
 
   const resolvedSearchParams = searchParams ? await searchParams : undefined;
   const requestedPage = normalizePage(resolvedSearchParams?.page);

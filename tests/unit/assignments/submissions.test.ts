@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { dbMock } = vi.hoisted(() => ({
+const { dbMock, resolveCapabilitiesMock } = vi.hoisted(() => ({
   dbMock: {
     query: {
       assignments: {
@@ -12,12 +12,26 @@ const { dbMock } = vi.hoisted(() => ({
       assignmentProblems: {
         findFirst: vi.fn(),
       },
+      contestAccessTokens: {
+        findFirst: vi.fn(),
+      },
+      examSessions: {
+        findFirst: vi.fn(),
+      },
     },
   },
+  resolveCapabilitiesMock: vi.fn(),
 }));
 
 vi.mock("@/lib/db", () => ({
   db: dbMock,
+}));
+
+vi.mock("@/lib/capabilities/cache", () => ({
+  resolveCapabilities: resolveCapabilitiesMock,
+  invalidateRoleCache: vi.fn(),
+  getRoleLevel: vi.fn().mockResolvedValue(0),
+  isValidRole: vi.fn().mockResolvedValue(true),
 }));
 
 import {
@@ -43,8 +57,13 @@ function createAssignmentRecord(overrides?: {
   };
 }
 
-beforeEach(() => {
+beforeEach(async () => {
   vi.clearAllMocks();
+  resolveCapabilitiesMock.mockImplementation(async (role: string) => {
+    const { DEFAULT_ROLE_CAPABILITIES } = await import("@/lib/capabilities/defaults");
+    const caps = DEFAULT_ROLE_CAPABILITIES[role as keyof typeof DEFAULT_ROLE_CAPABILITIES];
+    return new Set(caps ?? []);
+  });
 });
 
 describe("validateAssignmentSubmission", () => {

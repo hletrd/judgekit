@@ -6,6 +6,8 @@ import { nanoid } from "nanoid";
 import { randomBytes } from "crypto";
 import * as schema from "../src/lib/db/schema";
 import { DEFAULT_JUDGE_LANGUAGES, serializeJudgeCommand } from "../src/lib/judge/languages";
+import { DEFAULT_ROLE_CAPABILITIES, DEFAULT_ROLE_LEVELS, DEFAULT_ROLE_DISPLAY_NAMES } from "../src/lib/capabilities/defaults";
+import { BUILTIN_ROLE_NAMES } from "../src/lib/capabilities/types";
 import path from "path";
 import fs from "fs";
 
@@ -201,6 +203,41 @@ async function seed() {
     console.log(`  Password written to: ${passwordFile}`);
     console.log("  Role: super_admin");
     console.log("  (mustChangePassword: true — will be forced to change on first login)");
+  }
+
+  // Seed built-in roles
+  const existingRoleNames = new Set(
+    db.select({ name: schema.roles.name }).from(schema.roles).all()
+      .map((row) => row.name)
+  );
+  const insertedRoles: string[] = [];
+
+  for (const roleName of BUILTIN_ROLE_NAMES) {
+    if (existingRoleNames.has(roleName)) {
+      continue;
+    }
+
+    db.insert(schema.roles)
+      .values({
+        id: nanoid(),
+        name: roleName,
+        displayName: DEFAULT_ROLE_DISPLAY_NAMES[roleName],
+        description: null,
+        isBuiltin: true,
+        level: DEFAULT_ROLE_LEVELS[roleName],
+        capabilities: DEFAULT_ROLE_CAPABILITIES[roleName] as string[],
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .run();
+
+    insertedRoles.push(roleName);
+  }
+
+  if (insertedRoles.length > 0) {
+    console.log(`Seeded built-in roles: ${insertedRoles.join(", ")}`);
+  } else {
+    console.log("Built-in roles already exist, skipping.");
   }
 
   // Seed default language configs

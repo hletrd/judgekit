@@ -1,12 +1,14 @@
 import { redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { auth } from "@/lib/auth";
+import { resolveCapabilities } from "@/lib/capabilities/cache";
 import { ChatLogsClient } from "./chat-logs-client";
 
 export default async function ChatLogsPage() {
   const session = await auth();
   if (!session?.user) redirect("/login");
-  if (session.user.role !== "admin" && session.user.role !== "super_admin") redirect("/dashboard");
+  const caps = await resolveCapabilities(session.user.role);
+  if (!caps.has("system.chat_logs")) redirect("/dashboard");
 
   const t = await getTranslations("plugins.chatWidget");
 

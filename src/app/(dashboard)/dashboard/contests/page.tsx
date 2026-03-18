@@ -2,6 +2,7 @@ import Link from "next/link";
 import { getLocale, getTranslations } from "next-intl/server";
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
+import { resolveCapabilities } from "@/lib/capabilities/cache";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -71,6 +72,7 @@ export default async function ContestsPage({
   ]);
 
   const role = assertUserRole(session.user.role as string);
+  const caps = await resolveCapabilities(session.user.role);
   const contests = getContestsForUser(session.user.id, role);
   const now = new Date();
   const filter = normalizeFilter(resolvedSearchParams?.filter);
@@ -119,7 +121,7 @@ export default async function ContestsPage({
           ))}
         </div>
         <div className="flex gap-2">
-          {role !== "student" && (
+          {caps.has("contests.create") && (
             <Link href="/dashboard/contests/create">
               <Button size="sm" className="gap-1.5">
                 <Plus className="size-4" />
@@ -202,7 +204,7 @@ export default async function ContestsPage({
                   </div>
                   <Link href={`/dashboard/contests/${contest.id}`}>
                     <Button variant="outline" className="w-full">
-                      {role === "student" ? t("enterContest") : t("manageContest")}
+                      {!caps.has("contests.create") ? t("enterContest") : t("manageContest")}
                     </Button>
                   </Link>
                 </CardContent>

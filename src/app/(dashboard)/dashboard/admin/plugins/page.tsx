@@ -4,13 +4,15 @@ import { getTranslations } from "next-intl/server";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { auth } from "@/lib/auth";
+import { resolveCapabilities } from "@/lib/capabilities/cache";
 import { getAllPluginStates } from "@/lib/plugins/data";
 import { PluginToggle } from "./plugin-toggle";
 
 export default async function AdminPluginsPage() {
   const session = await auth();
   if (!session?.user) redirect("/login");
-  if (session.user.role !== "admin" && session.user.role !== "super_admin") redirect("/dashboard");
+  const caps = await resolveCapabilities(session.user.role);
+  if (!caps.has("system.plugins")) redirect("/dashboard");
 
   const t = await getTranslations("plugins");
   const plugins = await getAllPluginStates();

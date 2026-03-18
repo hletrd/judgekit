@@ -1,4 +1,12 @@
-export type UserRole = "super_admin" | "admin" | "instructor" | "student";
+/** Built-in role names. Custom roles use arbitrary strings validated at runtime. */
+export type BuiltinUserRole = "super_admin" | "admin" | "instructor" | "student";
+
+/**
+ * UserRole is kept as the 4-value union for backward compatibility.
+ * Custom roles are validated at runtime via the capability cache.
+ * Use `string` in function signatures that need to accept custom roles.
+ */
+export type UserRole = BuiltinUserRole;
 export type ProblemVisibility = "public" | "private" | "hidden";
 export type SubmissionStatus =
   | "pending"

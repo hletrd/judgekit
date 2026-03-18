@@ -12,7 +12,7 @@ import {
   users,
 } from "@/lib/db/schema";
 import { and, asc, eq } from "drizzle-orm";
-import type { SubmissionStatus, UserRole } from "@/types";
+import type { SubmissionStatus } from "@/types";
 import { isAdmin } from "@/lib/api/auth";
 
 type AssignmentValidationError =
@@ -159,7 +159,7 @@ export async function validateAssignmentSubmission(
   assignmentId: string,
   problemId: string,
   userId: string,
-  role: UserRole
+  role: string
 ): Promise<AssignmentSubmissionValidationResult> {
   const normalizedAssignmentId = assignmentId.trim();
 
@@ -274,7 +274,7 @@ export async function validateAssignmentSubmission(
 export async function canViewAssignmentSubmissions(
   assignmentId: string | null,
   userId: string,
-  role: UserRole
+  role: string
 ): Promise<boolean> {
   if (!assignmentId) {
     return false;

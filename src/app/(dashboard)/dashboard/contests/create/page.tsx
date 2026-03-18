@@ -3,7 +3,7 @@ import { ArrowLeft, Users } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
-import { assertUserRole } from "@/lib/security/constants";
+import { resolveCapabilities } from "@/lib/capabilities/cache";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { db } from "@/lib/db";
@@ -19,15 +19,15 @@ export default async function CreateContestPage() {
     getTranslations("common"),
   ]);
 
-  const role = assertUserRole(session.user.role as string);
+  const caps = await resolveCapabilities(session.user.role);
 
-  if (role === "student") {
+  if (!caps.has("contests.create")) {
     redirect("/dashboard/contests");
   }
 
   // Get groups the user can manage
   let userGroups;
-  if (role === "super_admin" || role === "admin") {
+  if (caps.has("groups.view_all")) {
     userGroups = await db.query.groups.findMany({
       columns: { id: true, name: true, description: true },
       where: eq(groups.isArchived, false),

@@ -5,12 +5,20 @@ import { enrollments, groups, problemGroupAccess, problems } from "@/lib/db/sche
 import { eq, and, inArray } from "drizzle-orm";
 import type { UserRole } from "@/types";
 import { isUserRole } from "@/lib/security/constants";
+import { resolveCapabilities } from "@/lib/capabilities/cache";
 
 export async function canAccessGroup(
   groupId: string,
   userId: string,
-  role: UserRole
+  role: string
 ): Promise<boolean> {
+  // Check capability: groups.view_all bypasses enrollment check
+  const caps = await resolveCapabilities(role);
+  if (caps.has("groups.view_all")) {
+    return true;
+  }
+
+  // Built-in admin/super_admin fallback
   if (role === "super_admin" || role === "admin") {
     return true;
   }
@@ -57,6 +65,18 @@ export async function assertRole(...roles: UserRole[]) {
   return session;
 }
 
+/**
+ * Assert the user has a specific capability.
+ */
+export async function assertCapability(capability: string) {
+  const session = await assertAuth();
+  const caps = await resolveCapabilities(session.user.role);
+  if (!caps.has(capability)) {
+    throw new Error("Forbidden");
+  }
+  return session;
+}
+
 export async function assertGroupAccess(groupId: string) {
   const session = await assertAuth();
   if (!isUserRole(session.user.role)) {
@@ -74,7 +94,7 @@ export async function assertGroupAccess(groupId: string) {
 export async function canAccessProblem(
   problemId: string,
   userId: string,
-  role: UserRole
+  role: string
 ): Promise<boolean> {
   const problem = await db
     .select({ visibility: problems.visibility, authorId: problems.authorId })
@@ -85,6 +105,12 @@ export async function canAccessProblem(
 
   if (!problem) return false;
   if (problem.visibility === "public") return true;
+
+  // Check capability: problems.view_all bypasses visibility
+  const caps = await resolveCapabilities(role);
+  if (caps.has("problems.view_all")) return true;
+
+  // Built-in admin/super_admin fallback
   if (role === "super_admin" || role === "admin") return true;
   if (problem.authorId === userId) return true;
 
@@ -106,9 +132,16 @@ export async function canAccessProblem(
 
 export async function getAccessibleProblemIds(
   userId: string,
-  role: UserRole,
+  role: string,
   problemList: Array<{ id: string; visibility: string; authorId: string | null }>
 ): Promise<Set<string>> {
+  // Check capability: problems.view_all means all problems are accessible
+  const caps = await resolveCapabilities(role);
+  if (caps.has("problems.view_all")) {
+    return new Set(problemList.map((p) => p.id));
+  }
+
+  // Built-in admin/super_admin fallback
   if (role === "super_admin" || role === "admin") {
     return new Set(problemList.map((p) => p.id));
   }
@@ -165,8 +198,15 @@ export async function getAccessibleProblemIds(
 export async function canAccessSubmission(
   submission: { userId: string; assignmentId: string | null },
   userId: string,
-  role: UserRole
+  role: string
 ): Promise<boolean> {
+  // Check capability: submissions.view_all bypasses ownership
+  const caps = await resolveCapabilities(role);
+  if (caps.has("submissions.view_all")) {
+    return true;
+  }
+
+  // Built-in role fallback
   if (role === "super_admin" || role === "admin" || role === "instructor") {
     return true;
   }

@@ -44,7 +44,7 @@ type AuthUserRecord = {
   email: string | null;
   name: string;
   className: string | null;
-  role: UserRole;
+  role: string;
   mustChangePassword: boolean | null;
 };
 

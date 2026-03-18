@@ -2,6 +2,7 @@ import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import { auth } from "@/lib/auth";
+import { resolveCapabilities } from "@/lib/capabilities/cache";
 import { getPluginState } from "@/lib/plugins/data";
 import { PluginConfigClient } from "./plugin-config-client";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -10,7 +11,8 @@ import { Button } from "@/components/ui/button";
 export default async function PluginConfigPage({ params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
   if (!session?.user) redirect("/login");
-  if (session.user.role !== "admin" && session.user.role !== "super_admin") redirect("/dashboard");
+  const caps = await resolveCapabilities(session.user.role);
+  if (!caps.has("system.plugins")) redirect("/dashboard");
 
   const { id } = await params;
   const pluginState = await getPluginState(id);

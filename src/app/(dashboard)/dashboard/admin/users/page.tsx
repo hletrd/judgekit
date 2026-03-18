@@ -14,10 +14,11 @@ import {
 import { FilterSelect } from "@/components/filter-select";
 import { Badge } from "@/components/ui/badge";
 import { db } from "@/lib/db";
-import { users } from "@/lib/db/schema";
+import { users, roles } from "@/lib/db/schema";
 import { safeUserSelect } from "@/lib/db/selects";
 import { and, desc, eq, or, sql } from "drizzle-orm";
 import { auth } from "@/lib/auth";
+import { resolveCapabilities } from "@/lib/capabilities/cache";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import UserActions from "./user-actions";
@@ -50,9 +51,10 @@ export default async function UserManagementPage({
 }) {
   const session = await auth();
   if (!session?.user) redirect("/login");
-  if (session.user.role !== "admin" && session.user.role !== "super_admin" && session.user.role !== "instructor") redirect("/dashboard");
+  const caps = await resolveCapabilities(session.user.role);
+  if (!caps.has("users.view")) redirect("/dashboard");
 
-  const isAdmin = session.user.role === "admin" || session.user.role === "super_admin";
+  const isAdmin = caps.has("users.edit");
 
   const resolvedSearchParams = searchParams ? await searchParams : undefined;
   const t = await getTranslations("admin.users");
@@ -63,12 +65,24 @@ export default async function UserManagementPage({
   const offset = (currentPage - 1) * PAGE_SIZE;
   const searchQuery = normalizeSearch(resolvedSearchParams?.search);
   const roleFilter = resolvedSearchParams?.role;
-  const roleLabels = {
+
+  const availableRoles = await db
+    .select({ name: roles.name, displayName: roles.displayName, level: roles.level })
+    .from(roles)
+    .orderBy(roles.level, roles.name);
+  const roleLabels: Record<string, string> = {
     student: tCommon("roles.student"),
     instructor: tCommon("roles.instructor"),
     admin: tCommon("roles.admin"),
     super_admin: tCommon("roles.super_admin"),
   };
+  // Add custom role display names
+  for (const r of availableRoles) {
+    if (!(r.name in roleLabels)) {
+      roleLabels[r.name] = r.displayName;
+    }
+  }
+  const validRoleNames = new Set(availableRoles.map((r) => r.name));
   const filters = [];
 
   // Instructors can only manage students
@@ -86,8 +100,8 @@ export default async function UserManagementPage({
     );
   }
 
-  if (roleFilter && roleFilter in roleLabels) {
-    filters.push(eq(users.role, roleFilter as keyof typeof roleLabels));
+  if (roleFilter && validRoleNames.has(roleFilter)) {
+    filters.push(eq(users.role, roleFilter));
   }
 
   const whereClause =
@@ -116,7 +130,7 @@ export default async function UserManagementPage({
     const params = new URLSearchParams();
     if (page > 1) params.set("page", String(page));
     if (searchQuery) params.set("search", searchQuery);
-    if (roleFilter && roleFilter in roleLabels) params.set("role", roleFilter);
+    if (roleFilter && validRoleNames.has(roleFilter)) params.set("role", roleFilter);
     const queryString = params.toString();
     return queryString ? `/dashboard/admin/users?${queryString}` : "/dashboard/admin/users";
   };
@@ -127,7 +141,7 @@ export default async function UserManagementPage({
         <h2 className="text-2xl font-bold">{t("title")}</h2>
         <div className="flex gap-2">
           <BulkCreateDialog />
-          <AddUserDialog actorRole={session.user.role} />
+          <AddUserDialog actorRole={session.user.role} availableRoles={availableRoles} />
         </div>
       </div>
       <Card>
@@ -154,7 +168,7 @@ export default async function UserManagementPage({
               </label>
               <FilterSelect
                 name="role"
-                defaultValue={roleFilter && roleFilter in roleLabels ? roleFilter : ""}
+                defaultValue={roleFilter && validRoleNames.has(roleFilter) ? roleFilter : ""}
                 placeholder={t("allRoles")}
                 options={[
                   { value: "", label: t("allRoles") },
@@ -207,7 +221,7 @@ export default async function UserManagementPage({
                   <TableCell>{user.email || "-"}</TableCell>
                   <TableCell>{user.name}</TableCell>
                   <TableCell className="align-middle">
-                    <Badge variant="outline">{roleLabels[user.role as keyof typeof roleLabels] ?? user.role}</Badge>
+                    <Badge variant="outline">{roleLabels[user.role] ?? user.role}</Badge>
                   </TableCell>
                   <TableCell>
                     {user.isActive ? (
@@ -221,7 +235,7 @@ export default async function UserManagementPage({
                   </TableCell>
                   <TableCell>
                     <div className="flex gap-2 items-center">
-                      <EditUserDialog actorRole={session.user.role} user={{
+                      <EditUserDialog actorRole={session.user.role} availableRoles={availableRoles} user={{
                         id: user.id,
                         username: user.username,
                         email: user.email,

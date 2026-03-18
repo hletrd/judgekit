@@ -17,8 +17,7 @@ import {
   SidebarFooter,
   SidebarHeader,
 } from "@/components/ui/sidebar";
-import { BookOpen, FileCode, Send, Users, User, LayoutDashboard, GraduationCap, Shield, LogOut, LogIn, History, FolderOpen, Blocks, Trophy, MessageCircle, Timer } from "lucide-react";
-import type { UserRole } from "@/types";
+import { BookOpen, FileCode, Send, Users, User, LayoutDashboard, GraduationCap, Shield, LogOut, LogIn, History, FolderOpen, Blocks, Trophy, MessageCircle, Timer, KeyRound } from "lucide-react";
 
 interface AppSidebarProps {
   user: {
@@ -26,47 +25,62 @@ interface AppSidebarProps {
     username?: string | null;
     name?: string | null;
     email?: string | null;
-    role: UserRole;
+    role: string;
   };
   siteTitle: string;
+  capabilities?: string[];
 }
 
-const navItems: Array<{ titleKey: string; href: string; icon: typeof LayoutDashboard; roles: UserRole[] }> = [
-  { titleKey: "dashboard" as const, href: "/dashboard", icon: LayoutDashboard, roles: ["super_admin", "admin", "instructor", "student"] },
-  { titleKey: "problems" as const, href: "/dashboard/problems", icon: BookOpen, roles: ["super_admin", "admin", "instructor", "student"] },
-  { titleKey: "submissions" as const, href: "/dashboard/submissions", icon: Send, roles: ["super_admin", "admin", "instructor", "student"] },
-  { titleKey: "problemSets" as const, href: "/dashboard/problem-sets", icon: FolderOpen, roles: ["super_admin", "admin", "instructor"] },
-  { titleKey: "groups" as const, href: "/dashboard/groups", icon: Users, roles: ["super_admin", "admin", "instructor", "student"] },
-  { titleKey: "contests" as const, href: "/dashboard/contests", icon: Timer, roles: ["super_admin", "admin", "instructor", "student"] },
-  { titleKey: "rankings" as const, href: "/dashboard/rankings", icon: Trophy, roles: ["super_admin", "admin", "instructor", "student"] },
-  { titleKey: "profile" as const, href: "/dashboard/profile", icon: User, roles: ["super_admin", "admin", "instructor", "student"] },
+type NavItem = {
+  titleKey: string;
+  href: string;
+  icon: typeof LayoutDashboard;
+  capability?: string; // null = visible to all authenticated users
+};
+
+const navItems: NavItem[] = [
+  { titleKey: "dashboard", href: "/dashboard", icon: LayoutDashboard },
+  { titleKey: "problems", href: "/dashboard/problems", icon: BookOpen },
+  { titleKey: "submissions", href: "/dashboard/submissions", icon: Send },
+  { titleKey: "problemSets", href: "/dashboard/problem-sets", icon: FolderOpen, capability: "problem_sets.create" },
+  { titleKey: "groups", href: "/dashboard/groups", icon: Users },
+  { titleKey: "contests", href: "/dashboard/contests", icon: Timer },
+  { titleKey: "rankings", href: "/dashboard/rankings", icon: Trophy },
+  { titleKey: "profile", href: "/dashboard/profile", icon: User },
 ];
 
-const adminItems: Array<{ titleKey: string; href: string; icon: typeof Shield; roles: UserRole[] }> = [
-  { titleKey: "userManagement" as const, href: "/dashboard/admin/users", icon: Shield, roles: ["super_admin", "admin", "instructor"] },
-  { titleKey: "allSubmissions" as const, href: "/dashboard/admin/submissions", icon: FileCode, roles: ["super_admin", "admin", "instructor"] },
-  { titleKey: "auditLogs" as const, href: "/dashboard/admin/audit-logs", icon: History, roles: ["super_admin", "admin"] },
-  { titleKey: "loginLogs" as const, href: "/dashboard/admin/login-logs", icon: LogIn, roles: ["super_admin", "admin"] },
-  { titleKey: "systemSettings" as const, href: "/dashboard/admin/settings", icon: GraduationCap, roles: ["super_admin", "admin"] },
-  { titleKey: "plugins" as const, href: "/dashboard/admin/plugins", icon: Blocks, roles: ["super_admin", "admin"] },
-  { titleKey: "chatLogs" as const, href: "/dashboard/admin/plugins/chat-logs", icon: MessageCircle, roles: ["super_admin", "admin"] },
+const adminItems: NavItem[] = [
+  { titleKey: "userManagement", href: "/dashboard/admin/users", icon: Shield, capability: "users.view" },
+  { titleKey: "roleManagement", href: "/dashboard/admin/roles", icon: KeyRound, capability: "users.manage_roles" },
+  { titleKey: "allSubmissions", href: "/dashboard/admin/submissions", icon: FileCode, capability: "submissions.view_all" },
+  { titleKey: "auditLogs", href: "/dashboard/admin/audit-logs", icon: History, capability: "system.audit_logs" },
+  { titleKey: "loginLogs", href: "/dashboard/admin/login-logs", icon: LogIn, capability: "system.login_logs" },
+  { titleKey: "systemSettings", href: "/dashboard/admin/settings", icon: GraduationCap, capability: "system.settings" },
+  { titleKey: "plugins", href: "/dashboard/admin/plugins", icon: Blocks, capability: "system.plugins" },
+  { titleKey: "chatLogs", href: "/dashboard/admin/plugins/chat-logs", icon: MessageCircle, capability: "system.chat_logs" },
 ];
 
-export function AppSidebar({ user, siteTitle }: AppSidebarProps) {
+export function AppSidebar({ user, siteTitle, capabilities = [] }: AppSidebarProps) {
   const pathname = usePathname();
   const t = useTranslations("nav");
   const tAuth = useTranslations("auth");
   const tCommon = useTranslations("common");
   const [isSigningOut, setIsSigningOut] = useState(false);
-  const roleLabels = {
+  const roleLabels: Record<string, string> = {
     student: tCommon("roles.student"),
     instructor: tCommon("roles.instructor"),
     admin: tCommon("roles.admin"),
     super_admin: tCommon("roles.super_admin"),
   };
 
-  const filteredNav = navItems.filter(item => item.roles.includes(user.role));
-  const filteredAdmin = adminItems.filter(item => item.roles.includes(user.role));
+  const capsSet = new Set(capabilities);
+
+  const filteredNav = navItems.filter(item =>
+    !item.capability || capsSet.has(item.capability)
+  );
+  const filteredAdmin = adminItems.filter(item =>
+    !item.capability || capsSet.has(item.capability)
+  );
 
   async function handleSignOut() {
     setIsSigningOut(true);
@@ -135,7 +149,7 @@ export function AppSidebar({ user, siteTitle }: AppSidebarProps) {
             <User className="size-4" aria-hidden="true" />
             <div className="flex flex-col text-sm">
               <span className="font-medium">{user.name} ({user.username})</span>
-              <span className="text-xs text-muted-foreground">{roleLabels[user.role]}</span>
+              <span className="text-xs text-muted-foreground">{roleLabels[user.role] ?? user.role}</span>
             </div>
           </div>
 

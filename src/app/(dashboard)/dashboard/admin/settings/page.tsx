@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { auth } from "@/lib/auth";
+import { resolveCapabilities } from "@/lib/capabilities/cache";
 import {
   DEFAULT_SYSTEM_TIME_ZONE,
   getResolvedSystemSettings,
@@ -13,7 +14,8 @@ import { DatabaseBackupRestore } from "./database-backup-restore";
 export default async function AdminSettingsPage() {
   const session = await auth();
   if (!session?.user) redirect("/login");
-  if (session.user.role !== "admin" && session.user.role !== "super_admin") redirect("/dashboard");
+  const caps = await resolveCapabilities(session.user.role);
+  if (!caps.has("system.settings")) redirect("/dashboard");
 
   const t = await getTranslations("admin.settings");
   const tCommon = await getTranslations("common");
@@ -57,7 +59,7 @@ export default async function AdminSettingsPage() {
           <CardDescription>{t("backupDescription")}</CardDescription>
         </CardHeader>
         <CardContent>
-          <DatabaseBackupRestore isSuperAdmin={session.user.role === "super_admin"} />
+          <DatabaseBackupRestore isSuperAdmin={caps.has("system.backup")} />
         </CardContent>
       </Card>
     </div>

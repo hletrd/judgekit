@@ -15,6 +15,7 @@ const {
   dbUpdateMock,
   dbDeleteMock,
   dbQueryUsersFindFirstMock,
+  resolveCapabilitiesMock,
 } = vi.hoisted(() => ({
   getApiUserMock: vi.fn(),
   csrfForbiddenMock: vi.fn(),
@@ -28,6 +29,7 @@ const {
   dbUpdateMock: vi.fn(),
   dbDeleteMock: vi.fn(),
   dbQueryUsersFindFirstMock: vi.fn(),
+  resolveCapabilitiesMock: vi.fn(),
 }));
 
 vi.mock("@/lib/api/auth", () => ({
@@ -111,6 +113,21 @@ vi.mock("@/lib/db", () => ({
     },
   },
 }));
+
+vi.mock("@/lib/capabilities/cache", () => ({
+  resolveCapabilities: resolveCapabilitiesMock,
+  invalidateRoleCache: vi.fn(),
+  getRoleLevel: vi.fn().mockResolvedValue(0),
+  isValidRole: vi.fn().mockResolvedValue(true),
+}));
+
+beforeEach(() => {
+  resolveCapabilitiesMock.mockImplementation(async (role: string) => {
+    const { DEFAULT_ROLE_CAPABILITIES } = await import("@/lib/capabilities/defaults");
+    const caps = DEFAULT_ROLE_CAPABILITIES[role as keyof typeof DEFAULT_ROLE_CAPABILITIES];
+    return new Set(caps ?? []);
+  });
+});
 
 // ── Fixtures ───────────────────────────────────────────────────────────────────
 

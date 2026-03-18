@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { auth } from "@/lib/auth";
+import { resolveCapabilities } from "@/lib/capabilities/cache";
 import { formatDateTimeInTimeZone } from "@/lib/datetime";
 import { getResolvedSystemTimeZone } from "@/lib/system-settings";
 import { eq } from "drizzle-orm";
@@ -19,7 +20,8 @@ export default async function AdminUserDetailPage({
 }) {
   const session = await auth();
   if (!session?.user) redirect("/login");
-  if (session.user.role !== "admin" && session.user.role !== "super_admin") redirect("/dashboard");
+  const caps = await resolveCapabilities(session.user.role);
+  if (!caps.has("users.view") || !caps.has("users.edit")) redirect("/dashboard");
 
   const resolvedParams = await params;
   const user = await db.query.users.findFirst({

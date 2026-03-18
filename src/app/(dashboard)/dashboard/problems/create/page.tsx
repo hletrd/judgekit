@@ -2,13 +2,15 @@ import { getTranslations } from "next-intl/server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
+import { resolveCapabilities } from "@/lib/capabilities/cache";
 import CreateProblemForm from "./create-problem-form";
 
 export default async function CreateProblemPage() {
   const session = await auth();
   if (!session?.user) redirect("/login");
-  
-  if (session.user.role === "student") {
+
+  const caps = await resolveCapabilities(session.user.role);
+  if (!caps.has("problems.create")) {
     redirect("/dashboard/problems");
   }
 

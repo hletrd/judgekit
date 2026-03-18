@@ -5,8 +5,8 @@ import { canAccessProblem } from "@/lib/auth/permissions";
 import { ROLE_LEVEL } from "@/lib/security/constants";
 import type { UserRole } from "@/types";
 
-function canViewAllSubmissions(role: UserRole): boolean {
-  return (ROLE_LEVEL[role] ?? 0) >= ROLE_LEVEL.instructor;
+function canViewAllSubmissions(role: string): boolean {
+  return (ROLE_LEVEL[role as UserRole] ?? 0) >= ROLE_LEVEL.instructor;
 }
 
 export interface ToolDefinition {
@@ -17,7 +17,7 @@ export interface ToolDefinition {
 
 export interface AgentContext {
   userId: string;
-  userRole: UserRole;
+  userRole: string;
   problemId?: string;
   assignmentId?: string;
   editorCode?: string;

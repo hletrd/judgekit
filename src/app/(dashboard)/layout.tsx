@@ -9,6 +9,7 @@ import { Separator } from "@/components/ui/separator";
 import { Toaster } from "@/components/ui/sonner";
 import { getResolvedSystemSettings } from "@/lib/system-settings";
 import { ChatWidgetLoader } from "@/components/plugins/chat-widget-loader";
+import { resolveCapabilities } from "@/lib/capabilities/cache";
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
@@ -28,7 +29,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
       >
         {t("skipToContent")}
       </a>
-      <AppSidebar user={session.user} siteTitle={settings.siteTitle} />
+      <AppSidebar user={session.user} siteTitle={settings.siteTitle} capabilities={[...(await resolveCapabilities(session.user.role))]} />
       <SidebarInset>
         <header className="flex h-14 items-center gap-2 border-b px-4">
           <SidebarTrigger />

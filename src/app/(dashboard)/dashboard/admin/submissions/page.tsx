@@ -14,6 +14,7 @@ import { db } from "@/lib/db";
 import { submissions, users, problems } from "@/lib/db/schema";
 import { desc, eq, like, or } from "drizzle-orm";
 import { auth } from "@/lib/auth";
+import { resolveCapabilities } from "@/lib/capabilities/cache";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -38,7 +39,8 @@ export default async function AdminSubmissionsPage({
 }) {
   const session = await auth();
   if (!session?.user) redirect("/login");
-  if (session.user.role !== "admin" && session.user.role !== "super_admin" && session.user.role !== "instructor") redirect("/dashboard");
+  const caps = await resolveCapabilities(session.user.role);
+  if (!caps.has("submissions.view_all")) redirect("/dashboard");
 
   const resolvedSearchParams = searchParams ? await searchParams : undefined;
   const currentPage = Math.max(1, Number(resolvedSearchParams?.page ?? "1") || 1);

@@ -8,7 +8,7 @@ import {
 } from "drizzle-orm/sqlite-core";
 import { nanoid } from "nanoid";
 import { generateSubmissionId } from "@/lib/submissions/id";
-import type { UserRole, ExamMode, ScoringModel } from "@/types";
+import type { ExamMode, ScoringModel } from "@/types";
 
 export const users = sqliteTable("users", {
   id: text("id")
@@ -19,7 +19,7 @@ export const users = sqliteTable("users", {
   name: text("name").notNull(),
   className: text("class_name"),
   passwordHash: text("password_hash"),
-  role: text("role").$type<UserRole>().notNull().default("student"),
+  role: text("role").notNull().default("student"),
   isActive: integer("is_active", { mode: "boolean" }).default(true),
   mustChangePassword: integer("must_change_password", { mode: "boolean" }).default(false),
   tokenInvalidatedAt: integer("token_invalidated_at", { mode: "timestamp" }),
@@ -577,6 +577,31 @@ export const contestAccessTokens = sqliteTable(
   },
   (table) => [
     uniqueIndex("cat_assignment_user_idx").on(table.assignmentId, table.userId),
+  ]
+);
+
+export const roles = sqliteTable(
+  "roles",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => nanoid()),
+    name: text("name").unique().notNull(),
+    displayName: text("display_name").notNull(),
+    description: text("description"),
+    isBuiltin: integer("is_builtin", { mode: "boolean" }).notNull().default(false),
+    level: integer("level").notNull().default(0),
+    capabilities: text("capabilities", { mode: "json" }).$type<string[]>().notNull().default([]),
+    createdAt: integer("created_at", { mode: "timestamp" })
+      .notNull()
+      .$defaultFn(() => new Date(Date.now())),
+    updatedAt: integer("updated_at", { mode: "timestamp" })
+      .notNull()
+      .$defaultFn(() => new Date(Date.now())),
+  },
+  (table) => [
+    uniqueIndex("roles_name_idx").on(table.name),
+    index("roles_level_idx").on(table.level),
   ]
 );
 

@@ -23,6 +23,7 @@ import {
   examSessions,
   contestAccessTokens,
   antiCheatEvents,
+  roles,
 } from "./schema";
 
 export const usersRelations = relations(users, ({ many }) => ({
@@ -288,6 +289,8 @@ export const contestAccessTokensRelations = relations(
     }),
   })
 );
+
+export const rolesRelations = relations(roles, () => ({}));
 
 export const antiCheatEventsRelations = relations(
   antiCheatEvents,

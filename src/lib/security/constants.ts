@@ -1,4 +1,6 @@
 import type { SubmissionStatus, UserRole } from "@/types";
+import { DEFAULT_ROLE_LEVELS } from "@/lib/capabilities/defaults";
+import { getRoleLevel } from "@/lib/capabilities/cache";
 
 export const MIN_PASSWORD_LENGTH = 8;
 export const MAX_SOURCE_CODE_SIZE_BYTES = 256 * 1024;
@@ -43,16 +45,43 @@ export const SUBMISSION_STATUSES: readonly SubmissionStatus[] = [
   "compile_error",
 ];
 
+/**
+ * Synchronous check for built-in roles. For custom roles, use isValidRoleAsync.
+ */
 export function isUserRole(value: string): value is UserRole {
   return USER_ROLES.includes(value as UserRole);
 }
 
-export function canManageRole(actorRole: UserRole, requestedRole: UserRole) {
+/**
+ * Check if actor can manage (assign/change) the target role.
+ * Works with both built-in and custom roles via level comparison.
+ */
+export function canManageRole(actorRole: string, requestedRole: string): boolean {
+  const actorLevel = getBuiltinRoleLevel(actorRole);
+  const requestedLevel = getBuiltinRoleLevel(requestedRole);
+
+  // super_admin can only be assigned by super_admin
   if (requestedRole === "super_admin") return actorRole === "super_admin";
-  if (requestedRole === "admin") return actorRole === "super_admin";
-  if (requestedRole === "instructor") return actorRole === "admin" || actorRole === "super_admin";
-  // student role can be assigned by instructor, admin, or super_admin
-  return actorRole === "instructor" || actorRole === "admin" || actorRole === "super_admin";
+  // Actor must have strictly higher level than the target role
+  return actorLevel > requestedLevel;
+}
+
+/**
+ * Async version of canManageRole that supports custom roles via DB cache.
+ */
+export async function canManageRoleAsync(actorRole: string, requestedRole: string): Promise<boolean> {
+  if (requestedRole === "super_admin") return actorRole === "super_admin";
+  const actorLevel = await getRoleLevel(actorRole);
+  const requestedLevel = await getRoleLevel(requestedRole);
+  return actorLevel > requestedLevel;
+}
+
+/**
+ * Get the level for a role. Returns the built-in level synchronously,
+ * or -1 for unknown custom roles.
+ */
+export function getBuiltinRoleLevel(role: string): number {
+  return DEFAULT_ROLE_LEVELS[role as UserRole] ?? -1;
 }
 
 export function assertUserRole(role: string): UserRole {

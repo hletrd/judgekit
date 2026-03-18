@@ -9,6 +9,7 @@ import { authUserSelect } from "@/lib/db/selects";
 import { getValidatedAuthSecret } from "@/lib/security/env";
 import { validateCsrf } from "@/lib/security/csrf";
 import { ROLE_LEVEL } from "@/lib/security/constants";
+import { resolveCapabilities } from "@/lib/capabilities/cache";
 import { eq } from "drizzle-orm";
 
 export function getTokenUserId(token: { id?: unknown; sub?: unknown } | null | undefined) {
@@ -82,10 +83,44 @@ export function notFound(resource: string) {
   return NextResponse.json({ error: "notFound", resource }, { status: 404 });
 }
 
+/**
+ * Check if a role has admin-level access.
+ * Supports both built-in roles (sync via ROLE_LEVEL) and custom roles.
+ */
 export function isAdmin(role: string) {
   return (ROLE_LEVEL[role as UserRole] ?? -1) >= ROLE_LEVEL.admin;
 }
 
+/**
+ * Async version that supports custom roles via capability check.
+ */
+export async function isAdminAsync(role: string): Promise<boolean> {
+  if (isAdmin(role)) return true;
+  const caps = await resolveCapabilities(role);
+  return caps.has("users.view") && caps.has("system.settings");
+}
+
+/**
+ * Check if a role has instructor-level access.
+ * Supports both built-in roles (sync via ROLE_LEVEL) and custom roles.
+ */
 export function isInstructor(role: string) {
   return (ROLE_LEVEL[role as UserRole] ?? -1) >= ROLE_LEVEL.instructor;
+}
+
+/**
+ * Async version that supports custom roles via capability check.
+ */
+export async function isInstructorAsync(role: string): Promise<boolean> {
+  if (isInstructor(role)) return true;
+  const caps = await resolveCapabilities(role);
+  return caps.has("problems.create") || caps.has("submissions.view_all");
+}
+
+/**
+ * Check if a user has a specific capability based on their role.
+ */
+export async function userHasCapability(role: string, capability: string): Promise<boolean> {
+  const caps = await resolveCapabilities(role);
+  return caps.has(capability);
 }

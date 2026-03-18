@@ -1,0 +1,135 @@
+import { NextRequest } from "next/server";
+import { apiSuccess, apiError } from "@/lib/api/responses";
+import { db } from "@/lib/db";
+import { roles, users } from "@/lib/db/schema";
+import { eq, sql } from "drizzle-orm";
+import { getApiUser, unauthorized, forbidden, csrfForbidden } from "@/lib/api/auth";
+import { resolveCapabilities, invalidateRoleCache } from "@/lib/capabilities/cache";
+import { recordAuditEvent } from "@/lib/audit/events";
+import { nanoid } from "nanoid";
+import { createRoleSchema } from "@/lib/validators/roles";
+import { isBuiltinRole } from "@/lib/capabilities/types";
+import { logger } from "@/lib/logger";
+
+export async function GET(request: NextRequest) {
+  try {
+    const user = await getApiUser(request);
+    if (!user) return unauthorized();
+
+    const caps = await resolveCapabilities(user.role);
+    if (!caps.has("users.manage_roles")) return forbidden();
+
+    const allRoles = await db
+      .select({
+        id: roles.id,
+        name: roles.name,
+        displayName: roles.displayName,
+        description: roles.description,
+        isBuiltin: roles.isBuiltin,
+        level: roles.level,
+        capabilities: roles.capabilities,
+        createdAt: roles.createdAt,
+        updatedAt: roles.updatedAt,
+      })
+      .from(roles)
+      .orderBy(roles.level, roles.name);
+
+    // Count users per role
+    const userCounts = await db
+      .select({
+        role: users.role,
+        count: sql<number>`count(*)`,
+      })
+      .from(users)
+      .groupBy(users.role);
+
+    const countMap = new Map(userCounts.map((r) => [r.role, r.count]));
+
+    const result = allRoles.map((role) => ({
+      ...role,
+      userCount: countMap.get(role.name) ?? 0,
+    }));
+
+    return apiSuccess(result);
+  } catch (error) {
+    logger.error({ err: error }, "Failed to list roles");
+    return apiError("internalError", 500);
+  }
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const user = await getApiUser(request);
+    if (!user) return unauthorized();
+
+    const caps = await resolveCapabilities(user.role);
+    if (!caps.has("users.manage_roles")) return forbidden();
+
+    const csrfError = csrfForbidden(request);
+    if (csrfError) return csrfError;
+
+    const body = await request.json();
+    const parsed = createRoleSchema.safeParse(body);
+
+    if (!parsed.success) {
+      return apiError(parsed.error.issues[0]?.message ?? "validationError", 400);
+    }
+
+    const { name, displayName, description, level, capabilities } = parsed.data;
+
+    // Cannot use built-in role names
+    if (isBuiltinRole(name)) {
+      return apiError("roleNameReserved", 400);
+    }
+
+    // Check uniqueness
+    const existing = await db
+      .select({ id: roles.id })
+      .from(roles)
+      .where(eq(roles.name, name))
+      .limit(1);
+
+    if (existing.length > 0) {
+      return apiError("roleNameExists", 409);
+    }
+
+    const id = nanoid();
+    const now = new Date();
+
+    await db.insert(roles).values({
+      id,
+      name,
+      displayName,
+      description: description ?? null,
+      isBuiltin: false,
+      level,
+      capabilities: capabilities as string[],
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    invalidateRoleCache();
+
+    recordAuditEvent({
+      actorId: user.id,
+      actorRole: user.role,
+      action: "create",
+      resourceType: "role",
+      resourceId: id,
+      resourceLabel: name,
+      summary: `Created custom role "${displayName}"`,
+      request,
+    });
+
+    const created = await db
+      .select()
+      .from(roles)
+      .where(eq(roles.id, id))
+      .then((rows) => rows[0]);
+
+    return apiSuccess(created, { status: 201 });
+  } catch (error) {
+    logger.error({ err: error }, "Failed to create role");
+    return apiError("internalError", 500);
+  }
+}

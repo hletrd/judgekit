@@ -16,6 +16,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { auth } from "@/lib/auth";
+import { resolveCapabilities } from "@/lib/capabilities/cache";
 import { FilterSelect } from "@/components/filter-select";
 import { db } from "@/lib/db";
 import { loginEvents, users } from "@/lib/db/schema";
@@ -115,7 +116,8 @@ export default async function AdminLoginLogsPage({
 }) {
   const session = await auth();
   if (!session?.user) redirect("/login");
-  if (session.user.role !== "admin" && session.user.role !== "super_admin") redirect("/dashboard");
+  const caps = await resolveCapabilities(session.user.role);
+  if (!caps.has("system.login_logs")) redirect("/dashboard");
 
   const resolvedSearchParams = searchParams ? await searchParams : undefined;
   const requestedPage = normalizePage(resolvedSearchParams?.page);

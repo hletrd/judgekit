@@ -11,6 +11,12 @@ import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { editUser } from "@/lib/actions/user-management";
 
+interface RoleOption {
+  name: string;
+  displayName: string;
+  level: number;
+}
+
 interface EditUserDialogProps {
   user: {
     id: string;
@@ -20,9 +26,11 @@ interface EditUserDialogProps {
     className?: string | null;
     role: string;
   };
+  actorRole?: string;
+  availableRoles?: RoleOption[];
 }
 
-export default function EditUserDialog({ user, actorRole }: EditUserDialogProps & { actorRole?: string }) {
+export default function EditUserDialog({ user, actorRole, availableRoles }: EditUserDialogProps) {
   const t = useTranslations("admin.users");
   const tCommon = useTranslations("common");
   const router = useRouter();
@@ -47,7 +55,7 @@ export default function EditUserDialog({ user, actorRole }: EditUserDialogProps 
     }
   }, [open, user]);
 
-  const roleLabels = {
+  const builtinRoleLabels: Record<string, string> = {
     student: t("roleOptions.student"),
     instructor: t("roleOptions.instructor"),
     admin: t("roleOptions.admin"),
@@ -105,14 +113,26 @@ export default function EditUserDialog({ user, actorRole }: EditUserDialogProps 
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="student" label={roleLabels.student}>{roleLabels.student}</SelectItem>
-                {(!actorRole || actorRole === "admin" || actorRole === "super_admin") && (
+                {availableRoles ? (
+                  availableRoles
+                    .filter((r) => r.name !== "super_admin" || user.role === "super_admin")
+                    .map((r) => (
+                      <SelectItem key={r.name} value={r.name} label={builtinRoleLabels[r.name] ?? r.displayName}>
+                        {builtinRoleLabels[r.name] ?? r.displayName}
+                      </SelectItem>
+                    ))
+                ) : (
                   <>
-                    <SelectItem value="instructor" label={roleLabels.instructor}>{roleLabels.instructor}</SelectItem>
-                    <SelectItem value="admin" label={roleLabels.admin}>{roleLabels.admin}</SelectItem>
+                    <SelectItem value="student" label={builtinRoleLabels.student}>{builtinRoleLabels.student}</SelectItem>
+                    {(!actorRole || actorRole === "admin" || actorRole === "super_admin") && (
+                      <>
+                        <SelectItem value="instructor" label={builtinRoleLabels.instructor}>{builtinRoleLabels.instructor}</SelectItem>
+                        <SelectItem value="admin" label={builtinRoleLabels.admin}>{builtinRoleLabels.admin}</SelectItem>
+                      </>
+                    )}
+                    {user.role === "super_admin" && <SelectItem value="super_admin" label={builtinRoleLabels.super_admin}>{builtinRoleLabels.super_admin}</SelectItem>}
                   </>
                 )}
-                {user.role === "super_admin" && <SelectItem value="super_admin" label={roleLabels.super_admin}>{roleLabels.super_admin}</SelectItem>}
               </SelectContent>
             </Select>
           </div>

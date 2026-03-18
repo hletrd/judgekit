@@ -245,8 +245,8 @@ export async function editUser(userId: string, data: ManagedUserInput): Promise<
 
     // Prevent password reset for users of equal or higher privilege
     if (data.password && targetUser.role) {
-      const actorLevel = ROLE_LEVEL[actorRole] ?? 0;
-      const targetLevel = ROLE_LEVEL[targetUser.role] ?? 0;
+      const actorLevel = ROLE_LEVEL[actorRole as UserRole] ?? 0;
+      const targetLevel = ROLE_LEVEL[targetUser.role as UserRole] ?? 0;
       if (targetLevel >= actorLevel) {
         return { success: false, error: "unauthorized" };
       }

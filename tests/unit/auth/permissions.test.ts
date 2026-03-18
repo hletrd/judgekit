@@ -1,9 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { UserRole } from "@/types";
 
-const { authMock, canViewAssignmentSubmissionsMock, dbMock } = vi.hoisted(() => ({
+const { authMock, canViewAssignmentSubmissionsMock, dbMock, resolveCapabilitiesMock } = vi.hoisted(() => ({
   authMock: vi.fn(),
   canViewAssignmentSubmissionsMock: vi.fn(),
+  resolveCapabilitiesMock: vi.fn(),
   dbMock: {
     query: {
       groups: {
@@ -30,6 +31,11 @@ vi.mock("@/lib/assignments/submissions", () => ({
 
 vi.mock("@/lib/db", () => ({
   db: dbMock,
+}));
+
+vi.mock("@/lib/capabilities/cache", () => ({
+  resolveCapabilities: resolveCapabilitiesMock,
+  invalidateRoleCache: vi.fn(),
 }));
 
 import {
@@ -79,6 +85,13 @@ function createSession(role: UserRole) {
 beforeEach(() => {
   vi.clearAllMocks();
   dbMock.select.mockReset();
+
+  // Default: resolveCapabilities returns capability sets matching built-in roles
+  resolveCapabilitiesMock.mockImplementation(async (role: string) => {
+    const { DEFAULT_ROLE_CAPABILITIES } = await import("@/lib/capabilities/defaults");
+    const caps = DEFAULT_ROLE_CAPABILITIES[role as keyof typeof DEFAULT_ROLE_CAPABILITIES];
+    return new Set(caps ?? []);
+  });
 });
 
 describe("assertRole", () => {
@@ -205,9 +218,7 @@ describe("canAccessSubmission", () => {
     expect(canViewAssignmentSubmissionsMock).not.toHaveBeenCalled();
   });
 
-  it("defers to assignment visibility for non-owner submissions", async () => {
-    canViewAssignmentSubmissionsMock.mockResolvedValueOnce(true).mockResolvedValueOnce(false);
-
+  it("instructors with submissions.view_all always have access", async () => {
     await expect(
       canAccessSubmission(
         { userId: "student-2", assignmentId: "assignment-1" },
@@ -215,12 +226,29 @@ describe("canAccessSubmission", () => {
         "instructor"
       )
     ).resolves.toBe(true);
+    expect(canViewAssignmentSubmissionsMock).not.toHaveBeenCalled();
+  });
+
+  it("defers to assignment visibility for roles without submissions.view_all", async () => {
+    resolveCapabilitiesMock.mockResolvedValueOnce(new Set(["content.submit_solutions"]));
+    canViewAssignmentSubmissionsMock.mockResolvedValueOnce(true);
 
     await expect(
       canAccessSubmission(
         { userId: "student-2", assignmentId: "assignment-1" },
-        "instructor-1",
-        "instructor"
+        "other-user",
+        "custom_role"
+      )
+    ).resolves.toBe(true);
+
+    resolveCapabilitiesMock.mockResolvedValueOnce(new Set(["content.submit_solutions"]));
+    canViewAssignmentSubmissionsMock.mockResolvedValueOnce(false);
+
+    await expect(
+      canAccessSubmission(
+        { userId: "student-2", assignmentId: "assignment-1" },
+        "other-user",
+        "custom_role"
       )
     ).resolves.toBe(false);
   });
