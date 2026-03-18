@@ -1,0 +1,61 @@
+# =============================================================================
+# JudgeKit Production Deployment
+#
+# Usage:
+#   docker compose -f docker-compose.production.yml --env-file .env.production up -d
+#
+# Prerequisites:
+#   - Build images first (or use deploy.sh which handles everything)
+#   - Create .env.production from .env.production.example
+#   - Judge language images must be available (judge-cpp, judge-python, etc.)
+# =============================================================================
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: judgekit-app:latest
+    container_name: judgekit-app
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3100:3000"
+    volumes:
+      - judgekit-data:/app/data
+    env_file:
+      - .env.production
+    environment:
+      - DATABASE_PATH=/app/data/judge.db
+      - HOSTNAME=0.0.0.0
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "-O", "/dev/null", "http://127.0.0.1:3000/login"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+  judge-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.judge-worker
+    image: judgekit-judge-worker:latest
+    container_name: judgekit-judge-worker
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - judgekit-dead-letter:/app/dead-letter
+    env_file:
+      - .env.production
+    environment:
+      - JUDGE_BASE_URL=http://app:3000/api/v1
+      - JUDGE_SECCOMP_PROFILE=/etc/judge/seccomp-profile.json
+      - DEAD_LETTER_DIR=/app/dead-letter
+    depends_on:
+      app:
+        condition: service_healthy
+
+volumes:
+  judgekit-data:
+    driver: local
+  judgekit-dead-letter:
+    driver: local

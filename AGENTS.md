@@ -29,14 +29,56 @@ JudgeKit is a secure online judge platform for programming assignments. Next.js 
 
 ```bash
 npx tsc --noEmit                              # TypeScript check
+npx vitest run                                # Unit tests
+npx vitest run --config vitest.config.integration.ts  # Integration tests
 cd judge-worker-rs && cargo test              # Rust tests
-npx playwright test tests/e2e/               # E2E tests
+npx playwright test tests/e2e/               # E2E tests (needs PLAYWRIGHT_BASE_URL)
 ```
+
+## Testing Rules (MANDATORY)
+
+Every feature, fix, or enhancement MUST include appropriate tests. Do not merge or consider work complete without tests.
+
+### Test Layers
+
+| Layer | Tool | Location | When |
+|-------|------|----------|------|
+| **Unit** | Vitest | `tests/unit/` | Pure functions, validators, utilities, scoring logic |
+| **API** | Vitest | `tests/unit/api/` | Route handlers with mocked DB/auth |
+| **Integration** | Vitest | `tests/integration/` | Cross-module interactions, DB queries |
+| **E2E** | Playwright | `tests/e2e/` | Full user flows against running server |
+
+### What to Test
+
+- **New feature**: Unit tests for logic + API tests for routes + E2E test for user flow
+- **Bug fix**: Regression test that fails without the fix, passes with it
+- **Refactor**: Existing tests must still pass; add tests if coverage gaps found
+- **New language**: A+B solution in `tests/e2e/all-languages-judge.spec.ts` + Rust config test
+- **New API route**: API test with auth/validation/happy-path/error cases
+- **Validators**: Unit tests for valid/invalid inputs and edge cases
+- **Scoring/contest logic**: Unit tests with known inputs and expected outputs
+
+### Test Conventions
+
+- Use factories from `tests/unit/support/factories.ts` for test data
+- Mock external dependencies (DB, auth) in unit/API tests
+- E2E tests run against the test server (`oj-internal.maum.ai`), never production
+- Name test files as `<module>.test.ts` (unit/API) or `<feature>.spec.ts` (E2E)
+- Group related assertions in `describe` blocks
+- Test both success and error paths
+
+### Quality Gates
+
+- `npx tsc --noEmit` — zero type errors
+- `npx vitest run` — all unit tests pass
+- `cargo test` (in judge-worker-rs/) — all Rust tests pass
+- E2E tests pass against test server before deploy to production
 
 ## Deployment
 
 Deployment targets and credentials are documented in `ENV.md` (gitignored).
 The primary deploy script is `deploy-docker.sh`. See `ENV.md` for per-target configuration.
+Always test against `oj-internal.maum.ai` (test), never against `oj.auraedu.me` (production).
 
 ## Conventions
 
@@ -44,3 +86,4 @@ The primary deploy script is `deploy-docker.sh`. See `ENV.md` for per-target con
 - GPG-signed commits with gitminer (7 leading zeros)
 - Fine-grained commits (one per feature/fix)
 - Always `git pull --rebase` before `git push`
+- Every commit MUST include relevant tests (see Testing Rules above)

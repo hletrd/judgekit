@@ -1,0 +1,26 @@
+# =============================================================================
+# JudgeKit Judge Worker — Multi-stage Rust Build
+# Produces a minimal Alpine image with the judge-worker binary + docker CLI
+# =============================================================================
+
+FROM rust:1-alpine AS builder
+
+RUN apk add --no-cache musl-dev
+
+WORKDIR /build
+COPY judge-worker-rs/ .
+RUN cargo build --release
+
+# ---------------------------------------------------------------------------
+# Runtime: Alpine with docker-cli for spawning judge containers
+# ---------------------------------------------------------------------------
+FROM alpine:3.21 AS runner
+
+RUN apk add --no-cache docker-cli ca-certificates
+
+COPY --from=builder /build/target/release/judge-worker /usr/local/bin/judge-worker
+COPY docker/seccomp-profile.json /etc/judge/seccomp-profile.json
+
+ENV RUST_LOG=info
+
+CMD ["judge-worker"]
