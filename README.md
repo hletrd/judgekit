@@ -14,7 +14,7 @@
 
 <p align="center">
   A secure code evaluation platform for programming assignments.<br/>
-  Automated judging with Docker-sandboxed execution for 55 languages including C, C++, Java, Kotlin, Python, Rust, Go, Swift, and esoteric languages like Befunge and 아희.
+  Automated judging with Docker-sandboxed execution for many languages including C, C++, Java, Kotlin, Python, Rust, Go, Swift, and esoteric languages like Befunge and 아희.
 </p>
 
 <p align="center">
@@ -35,7 +35,7 @@
 - **Problem management** — Sanitized descriptions, configurable time/memory limits, public/private/hidden visibility, and test-case editing before submissions exist
 - **Admin login history** — Credential login outcomes with safe filtering and pagination for admin-only review
 - **Secure code execution** — Docker containers with no network, seccomp profiles, memory/CPU limits, and non-root users
-- **Multi-language support** — 55 languages including C (C89/C99/C17/C23, GCC & Clang), C++ (C++20/C++23, GCC & Clang), Java, Kotlin, Python, JavaScript, TypeScript, Rust, Go, Swift, C#, Ruby, Lua, Haskell, Dart, Zig, Nim, OCaml, Elixir, Julia, D, Racket, V, Fortran, Pascal, COBOL, Brainfuck, Scala, Erlang, Common Lisp, Bash, R, Perl, PHP, Ada, Clojure, Prolog, Tcl, AWK, Scheme, Groovy, Octave, Crystal, PowerShell, PostScript, plus esoteric languages Befunge-93, 아희 (Aheui), 혀엉 (Hyeong), and Whitespace, all with admin-customizable compile options
+- **Multi-language support** — C (C89/C99/C17/C23, GCC & Clang), C++ (C++20/C++23, GCC & Clang), Java, Kotlin, Python, JavaScript, TypeScript, Rust, Go, Swift, C#, Ruby, Lua, Haskell, Dart, Zig, Nim, OCaml, Elixir, Julia, D, Racket, V, Fortran, Pascal, COBOL, Brainfuck, Scala, Erlang, Common Lisp, Bash, R, Perl, PHP, Ada, Clojure, Prolog, Tcl, AWK, Scheme, Groovy, Octave, Crystal, PowerShell, PostScript, plus esoteric languages Befunge-93, 아희 (Aheui), 혀엉 (Hyeong), and Whitespace, all with admin-customizable compile options
 - **Submission workflow** — JSON submission flow, live status polling, per-test-case results, paginated submission history, draft recovery, and mixed legacy/hex submission ID support
 
 ## Getting Started
