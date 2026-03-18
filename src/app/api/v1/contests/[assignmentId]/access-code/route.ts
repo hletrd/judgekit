@@ -2,25 +2,10 @@ import { NextRequest } from "next/server";
 import { getApiUser, unauthorized, csrfForbidden, isAdmin, isInstructor } from "@/lib/api/auth";
 import { apiSuccess, apiError } from "@/lib/api/responses";
 import { setAccessCode, revokeAccessCode, getAccessCode } from "@/lib/assignments/access-codes";
-import { sqlite } from "@/lib/db";
+import { getContestAssignment, type ContestAssignmentRow } from "@/lib/assignments/contests";
 import { logger } from "@/lib/logger";
 
-type AssignmentRow = {
-  groupId: string;
-  instructorId: string | null;
-  examMode: string;
-};
-
-function getAssignment(assignmentId: string): AssignmentRow | undefined {
-  return sqlite
-    .prepare<[string], AssignmentRow>(
-      `SELECT a.group_id AS groupId, g.instructor_id AS instructorId, a.exam_mode AS examMode
-       FROM assignments a INNER JOIN groups g ON g.id = a.group_id WHERE a.id = ?`
-    )
-    .get(assignmentId);
-}
-
-function canManage(user: { id: string; role: string }, assignment: AssignmentRow): boolean {
+function canManage(user: { id: string; role: string }, assignment: ContestAssignmentRow): boolean {
   return isAdmin(user.role) || (isInstructor(user.role) && assignment.instructorId === user.id);
 }
 
@@ -33,7 +18,7 @@ export async function GET(
     if (!user) return unauthorized();
     const { assignmentId } = await params;
 
-    const assignment = getAssignment(assignmentId);
+    const assignment = getContestAssignment(assignmentId);
     if (!assignment || assignment.examMode === "none") return apiError("notFound", 404);
     if (!canManage(user, assignment)) return apiError("forbidden", 403);
 
@@ -57,7 +42,7 @@ export async function POST(
     if (!user) return unauthorized();
     const { assignmentId } = await params;
 
-    const assignment = getAssignment(assignmentId);
+    const assignment = getContestAssignment(assignmentId);
     if (!assignment || assignment.examMode === "none") return apiError("notFound", 404);
     if (!canManage(user, assignment)) return apiError("forbidden", 403);
 
@@ -81,7 +66,7 @@ export async function DELETE(
     if (!user) return unauthorized();
     const { assignmentId } = await params;
 
-    const assignment = getAssignment(assignmentId);
+    const assignment = getContestAssignment(assignmentId);
     if (!assignment || assignment.examMode === "none") return apiError("notFound", 404);
     if (!canManage(user, assignment)) return apiError("forbidden", 403);
 

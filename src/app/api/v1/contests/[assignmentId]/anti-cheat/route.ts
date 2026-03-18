@@ -6,23 +6,8 @@ import { db, sqlite } from "@/lib/db";
 import { antiCheatEvents, users } from "@/lib/db/schema";
 import { eq, and, desc, sql } from "drizzle-orm";
 import { consumeApiRateLimit } from "@/lib/security/api-rate-limit";
+import { getContestAssignment } from "@/lib/assignments/contests";
 import { logger } from "@/lib/logger";
-
-type AssignmentRow = {
-  groupId: string;
-  instructorId: string | null;
-  examMode: string;
-  enableAntiCheat: number;
-};
-
-function getAssignment(assignmentId: string): AssignmentRow | undefined {
-  return sqlite
-    .prepare<[string], AssignmentRow>(
-      `SELECT a.group_id AS groupId, g.instructor_id AS instructorId, a.exam_mode AS examMode, a.enable_anti_cheat AS enableAntiCheat
-       FROM assignments a INNER JOIN groups g ON g.id = a.group_id WHERE a.id = ?`
-    )
-    .get(assignmentId);
-}
 
 const VALID_EVENT_TYPES = new Set([
   "tab_switch",
@@ -48,7 +33,7 @@ export async function POST(
     if (!user) return unauthorized();
 
     const { assignmentId } = await params;
-    const assignment = getAssignment(assignmentId);
+    const assignment = getContestAssignment(assignmentId);
 
     if (!assignment || assignment.examMode === "none") {
       return apiError("notFound", 404);
@@ -114,7 +99,7 @@ export async function GET(
     if (!user) return unauthorized();
 
     const { assignmentId } = await params;
-    const assignment = getAssignment(assignmentId);
+    const assignment = getContestAssignment(assignmentId);
 
     if (!assignment || assignment.examMode === "none") {
       return apiError("notFound", 404);

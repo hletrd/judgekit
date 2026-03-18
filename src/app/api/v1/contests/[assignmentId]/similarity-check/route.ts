@@ -3,14 +3,8 @@ import { getApiUser, unauthorized, csrfForbidden, isAdmin, isInstructor } from "
 import { apiSuccess, apiError } from "@/lib/api/responses";
 import { consumeApiRateLimit } from "@/lib/security/api-rate-limit";
 import { runAndStoreSimilarityCheck } from "@/lib/assignments/code-similarity";
-import { sqlite } from "@/lib/db";
+import { getContestAssignment } from "@/lib/assignments/contests";
 import { logger } from "@/lib/logger";
-
-type AssignmentRow = {
-  groupId: string;
-  instructorId: string | null;
-  examMode: string;
-};
 
 export async function POST(
   request: NextRequest,
@@ -28,12 +22,7 @@ export async function POST(
 
     const { assignmentId } = await params;
 
-    const assignment = sqlite
-      .prepare<[string], AssignmentRow>(
-        `SELECT a.group_id AS groupId, g.instructor_id AS instructorId, a.exam_mode AS examMode
-         FROM assignments a INNER JOIN groups g ON g.id = a.group_id WHERE a.id = ?`
-      )
-      .get(assignmentId);
+    const assignment = getContestAssignment(assignmentId);
 
     if (!assignment || assignment.examMode === "none") {
       return apiError("notFound", 404);
@@ -47,7 +36,22 @@ export async function POST(
       return apiError("forbidden", 403);
     }
 
-    const flaggedCount = runAndStoreSimilarityCheck(assignmentId);
+    let flaggedCount: number;
+    try {
+      flaggedCount = await Promise.race([
+        new Promise<number>((resolve) => {
+          resolve(runAndStoreSimilarityCheck(assignmentId));
+        }),
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error("Similarity check timed out")), 30_000)
+        ),
+      ]);
+    } catch (error) {
+      if (error instanceof Error && error.message.includes("timed out")) {
+        return apiError("similarityCheckTimeout", 504);
+      }
+      throw error;
+    }
 
     return apiSuccess({ flaggedPairs: flaggedCount });
   } catch (error) {

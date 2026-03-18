@@ -333,6 +333,7 @@ export const submissions = sqliteTable(
   },
   (table) => [
     index("submissions_user_problem_idx").on(table.userId, table.problemId),
+    index("submissions_assignment_user_problem_idx").on(table.assignmentId, table.userId, table.problemId),
     index("submissions_status_idx").on(table.status),
     index("submissions_user_idx").on(table.userId),
     index("submissions_problem_idx").on(table.problemId),

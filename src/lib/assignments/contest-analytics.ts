@@ -60,8 +60,8 @@ type CheatSummary = {
 export type ContestAnalytics = {
   scoreDistribution: HistogramBucket[];
   problemSolveRates: ProblemSolveRate[];
-  solveTimelines: ProblemTimeline[];
-  studentProgressions: StudentProgression[];
+  solveTimelines?: ProblemTimeline[];
+  studentProgressions?: StudentProgression[];
   problemSolveTimes: ProblemSolveTime[];
   cheatSummary: CheatSummary;
 };
@@ -89,7 +89,7 @@ type CheatCountRow = {
   count: number;
 };
 
-export function computeContestAnalytics(assignmentId: string): ContestAnalytics {
+export function computeContestAnalytics(assignmentId: string, includeTimeline = false): ContestAnalytics {
   const { entries } = computeContestRanking(assignmentId);
 
   const problems = sqlite
@@ -151,8 +151,7 @@ export function computeContestAnalytics(assignmentId: string): ContestAnalytics 
     };
   });
 
-  // 3. Solve timeline: per-problem cumulative AC count over time
-  // Track first AC per (user, problem) to avoid counting duplicates
+  // 3. First-AC map — needed for both timeline and solve times
   const firstAcMap = new Map<string, number>(); // "userId:problemId" -> timestamp
   const allAcSubs = sqlite
     .prepare<[string], { userId: string; problemId: string; submittedAt: number }>(
@@ -170,58 +169,65 @@ export function computeContestAnalytics(assignmentId: string): ContestAnalytics 
     }
   }
 
-  const solveTimelines: ProblemTimeline[] = problems.map((p) => {
-    const firstAcTimes: number[] = [];
-    for (const [key, ts] of firstAcMap) {
-      if (key.endsWith(`:${p.problemId}`)) {
-        firstAcTimes.push(ts);
+  // 3a. Solve timeline: per-problem cumulative AC count over time (only when requested)
+  let solveTimelines: ProblemTimeline[] | undefined;
+  if (includeTimeline) {
+    solveTimelines = problems.map((p) => {
+      const firstAcTimes: number[] = [];
+      for (const [key, ts] of firstAcMap) {
+        if (key.endsWith(`:${p.problemId}`)) {
+          firstAcTimes.push(ts);
+        }
       }
-    }
-    firstAcTimes.sort((a, b) => a - b);
+      firstAcTimes.sort((a, b) => a - b);
 
-    const points: TimelinePoint[] = firstAcTimes.map((ts, idx) => ({
-      timestamp: ts * 1000,
-      cumulativeSolveCount: idx + 1,
-    }));
+      const points: TimelinePoint[] = firstAcTimes.map((ts, idx) => ({
+        timestamp: ts * 1000,
+        cumulativeSolveCount: idx + 1,
+      }));
 
-    return { problemId: p.problemId, title: p.title, points };
-  });
-
-  // 4. Student score progression
-  const submissionRows = sqlite
-    .prepare<[string], SubmissionTimeRow>(
-      `SELECT s.user_id AS userId, u.name, s.problem_id AS problemId, s.score, s.submitted_at AS submittedAt,
-              COALESCE(ap.points, 100) AS points
-       FROM submissions s
-       INNER JOIN users u ON u.id = s.user_id
-       INNER JOIN assignment_problems ap ON ap.assignment_id = s.assignment_id AND ap.problem_id = s.problem_id
-       WHERE s.assignment_id = ?
-       ORDER BY s.submitted_at ASC`
-    )
-    .all(assignmentId);
-
-  const userProgressMap = new Map<string, { name: string; bestScores: Map<string, number>; progressionPoints: Array<{ timestamp: number; totalScore: number }> }>();
-
-  for (const sub of submissionRows) {
-    if (!userProgressMap.has(sub.userId)) {
-      userProgressMap.set(sub.userId, { name: sub.name, bestScores: new Map(), progressionPoints: [] });
-    }
-    const userData = userProgressMap.get(sub.userId)!;
-    const adjustedScore = sub.score != null ? Math.round(Math.min(Math.max(sub.score, 0), 100) / 100 * sub.points * 100) / 100 : 0;
-    const currentBest = userData.bestScores.get(sub.problemId) ?? 0;
-
-    if (adjustedScore > currentBest) {
-      userData.bestScores.set(sub.problemId, adjustedScore);
-      const totalScore = Array.from(userData.bestScores.values()).reduce((s, v) => s + v, 0);
-      userData.progressionPoints.push({ timestamp: sub.submittedAt * 1000, totalScore });
-    }
+      return { problemId: p.problemId, title: p.title, points };
+    });
   }
 
-  const studentProgressions: StudentProgression[] = Array.from(userProgressMap.entries()).map(([userId, data]) => ({
-    userId,
-    name: data.name,
-    points: data.progressionPoints,
-  }));
+  // 4. Student score progression (only when requested)
+  let studentProgressions: StudentProgression[] | undefined;
+  if (includeTimeline) {
+    const submissionRows = sqlite
+      .prepare<[string], SubmissionTimeRow>(
+        `SELECT s.user_id AS userId, u.name, s.problem_id AS problemId, s.score, s.submitted_at AS submittedAt,
+                COALESCE(ap.points, 100) AS points
+         FROM submissions s
+         INNER JOIN users u ON u.id = s.user_id
+         INNER JOIN assignment_problems ap ON ap.assignment_id = s.assignment_id AND ap.problem_id = s.problem_id
+         WHERE s.assignment_id = ?
+         ORDER BY s.submitted_at ASC`
+      )
+      .all(assignmentId);
+
+    const userProgressMap = new Map<string, { name: string; bestScores: Map<string, number>; progressionPoints: Array<{ timestamp: number; totalScore: number }> }>();
+
+    for (const sub of submissionRows) {
+      if (!userProgressMap.has(sub.userId)) {
+        userProgressMap.set(sub.userId, { name: sub.name, bestScores: new Map(), progressionPoints: [] });
+      }
+      const userData = userProgressMap.get(sub.userId)!;
+      const adjustedScore = sub.score != null ? Math.round(Math.min(Math.max(sub.score, 0), 100) / 100 * sub.points * 100) / 100 : 0;
+      const currentBest = userData.bestScores.get(sub.problemId) ?? 0;
+
+      if (adjustedScore > currentBest) {
+        userData.bestScores.set(sub.problemId, adjustedScore);
+        const totalScore = Array.from(userData.bestScores.values()).reduce((s, v) => s + v, 0);
+        userData.progressionPoints.push({ timestamp: sub.submittedAt * 1000, totalScore });
+      }
+    }
+
+    studentProgressions = Array.from(userProgressMap.entries()).map(([userId, data]) => ({
+      userId,
+      name: data.name,
+      points: data.progressionPoints,
+    }));
+  }
 
   // 5. Per-problem solve time (median/mean time from contest start to first AC)
   const contestMeta = sqlite

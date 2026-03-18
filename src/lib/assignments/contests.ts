@@ -167,3 +167,19 @@ export function getContestsForUser(
     .all(userId, userId, userId);
   return rows.map(mapRow);
 }
+
+export type ContestAssignmentRow = {
+  groupId: string;
+  instructorId: string | null;
+  examMode: string;
+  enableAntiCheat: boolean;
+};
+
+export function getContestAssignment(assignmentId: string): ContestAssignmentRow | undefined {
+  return sqlite
+    .prepare<[string], ContestAssignmentRow>(
+      `SELECT a.group_id AS groupId, g.instructor_id AS instructorId, a.exam_mode AS examMode, a.enable_anti_cheat AS enableAntiCheat
+       FROM assignments a INNER JOIN groups g ON g.id = a.group_id WHERE a.id = ?`
+    )
+    .get(assignmentId);
+}

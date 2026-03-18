@@ -55,6 +55,17 @@ export default async function CreateContestPage() {
         <p className="text-muted-foreground">{t("createContestDescription")}</p>
       </div>
 
+      <Card>
+        <CardContent className="py-4 px-5">
+          <ol className="list-decimal list-inside space-y-1 text-sm text-muted-foreground">
+            <li>{t("createStep1")}</li>
+            <li>{t("createStep2")}</li>
+            <li>{t("createStep3")}</li>
+            <li>{t("createStep4")}</li>
+          </ol>
+        </CardContent>
+      </Card>
+
       {userGroups.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center text-muted-foreground">

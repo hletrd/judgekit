@@ -3,7 +3,28 @@ import { getApiUser, unauthorized, isAdmin, isInstructor } from "@/lib/api/auth"
 import { apiSuccess, apiError } from "@/lib/api/responses";
 import { computeContestAnalytics } from "@/lib/assignments/contest-analytics";
 import { sqlite } from "@/lib/db";
+import { consumeApiRateLimit } from "@/lib/security/api-rate-limit";
 import { logger } from "@/lib/logger";
+
+const analyticsCache = new Map<string, { data: unknown; timestamp: number }>();
+const CACHE_TTL_MS = 60_000; // 60 seconds
+
+function getCachedAnalytics(key: string) {
+  const cached = analyticsCache.get(key);
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
+    return cached.data;
+  }
+  return null;
+}
+
+function setCachedAnalytics(key: string, data: unknown) {
+  analyticsCache.set(key, { data, timestamp: Date.now() });
+  // Prevent unbounded cache growth
+  if (analyticsCache.size > 100) {
+    const oldest = [...analyticsCache.entries()].sort((a, b) => a[1].timestamp - b[1].timestamp)[0];
+    if (oldest) analyticsCache.delete(oldest[0]);
+  }
+}
 
 type AssignmentRow = {
   groupId: string;
@@ -18,6 +39,9 @@ export async function GET(
   try {
     const user = await getApiUser(request);
     if (!user) return unauthorized();
+
+    const rl = consumeApiRateLimit(request, "analytics");
+    if (rl) return rl;
 
     const { assignmentId } = await params;
 
@@ -40,7 +64,12 @@ export async function GET(
       return apiError("forbidden", 403);
     }
 
+    const cacheKey = assignmentId;
+    const cached = getCachedAnalytics(cacheKey);
+    if (cached) return apiSuccess(cached);
+
     const analytics = computeContestAnalytics(assignmentId);
+    setCachedAnalytics(cacheKey, analytics);
     return apiSuccess(analytics);
   } catch (error) {
     logger.error({ err: error }, "GET analytics error");

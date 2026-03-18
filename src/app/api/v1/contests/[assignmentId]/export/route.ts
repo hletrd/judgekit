@@ -4,6 +4,7 @@ import { apiError } from "@/lib/api/responses";
 import { computeContestRanking } from "@/lib/assignments/contest-scoring";
 import { getLeaderboardProblems } from "@/lib/assignments/leaderboard";
 import { sqlite } from "@/lib/db";
+import { consumeApiRateLimit } from "@/lib/security/api-rate-limit";
 import { logger } from "@/lib/logger";
 
 function sanitizeFilename(name: string): string {
@@ -47,6 +48,9 @@ export async function GET(
   try {
     const user = await getApiUser(request);
     if (!user) return unauthorized();
+
+    const rl = consumeApiRateLimit(request, "export");
+    if (rl) return rl;
 
     const { assignmentId } = await params;
 
