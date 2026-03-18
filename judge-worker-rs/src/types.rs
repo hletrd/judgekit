@@ -143,6 +143,15 @@ pub struct Submission {
     pub float_absolute_error: Option<f64>,
     #[serde(rename = "floatRelativeError")]
     pub float_relative_error: Option<f64>,
+    /// DB-configured Docker image override (takes precedence over static config)
+    #[serde(rename = "dockerImage")]
+    pub docker_image: Option<String>,
+    /// DB-configured compile command override (takes precedence over static config)
+    #[serde(rename = "compileCommand")]
+    pub compile_command: Option<Vec<String>>,
+    /// DB-configured run command override (takes precedence over static config)
+    #[serde(rename = "runCommand")]
+    pub run_command: Option<Vec<String>>,
 }
 
 fn default_comparison_mode() -> String {

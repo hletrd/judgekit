@@ -30,6 +30,17 @@ async fn execute_inner(client: &ApiClient, config: &Config, submission: Submissi
         }
     };
 
+    // Use DB-configured overrides when present, fall back to static config
+    let docker_image = submission.docker_image.as_deref().unwrap_or(lang_config.docker_image);
+    let compile_command: Option<Vec<&str>> = match &submission.compile_command {
+        Some(cmd) if !cmd.is_empty() => Some(cmd.iter().map(|s| s.as_str()).collect()),
+        _ => lang_config.compile_command.map(|c| c.to_vec()),
+    };
+    let run_command: Vec<&str> = match &submission.run_command {
+        Some(cmd) if !cmd.is_empty() => cmd.iter().map(|s| s.as_str()).collect(),
+        _ => lang_config.run_command.to_vec(),
+    };
+
     // Report "judging" status; log errors but continue
     if let Err(e) = client
         .report_status(&submission.id, &submission.claim_token, "judging")
@@ -99,14 +110,14 @@ async fn execute_inner(client: &ApiClient, config: &Config, submission: Submissi
     let mut compile_output = String::new();
 
     // Compile phase (if language requires compilation)
-    if let Some(compile_command) = lang_config.compile_command {
+    if let Some(compile_command) = compile_command {
         let clamped_time = submission.time_limit_ms.min(MAX_TIME_LIMIT_MS);
         let compile_timeout_ms = COMPILATION_TIMEOUT_MS.max(clamped_time.saturating_mul(5)).min(MAX_COMPILATION_TIMEOUT_MS);
         let compile_memory_mb =
             COMPILATION_MEMORY_LIMIT_MB.max(submission.memory_limit_mb.min(MAX_MEMORY_LIMIT_MB));
 
         let compile_opts = DockerRunOptions {
-            image: lang_config.docker_image.to_string(),
+            image: docker_image.to_string(),
             workspace_dir: workspace_dir_str.clone(),
             command: compile_command.iter().map(|s| s.to_string()).collect(),
             phase: Phase::Compile,
@@ -177,9 +188,9 @@ async fn execute_inner(client: &ApiClient, config: &Config, submission: Submissi
         let run_timeout_ms = MIN_TIMEOUT_MS.max(submission.time_limit_ms.min(MAX_TIME_LIMIT_MS));
 
         let run_opts = DockerRunOptions {
-            image: lang_config.docker_image.to_string(),
+            image: docker_image.to_string(),
             workspace_dir: workspace_dir_str.clone(),
-            command: lang_config.run_command.iter().map(|s| s.to_string()).collect(),
+            command: run_command.iter().map(|s| s.to_string()).collect(),
             phase: Phase::Run,
             input: Some(test_case.input.clone()),
             timeout_ms: run_timeout_ms,

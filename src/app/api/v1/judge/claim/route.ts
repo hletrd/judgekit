@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { apiSuccess, apiError } from "@/lib/api/responses";
 import { db, sqlite } from "@/lib/db";
-import { problems, testCases } from "@/lib/db/schema";
+import { problems, testCases, languageConfigs } from "@/lib/db/schema";
 import { eq, asc } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { z } from "zod";
@@ -134,6 +134,15 @@ export async function POST(request: NextRequest) {
       .where(eq(testCases.problemId, claimed.problemId))
       .orderBy(asc(testCases.sortOrder));
 
+    const langConfig = await db.query.languageConfigs.findFirst({
+      where: eq(languageConfigs.language, claimed.language),
+      columns: {
+        dockerImage: true,
+        compileCommand: true,
+        runCommand: true,
+      },
+    });
+
     return apiSuccess({
       ...claimed,
       timeLimitMs: problem.timeLimitMs,
@@ -142,6 +151,10 @@ export async function POST(request: NextRequest) {
       floatAbsoluteError: problem.floatAbsoluteError ?? null,
       floatRelativeError: problem.floatRelativeError ?? null,
       testCases: cases,
+      // Language config overrides from DB (used by worker when present)
+      dockerImage: langConfig?.dockerImage ?? null,
+      compileCommand: langConfig?.compileCommand?.split(" ") ?? null,
+      runCommand: langConfig?.runCommand?.split(" ") ?? null,
     });
   } catch (error) {
     logger.error({ err: error }, "POST /api/v1/judge/claim error");
