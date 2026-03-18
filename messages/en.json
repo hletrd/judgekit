@@ -1057,6 +1057,8 @@
     "noContests": "No contests available.",
     "enterContest": "Enter Contest",
     "createContest": "Create Contest",
+    "createContestDescription": "Select a group to create a contest in. Then add an assignment with exam mode enabled.",
+    "noGroupsForContest": "You don't have any groups. Create a group first.",
     "statusUpcoming": "Upcoming",
     "statusOpen": "Open",
     "statusInProgress": "In Progress",

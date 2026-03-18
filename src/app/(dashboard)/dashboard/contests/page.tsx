@@ -10,7 +10,7 @@ import { getContestsForUser, getContestStatus } from "@/lib/assignments/contests
 import type { ContestStatus } from "@/lib/assignments/contests";
 import { formatDateTimeInTimeZone, formatRelativeTimeFromNow } from "@/lib/datetime";
 import { getResolvedSystemTimeZone } from "@/lib/system-settings";
-import { Timer, Clock, Users, KeyRound } from "lucide-react";
+import { Timer, Clock, Users, KeyRound, Plus } from "lucide-react";
 
 type FilterValue = "all" | "upcoming" | "active" | "past";
 
@@ -118,12 +118,22 @@ export default async function ContestsPage({
             </Link>
           ))}
         </div>
-        <Link href="/dashboard/contests/join">
-          <Button variant="outline" size="sm" className="gap-1.5">
-            <KeyRound className="size-4" />
-            {t("joinWithCode")}
-          </Button>
-        </Link>
+        <div className="flex gap-2">
+          {role !== "student" && (
+            <Link href="/dashboard/contests/create">
+              <Button size="sm" className="gap-1.5">
+                <Plus className="size-4" />
+                {t("createContest")}
+              </Button>
+            </Link>
+          )}
+          <Link href="/dashboard/contests/join">
+            <Button variant="outline" size="sm" className="gap-1.5">
+              <KeyRound className="size-4" />
+              {t("joinWithCode")}
+            </Button>
+          </Link>
+        </div>
       </div>
 
       {filteredContests.length === 0 ? (
