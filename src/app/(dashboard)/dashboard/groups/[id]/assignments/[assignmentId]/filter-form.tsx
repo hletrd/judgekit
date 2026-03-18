@@ -37,6 +37,8 @@ export interface FilterFormProps {
   currentStudentQuery: string;
   statusLabels: Record<Exclude<StatusFilterValue, "all">, string>;
   labels: FilterFormLabels;
+  /** Override the reset link target. Defaults to the group assignment detail page. */
+  resetHref?: string;
 }
 
 export function FilterForm({
@@ -46,6 +48,7 @@ export function FilterForm({
   currentStudentQuery,
   statusLabels,
   labels,
+  resetHref,
 }: FilterFormProps) {
   return (
     <Card>
@@ -91,7 +94,7 @@ export function FilterForm({
 
           <div className="flex gap-2">
             <Button type="submit">{labels.applyFilter}</Button>
-            <Link href={`/dashboard/groups/${groupId}/assignments/${assignmentId}`}>
+            <Link href={resetHref ?? `/dashboard/groups/${groupId}/assignments/${assignmentId}`}>
               <Button type="button" variant="outline">
                 {labels.resetFilter}
               </Button>

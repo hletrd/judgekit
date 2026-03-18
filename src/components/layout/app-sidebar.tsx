@@ -17,7 +17,7 @@ import {
   SidebarFooter,
   SidebarHeader,
 } from "@/components/ui/sidebar";
-import { BookOpen, FileCode, Send, Users, User, LayoutDashboard, GraduationCap, Shield, LogOut, LogIn, History, FolderOpen, Blocks, Trophy, MessageCircle } from "lucide-react";
+import { BookOpen, FileCode, Send, Users, User, LayoutDashboard, GraduationCap, Shield, LogOut, LogIn, History, FolderOpen, Blocks, Trophy, MessageCircle, Timer } from "lucide-react";
 import type { UserRole } from "@/types";
 
 interface AppSidebarProps {
@@ -37,6 +37,7 @@ const navItems: Array<{ titleKey: string; href: string; icon: typeof LayoutDashb
   { titleKey: "submissions" as const, href: "/dashboard/submissions", icon: Send, roles: ["super_admin", "admin", "instructor", "student"] },
   { titleKey: "problemSets" as const, href: "/dashboard/problem-sets", icon: FolderOpen, roles: ["super_admin", "admin", "instructor"] },
   { titleKey: "groups" as const, href: "/dashboard/groups", icon: Users, roles: ["super_admin", "admin", "instructor", "student"] },
+  { titleKey: "contests" as const, href: "/dashboard/contests", icon: Timer, roles: ["super_admin", "admin", "instructor", "student"] },
   { titleKey: "rankings" as const, href: "/dashboard/rankings", icon: Trophy, roles: ["super_admin", "admin", "instructor", "student"] },
   { titleKey: "profile" as const, href: "/dashboard/profile", icon: User, roles: ["super_admin", "admin", "instructor", "student"] },
 ];

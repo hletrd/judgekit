@@ -48,6 +48,10 @@ export interface StatusBoardLabels {
   statsSubmitted: string;
   statsPerfect: string;
   pointsAbbreviation: string;
+  examSessionStatus?: string;
+  examSessionNotStarted?: string;
+  examSessionInProgress?: string;
+  examSessionCompleted?: string;
   overrideLabels?: ScoreOverrideLabels;
 }
 
@@ -62,6 +66,8 @@ export interface StatusBoardProps {
   groupId: string;
   assignmentId: string;
   canManageOverrides?: boolean;
+  examMode?: string;
+  examSessions?: Array<{ userId: string; startedAt: string; personalDeadline: string }>;
 }
 
 function formatBoardScore(score: number, locale: string) {
@@ -99,6 +105,8 @@ export function StatusBoard({
   groupId,
   assignmentId,
   canManageOverrides = false,
+  examMode,
+  examSessions,
 }: StatusBoardProps) {
   const scoreValues = filteredRows
     .map((row) => row.bestTotalScore)
@@ -149,6 +157,9 @@ export function StatusBoard({
                 <TableHead>{labels.attempts}</TableHead>
                 <TableHead>{labels.status}</TableHead>
                 <TableHead>{labels.lastSubmission}</TableHead>
+                {examMode === "windowed" && labels.examSessionStatus && (
+                  <TableHead>{labels.examSessionStatus}</TableHead>
+                )}
                 {problems.map((problem) => (
                   <TableHead key={problem.problemId}>
                     <div className="space-y-1">
@@ -221,6 +232,22 @@ export function StatusBoard({
                         <span className="text-muted-foreground">{labels.noSubmission}</span>
                       )}
                     </TableCell>
+                    {examMode === "windowed" && labels.examSessionStatus && (() => {
+                      const examSession = examSessions?.find(s => s.userId === row.userId);
+                      if (!examSession) {
+                        return <TableCell className="align-top text-muted-foreground">{labels.examSessionNotStarted}</TableCell>;
+                      }
+                      const now = Date.now();
+                      const deadline = new Date(examSession.personalDeadline).getTime();
+                      const isExpired = now > deadline;
+                      return (
+                        <TableCell className="align-top">
+                          <Badge variant={isExpired ? "outline" : "secondary"}>
+                            {isExpired ? labels.examSessionCompleted : labels.examSessionInProgress}
+                          </Badge>
+                        </TableCell>
+                      );
+                    })()}
                     {row.problems.map((problem) => (
                       <TableCell
                         key={problem.problemId}
@@ -291,7 +318,7 @@ export function StatusBoard({
               {filteredRows.length === 0 && (
                 <TableRow>
                   <TableCell
-                    colSpan={6 + problems.length}
+                    colSpan={6 + problems.length + (examMode === "windowed" ? 1 : 0)}
                     className="text-center text-muted-foreground"
                   >
                     {labels.noFilteredStudents}

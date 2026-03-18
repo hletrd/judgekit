@@ -18,6 +18,9 @@ import { assignments } from "@/lib/db/schema";
 import { getResolvedSystemTimeZone } from "@/lib/system-settings";
 import { notFound, redirect } from "next/navigation";
 import type { UserRole } from "@/types";
+import { getExamSession, getExamSessionsForAssignment } from "@/lib/assignments/exam-sessions";
+import { CountdownTimer } from "@/components/exam/countdown-timer";
+import { StartExamButton } from "@/components/exam/start-exam-button";
 import { AssignmentOverview } from "./assignment-overview";
 import { FilterForm } from "./filter-form";
 import { StatusBoard } from "./status-board";
@@ -152,10 +155,22 @@ export default async function GroupAssignmentDetailPage({
     titleColumn: tGroups("assignmentTable.title"),
     deadlineCountdown: tAssignment("deadlineCountdown"),
     lateDeadlineCountdown: tAssignment("lateDeadlineCountdown"),
+    examBadgeScheduled: tGroups("examBadgeScheduled"),
+    examBadgeWindowed: tGroups("examBadgeWindowed", { duration: assignment.examDurationMinutes ?? 0 }),
+    examDuration: tAssignment("examDuration"),
   };
 
   if (!canViewBoard) {
     const studentProblemStatuses = await getStudentProblemStatuses(assignmentId, session.user.id);
+
+    let examSession = null;
+    if (assignment.examMode === "windowed") {
+      examSession = await getExamSession(assignmentId, session.user.id);
+    }
+
+    const isExamExpired = assignment.examMode === "windowed" && examSession != null
+      && new Date(examSession.personalDeadline) < now;
+
     return (
       <div className="space-y-6">
         <Link
@@ -165,28 +180,64 @@ export default async function GroupAssignmentDetailPage({
           <ArrowLeft className="size-4" />
           {tCommon("back")}
         </Link>
-        <AssignmentOverview
-          assignment={assignment}
-          sortedProblems={sortedProblems}
-          totalPoints={totalPoints}
-          isUpcoming={isUpcoming}
-          isPast={isPast}
-          groupId={groupId}
-          locale={locale}
-          timeZone={timeZone}
-          labels={{
-            ...overviewLabels,
-            solved: tAssignment("solved"),
-            attempted: tAssignment("attempted"),
-            untried: tAssignment("untried"),
-          }}
-          problemStatuses={studentProblemStatuses}
-        />
+
+        {assignment.examMode === "scheduled" && assignment.deadline && (
+          <CountdownTimer deadline={new Date(assignment.deadline).getTime()} label={tGroups("examTimeRemaining")} />
+        )}
+
+        {assignment.examMode === "windowed" && !examSession && (
+          <div className="rounded-lg border p-6 text-center space-y-4">
+            <p className="text-muted-foreground">{tGroups("examNotStarted")}</p>
+            <StartExamButton
+              groupId={groupId}
+              assignmentId={assignmentId}
+              durationMinutes={assignment.examDurationMinutes ?? 0}
+            />
+          </div>
+        )}
+
+        {assignment.examMode === "windowed" && examSession && (
+          <CountdownTimer
+            deadline={new Date(examSession.personalDeadline).getTime()}
+            label={tGroups("examTimeRemaining")}
+          />
+        )}
+
+        {isExamExpired && (
+          <div className="rounded-lg border border-red-200 bg-red-50 p-6 text-center space-y-2 dark:border-red-900 dark:bg-red-950">
+            <p className="font-medium text-red-600 dark:text-red-400">{tGroups("examTimeExpired")}</p>
+          </div>
+        )}
+
+        {(assignment.examMode !== "windowed" || (examSession && !isExamExpired)) && (
+          <AssignmentOverview
+            assignment={assignment}
+            sortedProblems={sortedProblems}
+            totalPoints={totalPoints}
+            isUpcoming={isUpcoming}
+            isPast={isPast}
+            groupId={groupId}
+            locale={locale}
+            timeZone={timeZone}
+            labels={{
+              ...overviewLabels,
+              solved: tAssignment("solved"),
+              attempted: tAssignment("attempted"),
+              untried: tAssignment("untried"),
+            }}
+            problemStatuses={studentProblemStatuses}
+          />
+        )}
       </div>
     );
   }
 
-  const assignmentStatus = await getAssignmentStatusRows(assignmentId);
+  const [assignmentStatus, examSessionsForAssignment] = await Promise.all([
+    getAssignmentStatusRows(assignmentId),
+    assignment.examMode === "windowed"
+      ? getExamSessionsForAssignment(assignmentId)
+      : Promise.resolve([]),
+  ]);
 
   if (!assignmentStatus || assignmentStatus.assignment.groupId !== groupId) {
     notFound();
@@ -288,6 +339,12 @@ export default async function GroupAssignmentDetailPage({
           session.user.id,
           role
         )}
+        examMode={assignment.examMode ?? undefined}
+        examSessions={examSessionsForAssignment.map((s) => ({
+          userId: s.userId,
+          startedAt: s.startedAt.toISOString(),
+          personalDeadline: s.personalDeadline.toISOString(),
+        }))}
         labels={{
           boardTitle,
           student: tAssignment("student"),
@@ -306,6 +363,10 @@ export default async function GroupAssignmentDetailPage({
           statsSubmitted: tAssignment("statsSubmitted"),
           statsPerfect: tAssignment("statsPerfect"),
           pointsAbbreviation: tAssignment("pointsAbbreviation"),
+          examSessionStatus: tAssignment("examSessionStatus"),
+          examSessionNotStarted: tAssignment("examSessionNotStarted"),
+          examSessionInProgress: tAssignment("examSessionInProgress"),
+          examSessionCompleted: tAssignment("examSessionCompleted"),
           overrideLabels: {
             scoreOverride: tAssignment("scoreOverride"),
             overrideScore: tAssignment("overrideScore"),

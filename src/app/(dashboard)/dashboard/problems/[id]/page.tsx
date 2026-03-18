@@ -15,6 +15,7 @@ import {
 import { formatRelativeTimeFromNow } from "@/lib/datetime";
 import { ProblemDescription } from "@/components/problem-description";
 import { getTrustedLegacySeededDescription } from "@/lib/problems/legacy-seeded";
+import { CountdownTimer } from "@/components/exam/countdown-timer";
 import { ProblemSubmissionForm } from "./problem-submission-form";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -92,6 +93,8 @@ export default async function ProblemDetailPage({
         title: string;
         deadline: Date | null;
         lateDeadline: Date | null;
+        examMode: string;
+        personalDeadline: Date | null;
       }
     | null = null;
   let assignmentChoices: Array<{
@@ -115,8 +118,15 @@ export default async function ProblemDetailPage({
 
     const assignment = await db.query.assignments.findFirst({
       where: (assignments, { eq }) => eq(assignments.id, normalizedAssignmentId),
-      columns: { id: true, title: true, deadline: true, lateDeadline: true },
+      columns: { id: true, title: true, deadline: true, lateDeadline: true, examMode: true },
     });
+
+    let personalDeadline: Date | null = null;
+    if (assignment && assignment.examMode === "windowed") {
+      const { getExamSession } = await import("@/lib/assignments/exam-sessions");
+      const examSession = await getExamSession(normalizedAssignmentId, session.user.id);
+      personalDeadline = examSession?.personalDeadline ?? null;
+    }
 
     assignmentContext = assignment
       ? {
@@ -124,6 +134,8 @@ export default async function ProblemDetailPage({
           title: assignment.title,
           deadline: assignment.deadline ?? null,
           lateDeadline: assignment.lateDeadline ?? null,
+          examMode: assignment.examMode ?? "none",
+          personalDeadline,
         }
       : null;
   } else if (session.user.role === "student") {
@@ -194,6 +206,18 @@ export default async function ProblemDetailPage({
               <Badge variant="outline">
                 {t("assignmentLateDeadlineNotice")}: {formatRelativeTimeFromNow(assignmentContext.lateDeadline)}
               </Badge>
+            )}
+            {assignmentContext?.examMode === "windowed" && assignmentContext?.personalDeadline && (
+              <CountdownTimer
+                deadline={new Date(assignmentContext.personalDeadline).getTime()}
+                label={t("assignmentDeadlineNotice")}
+              />
+            )}
+            {assignmentContext?.examMode === "scheduled" && assignmentContext?.deadline && (
+              <CountdownTimer
+                deadline={new Date(assignmentContext.deadline).getTime()}
+                label={t("assignmentDeadlineNotice")}
+              />
             )}
           </div>
         </div>

@@ -43,6 +43,11 @@ export type AssignmentEditorValue = {
   latePenalty: number;
   hasSubmissions: boolean;
   problems: AssignmentProblemDraft[];
+  examMode?: "none" | "scheduled" | "windowed";
+  examDurationMinutes?: number | null;
+  scoringModel?: "ioi" | "icpc";
+  freezeLeaderboardAt?: number | null;
+  enableAntiCheat?: boolean;
 };
 
 type AssignmentFormDialogProps = {
@@ -105,6 +110,11 @@ export default function AssignmentFormDialog({
     formatDateTimeInput(initialAssignment?.lateDeadline ?? null)
   );
   const [latePenalty, setLatePenalty] = useState(initialAssignment?.latePenalty ?? 0);
+  const [examMode, setExamMode] = useState<"none" | "scheduled" | "windowed">(initialAssignment?.examMode ?? "none");
+  const [examDurationMinutes, setExamDurationMinutes] = useState<number | null>(initialAssignment?.examDurationMinutes ?? null);
+  const [scoringModel, setScoringModel] = useState<"ioi" | "icpc">(initialAssignment?.scoringModel ?? "ioi");
+  const [freezeLeaderboardAt, setFreezeLeaderboardAt] = useState(formatDateTimeInput(initialAssignment?.freezeLeaderboardAt ?? null));
+  const [enableAntiCheat, setEnableAntiCheat] = useState(initialAssignment?.enableAntiCheat ?? false);
   const [problemRows, setProblemRows] = useState<AssignmentProblemDraft[]>(
     initialAssignment?.problems.length
       ? initialAssignment.problems.map((p) => ({ ...p, _key: nanoid() }))
@@ -118,6 +128,11 @@ export default function AssignmentFormDialog({
     setDeadline(formatDateTimeInput(initialAssignment?.deadline ?? null));
     setLateDeadline(formatDateTimeInput(initialAssignment?.lateDeadline ?? null));
     setLatePenalty(initialAssignment?.latePenalty ?? 0);
+    setExamMode(initialAssignment?.examMode ?? "none");
+    setExamDurationMinutes(initialAssignment?.examDurationMinutes ?? null);
+    setScoringModel(initialAssignment?.scoringModel ?? "ioi");
+    setFreezeLeaderboardAt(formatDateTimeInput(initialAssignment?.freezeLeaderboardAt ?? null));
+    setEnableAntiCheat(initialAssignment?.enableAntiCheat ?? false);
     setProblemRows(
       initialAssignment?.problems.length
         ? initialAssignment.problems.map((p) => ({ ...p, _key: nanoid() }))
@@ -145,6 +160,11 @@ export default function AssignmentFormDialog({
       case "assignmentProblemsLocked":
       case "assignmentCreateFailed":
       case "assignmentUpdateFailed":
+      case "examDurationRequired":
+      case "examWindowRequired":
+      case "examScheduleRequired":
+      case "examModeChangeBlocked":
+      case "examTimingChangeBlocked":
         return t(error.message);
       default:
         return error.message || tCommon("error");
@@ -196,6 +216,11 @@ export default function AssignmentFormDialog({
             deadline: parseDateTimeInput(deadline),
             lateDeadline: parseDateTimeInput(lateDeadline),
             latePenalty,
+            examMode,
+            examDurationMinutes: examMode === "windowed" ? examDurationMinutes : null,
+            scoringModel: examMode !== "none" ? scoringModel : "ioi",
+            freezeLeaderboardAt: examMode !== "none" ? parseDateTimeInput(freezeLeaderboardAt) : null,
+            enableAntiCheat: examMode !== "none" ? enableAntiCheat : false,
             ...(areProblemsEditable
               ? { problems: problemRows.map(({ _key: _, ...rest }) => rest) }
               : {}),
@@ -277,7 +302,7 @@ export default function AssignmentFormDialog({
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor={`assignment-starts-at-${initialAssignment?.id ?? "new"}`}>
-                {t("assignmentStartsAtLabel")}
+                {examMode === "windowed" ? t("examWindowOpens") : t("assignmentStartsAtLabel")}
               </Label>
               <Input
                 id={`assignment-starts-at-${initialAssignment?.id ?? "new"}`}
@@ -289,7 +314,7 @@ export default function AssignmentFormDialog({
             </div>
             <div className="space-y-2">
               <Label htmlFor={`assignment-deadline-${initialAssignment?.id ?? "new"}`}>
-                {t("assignmentDeadlineLabel")}
+                {examMode === "windowed" ? t("examWindowCloses") : t("assignmentDeadlineLabel")}
               </Label>
               <Input
                 id={`assignment-deadline-${initialAssignment?.id ?? "new"}`}
@@ -299,33 +324,132 @@ export default function AssignmentFormDialog({
                 disabled={isLoading}
               />
             </div>
+            {examMode !== "windowed" && (
+              <div className="space-y-2">
+                <Label htmlFor={`assignment-late-deadline-${initialAssignment?.id ?? "new"}`}>
+                  {t("assignmentLateDeadlineLabel")}
+                </Label>
+                <Input
+                  id={`assignment-late-deadline-${initialAssignment?.id ?? "new"}`}
+                  type="datetime-local"
+                  value={lateDeadline}
+                  onChange={(event) => setLateDeadline(event.target.value)}
+                  disabled={isLoading}
+                />
+              </div>
+            )}
+            {examMode !== "windowed" && (
+              <div className="space-y-2">
+                <Label htmlFor={`assignment-late-penalty-${initialAssignment?.id ?? "new"}`}>
+                  {t("assignmentLatePenaltyLabel")}
+                </Label>
+                <Input
+                  id={`assignment-late-penalty-${initialAssignment?.id ?? "new"}`}
+                  type="number"
+                  min={0}
+                  max={100}
+                  step="0.1"
+                  value={latePenalty}
+                  onChange={(event) => setLatePenalty(Number(event.target.value))}
+                  disabled={isLoading}
+                />
+              </div>
+            )}
+          </div>
+
+          <div className="space-y-4 rounded-lg border p-4">
             <div className="space-y-2">
-              <Label htmlFor={`assignment-late-deadline-${initialAssignment?.id ?? "new"}`}>
-                {t("assignmentLateDeadlineLabel")}
-              </Label>
-              <Input
-                id={`assignment-late-deadline-${initialAssignment?.id ?? "new"}`}
-                type="datetime-local"
-                value={lateDeadline}
-                onChange={(event) => setLateDeadline(event.target.value)}
+              <Label>{t("examModeLabel")}</Label>
+              <Select
+                value={examMode}
+                onValueChange={(value) => {
+                  const mode = value as "none" | "scheduled" | "windowed";
+                  setExamMode(mode);
+                  if (mode === "windowed") {
+                    setLateDeadline("");
+                    setLatePenalty(0);
+                  }
+                  if (mode === "none") {
+                    setExamDurationMinutes(null);
+                  }
+                }}
                 disabled={isLoading}
-              />
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none" label={t("examModeNone")}>{t("examModeNone")}</SelectItem>
+                  <SelectItem value="scheduled" label={t("examModeScheduled")}>{t("examModeScheduled")}</SelectItem>
+                  <SelectItem value="windowed" label={t("examModeWindowed")}>{t("examModeWindowed")}</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-sm text-muted-foreground">
+                {t(`examModeDescription_${examMode}`)}
+              </p>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor={`assignment-late-penalty-${initialAssignment?.id ?? "new"}`}>
-                {t("assignmentLatePenaltyLabel")}
-              </Label>
-              <Input
-                id={`assignment-late-penalty-${initialAssignment?.id ?? "new"}`}
-                type="number"
-                min={0}
-                max={100}
-                step="0.1"
-                value={latePenalty}
-                onChange={(event) => setLatePenalty(Number(event.target.value))}
-                disabled={isLoading}
-              />
-            </div>
+
+            {examMode === "windowed" && (
+              <div className="space-y-2">
+                <Label>{t("examDurationLabel")}</Label>
+                <Input
+                  type="number"
+                  min={1}
+                  max={1440}
+                  value={examDurationMinutes ?? ""}
+                  onChange={(e) => setExamDurationMinutes(e.target.value ? Number(e.target.value) : null)}
+                  disabled={isLoading}
+                />
+                <p className="text-sm text-muted-foreground">{t("examDurationDescription")}</p>
+              </div>
+            )}
+
+            {examMode !== "none" && (
+              <>
+                <div className="space-y-2">
+                  <Label>{t("scoringModelLabel")}</Label>
+                  <Select
+                    value={scoringModel}
+                    onValueChange={(value) => setScoringModel(value as "ioi" | "icpc")}
+                    disabled={isLoading}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="ioi" label={t("scoringModelIoi")}>{t("scoringModelIoi")}</SelectItem>
+                      <SelectItem value="icpc" label={t("scoringModelIcpc")}>{t("scoringModelIcpc")}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-sm text-muted-foreground">
+                    {t(`scoringModelDescription_${scoringModel}`)}
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>{t("freezeLeaderboardLabel")}</Label>
+                  <Input
+                    type="datetime-local"
+                    value={freezeLeaderboardAt}
+                    onChange={(e) => setFreezeLeaderboardAt(e.target.value)}
+                    disabled={isLoading}
+                  />
+                  <p className="text-sm text-muted-foreground">{t("freezeLeaderboardDescription")}</p>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <input
+                    type="checkbox"
+                    id="enable-anti-cheat"
+                    checked={enableAntiCheat}
+                    onChange={(e) => setEnableAntiCheat(e.target.checked)}
+                    disabled={isLoading}
+                    className="size-4 rounded border-gray-300"
+                  />
+                  <Label htmlFor="enable-anti-cheat">{t("enableAntiCheatLabel")}</Label>
+                </div>
+              </>
+            )}
           </div>
 
           <div className="space-y-4 rounded-lg border p-4">

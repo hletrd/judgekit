@@ -39,6 +39,9 @@ export interface AssignmentOverviewLabels {
   solved?: string;
   attempted?: string;
   untried?: string;
+  examBadgeScheduled?: string;
+  examBadgeWindowed?: string;
+  examDuration?: string;
 }
 
 export interface AssignmentOverviewProps {
@@ -51,6 +54,8 @@ export interface AssignmentOverviewProps {
     lateDeadline: string | Date | null;
     latePenalty: number | null;
     group: { name: string } | null;
+    examMode?: string;
+    examDurationMinutes?: number | null;
   };
   sortedProblems: AssignmentProblemEntry[];
   totalPoints: number;
@@ -110,6 +115,14 @@ export function AssignmentOverview({
           <div className="flex flex-wrap items-center gap-2">
             <Badge variant="outline">{labels.assignments}</Badge>
             <Badge variant="secondary">{labels.problemCount}</Badge>
+            {assignment.examMode === "scheduled" && (
+              <Badge className="bg-blue-500 text-white">{labels.examBadgeScheduled}</Badge>
+            )}
+            {assignment.examMode === "windowed" && (
+              <Badge className="bg-purple-500 text-white">
+                {labels.examBadgeWindowed}
+              </Badge>
+            )}
           </div>
           <h2 className="text-3xl font-bold">{assignment.title}</h2>
           <p className="text-sm text-muted-foreground">
@@ -164,23 +177,33 @@ export function AssignmentOverview({
                 </div>
               )}
             </div>
-            <div className="space-y-1">
-              <dt className="text-sm font-medium">{labels.lateDeadline}</dt>
-              <dd className="text-sm text-muted-foreground">
-                {assignment.lateDeadline
-                  ? formatDateTimeInTimeZone(assignment.lateDeadline, locale, timeZone)
-                  : "-"}
-              </dd>
-              {assignment.lateDeadline && (
-                <div className="text-xs text-muted-foreground">
-                  {labels.lateDeadlineCountdown}: {formatRelativeTimeFromNow(assignment.lateDeadline, locale)}
-                </div>
-              )}
-            </div>
-            <div className="space-y-1">
-              <dt className="text-sm font-medium">{labels.latePenalty}</dt>
-              <dd className="text-sm text-muted-foreground">{assignment.latePenalty ?? 0}%</dd>
-            </div>
+            {assignment.examMode !== "windowed" && (
+              <div className="space-y-1">
+                <dt className="text-sm font-medium">{labels.lateDeadline}</dt>
+                <dd className="text-sm text-muted-foreground">
+                  {assignment.lateDeadline
+                    ? formatDateTimeInTimeZone(assignment.lateDeadline, locale, timeZone)
+                    : "-"}
+                </dd>
+                {assignment.lateDeadline && (
+                  <div className="text-xs text-muted-foreground">
+                    {labels.lateDeadlineCountdown}: {formatRelativeTimeFromNow(assignment.lateDeadline, locale)}
+                  </div>
+                )}
+              </div>
+            )}
+            {assignment.examMode !== "windowed" && (
+              <div className="space-y-1">
+                <dt className="text-sm font-medium">{labels.latePenalty}</dt>
+                <dd className="text-sm text-muted-foreground">{assignment.latePenalty ?? 0}%</dd>
+              </div>
+            )}
+            {assignment.examMode === "windowed" && assignment.examDurationMinutes && (
+              <div className="space-y-1">
+                <dt className="text-sm font-medium">{labels.examDuration}</dt>
+                <dd className="text-sm text-muted-foreground">{assignment.examDurationMinutes} min</dd>
+              </div>
+            )}
           </dl>
         </CardContent>
       </Card>
