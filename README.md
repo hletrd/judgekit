@@ -32,16 +32,25 @@
 
 ## Getting Started
 
+### Quickstart for Agents
+
+Paste the following prompt into [Claude Code](https://claude.com/claude-code), [Codex](https://openai.com/index/codex/), [OpenCode](https://opencode.ai/), [Gemini CLI](https://github.com/google-gemini/gemini-cli), or any AI coding agent:
+
 ```text
-# Paste into Claude Code, Codex, or any AI coding agent:
-Set up JudgeKit for local development.
-1. Run `bash scripts/setup.sh` (or `bash scripts/setup.sh --defaults` for non-interactive)
-2. Run `npm run dev` to start on http://localhost:3000
-3. Log in with admin / admin123
+Clone and set up JudgeKit (online judge platform) for local development.
+
+1. git clone https://github.com/hletrd/JudgeKit.git && cd JudgeKit
+2. Run `bash scripts/setup.sh` (or `bash scripts/setup.sh --defaults` for non-interactive)
+3. Run `npm run dev` to start on http://localhost:3000
+4. Log in with admin / admin123
+
+Do NOT build Docker judge images — they are only needed for submission judging, not for running the web app.
 ```
 
+### Manual setup
+
 <details>
-<summary><b>Manual setup</b></summary>
+<summary>Step-by-step instructions</summary>
 
 ```bash
 npm install
