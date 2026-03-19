@@ -14,7 +14,7 @@
 
 <p align="center">
   A secure code evaluation platform for programming assignments.<br/>
-  Automated judging with Docker-sandboxed execution for many languages including C, C++, Java, Kotlin, Python, Rust, Go, Swift, and esoteric languages like Befunge and 아희.
+  Automated judging with Docker-sandboxed execution for 55 language variants including C, C++, Java, Kotlin, Python, Rust, Go, Swift, and esoteric languages like Befunge, Aheui, Hyeong, and Whitespace.
 </p>
 
 <p align="center">
@@ -35,11 +35,12 @@
 - **Problem management** — Sanitized descriptions, configurable time/memory limits, public/private/hidden visibility, and test-case editing before submissions exist
 - **Admin login history** — Credential login outcomes with safe filtering and pagination for admin-only review
 - **Secure code execution** — Docker containers with no network, seccomp profiles, memory/CPU limits, and non-root users
-- **Multi-language support** — C (C89/C99/C17/C23, GCC & Clang), C++ (C++20/C++23, GCC & Clang), Java, Kotlin, Python, JavaScript, TypeScript, Rust, Go, Swift, C#, Ruby, Lua, Haskell, Dart, Zig, Nim, OCaml, Elixir, Julia, D, Racket, V, Fortran, Pascal, COBOL, Brainfuck, Scala, Erlang, Common Lisp, Bash, R, Perl, PHP, Ada, Clojure, Prolog, Tcl, AWK, Scheme, Groovy, Octave, Crystal, PowerShell, PostScript, plus esoteric languages Befunge-93, 아희 (Aheui), 혀엉 (Hyeong), and Whitespace, all with admin-customizable compile options
-- **Admin language management** — Per-language Docker image, compile command, and run command can be overridden from `/dashboard/admin/languages` without redeploying; changes take effect immediately for new submissions
-- **Docker image management** — `GET /api/v1/admin/docker/images` returns locally available Docker images on the judge host; used by the language admin UI to suggest image names
+- **55 language variants** — C (C89/C99/C17/C23, GCC & Clang), C++ (C++20/C++23, GCC & Clang), Java 25, Kotlin 2.3, Python 3.14, JavaScript (Node.js 24), TypeScript 5.9, Rust 1.94, Go 1.26, Swift 6.2, C# (Mono), Ruby, Lua, Haskell, Dart, Zig, Nim, OCaml, Elixir, Julia, D, Racket, V, Fortran, Pascal, COBOL, Brainfuck, Scala, Erlang, Common Lisp, Bash, R, Perl, PHP, Ada, Clojure, Prolog, Tcl, AWK, Scheme, Groovy, Octave, Crystal, PowerShell, PostScript, plus esoteric languages Befunge-93, Aheui, Hyeong, and Whitespace — all with admin-customizable compile options
+- **Admin language management** — Per-language Docker image, compile command, run command, and enabled/disabled toggle can be overridden from `/dashboard/admin/languages` without redeploying; changes take effect immediately for new submissions
+- **Docker image management** — `GET /api/v1/admin/docker/images` returns locally available Docker images on the judge host; used by the language admin UI to suggest and validate image names
+- **Contest system** — IOI (partial scoring) and ICPC (binary scoring) models, scheduled (fixed time) and windowed (per-participant duration) modes, real-time leaderboard with optional freeze period, anti-cheat event recording (tab switches, copy/paste, focus loss), code similarity detection, and per-participant audit timelines
 - **Student detail view** — Admins and instructors can drill into per-student submission breakdowns for any assignment at `/dashboard/contests/[assignmentId]/students/[userId]`
-- **Submission workflow** — JSON submission flow, live status polling, per-test-case results, paginated submission history, draft recovery, and mixed legacy/hex submission ID support
+- **Submission workflow** — JSON submission flow, live status polling with tab-aware backoff, per-test-case results, paginated submission history, draft recovery, confirmation dialog, local file upload to editor, and mixed legacy/hex submission ID support
 
 ## Getting Started
 
@@ -186,11 +187,10 @@ npm run seed
 
 ### 1. Host prerequisites
 
-- Ubuntu host with Docker Engine, Node.js 24, npm, and systemd
-- Repo checked out at `/home/ubuntu/online-judge`
-- `key.pem` available locally for SSH access
-- Ports `80` and `443` terminated by nginx; app stays on port `3000`
-- `/judge-workspaces` directory on the host, mounted into both the app and worker containers for workspace sharing
+- Linux host (amd64 or arm64) with Docker Engine and nginx
+- SSH access from the deploying machine (password or key-based)
+- Ports `80`/`443` terminated by nginx; app container listens on port `3100` internally
+- `/judge-workspaces` directory on the host — mounted into the worker container for workspace sharing between the worker and sibling judge containers
 
 ### 2. Environment configuration
 
@@ -216,30 +216,15 @@ npm install
 npm run db:push
 npm run seed
 npm run languages:sync
-docker build -t judge-cpp -f docker/Dockerfile.judge-cpp .
-docker build -t judge-python -f docker/Dockerfile.judge-python .
-docker build -t judge-node -f docker/Dockerfile.judge-node .
-docker build -t judge-rust -f docker/Dockerfile.judge-rust .
-docker build -t judge-go -f docker/Dockerfile.judge-go .
-docker build -t judge-swift -f docker/Dockerfile.judge-swift .
-docker build -t judge-jvm -f docker/Dockerfile.judge-jvm .
-docker build -t judge-csharp -f docker/Dockerfile.judge-csharp .
-docker build -t judge-r -f docker/Dockerfile.judge-r .
-docker build -t judge-perl -f docker/Dockerfile.judge-perl .
-docker build -t judge-php -f docker/Dockerfile.judge-php .
-docker build -t judge-clang -f docker/Dockerfile.judge-clang .
-docker build -t judge-esoteric -f docker/Dockerfile.judge-esoteric .
-docker build -t judge-ada -f docker/Dockerfile.judge-ada .
-docker build -t judge-clojure -f docker/Dockerfile.judge-clojure .
-docker build -t judge-prolog -f docker/Dockerfile.judge-prolog .
-docker build -t judge-tcl -f docker/Dockerfile.judge-tcl .
-docker build -t judge-awk -f docker/Dockerfile.judge-awk .
-docker build -t judge-scheme -f docker/Dockerfile.judge-scheme .
-docker build -t judge-groovy -f docker/Dockerfile.judge-groovy .
-docker build -t judge-octave -f docker/Dockerfile.judge-octave .
-docker build -t judge-crystal -f docker/Dockerfile.judge-crystal .
-docker build -t judge-powershell -f docker/Dockerfile.judge-powershell .
-docker build -t judge-postscript -f docker/Dockerfile.judge-postscript .
+
+# Build all 44 judge language Docker images
+for img in cpp clang python node jvm rust go swift csharp r perl php ruby lua \
+  haskell dart zig nim ocaml elixir julia d racket v fortran pascal cobol \
+  brainfuck scala erlang commonlisp bash esoteric ada clojure prolog tcl awk \
+  scheme groovy octave crystal powershell postscript; do
+  docker build -t "judge-${img}" -f "docker/Dockerfile.judge-${img}" .
+done
+
 npm run build
 ```
 
@@ -297,7 +282,7 @@ sudo systemctl restart online-judge-worker-rs.service
 If you changed the judge Dockerfiles or compiler/runtime assumptions, run `npm run languages:sync`, rebuild the affected images, and then restart the worker. If you changed the Rust worker source, rebuild with `cd judge-worker-rs && cargo build --release` before restarting.
 If you changed versioned systemd unit files or drop-ins, run `sudo systemctl daemon-reload` before restarting services.
 
-**Using `deploy-docker.sh` (recommended):** The deploy script builds all Docker images directly on the remote server rather than locally, avoiding architecture mismatches. It auto-detects the target server's architecture (`amd64`/`arm64`) so no manual platform flag is required. Targets are `oj-internal.maum.ai` (test, amd64) and `oj.auraedu.me` (production, arm64).
+**Using `deploy-docker.sh` (recommended for Docker-based deployments):** The deploy script rsyncs source to the remote server and builds all Docker images there (never locally), avoiding architecture mismatches between dev machines and the target host. It auto-detects the target server's architecture (`amd64`/`arm64`) via `uname -m` and passes `--platform` to all `docker build` commands. The nginx config is written to a local temp file, transferred via `scp`, then installed with `sudo cp` (avoiding heredoc+tee issues over SSH). Supports both password-based (`SSH_PASSWORD`) and key-based (`SSH_KEY`) SSH authentication.
 
 ### 5a. Optional CI and backup tooling
 
@@ -337,7 +322,7 @@ journalctl -u online-judge-worker-rs.service -n 50 --no-pager
 | UI | Tailwind CSS v4, shadcn/ui |
 | Code Editor | CodeMirror 6 with CSP-nonce-aware syntax highlighting and theme-aware styling |
 | Judge Worker | Rust binary with zero-allocation output comparison |
-| Judge Runtimes | Dockerized toolchains for GCC, Clang, Python 3.14.3, Node.js 24.14.0 / TypeScript 5.9.3, Rust 1.94.0, Go 1.26.1, Swift 6.2.4, Mono 6.12, R 4.5, Perl 5.40, PHP 8.4, GNAT (Ada), Clojure 1.12, SWI-Prolog, Chicken Scheme, Groovy 4.0, GNU Octave, Crystal, PowerShell, Ghostscript, and esoteric interpreters (Befunge-93, Aheui, Hyeong, Whitespace) |
+| Judge Runtimes | 44 Dockerized toolchains covering 55 language variants: GCC, Clang, Java 25, Kotlin 2.3, Python 3.14, Node.js 24, TypeScript 5.9, Rust 1.94, Go 1.26, Swift 6.2, Mono 6.12, Ruby 3.4, Lua 5.4, Haskell (GHC 9.4), Dart 3.8, Zig 0.13, Nim 2.2, OCaml 4.14, Elixir 1.18, Julia 1.12, D (LDC), Racket 8.10, V 0.5, Fortran (GFortran 14), Pascal (FPC 3.2), COBOL (GnuCOBOL), Brainfuck, Scala 3.5, Erlang 27, SBCL, Bash, R 4.5, Perl 5.40, PHP 8.4, GNAT (Ada), Clojure 1.12, SWI-Prolog, Tcl 8.6, GAWK, Chicken Scheme, Groovy 4.0, GNU Octave, Crystal 1.14, PowerShell 7.5, Ghostscript, and esoteric interpreters (Befunge-93, Aheui, Hyeong, Whitespace) |
 | Validation | Zod |
 
 ## Project Structure

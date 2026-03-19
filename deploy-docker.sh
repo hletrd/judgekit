@@ -198,11 +198,9 @@ if [[ "$SKIP_BUILD" == false ]]; then
     success "Judge worker image built on remote"
 
     if [[ "$SKIP_LANGUAGES" == false ]]; then
-        info "Building judge language images on ${REMOTE_HOST} [${PLATFORM}]..."
-        remote "cd ${REMOTE_DIR} && (DOCKER_DEFAULT_PLATFORM=${PLATFORM} docker compose -f docker-compose.yml build \
-            judge-cpp judge-python judge-node judge-jvm judge-rust judge-go 2>/dev/null || \
-            DOCKER_DEFAULT_PLATFORM=${PLATFORM} docker-compose -f docker-compose.yml build \
-            judge-cpp judge-python judge-node judge-jvm judge-rust judge-go)"
+        info "Building all judge language images on ${REMOTE_HOST} [${PLATFORM}]..."
+        remote "cd ${REMOTE_DIR} && (DOCKER_DEFAULT_PLATFORM=${PLATFORM} docker compose -f docker-compose.yml build 2>/dev/null || \
+            DOCKER_DEFAULT_PLATFORM=${PLATFORM} docker-compose -f docker-compose.yml build)"
         success "Judge language images built on remote"
     fi
 else

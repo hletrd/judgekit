@@ -20,6 +20,12 @@ services:
       dockerfile: docker/Dockerfile.judge-cpp
     image: judge-cpp:${GIT_SHA:-latest}
 
+  judge-clang:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.judge-clang
+    image: judge-clang:${GIT_SHA:-latest}
+
   judge-python:
     build:
       context: .
@@ -80,14 +86,194 @@ services:
       dockerfile: docker/Dockerfile.judge-php
     image: judge-php:${GIT_SHA:-latest}
 
-  judge-clang:
+  judge-ruby:
     build:
       context: .
-      dockerfile: docker/Dockerfile.judge-clang
-    image: judge-clang:${GIT_SHA:-latest}
+      dockerfile: docker/Dockerfile.judge-ruby
+    image: judge-ruby:${GIT_SHA:-latest}
+
+  judge-lua:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.judge-lua
+    image: judge-lua:${GIT_SHA:-latest}
+
+  judge-haskell:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.judge-haskell
+    image: judge-haskell:${GIT_SHA:-latest}
+
+  judge-dart:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.judge-dart
+    image: judge-dart:${GIT_SHA:-latest}
+
+  judge-zig:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.judge-zig
+    image: judge-zig:${GIT_SHA:-latest}
+
+  judge-nim:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.judge-nim
+    image: judge-nim:${GIT_SHA:-latest}
+
+  judge-ocaml:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.judge-ocaml
+    image: judge-ocaml:${GIT_SHA:-latest}
+
+  judge-elixir:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.judge-elixir
+    image: judge-elixir:${GIT_SHA:-latest}
+
+  judge-julia:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.judge-julia
+    image: judge-julia:${GIT_SHA:-latest}
+
+  judge-d:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.judge-d
+    image: judge-d:${GIT_SHA:-latest}
+
+  judge-racket:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.judge-racket
+    image: judge-racket:${GIT_SHA:-latest}
+
+  judge-v:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.judge-v
+    image: judge-v:${GIT_SHA:-latest}
+
+  judge-fortran:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.judge-fortran
+    image: judge-fortran:${GIT_SHA:-latest}
+
+  judge-pascal:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.judge-pascal
+    image: judge-pascal:${GIT_SHA:-latest}
+
+  judge-cobol:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.judge-cobol
+    image: judge-cobol:${GIT_SHA:-latest}
+
+  judge-brainfuck:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.judge-brainfuck
+    image: judge-brainfuck:${GIT_SHA:-latest}
+
+  judge-scala:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.judge-scala
+    image: judge-scala:${GIT_SHA:-latest}
+
+  judge-erlang:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.judge-erlang
+    image: judge-erlang:${GIT_SHA:-latest}
+
+  judge-commonlisp:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.judge-commonlisp
+    image: judge-commonlisp:${GIT_SHA:-latest}
+
+  judge-bash:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.judge-bash
+    image: judge-bash:${GIT_SHA:-latest}
 
   judge-esoteric:
     build:
       context: .
       dockerfile: docker/Dockerfile.judge-esoteric
     image: judge-esoteric:${GIT_SHA:-latest}
+
+  judge-ada:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.judge-ada
+    image: judge-ada:${GIT_SHA:-latest}
+
+  judge-clojure:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.judge-clojure
+    image: judge-clojure:${GIT_SHA:-latest}
+
+  judge-prolog:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.judge-prolog
+    image: judge-prolog:${GIT_SHA:-latest}
+
+  judge-tcl:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.judge-tcl
+    image: judge-tcl:${GIT_SHA:-latest}
+
+  judge-awk:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.judge-awk
+    image: judge-awk:${GIT_SHA:-latest}
+
+  judge-scheme:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.judge-scheme
+    image: judge-scheme:${GIT_SHA:-latest}
+
+  judge-groovy:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.judge-groovy
+    image: judge-groovy:${GIT_SHA:-latest}
+
+  judge-octave:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.judge-octave
+    image: judge-octave:${GIT_SHA:-latest}
+
+  judge-crystal:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.judge-crystal
+    image: judge-crystal:${GIT_SHA:-latest}
+
+  judge-powershell:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.judge-powershell
+    image: judge-powershell:${GIT_SHA:-latest}
+
+  judge-postscript:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.judge-postscript
+    image: judge-postscript:${GIT_SHA:-latest}
