@@ -1,6 +1,6 @@
 # Current State
 
-Last updated: 2026-03-10
+Last updated: 2026-03-19
 
 ## Shipped and deployed
 
@@ -38,6 +38,15 @@ Last updated: 2026-03-10
 - Nginx config is written via `scp` + `sudo cp` (not heredoc tee, which fails silently with sudo password prompts).
 - The deploy script auto-detects server architecture (`uname -m` → `linux/amd64` or `linux/arm64`) and passes `--platform` to all Docker builds.
 - Do not assume the long-lived hosts still accept the seeded credentials unless freshly reset.
+
+## 2026-03-19 session changes
+
+- E2E all-languages test: KNOWN_FLAKY reduced from 18 to 4 languages (hyeong, brainfuck, vlang, whitespace). All other 51/55 variants pass the A+B judge test.
+- Cross-platform arm64/amd64 support verified end-to-end: `deploy-docker.sh` uses `uname -m` on the remote host to detect architecture, then passes `--platform linux/amd64` or `--platform linux/arm64` to all `docker build` invocations including app, judge worker, and all 44 language images.
+- Groovy judge image confirmed using Java 21 (Temurin 21 base) — required for Groovy 4.0 class file compatibility; Java 25 bytecode is incompatible.
+- Zig 0.13 compile command confirmed using `-femit-bin=` flag (not `-o`).
+- All compiled language outputs confirmed targeting `/workspace/solution` — `/tmp` is per-container ephemeral tmpfs and not shared between worker and sibling judge containers.
+- `AGENTS.md`, `README.md`, `.context/development/open-workstreams.md`, and this file updated to reflect the above.
 
 ## Documentation sync points
 

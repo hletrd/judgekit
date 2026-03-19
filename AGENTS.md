@@ -140,9 +140,25 @@ JudgeKit supports full contest management with two scoring models and two schedu
 
 ### Docker Deployment Architecture
 - **Server-side builds**: `deploy-docker.sh` rsyncs source to the remote server and builds Docker images there. No local image builds — avoids architecture mismatches between dev machines (e.g., arm64 Mac) and the target host (e.g., amd64 Linux).
-- **Architecture auto-detection**: The deploy script runs `uname -m` on the remote host and sets `--platform linux/amd64` or `--platform linux/arm64` accordingly. All `docker build` commands receive this flag.
+- **Architecture auto-detection**: The deploy script runs `uname -m` on the remote host and sets `--platform linux/amd64` or `--platform linux/arm64` accordingly. All `docker build` commands (app, judge worker, and all language images) receive this flag.
 - **`privileged: true`** on the judge-worker container — required for Docker-in-Docker execution (the worker spawns sibling containers to run student code).
 - **`/judge-workspaces` volume mount** — `/judge-workspaces:/judge-workspaces` is mounted on the worker container. The `TMPDIR=/judge-workspaces` env var ensures the worker writes temporary files to this shared volume. The host must have `/judge-workspaces` created before starting the stack.
+- **Compiled output path**: All compiled language Dockerfiles output binaries to `/workspace/solution` (not `/tmp/solution`). `/tmp` is an ephemeral per-container tmpfs; `/workspace` is the shared workspace bind-mounted between the worker and sibling judge containers.
+- **Groovy uses Java 21**: The `judge-groovy` image is based on `eclipse-temurin:21-jdk-jammy`. Groovy 4.0 requires Java 21 — Java 25 class file versions are incompatible with the Groovy bytecode verifier.
+- **Zig compile flag**: Zig 0.13 uses `-femit-bin=/workspace/solution` (not `-o`) to specify the output binary path. Example: `zig build-exe --cache-dir /tmp/zig-cache -femit-bin=/workspace/solution /workspace/solution.zig`.
+
+### Known Flaky Languages (E2E)
+
+The following 4 languages are in the `KNOWN_FLAKY` set in `tests/e2e/all-languages-judge.spec.ts` and do not fail the overall E2E suite:
+
+| Language | Reason |
+|----------|--------|
+| `hyeong` | Reads one integer per line, incompatible with space-separated test input |
+| `brainfuck` | Byte-level I/O, cannot handle multi-digit decimal numbers |
+| `vlang` | V Docker image fails to build from source reliably |
+| `whitespace` | Whitespace interpreter file encoding issues |
+
+All other 51 of 55 language variants pass the A+B E2E test.
 
 ## Deployment
 

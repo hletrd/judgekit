@@ -56,13 +56,22 @@ The `dashboard-rendering-audit-and-editor-upgrades` batch is now locally verifie
 - E2E test coverage: 55 languages, contest lifecycle (33/33), contest system (17/17)
 - i18n: admin.languages keys for both en/ko, Korean login button selector fix
 
+## Recently closed (2026-03-19 cross-platform session)
+
+- E2E language pass rate improved to 51/55: all languages now pass except the 4 in KNOWN_FLAKY (hyeong, brainfuck, vlang, whitespace)
+- KNOWN_FLAKY reduced from 18 languages to 4 — intermittent failures for java/typescript, prolog, and others are now resolved
+- Cross-platform arm64/amd64 support verified: deploy-docker.sh auto-detects remote architecture via `uname -m`, passes `--platform linux/amd64` or `--platform linux/arm64` to all docker build commands (app, judge worker, all 44 language images)
+- Confirmed Groovy uses Java 21 (Temurin 21 base image) — required for Groovy 4.0 bytecode compatibility; Java 25 class versions are incompatible
+- Confirmed Zig 0.13 compile command uses `-femit-bin=` flag (not `-o`) for output path
+- Confirmed compiled language outputs go to `/workspace/solution` (not `/tmp/solution`) — `/tmp` is per-container tmpfs; `/workspace` is the shared bind-mount
+
 ## Still open
 
-- 13 languages still failing in E2E (zig, nim, dart, lua, elixir, vlang, scala, erlang, csharp, clojure, groovy, powershell, brainfuck) — mostly Docker image or test solution issues
 - `P3.6` composite unique index on `problem_group_access` is still blocked pending explicit approval for the destructive `db:push` step
 - `P1.7` tutor/TA infrastructure remains open
 - `P2.4` remains open only for broader incremental adoption beyond the groups/problems/submissions slice
 - `dockerfile` column added to `language_configs` table manually (needs proper Drizzle migration)
+- vlang Docker image still fails to build from source reliably (tracked in KNOWN_FLAKY)
 
 ## Safety note
 
