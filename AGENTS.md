@@ -87,6 +87,8 @@ All deployment credentials, SSH access, target hosts, and runtime secrets are do
 
 ## Deployment
 
+**RULE: Always read `ENV.md` before any deployment, SSH, or E2E testing task.** Never guess credentials or host addresses — they are all documented in `ENV.md`. Failing to read it first leads to failed deploys and wasted time.
+
 The primary deploy script is `deploy-docker.sh`. Pass environment variables from `ENV.md`:
 - `SSH_PASSWORD` — for password-based SSH auth (Target 1)
 - `SSH_KEY` — for key-based SSH auth (Target 2)
