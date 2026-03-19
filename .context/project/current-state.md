@@ -29,10 +29,15 @@ Last updated: 2026-03-10
 
 ## Operational notes
 
-- The demo host runs from `/home/ubuntu/online-judge`.
-- The demo host must keep `JUDGE_POLL_URL=http://localhost:3000/api/v1/judge/poll`.
-- The demo host still requires `JUDGE_DISABLE_CUSTOM_SECCOMP=1` because the custom seccomp profile is rejected on its Docker/kernel combination; local main now only applies the custom seccomp profile during run-phase execution and refuses silent fallback when that profile is enabled but unavailable.
-- Do not assume the long-lived demo host still accepts the seeded `admin` / `admin123` credentials unless the instance was freshly reset and reseeded.
+- **Test host**: `oj-internal.maum.ai` (10.50.1.116, amd64), deployed via `deploy-docker.sh` with server-side Docker builds.
+- **Production host**: `oj.auraedu.me` (arm64 Ampere Altra), deployed via `deploy-docker.sh` with SSH key auth.
+- Both hosts run Docker Compose with `judgekit-app` and `judgekit-judge-worker` containers.
+- The judge worker runs with `privileged: true` and `/judge-workspaces:/judge-workspaces` volume mount (identity-mapped so sibling judge containers can access source files).
+- `TMPDIR=/judge-workspaces` is set on the worker so temp files land on the shared host path.
+- The seccomp profile uses a **deny-list** approach (default allow, block dangerous syscalls like mount/ptrace/bpf). The old allowlist approach was incompatible with newer runc/kernel versions.
+- Nginx config is written via `scp` + `sudo cp` (not heredoc tee, which fails silently with sudo password prompts).
+- The deploy script auto-detects server architecture (`uname -m` → `linux/amd64` or `linux/arm64`) and passes `--platform` to all Docker builds.
+- Do not assume the long-lived hosts still accept the seeded credentials unless freshly reset.
 
 ## Documentation sync points
 

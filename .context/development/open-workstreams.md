@@ -41,13 +41,31 @@ The `dashboard-rendering-audit-and-editor-upgrades` batch is now locally verifie
 - Server actions now perform shared origin validation before privileged mutations, closing the remaining CSRF gap outside the API-route surface
 - Bulk grading, feedback, and admin tool batch: submission comments/feedback, rejudge capability, bulk student enrollment, bulk user creation with CSV upload, grade override/manual scoring, problem search/filtering, markdown preview, admin users pagination/search/role-filter, student progress indicators, assignment scoreboard drill-down, student-oriented dashboard, shared request-context utility consolidation, user management core unification, and API route handler wrapper
 
+## Recently closed (2026-03-19 session)
+
+- Admin language management page (`/dashboard/admin/languages`): toggle languages on/off, edit compile/run commands, Docker image selection with datalist combobox, reset to defaults
+- Docker image management API (`GET/POST /api/v1/admin/docker/images`): list, pull, inspect, remove Docker images from admin
+- Judge worker DB-configured overrides: claim endpoint includes `dockerImage`, `compileCommand`, `runCommand` from `languageConfigs` table; Rust worker uses overrides when present, falls back to static config
+- Contest UI redesign: grid → list layout, export buttons moved to title area, filter button alignment fix, student detail log page (`/dashboard/contests/[assignmentId]/students/[userId]`)
+- ICPC scoring bug fix: `scoringModel` and `enableAntiCheat` were missing from assignment creation/update request parsing
+- Deploy script rewrite: server-side Docker builds (rsync source → build on server), architecture auto-detection, nginx config via scp, all 44 language images via `docker compose build`
+- Seccomp profile: switched from allowlist to deny-list (default allow, block dangerous syscalls) — fixes compatibility with newer runc/kernel
+- Judge workspace: `/judge-workspaces` identity-mapped volume for sibling container source file access
+- Proxmox VM 101 disk resize: 64GB → 128GB
+- 42 of 44 Docker judge images built on test server (judge-v and judge-scala still failing)
+- E2E test coverage: 55 languages, contest lifecycle (33/33), contest system (17/17)
+- i18n: admin.languages keys for both en/ko, Korean login button selector fix
+
 ## Still open
 
-- `P3.6` composite unique index on `problem_group_access` is still blocked pending explicit approval for the destructive `db:push` step that wants to remove the unrelated `problems.show_detailed_results` column
+- 13 languages still failing in E2E (zig, nim, dart, lua, elixir, vlang, scala, erlang, csharp, clojure, groovy, powershell, brainfuck) — mostly Docker image or test solution issues
+- `P3.6` composite unique index on `problem_group_access` is still blocked pending explicit approval for the destructive `db:push` step
 - `P1.7` tutor/TA infrastructure remains open
-- `P2.4` remains open only for broader incremental adoption beyond the groups/problems/submissions slice that is now locally complete
+- `P2.4` remains open only for broader incremental adoption beyond the groups/problems/submissions slice
+- `dockerfile` column added to `language_configs` table manually (needs proper Drizzle migration)
 
 ## Safety note
 
-- The demo host was reverified on 2026-03-08 after the classroom/audit rollout; future sessions should still verify the host again after any later deploy.
+- Test host (oj-internal.maum.ai) was reverified on 2026-03-19 after the full deployment.
+- Nginx config on test host gets overwritten during deploy — ensure `/tmp/judgekit-nginx.conf` backup exists or fix the deploy script's nginx step.
 - Future sessions should isolate the next coherent batch before updating deployment-facing docs again.
