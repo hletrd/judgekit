@@ -5,8 +5,16 @@ RUN apt-get update && apt-get install -y --no-install-recommends curl && \
     curl -fsSL "https://github.com/coursier/coursier/releases/latest/download/cs-${ARCH}-pc-linux.gz" | gzip -d > /usr/local/bin/cs && \
     chmod +x /usr/local/bin/cs && \
     HOME=/root cs install --install-dir /usr/local/bin scala:3.5.2 scalac:3.5.2 && \
-    rm -rf /var/lib/apt/lists/* && \
+    # Pre-cache scala compiler deps so scalac works offline (--network none)
+    mkdir -p /tmp/warmup && \
+    echo 'object Main { def main(args: Array[String]): Unit = println(42) }' > /tmp/warmup/Main.scala && \
+    HOME=/root scalac -d /tmp/warmup /tmp/warmup/Main.scala && \
+    java -cp /tmp/warmup Main && \
+    # Copy cached deps to a path accessible by judge user
+    cp -r /root/.cache /opt/scala-cache && chmod -R 755 /opt/scala-cache && \
+    rm -rf /tmp/warmup /var/lib/apt/lists/* && \
     useradd --create-home --shell /usr/sbin/nologin judge && \
     mkdir -p /workspace && chown judge:judge /workspace
+ENV COURSIER_CACHE=/opt/scala-cache/coursier
 WORKDIR /workspace
 USER judge
