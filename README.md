@@ -36,6 +36,9 @@
 - **Admin login history** — Credential login outcomes with safe filtering and pagination for admin-only review
 - **Secure code execution** — Docker containers with no network, seccomp profiles, memory/CPU limits, and non-root users
 - **Multi-language support** — C (C89/C99/C17/C23, GCC & Clang), C++ (C++20/C++23, GCC & Clang), Java, Kotlin, Python, JavaScript, TypeScript, Rust, Go, Swift, C#, Ruby, Lua, Haskell, Dart, Zig, Nim, OCaml, Elixir, Julia, D, Racket, V, Fortran, Pascal, COBOL, Brainfuck, Scala, Erlang, Common Lisp, Bash, R, Perl, PHP, Ada, Clojure, Prolog, Tcl, AWK, Scheme, Groovy, Octave, Crystal, PowerShell, PostScript, plus esoteric languages Befunge-93, 아희 (Aheui), 혀엉 (Hyeong), and Whitespace, all with admin-customizable compile options
+- **Admin language management** — Per-language Docker image, compile command, and run command can be overridden from `/dashboard/admin/languages` without redeploying; changes take effect immediately for new submissions
+- **Docker image management** — `GET /api/v1/admin/docker/images` returns locally available Docker images on the judge host; used by the language admin UI to suggest image names
+- **Student detail view** — Admins and instructors can drill into per-student submission breakdowns for any assignment at `/dashboard/contests/[assignmentId]/students/[userId]`
 - **Submission workflow** — JSON submission flow, live status polling, per-test-case results, paginated submission history, draft recovery, and mixed legacy/hex submission ID support
 
 ## Getting Started
@@ -187,6 +190,7 @@ npm run seed
 - Repo checked out at `/home/ubuntu/online-judge`
 - `key.pem` available locally for SSH access
 - Ports `80` and `443` terminated by nginx; app stays on port `3000`
+- `/judge-workspaces` directory on the host, mounted into both the app and worker containers for workspace sharing
 
 ### 2. Environment configuration
 
@@ -292,6 +296,8 @@ sudo systemctl restart online-judge-worker-rs.service
 
 If you changed the judge Dockerfiles or compiler/runtime assumptions, run `npm run languages:sync`, rebuild the affected images, and then restart the worker. If you changed the Rust worker source, rebuild with `cd judge-worker-rs && cargo build --release` before restarting.
 If you changed versioned systemd unit files or drop-ins, run `sudo systemctl daemon-reload` before restarting services.
+
+**Using `deploy-docker.sh` (recommended):** The deploy script builds all Docker images directly on the remote server rather than locally, avoiding architecture mismatches. It auto-detects the target server's architecture (`amd64`/`arm64`) so no manual platform flag is required. Targets are `oj-internal.maum.ai` (test, amd64) and `oj.auraedu.me` (production, arm64).
 
 ### 5a. Optional CI and backup tooling
 

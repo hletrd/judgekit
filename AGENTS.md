@@ -25,6 +25,25 @@ JudgeKit is a secure online judge platform for programming assignments. Next.js 
 6. Add A+B test solution in `tests/e2e/all-languages-judge.spec.ts`
 7. Run `npm run languages:sync` to sync to database
 
+After syncing, the judge worker reads `dockerImage`, `compileCommand`, and `runCommand` from the database at runtime — not from compiled-in defaults. Language settings can be overridden via the admin UI at `/dashboard/admin/languages` without redeploying the worker.
+
+## Admin Language Management
+
+`/dashboard/admin/languages` lets admins view and override per-language settings stored in the DB:
+- Docker image name (`dockerImage`)
+- Compile command (`compileCommand`)
+- Run command (`runCommand`)
+
+Changes take effect immediately for new submissions without restarting services.
+
+## Docker Image Management API
+
+`GET /api/v1/admin/docker/images` — returns the list of locally available Docker images on the judge host. Used by the language management UI to populate image name suggestions.
+
+## Student Detail Page
+
+`/dashboard/contests/[assignmentId]/students/[userId]` — accessible to admins and instructors. Shows a per-student submission breakdown for a specific assignment, with per-problem status and submission history drill-down.
+
 ## Build & Verify
 
 ```bash
@@ -95,7 +114,8 @@ PLAYWRIGHT_BASE_URL=http://oj-internal.maum.ai E2E_USERNAME=admin E2E_PASSWORD='
 - Contest modes: scheduled (start/end time) and windowed (fixed duration)
 - All supported judge languages (`tests/e2e/all-languages-judge.spec.ts`)
 - Participant audit: navigation, all sections render, back link
-- Admin console: roles, users, settings, audit logs, languages
+- Admin console: roles, users, settings, audit logs, languages (`/dashboard/admin/languages`)
+- Student detail: per-student submission breakdown per assignment (`/dashboard/contests/[assignmentId]/students/[userId]`)
 - Anti-cheat: event recording, filtering, similarity checks
 
 **After every deploy:** Run full E2E suite against the test server to verify the deployment is healthy.
@@ -126,7 +146,14 @@ The primary deploy script is `deploy-docker.sh`. Pass environment variables from
 - `SSH_PASSWORD` — for password-based SSH auth (Target 1)
 - `SSH_KEY` — for key-based SSH auth (Target 2)
 - `REMOTE_HOST`, `REMOTE_USER`, `DOMAIN` — target overrides
-- `PLATFORM` — `linux/amd64` (default, Target 1) or `linux/arm64` (Target 2)
+
+**Server-side builds:** `deploy-docker.sh` builds all Docker images directly on the remote server (not locally), avoiding architecture mismatches between dev machines and the target host. The script auto-detects the server's architecture (`amd64`/`arm64`) and sets the appropriate platform flag automatically.
+
+**Docker Compose configuration (production):**
+- The judge worker container runs with `privileged: true` to allow Docker-in-Docker execution
+- `/judge-workspaces:/judge-workspaces` volume is mounted on both the app and worker containers for workspace sharing between services
+
+**Seccomp profile:** Uses a deny-list approach — default action is `SCMP_ACT_ALLOW`, with specific dangerous syscalls explicitly blocked. This is more permissive during container init (avoids Docker 28+/modern-kernel init errors) while still restricting the attack surface during code execution.
 
 Always test against `oj-internal.maum.ai` (test), never against `oj.auraedu.me` (production).
 
