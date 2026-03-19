@@ -505,11 +505,6 @@ test("submit A+B in all supported languages and verify judging", async ({ browse
     "vlang",       // V Docker image fails to build from source reliably
     "whitespace",  // Whitespace interpreter file encoding issues
     "groovy",      // Groovy 4.0 incompatible with Java 25 (class version 69)
-    "scala",       // scalac needs network for deps, blocked by --network none
-    "prolog",      // intermittent under E2E load
-    "elixir",      // intermittent under E2E load
-    "powershell",  // intermittent under E2E load
-    "erlang",      // intermittent under E2E load
   ]);
 
   const unexpected = failed.filter((r) => !KNOWN_FLAKY.has(r.language));
