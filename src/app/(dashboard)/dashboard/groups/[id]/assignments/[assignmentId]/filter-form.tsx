@@ -92,7 +92,7 @@ export function FilterForm({
             </select>
           </div>
 
-          <div className="flex gap-2">
+          <div className="flex gap-2 md:pt-7">
             <Button type="submit">{labels.applyFilter}</Button>
             <Link href={resetHref ?? `/dashboard/groups/${groupId}/assignments/${assignmentId}`}>
               <Button type="button" variant="outline">
