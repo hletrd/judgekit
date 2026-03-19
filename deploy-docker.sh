@@ -275,7 +275,8 @@ if [[ -n "${SSH_PASSWORD:-}" ]]; then
     SUDO_CMD="echo '${SSH_PASSWORD}' | sudo -S"
 fi
 
-remote "bash -c '${SUDO_CMD} tee /etc/nginx/sites-available/judgekit > /dev/null'" <<NGINX_EOF
+# Write nginx config to /tmp first (avoids heredoc + sudo + tee issues)
+cat > /tmp/judgekit-nginx.conf <<NGINX_EOF
 server_tokens off;
 
 map \$http_upgrade \$connection_upgrade {
@@ -332,7 +333,11 @@ server {
 }
 NGINX_EOF
 
+# Transfer nginx config via scp, then sudo copy into place
+remote_copy /tmp/judgekit-nginx.conf "${REMOTE_USER}@${REMOTE_HOST}:${REMOTE_DIR}/nginx-judgekit.conf"
+remote "bash -c '${SUDO_CMD} cp ${REMOTE_DIR}/nginx-judgekit.conf /etc/nginx/sites-available/judgekit'"
 remote "bash -c '${SUDO_CMD} ln -sf /etc/nginx/sites-available/judgekit /etc/nginx/sites-enabled/judgekit'"
+rm -f /tmp/judgekit-nginx.conf
 
 # Test and reload nginx
 if remote "bash -c '${SUDO_CMD} nginx -t 2>&1'"; then
