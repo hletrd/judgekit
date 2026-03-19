@@ -79,12 +79,33 @@ For every feature, go through this checklist:
 - Test both success and error paths
 - Use `test.skip()` with clear reason for tests that depend on external state (e.g., "No contests available")
 
+### E2E Testing Rules (MANDATORY)
+
+**Target:** Always run E2E tests against `oj-internal.maum.ai` (test server). Never against production.
+
+```bash
+# Standard E2E run (read ENV.md for credentials)
+PLAYWRIGHT_BASE_URL=http://oj-internal.maum.ai E2E_USERNAME=admin E2E_PASSWORD='<from ENV.md>' \
+  npx playwright test tests/e2e/
+```
+
+**What to E2E test:**
+- All user-facing features (contest, assignments, submissions, admin pages)
+- All user roles (admin, instructor, student) with proper capabilities
+- Contest modes: scheduled (start/end time) and windowed (fixed duration)
+- All supported judge languages (`tests/e2e/all-languages-judge.spec.ts`)
+- Participant audit: navigation, all sections render, back link
+- Admin console: roles, users, settings, audit logs, languages
+- Anti-cheat: event recording, filtering, similarity checks
+
+**After every deploy:** Run full E2E suite against the test server to verify the deployment is healthy.
+
 ### Quality Gates (ALL must pass before deploy)
 
 - `npx tsc --noEmit` — zero type errors
 - `npx vitest run` — all unit tests pass
 - `cargo test` (in judge-worker-rs/) — all Rust tests pass
-- E2E tests pass against test server before deploy to production
+- E2E tests pass against test server after deploy
 
 ## Environment Variables (`ENV.md`)
 
