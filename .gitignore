@@ -47,8 +47,7 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# internal docs (deployment secrets, infra details)
-docs/
+# deployment secrets
 ENV.md
 
 # database
