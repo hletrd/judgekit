@@ -518,8 +518,81 @@ test.describe.serial("Contest Full Lifecycle", () => {
     expect(content).toMatch(/Anti-Cheat|부정행위|event|이벤트/i);
   });
 
+  // ─── Participant Audit Page ──────────────────────────────────────────
+  test("Step 33: Participant audit page renders all sections", async () => {
+    // Get the submitting user's ID from the leaderboard
+    const { body } = await apiGet(
+      adminRequest,
+      `/api/v1/contests/${ioiAssignmentId}/leaderboard`
+    );
+    const firstEntry = body.data?.entries?.[0];
+    if (!firstEntry) {
+      console.log("  No leaderboard entries — skipping participant audit test");
+      return;
+    }
+
+    const participantUserId = firstEntry.userId;
+    console.log(`  Testing participant audit for user: ${participantUserId}`);
+
+    await adminPage.goto(
+      `/dashboard/contests/${ioiAssignmentId}/participant/${participantUserId}`
+    );
+    await adminPage.waitForLoadState("networkidle");
+
+    // Verify URL
+    expect(adminPage.url()).toContain("/participant/");
+
+    // Verify header renders (student name)
+    const heading = adminPage.locator("h2");
+    await expect(heading).toBeVisible();
+
+    // Verify rank badge exists
+    const content = await adminPage.textContent("body");
+    expect(content).toMatch(/#\d/); // Rank #N
+
+    // Verify solving timeline section
+    expect(content).toMatch(/Solving Timeline|풀이 타임라인/);
+
+    // Verify submission history section
+    expect(content).toMatch(/Submission History|제출 내역/);
+
+    // Verify anti-cheat section (IOI contest has anti-cheat enabled)
+    expect(content).toMatch(/Anti-Cheat|부정행위/);
+
+    // Verify back link navigates to contest
+    const backLink = adminPage
+      .locator(`a[href*='/dashboard/contests/${ioiAssignmentId}']`)
+      .first();
+    await expect(backLink).toBeVisible();
+    await backLink.click();
+    await adminPage.waitForLoadState("networkidle");
+    expect(adminPage.url()).toContain(`/dashboard/contests/${ioiAssignmentId}`);
+  });
+
+  // ─── Admin Console: Roles page shows built-in roles ─────────────────
+  test("Step 34: Admin roles page shows built-in roles", async () => {
+    await adminPage.goto("/dashboard/admin/roles");
+    await adminPage.waitForLoadState("networkidle");
+
+    const content = await adminPage.textContent("body");
+    // Verify built-in roles exist
+    expect(content).toMatch(/student/i);
+    expect(content).toMatch(/instructor/i);
+    expect(content).toMatch(/admin/i);
+    expect(content).toMatch(/super_admin/i);
+  });
+
+  // ─── Admin Console: Users page ──────────────────────────────────────
+  test("Step 35: Admin users page shows test student", async () => {
+    await adminPage.goto("/dashboard/admin/users");
+    await adminPage.waitForLoadState("networkidle");
+
+    const content = await adminPage.textContent("body");
+    expect(content).toContain(studentUsername);
+  });
+
   // ─── Cleanup ───────────────────────────────────────────────────────────
-  test("Step 33: Cleanup - close pages", async () => {
+  test("Step 36: Cleanup - close pages", async () => {
     await adminPage?.close();
   });
 });
