@@ -17,6 +17,7 @@ import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { resolveCapabilities } from "@/lib/capabilities/cache";
 import { Lock } from "lucide-react";
+import { ensureBuiltinRoles } from "@/lib/capabilities/ensure-builtin-roles";
 import RoleEditorDialog from "./role-editor-dialog";
 import RoleDeleteDialog from "./role-delete-dialog";
 
@@ -33,6 +34,8 @@ export default async function RoleManagementPage() {
   if (!caps.has("users.manage_roles")) redirect("/dashboard");
 
   const t = await getTranslations("admin.roles");
+
+  await ensureBuiltinRoles();
 
   const allRoles = await db
     .select({
