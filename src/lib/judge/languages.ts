@@ -85,7 +85,7 @@ export const DOCKER_IMAGE_RUNTIME_INFO: Record<string, string> = {
   "judge-v:latest": `Alpine 3.21 / V ${JUDGE_TOOLCHAIN_VERSIONS.vlang}`,
   "judge-fortran:latest": `Debian Bookworm / GFortran ${JUDGE_TOOLCHAIN_VERSIONS.fortran}`,
   "judge-pascal:latest": `Debian Bookworm / FPC ${JUDGE_TOOLCHAIN_VERSIONS.fpc}`,
-  "judge-brainfuck:latest": "Alpine 3.21 / bf interpreter",
+  "judge-brainfuck:latest": "Debian Bookworm / beef interpreter",
   "judge-cobol:latest": `Debian Bookworm / GnuCOBOL ${JUDGE_TOOLCHAIN_VERSIONS.gnucobol}`,
   "judge-scala:latest": `Ubuntu Noble / Scala ${JUDGE_TOOLCHAIN_VERSIONS.scala}`,
   "judge-erlang:latest": `Debian Bookworm / OTP ${JUDGE_TOOLCHAIN_VERSIONS.erlang}`,
@@ -353,7 +353,7 @@ export const JUDGE_LANGUAGE_CONFIGS: Record<Language, JudgeLanguageDefinition> =
     extension: ".zig",
     dockerImage: "judge-zig:latest",
     compiler: `Zig ${JUDGE_TOOLCHAIN_VERSIONS.zig}`,
-    compileCommand: ["zig", "build-exe", "/workspace/solution.zig", "-O", "ReleaseSafe", "--name", "solution"],
+    compileCommand: ["zig", "build-exe", "--cache-dir", "/tmp/zig-cache", "--global-cache-dir", "/tmp/zig-global", "/workspace/solution.zig", "-O", "ReleaseSafe", "--name", "solution"],
     runCommand: ["/workspace/solution"],
   },
   nim: {
@@ -363,7 +363,7 @@ export const JUDGE_LANGUAGE_CONFIGS: Record<Language, JudgeLanguageDefinition> =
     extension: ".nim",
     dockerImage: "judge-nim:latest",
     compiler: `Nim ${JUDGE_TOOLCHAIN_VERSIONS.nim}`,
-    compileCommand: ["nim", "compile", "--opt:speed", "-d:release", "--out:/workspace/solution", "/workspace/solution.nim"],
+    compileCommand: ["nim", "compile", "--opt:speed", "-d:release", "--nimcache:/tmp/nimcache", "--out:/workspace/solution", "/workspace/solution.nim"],
     runCommand: ["/workspace/solution"],
   },
   ocaml: {
@@ -474,7 +474,7 @@ export const JUDGE_LANGUAGE_CONFIGS: Record<Language, JudgeLanguageDefinition> =
     dockerImage: "judge-brainfuck:latest",
     compiler: "bf interpreter",
     compileCommand: null,
-    runCommand: ["bf", "/workspace/solution.bf"],
+    runCommand: ["beef", "/workspace/solution.bf"],
   },
   cobol: {
     language: "cobol",

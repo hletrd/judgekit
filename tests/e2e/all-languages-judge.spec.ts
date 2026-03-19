@@ -268,7 +268,7 @@ end.`,
     val Array(a, b) = scala.io.StdIn.readLine().split(" ").map(_.toInt)
     println(a + b)
 }`,
-  erlang: `main(_) ->
+  erlang: `main() ->
     {ok, [A, B]} = io:fread("", "~d ~d"),
     io:format("~w~n", [A + B]).`,
   commonlisp: `(let ((a (read)) (b (read)))

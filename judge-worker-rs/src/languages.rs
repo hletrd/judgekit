@@ -105,11 +105,11 @@ static DART_COMPILE: &[&str] = &["dart", "compile", "exe", "/workspace/solution.
 static DART_RUN: &[&str] = &["/workspace/solution"];
 
 // Zig
-static ZIG_COMPILE: &[&str] = &["zig", "build-exe", "/workspace/solution.zig", "-O", "ReleaseSafe", "--name", "solution"];
+static ZIG_COMPILE: &[&str] = &["zig", "build-exe", "--cache-dir", "/tmp/zig-cache", "--global-cache-dir", "/tmp/zig-global", "/workspace/solution.zig", "-O", "ReleaseSafe", "--name", "solution"];
 static ZIG_RUN: &[&str] = &["/workspace/solution"];
 
 // Nim
-static NIM_COMPILE: &[&str] = &["nim", "compile", "--opt:speed", "-d:release", "--out:/workspace/solution", "/workspace/solution.nim"];
+static NIM_COMPILE: &[&str] = &["nim", "compile", "--opt:speed", "-d:release", "--nimcache:/tmp/nimcache", "--out:/workspace/solution", "/workspace/solution.nim"];
 static NIM_RUN: &[&str] = &["/workspace/solution"];
 
 // OCaml
@@ -150,7 +150,7 @@ static PASCAL_COMPILE: &[&str] = &["fpc", "-O2", "-o/workspace/solution", "/work
 static PASCAL_RUN: &[&str] = &["/workspace/solution"];
 
 // Brainfuck
-static BRAINFUCK_RUN: &[&str] = &["bf", "/workspace/solution.bf"];
+static BRAINFUCK_RUN: &[&str] = &["beef", "/workspace/solution.bf"];
 
 // COBOL
 static COBOL_COMPILE: &[&str] = &["cobc", "-x", "-O2", "-o", "/workspace/solution", "/workspace/solution.cob"];
