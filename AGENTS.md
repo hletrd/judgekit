@@ -99,6 +99,59 @@ After syncing, the judge worker reads `dockerImage`, `compileCommand`, and `runC
 
 Changes take effect immediately for new submissions without restarting services.
 
+## Docker Image Sizes (amd64, pre-Alpine migration)
+
+Current sizes on the test server before deploying lightened images:
+
+| Image | Size | Base |
+|-------|------|------|
+| `judge-swift` | 5.05 GB | Ubuntu Noble |
+| `judge-haskell` | 3.97 GB | Debian Bookworm |
+| `judge-julia` | 1.50 GB | Debian Bookworm |
+| `judge-r` | 1.27 GB | Debian Bookworm |
+| `judge-rust` | 1.21 GB | Debian Bookworm slim -> **Alpine** |
+| `judge-go` | 1.21 GB | Debian Bookworm -> **Alpine** |
+| `judge-dart` | 1.07 GB | Debian Bookworm |
+| `judge-csharp` | 1.07 GB | Mono 6.12 -> **Mono 6.12-slim** |
+| `judge-octave` | 924 MB | Debian Bookworm slim -> **Alpine** |
+| `judge-scala` | 891 MB | Ubuntu Jammy -> **Alpine** |
+| `judge-clang` | 879 MB | Alpine (no change) |
+| `judge-php` | 751 MB | Debian Bookworm -> **Alpine** |
+| `judge-groovy` | 730 MB | Ubuntu Jammy -> **Alpine** |
+| `judge-nim` | 727 MB | Alpine (no change) |
+| `judge-jvm` | 721 MB | Ubuntu Noble -> **Alpine** |
+| `judge-zig` | 598 MB | Alpine (no change) |
+| `judge-crystal` | 581 MB | Debian Bookworm (no change) |
+| `judge-d` | 563 MB | Ubuntu Noble (no change) |
+| `judge-ocaml` | 554 MB | Alpine (no change) |
+| `judge-ada` | 515 MB | Debian Bookworm slim -> **Alpine** |
+| `judge-v` | 492 MB | Debian Bookworm slim (no change) |
+| `judge-powershell` | 461 MB | Debian Bookworm (no change) |
+| `judge-cobol` | 443 MB | Debian Bookworm slim (no change) |
+| `judge-fortran` | 438 MB | Debian Bookworm slim -> **Alpine** |
+| `judge-clojure` | 435 MB | Ubuntu Noble -> **Alpine** |
+| `judge-scheme` | 404 MB | Debian Bookworm slim (no change) |
+| `judge-racket` | 359 MB | Debian Bookworm (no change) |
+| `judge-node` | 353 MB | Debian Bookworm slim -> **Alpine** |
+| `judge-cpp` | 340 MB | Alpine (no change) |
+| `judge-perl` | 262 MB | Debian Bookworm slim -> **Alpine** |
+| `judge-prolog` | 245 MB | Debian Bookworm slim (no change) |
+| `judge-postscript` | 222 MB | Debian Bookworm slim -> **Alpine** |
+| `judge-pascal` | 219 MB | Debian Bookworm slim (no change) |
+| `judge-esoteric` | 201 MB | Debian Bookworm (no change) |
+| `judge-python` | 180 MB | Debian Bookworm slim -> **Alpine** |
+| `judge-elixir` | 173 MB | Alpine (no change) |
+| `judge-erlang` | 147 MB | Alpine (no change) |
+| `judge-ruby` | 128 MB | Alpine (no change) |
+| `judge-brainfuck` | 119 MB | Debian Bookworm slim (no change) |
+| `judge-commonlisp` | 80 MB | Alpine (no change) |
+| `judge-tcl` | 20 MB | Alpine (no change) |
+| `judge-bash` | 15 MB | Alpine (no change) |
+| `judge-lua` | 14 MB | Alpine (no change) |
+| `judge-awk` | 13 MB | Alpine (no change) |
+
+**Bold** entries indicate images lightened in this migration. Total current: ~31 GB across 44 images.
+
 ## Docker Image Management API
 
 - `GET /api/v1/admin/docker/images` — returns the list of locally available Docker images on the judge host. Used by the language management UI to show image availability status.

@@ -1,10 +1,10 @@
-FROM golang:1.26.1-bookworm
+FROM golang:1.26.1-alpine
 
 ENV GOCACHE=/workspace/.go-build-cache \
     GOMODCACHE=/workspace/.go-mod-cache \
     HOME=/workspace
 
-RUN useradd --create-home --shell /usr/sbin/nologin judge && \
+RUN adduser -D -s /bin/false judge && \
     mkdir -p /workspace && \
     chown judge:judge /workspace
 
