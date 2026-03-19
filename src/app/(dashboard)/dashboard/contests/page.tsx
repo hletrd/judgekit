@@ -5,13 +5,12 @@ import { redirect } from "next/navigation";
 import { resolveCapabilities } from "@/lib/capabilities/cache";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { assertUserRole } from "@/lib/security/constants";
 import { getContestsForUser, getContestStatus } from "@/lib/assignments/contests";
 import type { ContestStatus } from "@/lib/assignments/contests";
 import { formatDateTimeInTimeZone, formatRelativeTimeFromNow } from "@/lib/datetime";
 import { getResolvedSystemTimeZone } from "@/lib/system-settings";
-import { Timer, Clock, Users, KeyRound, Plus } from "lucide-react";
+import { KeyRound, Plus } from "lucide-react";
 
 type FilterValue = "all" | "upcoming" | "active" | "past";
 
@@ -139,76 +138,61 @@ export default async function ContestsPage({
       </div>
 
       {filteredContests.length === 0 ? (
-        <Card>
-          <CardContent className="py-12 text-center text-muted-foreground">
-            {t("noContests")}
-          </CardContent>
-        </Card>
+        <div className="py-12 text-center text-muted-foreground">
+          {t("noContests")}
+        </div>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <div className="space-y-2">
           {filteredContests.map((contest) => {
             const status = statusMap.get(contest.id)!;
             return (
-              <Card key={contest.id} className={`flex flex-col ${getStatusBorderClass(status)}`}>
-                <CardHeader className="pb-3">
-                  <div className="flex flex-wrap items-center gap-2 mb-1">
-                    <Badge variant={getStatusBadgeVariant(status)}>
+              <Link key={contest.id} href={`/dashboard/contests/${contest.id}`} className="block">
+                <div className={`flex items-center gap-4 rounded-lg border p-4 transition-colors hover:bg-accent/50 ${getStatusBorderClass(status)}`}>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="font-medium truncate">{contest.title}</span>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-1.5 text-sm text-muted-foreground">
+                      <span>{contest.groupName}</span>
+                      <span>·</span>
+                      <span>{t("problems")}: {contest.problemCount}</span>
+                      {contest.examMode === "windowed" && contest.examDurationMinutes && (
+                        <>
+                          <span>·</span>
+                          <span>{contest.examDurationMinutes}min</span>
+                        </>
+                      )}
+                      {contest.startsAt && (
+                        <>
+                          <span>·</span>
+                          <span>
+                            {status === "upcoming"
+                              ? `${t("startsIn")}: ${formatRelativeTimeFromNow(contest.startsAt, locale)}`
+                              : formatDateTimeInTimeZone(contest.startsAt, locale, timeZone)}
+                          </span>
+                        </>
+                      )}
+                      {(status === "open" || status === "in_progress") && (contest.deadline ?? contest.personalDeadline) && (
+                        <>
+                          <span>·</span>
+                          <span>{t("endsIn")}: {formatRelativeTimeFromNow((contest.personalDeadline ?? contest.deadline)!, locale)}</span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Badge variant={getStatusBadgeVariant(status)} className="text-xs">
                       {statusLabelMap[status]}
                     </Badge>
-                    <Badge className={contest.examMode === "scheduled" ? "bg-blue-500 text-white" : "bg-purple-500 text-white"}>
+                    <Badge className={`text-xs ${contest.examMode === "scheduled" ? "bg-blue-500 text-white" : "bg-purple-500 text-white"}`}>
                       {contest.examMode === "scheduled" ? t("modeScheduled") : t("modeWindowed")}
                     </Badge>
-                    <Badge className={contest.scoringModel === "ioi" ? "bg-teal-500 text-white" : "bg-orange-500 text-white"}>
+                    <Badge className={`text-xs ${contest.scoringModel === "ioi" ? "bg-teal-500 text-white" : "bg-orange-500 text-white"}`}>
                       {contest.scoringModel === "ioi" ? t("scoringModelIoi") : t("scoringModelIcpc")}
                     </Badge>
                   </div>
-                  <CardTitle className="text-lg leading-tight">
-                    {contest.title}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="flex flex-1 flex-col justify-between gap-4">
-                  <div className="space-y-2 text-sm text-muted-foreground">
-                    <div className="flex items-center gap-2">
-                      <Users className="size-4 shrink-0" />
-                      <span>{t("group")}: {contest.groupName}</span>
-                    </div>
-                    {contest.startsAt && (
-                      <div className="flex items-center gap-2">
-                        <Clock className="size-4 shrink-0" />
-                        <span>
-                          {status === "upcoming"
-                            ? `${t("startsIn")}: ${formatRelativeTimeFromNow(contest.startsAt, locale)}`
-                            : formatDateTimeInTimeZone(contest.startsAt, locale, timeZone)}
-                        </span>
-                      </div>
-                    )}
-                    {(status === "open" || status === "in_progress") && (contest.deadline ?? contest.personalDeadline) && (
-                      <div className="flex items-center gap-2">
-                        <Clock className="size-4 shrink-0" />
-                        <span>
-                          {t("endsIn")}: {formatRelativeTimeFromNow((contest.personalDeadline ?? contest.deadline)!, locale)}
-                        </span>
-                      </div>
-                    )}
-                    {contest.examMode === "windowed" && contest.examDurationMinutes && (
-                      <div className="flex items-center gap-2">
-                        <Timer className="size-4 shrink-0" />
-                        <span>{t("duration")}: {contest.examDurationMinutes} min</span>
-                      </div>
-                    )}
-                    <div className="flex items-center gap-2">
-                      <Badge variant="secondary" className="text-xs">
-                        {t("problems")}: {contest.problemCount}
-                      </Badge>
-                    </div>
-                  </div>
-                  <Link href={`/dashboard/contests/${contest.id}`}>
-                    <Button variant="outline" className="w-full">
-                      {!caps.has("contests.create") ? t("enterContest") : t("manageContest")}
-                    </Button>
-                  </Link>
-                </CardContent>
-              </Card>
+                </div>
+              </Link>
             );
           })}
         </div>
