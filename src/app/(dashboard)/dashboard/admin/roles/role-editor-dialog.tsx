@@ -127,7 +127,7 @@ export default function RoleEditorDialog({ mode, role }: RoleEditorDialogProps) 
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto pr-6">
+      <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto overflow-x-hidden">
         <DialogHeader>
           <DialogTitle>{mode === "create" ? t("createRole") : t("editRole")}</DialogTitle>
           <DialogDescription>

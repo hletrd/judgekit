@@ -1338,48 +1338,68 @@
       "content": "Content"
     },
     "items": {
-      "users.view": "View users",
-      "users.create": "Create users",
-      "users.edit": "Edit users",
-      "users.delete": "Delete users",
-      "users.manage_roles": "Manage roles",
-      "problems.create": "Create problems",
-      "problems.edit": "Edit problems",
-      "problems.delete": "Delete problems",
-      "problems.view_all": "View all problems",
-      "problems.manage_visibility": "Manage problem visibility",
-      "groups.create": "Create groups",
-      "groups.edit": "Edit groups",
-      "groups.delete": "Delete groups",
-      "groups.view_all": "View all groups",
-      "groups.manage_members": "Manage group members",
-      "assignments.create": "Create assignments",
-      "assignments.edit": "Edit assignments",
-      "assignments.delete": "Delete assignments",
-      "assignments.view_status": "View assignment status",
-      "submissions.view_all": "View all submissions",
-      "submissions.view_source": "View submission source code",
-      "submissions.rejudge": "Rejudge submissions",
-      "submissions.comment": "Comment on submissions",
-      "problem_sets.create": "Create problem sets",
-      "problem_sets.edit": "Edit problem sets",
-      "problem_sets.delete": "Delete problem sets",
-      "problem_sets.assign_groups": "Assign problem sets to groups",
-      "contests.create": "Create contests",
-      "contests.manage_access_codes": "Manage contest access codes",
-      "contests.view_analytics": "View contest analytics",
-      "contests.view_leaderboard_full": "View full leaderboard",
-      "contests.export": "Export contest data",
-      "anti_cheat.view_events": "View anti-cheat events",
-      "anti_cheat.run_similarity": "Run code similarity checks",
-      "system.settings": "Manage system settings",
-      "system.backup": "Backup and restore database",
-      "system.audit_logs": "View audit logs",
-      "system.login_logs": "View login logs",
-      "system.plugins": "Manage plugins",
-      "system.chat_logs": "View chat logs",
-      "content.submit_solutions": "Submit solutions",
-      "content.view_own_submissions": "View own submissions"
+      "users": {
+        "view": "View users",
+        "create": "Create users",
+        "edit": "Edit users",
+        "delete": "Delete users",
+        "manage_roles": "Manage roles"
+      },
+      "problems": {
+        "create": "Create problems",
+        "edit": "Edit problems",
+        "delete": "Delete problems",
+        "view_all": "View all problems",
+        "manage_visibility": "Manage problem visibility"
+      },
+      "groups": {
+        "create": "Create groups",
+        "edit": "Edit groups",
+        "delete": "Delete groups",
+        "view_all": "View all groups",
+        "manage_members": "Manage group members"
+      },
+      "assignments": {
+        "create": "Create assignments",
+        "edit": "Edit assignments",
+        "delete": "Delete assignments",
+        "view_status": "View assignment status"
+      },
+      "submissions": {
+        "view_all": "View all submissions",
+        "view_source": "View submission source code",
+        "rejudge": "Rejudge submissions",
+        "comment": "Comment on submissions"
+      },
+      "problem_sets": {
+        "create": "Create problem sets",
+        "edit": "Edit problem sets",
+        "delete": "Delete problem sets",
+        "assign_groups": "Assign problem sets to groups"
+      },
+      "contests": {
+        "create": "Create contests",
+        "manage_access_codes": "Manage access codes",
+        "view_analytics": "View analytics",
+        "view_leaderboard_full": "View full leaderboard",
+        "export": "Export data"
+      },
+      "anti_cheat": {
+        "view_events": "View anti-cheat events",
+        "run_similarity": "Run similarity checks"
+      },
+      "system": {
+        "settings": "Manage settings",
+        "backup": "Backup & restore",
+        "audit_logs": "View audit logs",
+        "login_logs": "View login logs",
+        "plugins": "Manage plugins",
+        "chat_logs": "View chat logs"
+      },
+      "content": {
+        "submit_solutions": "Submit solutions",
+        "view_own_submissions": "View own submissions"
+      }
     },
     "languages": {
       "title": "Language Management",
