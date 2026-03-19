@@ -145,15 +145,9 @@ export default async function UserManagementPage({
         </div>
       </div>
       <Card>
-        <CardHeader>
-          <CardTitle>{t("filtersTitle")}</CardTitle>
-        </CardHeader>
         <CardContent>
           <form className="flex flex-col gap-4 md:flex-row md:items-end" method="get">
-            <div className="flex-1 space-y-3">
-              <label className="text-sm font-medium" htmlFor="users-search">
-                {t("filters.searchLabel")}
-              </label>
+            <div className="flex-1">
               <Input
                 id="users-search"
                 name="search"
