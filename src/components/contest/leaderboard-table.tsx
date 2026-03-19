@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { apiFetch } from "@/lib/api/client";
 import { Badge } from "@/components/ui/badge";
@@ -59,6 +60,7 @@ interface LeaderboardTableProps {
   assignmentId: string;
   refreshInterval?: number;
   currentUserId?: string;
+  canViewStudentDetails?: boolean;
 }
 
 function formatIcpcCell(result: LeaderboardProblemResult, contestStartMs: number): string {
@@ -202,6 +204,7 @@ export function LeaderboardTable({
   assignmentId,
   refreshInterval = 30_000,
   currentUserId,
+  canViewStudentDetails,
 }: LeaderboardTableProps) {
   const t = useTranslations("contests.leaderboard");
   const [data, setData] = useState<LeaderboardData | null>(null);
@@ -373,7 +376,13 @@ export function LeaderboardTable({
                   )}
                 >
                   <div>
-                    <span className="font-medium">{entry.name}</span>
+                    {canViewStudentDetails ? (
+                      <Link href={`/dashboard/contests/${assignmentId}/students/${entry.userId}`}>
+                        <span className="font-medium hover:underline cursor-pointer">{entry.name}</span>
+                      </Link>
+                    ) : (
+                      <span className="font-medium">{entry.name}</span>
+                    )}
                     {entry.className && (
                       <span className="ml-2 text-xs text-muted-foreground">
                         {entry.className}

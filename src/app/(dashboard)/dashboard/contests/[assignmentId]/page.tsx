@@ -384,15 +384,21 @@ export default async function ContestDetailPage({
           </Badge>
           <Badge variant="outline">{t("group")}: {assignment.group?.name}</Badge>
         </div>
-        <h2 className="text-3xl font-bold">{assignmentStatus.assignment.title}</h2>
-        <p className="text-sm text-muted-foreground">
-          {assignment.group?.name ?? tGroups("detail")} · {tAssignment("totalScore")}: {totalPoints}
-        </p>
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h2 className="text-3xl font-bold">{assignmentStatus.assignment.title}</h2>
+            <p className="text-sm text-muted-foreground">
+              {assignment.group?.name ?? tGroups("detail")} · {tAssignment("totalScore")}: {totalPoints}
+            </p>
+          </div>
+          <div className="shrink-0 pt-1">
+            <ExportButton assignmentId={assignmentId} />
+          </div>
+        </div>
       </div>
 
-      {/* Quick stats bar with export */}
-      <div className="flex items-center justify-between gap-4">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 flex-1">
+      {/* Quick stats bar */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <Card>
           <CardContent className="flex items-center gap-3 py-3 px-4">
             <Users className="size-5 text-muted-foreground shrink-0" />
@@ -429,10 +435,6 @@ export default async function ContestDetailPage({
             </div>
           </CardContent>
         </Card>
-        </div>
-        <div className="shrink-0">
-          <ExportButton assignmentId={assignmentId} />
-        </div>
       </div>
 
       {/* Tabbed interface */}
@@ -544,7 +546,7 @@ export default async function ContestDetailPage({
 
         {/* Leaderboard Tab */}
         <TabsContent value="leaderboard" className="mt-6">
-          <LeaderboardTable assignmentId={assignmentId} />
+          <LeaderboardTable assignmentId={assignmentId} canViewStudentDetails />
         </TabsContent>
 
         {/* Analytics Tab */}
