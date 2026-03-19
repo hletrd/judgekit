@@ -68,6 +68,7 @@ export interface StatusBoardProps {
   canManageOverrides?: boolean;
   examMode?: string;
   examSessions?: Array<{ userId: string; startedAt: string; personalDeadline: string }>;
+  isContestView?: boolean;
 }
 
 function formatBoardScore(score: number, locale: string) {
@@ -107,6 +108,7 @@ export function StatusBoard({
   canManageOverrides = false,
   examMode,
   examSessions,
+  isContestView = false,
 }: StatusBoardProps) {
   const scoreValues = filteredRows
     .map((row) => row.bestTotalScore)
@@ -178,7 +180,9 @@ export function StatusBoard({
                   <TableRow key={row.userId}>
                     <TableCell className="align-top whitespace-normal">
                       <Link
-                        href={`/dashboard/groups/${groupId}/assignments/${assignmentId}/student/${row.userId}`}
+                        href={isContestView
+                          ? `/dashboard/contests/${assignmentId}/participant/${row.userId}`
+                          : `/dashboard/groups/${groupId}/assignments/${assignmentId}/student/${row.userId}`}
                         className="font-medium text-primary hover:underline"
                       >
                         {row.name}

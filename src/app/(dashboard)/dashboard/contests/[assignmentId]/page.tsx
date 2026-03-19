@@ -494,6 +494,7 @@ export default async function ContestDetailPage({
             timeZone={timeZone}
             groupId={groupId}
             assignmentId={assignmentId}
+            isContestView
             canManageOverrides={canManageGroupResources(
               assignment.group?.instructorId ?? null,
               session.user.id,
