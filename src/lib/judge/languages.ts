@@ -574,7 +574,7 @@ export const JUDGE_LANGUAGE_CONFIGS: Record<Language, JudgeLanguageDefinition> =
     dockerImage: "judge-esoteric:latest",
     compiler: "Hyeong Interpreter",
     compileCommand: null,
-    runCommand: ["sh", "-c", "hyeong run --color never /workspace/solution.hyeong 2>&1 | grep -v ^==>"],
+    runCommand: ["sh", "-c", "hyeong run --color never /workspace/solution.hyeong 2>&1 | grep -v '^==>'"],
   },
   whitespace: {
     language: "whitespace",

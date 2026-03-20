@@ -523,8 +523,6 @@ test("submit A+B in all supported languages and verify judging", async ({ browse
   // - I/O models incompatible with the test's space-separated integer input
   // - Docker images that intermittently fail under E2E load
   const KNOWN_FLAKY = new Set([
-    "hyeong",      // Korean unicode source may get corrupted during E2E submission
-    "whitespace",  // whitespace chars may get trimmed during E2E submission pipeline
     "erlang",      // BEAM VM startup intermittent under E2E load
     "elixir",      // BEAM VM startup intermittent under E2E load
   ]);
