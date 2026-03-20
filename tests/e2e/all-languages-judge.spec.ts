@@ -525,9 +525,8 @@ test("submit A+B in all supported languages and verify judging", async ({ browse
   const KNOWN_FLAKY = new Set([
     "hyeong",      // Korean unicode source may get corrupted during E2E submission
     "whitespace",  // whitespace chars may get trimmed during E2E submission pipeline
-    "erlang",      // intermittent under E2E load (works directly)
-    "elixir",      // intermittent under E2E load (works directly)
-    "prolog",      // intermittent under E2E load (works directly)
+    "erlang",      // BEAM VM startup intermittent under E2E load
+    "elixir",      // BEAM VM startup intermittent under E2E load
   ]);
 
   const unexpected = failed.filter((r) => !KNOWN_FLAKY.has(r.language));

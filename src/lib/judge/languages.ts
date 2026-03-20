@@ -614,7 +614,7 @@ export const JUDGE_LANGUAGE_CONFIGS: Record<Language, JudgeLanguageDefinition> =
     dockerImage: "judge-prolog:latest",
     compiler: `SWI-Prolog ${JUDGE_TOOLCHAIN_VERSIONS.swiprolog}`,
     compileCommand: null,
-    runCommand: ["swipl", "-q", "-g", "main", "-t", "halt", "/workspace/solution.pro"],
+    runCommand: ["swipl", "-q", "-g", "main,halt(0)", "-t", "halt(0)", "/workspace/solution.pro"],
   },
   tcl: {
     language: "tcl",
