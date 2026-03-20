@@ -5,7 +5,7 @@ RUN apt-get update && \
     git clone --depth 1 https://github.com/Spydr06/BCause.git /tmp/bcause && \
     cd /tmp/bcause && make && \
     cp /tmp/bcause/bcause /usr/local/bin/bcause && \
-    cp /tmp/bcause/lib/libb.a /usr/local/lib/libb.a && \
+    cp /tmp/bcause/libb.a /usr/local/lib/libb.a && \
     rm -rf /tmp/bcause
 
 FROM debian:bookworm-slim
