@@ -827,9 +827,8 @@ test("submit A+B in all supported languages and verify judging", async ({ browse
     "icon",        // unicon not in Debian repos
     "simula",      // GNU Cim make fails
     "uiua",        // cargo install DNS fail
-    // Runtime/compile issues
-    "fsharp",      // .NET SDK HOME writable issue
-    "freebasic",   // SourceForge download broken in Dockerfile
+    "fsharp",      // .NET SDK HOME writable
+    "freebasic",   // SourceForge download broken
   ]);
 
   const unexpected = failed.filter((r) => !KNOWN_FLAKY.has(r.language));
