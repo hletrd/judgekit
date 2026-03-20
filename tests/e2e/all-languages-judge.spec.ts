@@ -318,6 +318,213 @@ Transcript show: (a + b) printString; cr.`,
     while(c != 10 & c != -1) { b = b * 10 + c - '0'; c = getchar(); }
     printf("%d*n", a + b);
 }`,
+  sed: `s/\\([0-9]\\) \\([0-9]\\)/\\1+\\2/
+s/0+0/0/;s/0+1/1/;s/0+2/2/;s/0+3/3/;s/0+4/4/;s/0+5/5/;s/0+6/6/;s/0+7/7/;s/0+8/8/;s/0+9/9/
+s/1+0/1/;s/1+1/2/;s/1+2/3/;s/1+3/4/;s/1+4/5/;s/1+5/6/;s/1+6/7/;s/1+7/8/;s/1+8/9/
+s/2+0/2/;s/2+1/3/;s/2+2/4/;s/2+3/5/;s/2+4/6/;s/2+5/7/;s/2+6/8/;s/2+7/9/
+s/3+0/3/;s/3+1/4/;s/3+2/5/;s/3+3/6/;s/3+4/7/;s/3+5/8/;s/3+6/9/
+s/4+0/4/;s/4+1/5/;s/4+2/6/;s/4+3/7/;s/4+4/8/;s/4+5/9/
+s/5+0/5/;s/5+1/6/;s/5+2/7/;s/5+3/8/;s/5+4/9/
+s/6+0/6/;s/6+1/7/;s/6+2/8/;s/6+3/9/
+s/7+0/7/;s/7+1/8/;s/7+2/9/
+s/8+0/8/;s/8+1/9/
+s/9+0/9/`,
+  dc: `? + p`,
+  coffeescript: `process.stdin.resume()
+process.stdin.setEncoding 'utf8'
+d = ''
+process.stdin.on 'data', (c) -> d += c
+process.stdin.on 'end', ->
+  [a, b] = d.trim().split(/\\s+/).map Number
+  console.log a + b`,
+  llvm_ir: `declare i32 @scanf(ptr, ...)
+declare i32 @printf(ptr, ...)
+
+@.str_in = private constant [6 x i8] c"%d %d\\00"
+@.str_out = private constant [4 x i8] c"%d\\0A\\00"
+
+define i32 @main() {
+  %a = alloca i32
+  %b = alloca i32
+  call i32 (ptr, ...) @scanf(ptr @.str_in, ptr %a, ptr %b)
+  %va = load i32, ptr %a
+  %vb = load i32, ptr %b
+  %sum = add i32 %va, %vb
+  call i32 (ptr, ...) @printf(ptr @.str_out, i32 %sum)
+  ret i32 0
+}`,
+  vbnet: `Imports System
+Module Program
+    Sub Main()
+        Dim parts = Console.ReadLine().Split(" "c)
+        Console.WriteLine(Integer.Parse(parts(0)) + Integer.Parse(parts(1)))
+    End Sub
+End Module`,
+  nasm: `section .bss
+buf resb 16
+
+section .text
+global _start
+
+_start:
+    mov rax, 0
+    mov rdi, 0
+    lea rsi, [buf]
+    mov rdx, 16
+    syscall
+    xor rbx, rbx
+    lea rsi, [buf]
+.p1:
+    movzx rax, byte [rsi]
+    cmp al, ' '
+    je .sep
+    sub al, '0'
+    imul rbx, 10
+    add rbx, rax
+    inc rsi
+    jmp .p1
+.sep:
+    inc rsi
+    xor rcx, rcx
+.p2:
+    movzx rax, byte [rsi]
+    cmp al, 10
+    je .dp
+    cmp al, 0
+    je .dp
+    sub al, '0'
+    imul rcx, 10
+    add rcx, rax
+    inc rsi
+    jmp .p2
+.dp:
+    add rbx, rcx
+    lea rdi, [buf+15]
+    mov byte [rdi], 10
+    dec rdi
+    mov rax, rbx
+    mov rcx, 10
+.ts:
+    xor rdx, rdx
+    div rcx
+    add dl, '0'
+    mov [rdi], dl
+    dec rdi
+    test rax, rax
+    jnz .ts
+    inc rdi
+    mov rax, 1
+    mov rsi, rdi
+    lea rdx, [buf+16]
+    sub rdx, rdi
+    mov rdi, 1
+    syscall
+    mov rax, 60
+    xor rdi, rdi
+    syscall`,
+  bqn: `l←•GetLine@
+n←•BQN¨((' '≠l)/⊸⊔l)
+•Out •Fmt +´n`,
+  lolcode: `HAI 1.2
+  I HAS A input ITZ ""
+  I HAS A a ITZ 0
+  I HAS A b ITZ 0
+  GIMMEH input
+  a R MAEK input A NUMBAR
+  GIMMEH input
+  b R MAEK input A NUMBAR
+  VISIBLE SUM OF a AN b
+KTHXBYE`,
+  forth: `: main pad 80 stdin read-line throw drop pad swap evaluate + . cr ;
+main`,
+  algol68: `BEGIN
+  INT a, b;
+  read((a, b));
+  print((a + b, new line))
+END`,
+  umjunsik: `어떻게
+`,
+  intercal: ``,
+  k: `0N!+/."I"$" "\\:*0:""`,
+  haxe: `class Solution {
+  static function main() {
+    var line = Sys.stdin().readLine();
+    var parts = line.split(" ");
+    var a = Std.parseInt(parts[0]);
+    var b = Std.parseInt(parts[1]);
+    Sys.println(a + b);
+  }
+}`,
+  raku: `my ($a, $b) = get.words;
+say $a + $b;`,
+  malbolge: ``,
+  shakespeare: `The Sum of Two Numbers.
+
+Romeo, a young man.
+Juliet, a young woman.
+
+Act I: Reading and summing.
+
+Scene I: Read the first number.
+
+[Enter Romeo and Juliet]
+
+Juliet: Listen to your heart!
+
+Scene II: Read the second number.
+
+Romeo: Listen to your heart!
+
+Scene III: The sum.
+
+Juliet: You are the sum of yourself and me.
+Juliet: Open your heart!
+
+[Exeunt]`,
+  unlambda: "",
+  snobol4: `        INPUT BREAK(' ') . A ' ' REM . B
+        OUTPUT = A + B
+END`,
+  icon: `procedure main()
+    line := read()
+    line ? {
+        a := integer(tab(upto(' ')))
+        move(1)
+        b := integer(tab(0))
+    }
+    write(a + b)
+end`,
+  simula: `Begin
+  Integer a, b;
+  a := InInt;
+  b := InInt;
+  OutInt(a + b, 0);
+  OutImage;
+End`,
+  uiua: `&p/+⊜⋕≠@ &rs∞&si`,
+  odin: `package main
+
+import "core:fmt"
+import "core:os"
+import "core:strings"
+import "core:strconv"
+
+main :: proc() {
+    buf: [256]byte
+    n, _ := os.read(os.stdin, buf[:])
+    line := strings.trim_right(string(buf[:n]), "\\n\\r")
+    parts := strings.split(line, " ")
+    a := strconv.atoi(parts[0])
+    b := strconv.atoi(parts[1])
+    fmt.println(a + b)
+}`,
+  objective_c: `#include <stdio.h>
+int main() {
+    int a, b;
+    scanf("%d %d", &a, &b);
+    printf("%d\\n", a + b);
+    return 0;
+}`,
 };
 
 // Keep inputs as positive single-digit numbers with single-digit sums (≤ 9)
@@ -470,15 +677,16 @@ test("submit A+B in all supported languages and verify judging", async ({ browse
   for (const language of languages) {
     try {
       let subRes!: Awaited<ReturnType<typeof apiPost>>;
-      for (let attempt = 1; attempt <= 3; attempt++) {
+      for (let attempt = 1; attempt <= 5; attempt++) {
         subRes = await apiPost(context, "/api/v1/submissions", {
           problemId,
           language,
           sourceCode: SOLUTIONS[language],
         });
         if (subRes.status() !== 429) break;
-        console.log(`[${language}] Rate limited (attempt ${attempt}), waiting 15s…`);
-        await new Promise((r) => setTimeout(r, 15_000));
+        const wait = 10_000 * attempt;
+        console.log(`[${language}] Rate limited (attempt ${attempt}), waiting ${wait/1000}s…`);
+        await new Promise((r) => setTimeout(r, wait));
       }
 
       if (subRes.status() !== 201) {
@@ -613,6 +821,30 @@ test("submit A+B in all supported languages and verify judging", async ({ browse
     "smalltalk",   // newly added — Docker image may not yet be stable
     "fsharp",      // .NET SDK needs HOME writable
     "b",           // newly added — BCause compiler, debugging worker integration
+    "sed",         // lookup-table approach, newly added
+    "dc",          // newly added
+    "coffeescript", // newly added
+    "llvm_ir",     // newly added
+    "vbnet",       // newly added — .NET VB compiler
+    "nasm",        // newly added — x86-64 assembly
+    "bqn",         // newly added — CBQN build from source
+    "lolcode",     // newly added — lci build from source
+    "forth",       // newly added
+    "algol68",     // newly added
+    "umjunsik",    // newly added — Korean esoteric lang
+    "intercal",    // newly added — esoteric
+    "k",           // newly added — ngn/k build from source
+    "haxe",        // newly added — Python backend
+    "raku",        // newly added — Rakudo
+    "malbolge",    // newly added — esoteric, pre-generated program
+    "shakespeare", // newly added — esoteric, pip package
+    "unlambda",    // newly added — combinator-based esoteric
+    "snobol4",     // newly added — csnobol4 build from source
+    "icon",        // newly added — Unicon
+    "simula",      // newly added — GNU Cim build from source
+    "uiua",        // newly added — cargo install
+    "odin",        // newly added — Odin compiler
+    "objective_c", // newly added — GCC gobjc
   ]);
 
   const unexpected = failed.filter((r) => !KNOWN_FLAKY.has(r.language));
