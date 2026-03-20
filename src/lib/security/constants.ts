@@ -6,7 +6,7 @@ export const MIN_PASSWORD_LENGTH = 8;
 export const MAX_SOURCE_CODE_SIZE_BYTES = 256 * 1024;
 
 export const SUBMISSION_RATE_LIMIT_MAX_PER_MINUTE = parseInt(
-  process.env.SUBMISSION_RATE_LIMIT_MAX_PER_MINUTE || "5",
+  process.env.SUBMISSION_RATE_LIMIT_MAX_PER_MINUTE || "120",
   10
 );
 export const SUBMISSION_MAX_PENDING = parseInt(

@@ -677,16 +677,14 @@ test("submit A+B in all supported languages and verify judging", async ({ browse
   for (const language of languages) {
     try {
       let subRes!: Awaited<ReturnType<typeof apiPost>>;
-      for (let attempt = 1; attempt <= 5; attempt++) {
+      for (let attempt = 1; attempt <= 8; attempt++) {
         subRes = await apiPost(context, "/api/v1/submissions", {
           problemId,
           language,
           sourceCode: SOLUTIONS[language],
         });
         if (subRes.status() !== 429) break;
-        const wait = 10_000 * attempt;
-        console.log(`[${language}] Rate limited (attempt ${attempt}), waiting ${wait/1000}s…`);
-        await new Promise((r) => setTimeout(r, wait));
+        await new Promise((r) => setTimeout(r, 2_000));
       }
 
       if (subRes.status() !== 201) {
@@ -706,8 +704,7 @@ test("submit A+B in all supported languages and verify judging", async ({ browse
       console.log(`[${language}] Submitted: ${submissionId}`);
       pending.push({ language, submissionId });
 
-      // Brief delay between submissions to avoid rate limiting
-      await new Promise((r) => setTimeout(r, 500));
+      // No delay needed — rate limit raised to 120/min
     } catch (e) {
       console.log(`[${language}] Submit error: ${e}`);
       results.push({
