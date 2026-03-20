@@ -165,7 +165,7 @@ async fn run_docker_once(
     let mem_limit = get_memory_limit_mb(options.memory_limit_mb);
     // VM-based languages (JVM, BEAM, .NET, pwsh) spawn many threads even at
     // runtime, so the run-phase limit must accommodate them.
-    let pids_limit = if options.phase == Phase::Compile { "128" } else { "64" };
+    let pids_limit = if options.phase == Phase::Compile { "128" } else { "128" };
 
     let workspace_volume = if options.read_only_workspace {
         format!("{}:/workspace:ro", options.workspace_dir)

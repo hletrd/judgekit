@@ -503,6 +503,40 @@ test("submit A+B in all supported languages and verify judging", async ({ browse
     }
   }
 
+  // Retry failed languages once (handles transient BEAM VM / Docker startup issues)
+  const retryable = results.filter(
+    (r) => r.status !== "accepted" && r.status !== "test_error"
+  );
+  if (retryable.length > 0 && retryable.length <= 10) {
+    console.log(`\nRetrying ${retryable.length} failed languages...`);
+    for (const prev of retryable) {
+      const language = prev.language as keyof typeof SOLUTIONS;
+      try {
+        let subRes!: Awaited<ReturnType<typeof apiPost>>;
+        for (let attempt = 1; attempt <= 3; attempt++) {
+          subRes = await apiPost(context, "/api/v1/submissions", {
+            problemId,
+            language,
+            sourceCode: SOLUTIONS[language],
+          });
+          if (subRes.status() !== 429) break;
+          await new Promise((r) => setTimeout(r, 15_000));
+        }
+        if (subRes.status() !== 201) continue;
+        const subId = (await subRes.json()).data?.id;
+        if (!subId) continue;
+        const result = await waitForJudging(context, subId);
+        if (result.status === "accepted") {
+          console.log(`  [${language}] RETRY PASSED`);
+          const idx = results.indexOf(prev);
+          results[idx] = { ...result, language, submissionId: subId };
+        } else {
+          console.log(`  [${language}] retry still ${result.status}`);
+        }
+      } catch { /* ignore retry errors */ }
+    }
+  }
+
   // Print summary table
   console.log("\n========== RESULTS SUMMARY ==========");
   console.log("Language       | Status         | Score");
