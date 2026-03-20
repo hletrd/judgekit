@@ -22,24 +22,28 @@ pub async fn execute(client: &ApiClient, config: &Config, submission: Submission
 }
 
 async fn execute_inner(client: &ApiClient, config: &Config, submission: Submission) {
-    let lang_config = match languages::get_config(&submission.language) {
-        Some(lc) => lc,
-        None => {
-            report_error(client, config, &submission, Verdict::CompileError.as_str(), "Unsupported language").await;
-            return;
-        }
-    };
+    let lang_config = languages::get_config(&submission.language);
 
-    // Use DB-configured overrides when present, fall back to static config
-    let docker_image = submission.docker_image.as_deref().unwrap_or(lang_config.docker_image);
+    // If no static config exists and no DB overrides are provided, reject
+    if lang_config.is_none() && submission.docker_image.is_none() {
+        report_error(client, config, &submission, Verdict::CompileError.as_str(), "Unsupported language").await;
+        return;
+    }
+
+    // Use DB overrides or fall back to static config
+    let default_ext = ".txt";
+    let docker_image = submission.docker_image.as_deref()
+        .or(lang_config.map(|c| c.docker_image))
+        .unwrap_or("alpine:latest");
     let compile_command: Option<Vec<&str>> = match &submission.compile_command {
         Some(cmd) if !cmd.is_empty() => Some(cmd.iter().map(|s| s.as_str()).collect()),
-        _ => lang_config.compile_command.map(|c| c.to_vec()),
+        _ => lang_config.and_then(|c| c.compile_command.map(|c| c.to_vec())),
     };
     let run_command: Vec<&str> = match &submission.run_command {
         Some(cmd) if !cmd.is_empty() => cmd.iter().map(|s| s.as_str()).collect(),
-        _ => lang_config.run_command.to_vec(),
+        _ => lang_config.map(|c| c.run_command.to_vec()).unwrap_or_default(),
     };
+    let extension = lang_config.map(|c| c.extension).unwrap_or(default_ext);
 
     // Report "judging" status; log errors but continue
     if let Err(e) = client
@@ -80,7 +84,7 @@ async fn execute_inner(client: &ApiClient, config: &Config, submission: Submissi
     }
 
     // Write source code
-    let source_path = workspace_dir.join(format!("solution{}", lang_config.extension));
+    let source_path = workspace_dir.join(format!("solution{}", extension));
     if let Err(e) = fs::write(&source_path, &submission.source_code).await {
         tracing::error!(error = %e, "Failed to write source code");
         report_error(client, config, &submission, "runtime_error", &e.to_string()).await;
