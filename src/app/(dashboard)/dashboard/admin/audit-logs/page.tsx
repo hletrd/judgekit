@@ -3,6 +3,7 @@ import { and, desc, eq, inArray, or, sql, type SQL } from "drizzle-orm";
 import { getLocale, getTranslations } from "next-intl/server";
 import { redirect } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { PaginationControls } from "@/components/pagination-controls";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -442,32 +443,11 @@ export default async function AdminAuditLogsPage({
         </CardContent>
       </Card>
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-sm text-muted-foreground">
-          {t("pagination.page", { current: currentPage, total: totalPages })}
-        </p>
-        <div className="flex items-center gap-2">
-          {currentPage > 1 ? (
-            <Link href={buildPageHref(currentPage - 1, resourceTypeFilter, searchQuery)}>
-              <Button variant="outline">{tCommon("previous")}</Button>
-            </Link>
-          ) : (
-            <Button variant="outline" disabled>
-              {tCommon("previous")}
-            </Button>
-          )}
-
-          {currentPage < totalPages ? (
-            <Link href={buildPageHref(currentPage + 1, resourceTypeFilter, searchQuery)}>
-              <Button variant="outline">{tCommon("next")}</Button>
-            </Link>
-          ) : (
-            <Button variant="outline" disabled>
-              {tCommon("next")}
-            </Button>
-          )}
-        </div>
-      </div>
+      <PaginationControls
+        currentPage={currentPage}
+        totalPages={totalPages}
+        buildHref={(page) => buildPageHref(page, resourceTypeFilter, searchQuery)}
+      />
     </div>
   );
 }

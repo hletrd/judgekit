@@ -13,12 +13,13 @@ import { SubmissionStatusBadge } from "@/components/submission-status-badge";
 import { db } from "@/lib/db";
 import { problems, submissions, users } from "@/lib/db/schema";
 import { isInstructor } from "@/lib/api/auth";
-import { and, desc, eq, like, or } from "drizzle-orm";
+import { and, count, desc, eq, like, or } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PaginationControls } from "@/components/pagination-controls";
 import { formatDateTimeInTimeZone } from "@/lib/datetime";
 import { getResolvedSystemTimeZone } from "@/lib/system-settings";
 import { formatSubmissionIdPrefix } from "@/lib/submissions/id";
@@ -88,7 +89,18 @@ export default async function SubmissionsPage({
     ? and(userFilter, searchFilter)
     : userFilter ?? searchFilter ?? undefined;
 
-  const allSubmissions: SubmissionRow[] = await db
+  const [countRow] = await db
+    .select({ count: count() })
+    .from(submissions)
+    .leftJoin(problems, eq(submissions.problemId, problems.id))
+    .leftJoin(users, eq(submissions.userId, users.id))
+    .where(whereClause);
+  const totalCount = Number(countRow?.count ?? 0);
+  const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
+  const clampedPage = Math.min(currentPage, totalPages);
+  const clampedOffset = (clampedPage - 1) * PAGE_SIZE;
+
+  const visibleSubmissions: SubmissionRow[] = await db
     .select({
       id: submissions.id,
       language: submissions.language,
@@ -112,13 +124,10 @@ export default async function SubmissionsPage({
     .leftJoin(users, eq(submissions.userId, users.id))
     .where(whereClause)
     .orderBy(desc(submissions.submittedAt))
-    .limit(PAGE_SIZE + 1)
-    .offset(offset);
-
-  const hasNextPage = allSubmissions.length > PAGE_SIZE;
-  const visibleSubmissions = hasNextPage ? allSubmissions.slice(0, PAGE_SIZE) : allSubmissions;
-  const rangeStart = visibleSubmissions.length === 0 ? 0 : offset + 1;
-  const rangeEnd = offset + visibleSubmissions.length;
+    .limit(PAGE_SIZE)
+    .offset(clampedOffset);
+  const rangeStart = visibleSubmissions.length === 0 ? 0 : clampedOffset + 1;
+  const rangeEnd = clampedOffset + visibleSubmissions.length;
   const hasActiveSubmissions = visibleSubmissions.some(
     (sub) => sub.status === "pending" || sub.status === "queued" || sub.status === "judging"
   );
@@ -242,27 +251,11 @@ export default async function SubmissionsPage({
         </CardContent>
       </Card>
 
-      <div className="flex items-center justify-center gap-2">
-        {currentPage > 1 ? (
-          <Link href={buildPageHref(currentPage - 1)}>
-            <Button variant="outline">{tCommon("previous")}</Button>
-          </Link>
-        ) : (
-          <Button variant="outline" disabled>
-            {tCommon("previous")}
-          </Button>
-        )}
-
-        {hasNextPage ? (
-          <Link href={buildPageHref(currentPage + 1)}>
-            <Button variant="outline">{tCommon("next")}</Button>
-          </Link>
-        ) : (
-          <Button variant="outline" disabled>
-            {tCommon("next")}
-          </Button>
-        )}
-      </div>
+      <PaginationControls
+        currentPage={clampedPage}
+        totalPages={totalPages}
+        buildHref={buildPageHref}
+      />
     </div>
   );
 }

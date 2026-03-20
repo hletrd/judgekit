@@ -123,10 +123,8 @@ export default async function ProblemSetsPage({
       </Card>
       <PaginationControls
         currentPage={clampedPage}
-        hasNextPage={clampedPage < totalPages}
-        prevHref={clampedPage > 1 ? `/dashboard/problem-sets?page=${clampedPage - 1}` : undefined}
-        nextHref={clampedPage < totalPages ? `/dashboard/problem-sets?page=${clampedPage + 1}` : undefined}
-        rangeText={totalCount > 0 ? `${offset + 1}–${Math.min(offset + PAGE_SIZE, totalCount)} / ${totalCount}` : undefined}
+        totalPages={totalPages}
+        buildHref={(page) => page > 1 ? `/dashboard/problem-sets?page=${page}` : "/dashboard/problem-sets"}
       />
     </div>
   );

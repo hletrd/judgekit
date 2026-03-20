@@ -166,10 +166,8 @@ export default async function GroupsPage({
       </Card>
       <PaginationControls
         currentPage={clampedPage}
-        hasNextPage={clampedPage < totalPages}
-        prevHref={clampedPage > 1 ? `/dashboard/groups?page=${clampedPage - 1}` : undefined}
-        nextHref={clampedPage < totalPages ? `/dashboard/groups?page=${clampedPage + 1}` : undefined}
-        rangeText={totalCount > 0 ? `${offset + 1}–${Math.min(offset + PAGE_SIZE, totalCount)} / ${totalCount}` : undefined}
+        totalPages={totalPages}
+        buildHref={(page) => page > 1 ? `/dashboard/groups?page=${page}` : "/dashboard/groups"}
       />
     </div>
   );

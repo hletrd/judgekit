@@ -156,10 +156,8 @@ export default async function RankingsPage({
       </Card>
       <PaginationControls
         currentPage={clampedPage}
-        hasNextPage={clampedPage < totalPages}
-        prevHref={clampedPage > 1 ? `/dashboard/rankings?page=${clampedPage - 1}` : undefined}
-        nextHref={clampedPage < totalPages ? `/dashboard/rankings?page=${clampedPage + 1}` : undefined}
-        rangeText={totalCount > 0 ? `${clampedOffset + 1}–${Math.min(clampedOffset + PAGE_SIZE, totalCount)} / ${totalCount}` : undefined}
+        totalPages={totalPages}
+        buildHref={(page) => page > 1 ? `/dashboard/rankings?page=${page}` : "/dashboard/rankings"}
       />
     </div>
   );

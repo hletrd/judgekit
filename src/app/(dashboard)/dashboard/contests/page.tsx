@@ -216,10 +216,8 @@ export default async function ContestsPage({
       )}
       <PaginationControls
         currentPage={clampedPage}
-        hasNextPage={clampedPage < totalPages}
-        prevHref={clampedPage > 1 ? buildContestPageHref(clampedPage - 1, filter) : undefined}
-        nextHref={clampedPage < totalPages ? buildContestPageHref(clampedPage + 1, filter) : undefined}
-        rangeText={totalCount > 0 ? `${offset + 1}–${Math.min(offset + PAGE_SIZE, totalCount)} / ${totalCount}` : undefined}
+        totalPages={totalPages}
+        buildHref={(page) => buildContestPageHref(page, filter)}
       />
     </div>
   );

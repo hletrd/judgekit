@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { getLocale, getTranslations } from "next-intl/server";
 import { Button } from "@/components/ui/button";
+import { PaginationControls } from "@/components/pagination-controls";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
@@ -259,25 +260,11 @@ export default async function UserManagementPage({
             </TableBody>
           </Table>
           </div>
-          <div className="mt-4 flex items-center justify-end gap-2">
-            {currentPage > 1 ? (
-              <Link href={buildHref(currentPage - 1)}>
-                <Button variant="outline">{tCommon("previous")}</Button>
-              </Link>
-            ) : (
-              <Button variant="outline" disabled>{tCommon("previous")}</Button>
-            )}
-            <span className="text-sm text-muted-foreground">
-              {t("pagination.page", { current: currentPage, total: totalPages })}
-            </span>
-            {hasNextPage ? (
-              <Link href={buildHref(currentPage + 1)}>
-                <Button variant="outline">{tCommon("next")}</Button>
-              </Link>
-            ) : (
-              <Button variant="outline" disabled>{tCommon("next")}</Button>
-            )}
-          </div>
+          <PaginationControls
+            currentPage={currentPage}
+            totalPages={totalPages}
+            buildHref={buildHref}
+          />
         </CardContent>
       </Card>
     </div>

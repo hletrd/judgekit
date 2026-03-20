@@ -12,12 +12,13 @@ import {
 import { SubmissionStatusBadge } from "@/components/submission-status-badge";
 import { db } from "@/lib/db";
 import { submissions, users, problems } from "@/lib/db/schema";
-import { desc, eq, like, or } from "drizzle-orm";
+import { count, desc, eq, like, or } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import { resolveCapabilities } from "@/lib/capabilities/cache";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { PaginationControls } from "@/components/pagination-controls";
 import { Input } from "@/components/ui/input";
 import { formatDateTimeInTimeZone } from "@/lib/datetime";
 import { getResolvedSystemTimeZone } from "@/lib/system-settings";
@@ -58,7 +59,25 @@ export default async function AdminSubmissionsPage({
     return value.replaceAll("\\", "\\\\").replaceAll("%", "\\%").replaceAll("_", "\\_");
   }
 
-  const allSubmissions = await db
+  const searchWhereClause = searchQuery
+    ? or(
+        like(users.name, `%${escapeLike(searchQuery)}%`),
+        like(problems.title, `%${escapeLike(searchQuery)}%`)
+      )
+    : undefined;
+
+  const [countRow] = await db
+    .select({ count: count() })
+    .from(submissions)
+    .leftJoin(users, eq(submissions.userId, users.id))
+    .leftJoin(problems, eq(submissions.problemId, problems.id))
+    .where(searchWhereClause);
+  const totalCount = Number(countRow?.count ?? 0);
+  const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
+  const clampedPage = Math.min(currentPage, totalPages);
+  const clampedOffset = (clampedPage - 1) * PAGE_SIZE;
+
+  const visibleSubmissions = await db
     .select({
       id: submissions.id,
       language: submissions.language,
@@ -80,22 +99,13 @@ export default async function AdminSubmissionsPage({
     .from(submissions)
     .leftJoin(users, eq(submissions.userId, users.id))
     .leftJoin(problems, eq(submissions.problemId, problems.id))
-    .where(
-      searchQuery
-        ? or(
-            like(users.name, `%${escapeLike(searchQuery)}%`),
-            like(problems.title, `%${escapeLike(searchQuery)}%`)
-          )
-        : undefined
-    )
+    .where(searchWhereClause)
     .orderBy(desc(submissions.submittedAt))
-    .limit(PAGE_SIZE + 1)
-    .offset(offset);
+    .limit(PAGE_SIZE)
+    .offset(clampedOffset);
 
-  const hasNextPage = allSubmissions.length > PAGE_SIZE;
-  const visibleSubmissions = hasNextPage ? allSubmissions.slice(0, PAGE_SIZE) : allSubmissions;
-  const rangeStart = visibleSubmissions.length === 0 ? 0 : offset + 1;
-  const rangeEnd = offset + visibleSubmissions.length;
+  const rangeStart = visibleSubmissions.length === 0 ? 0 : clampedOffset + 1;
+  const rangeEnd = clampedOffset + visibleSubmissions.length;
   const hasActiveSubmissions = visibleSubmissions.some(
     (sub) => sub.status === "pending" || sub.status === "queued" || sub.status === "judging"
   );
@@ -221,27 +231,11 @@ export default async function AdminSubmissionsPage({
         </CardContent>
       </Card>
 
-      <div className="flex items-center justify-center gap-2">
-        {currentPage > 1 ? (
-          <Link href={buildPageHref(currentPage - 1)}>
-            <Button variant="outline">{tCommon("previous")}</Button>
-          </Link>
-        ) : (
-          <Button variant="outline" disabled>
-            {tCommon("previous")}
-          </Button>
-        )}
-
-        {hasNextPage ? (
-          <Link href={buildPageHref(currentPage + 1)}>
-            <Button variant="outline">{tCommon("next")}</Button>
-          </Link>
-        ) : (
-          <Button variant="outline" disabled>
-            {tCommon("next")}
-          </Button>
-        )}
-      </div>
+      <PaginationControls
+        currentPage={clampedPage}
+        totalPages={totalPages}
+        buildHref={buildPageHref}
+      />
     </div>
   );
 }

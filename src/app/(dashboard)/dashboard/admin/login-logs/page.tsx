@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { and, desc, eq, sql, type SQL } from "drizzle-orm";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { PaginationControls } from "@/components/pagination-controls";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
@@ -325,32 +326,11 @@ export default async function AdminLoginLogsPage({
         </CardContent>
       </Card>
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-sm text-muted-foreground">
-          {t("pagination.page", { current: currentPage, total: totalPages })}
-        </p>
-        <div className="flex items-center gap-2">
-          {currentPage > 1 ? (
-            <Link href={buildPageHref(currentPage - 1, outcomeFilter, searchQuery)}>
-              <Button variant="outline">{tCommon("previous")}</Button>
-            </Link>
-          ) : (
-            <Button variant="outline" disabled>
-              {tCommon("previous")}
-            </Button>
-          )}
-
-          {currentPage < totalPages ? (
-            <Link href={buildPageHref(currentPage + 1, outcomeFilter, searchQuery)}>
-              <Button variant="outline">{tCommon("next")}</Button>
-            </Link>
-          ) : (
-            <Button variant="outline" disabled>
-              {tCommon("next")}
-            </Button>
-          )}
-        </div>
-      </div>
+      <PaginationControls
+        currentPage={currentPage}
+        totalPages={totalPages}
+        buildHref={(page) => buildPageHref(page, outcomeFilter, searchQuery)}
+      />
     </div>
   );
 }
