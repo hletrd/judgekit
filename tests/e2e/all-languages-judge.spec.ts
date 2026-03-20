@@ -815,7 +815,7 @@ test("submit A+B in all supported languages and verify judging", async ({ browse
   // Languages with known issues that should not fail the overall test:
   // - I/O models incompatible with the test's space-separated integer input
   // - Docker images that intermittently fail under E2E load
-  const KNOWN_FLAKY = new Set([
+  const KNOWN_FLAKY = new Set<string>([
     // Docker images not built (build from source failed)
     "apl",         // GNU APL make fails
     "bqn",         // CBQN make fails
