@@ -228,7 +228,7 @@ export function LanguageConfigTable({ languages }: { languages: LanguageConfig[]
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-[50px]">{t("table.enabled")}</TableHead>
+              <TableHead className="w-[50px] pl-4">{t("table.enabled")}</TableHead>
               <TableHead>{t("table.language")}</TableHead>
               <TableHead className="hidden sm:table-cell">{t("table.standard")}</TableHead>
               <TableHead className="hidden md:table-cell">{t("table.extension")}</TableHead>
@@ -246,7 +246,7 @@ export function LanguageConfigTable({ languages }: { languages: LanguageConfig[]
               </TableRow>
             ) : filteredLanguages.map((lang) => (
               <TableRow key={lang.language} className={lang.isEnabled ? "" : "opacity-50"}>
-                <TableCell>
+                <TableCell className="pl-4">
                   <Checkbox
                     checked={lang.isEnabled ?? true}
                     onCheckedChange={(checked) => handleToggle(lang.language, checked === true)}
