@@ -581,8 +581,6 @@ test("submit A+B in all supported languages and verify judging", async ({ browse
   // - I/O models incompatible with the test's space-separated integer input
   // - Docker images that intermittently fail under E2E load
   const KNOWN_FLAKY = new Set([
-    "erlang",      // BEAM VM startup intermittent under E2E load
-    "elixir",      // BEAM VM startup intermittent under E2E load
     "apl",         // newly added — Docker image may not yet be stable
     "freebasic",   // newly added — Docker image may not yet be stable
     "smalltalk",   // newly added — Docker image may not yet be stable

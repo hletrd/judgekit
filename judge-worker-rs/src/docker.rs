@@ -193,7 +193,7 @@ async fn run_docker_once(
         "--cap-drop=ALL".into(),
         "--security-opt=no-new-privileges".into(),
         "--ulimit".into(),
-        "fsize=52428800:52428800".into(),
+        "fsize=104857600:104857600".into(),
         "--ulimit".into(),
         "nofile=256:256".into(),
         "-v".into(),
