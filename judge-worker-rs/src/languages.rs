@@ -738,11 +738,8 @@ static VBNET_CONFIG: LanguageConfig = LanguageConfig {
     run_command: VBNET_RUN,
 };
 
-// Assembly (NASM)
-static NASM_COMPILE: &[&str] = &[
-    "sh", "-c",
-    "nasm -f elf64 -o /workspace/solution.o /workspace/solution.asm && ld -o /workspace/solution /workspace/solution.o",
-];
+// Assembly (NASM on x86-64, GNU as on AArch64)
+static NASM_COMPILE: &[&str] = &["asm-compile"];
 static NASM_RUN: &[&str] = &["/workspace/solution"];
 
 static NASM_CONFIG: LanguageConfig = LanguageConfig {
@@ -847,15 +844,6 @@ static RAKU_CONFIG: LanguageConfig = LanguageConfig {
     run_command: RAKU_RUN,
 };
 
-// Malbolge
-static MALBOLGE_RUN: &[&str] = &["malbolge", "/workspace/solution.mal"];
-
-static MALBOLGE_CONFIG: LanguageConfig = LanguageConfig {
-    extension: ".mal",
-    docker_image: "judge-malbolge:latest",
-    compile_command: None,
-    run_command: MALBOLGE_RUN,
-};
 
 // Shakespeare
 static SHAKESPEARE_RUN: &[&str] = &["shakespeare_run", "/workspace/solution.spl"];
@@ -944,6 +932,91 @@ static OBJECTIVE_C_CONFIG: LanguageConfig = LanguageConfig {
     run_command: OBJECTIVE_C_RUN,
 };
 
+// Deno (JavaScript)
+static DENO_JS_RUN: &[&str] = &["deno", "run", "--allow-read", "/workspace/solution.js"];
+
+static DENO_JS_CONFIG: LanguageConfig = LanguageConfig {
+    extension: ".js",
+    docker_image: "judge-deno:latest",
+    compile_command: None,
+    run_command: DENO_JS_RUN,
+};
+
+// Deno (TypeScript)
+static DENO_TS_RUN: &[&str] = &["deno", "run", "--allow-read", "/workspace/solution.ts"];
+
+static DENO_TS_CONFIG: LanguageConfig = LanguageConfig {
+    extension: ".ts",
+    docker_image: "judge-deno:latest",
+    compile_command: None,
+    run_command: DENO_TS_RUN,
+};
+
+// Bun (JavaScript)
+static BUN_JS_RUN: &[&str] = &["bun", "run", "/workspace/solution.js"];
+
+static BUN_JS_CONFIG: LanguageConfig = LanguageConfig {
+    extension: ".js",
+    docker_image: "judge-bun:latest",
+    compile_command: None,
+    run_command: BUN_JS_RUN,
+};
+
+// Bun (TypeScript)
+static BUN_TS_RUN: &[&str] = &["bun", "run", "/workspace/solution.ts"];
+
+static BUN_TS_CONFIG: LanguageConfig = LanguageConfig {
+    extension: ".ts",
+    docker_image: "judge-bun:latest",
+    compile_command: None,
+    run_command: BUN_TS_RUN,
+};
+
+// Gleam
+static GLEAM_COMPILE: &[&str] = &[
+    "sh", "-c",
+    "cp -r /opt/gleam-template /workspace/gleam-project && cp /workspace/solution.gleam /workspace/gleam-project/src/solution.gleam && cd /workspace/gleam-project && gleam build --target erlang 2>&1",
+];
+static GLEAM_RUN: &[&str] = &["sh", "-c", "cd /workspace/gleam-project && gleam run --target erlang"];
+
+static GLEAM_CONFIG: LanguageConfig = LanguageConfig {
+    extension: ".gleam",
+    docker_image: "judge-gleam:latest",
+    compile_command: Some(GLEAM_COMPILE),
+    run_command: GLEAM_RUN,
+};
+
+// Standard ML (Poly/ML)
+static SML_COMPILE: &[&str] = &["sh", "-c", "polyc -o /workspace/solution /workspace/solution.sml"];
+static SML_RUN: &[&str] = &["/workspace/solution"];
+
+static SML_CONFIG: LanguageConfig = LanguageConfig {
+    extension: ".sml",
+    docker_image: "judge-sml:latest",
+    compile_command: Some(SML_COMPILE),
+    run_command: SML_RUN,
+};
+
+// Fennel (runs on Lua VM)
+static FENNEL_RUN: &[&str] = &["fennel", "/workspace/solution.fnl"];
+
+static FENNEL_CONFIG: LanguageConfig = LanguageConfig {
+    extension: ".fnl",
+    docker_image: "judge-lua:latest",
+    compile_command: None,
+    run_command: FENNEL_RUN,
+};
+
+// Flix (JVM)
+static FLIX_RUN: &[&str] = &["sh", "-c", "cd /workspace && java -jar /opt/flix.jar run /workspace/solution.flix"];
+
+static FLIX_CONFIG: LanguageConfig = LanguageConfig {
+    extension: ".flix",
+    docker_image: "judge-jvm:latest",
+    compile_command: None,
+    run_command: FLIX_RUN,
+};
+
 pub fn get_config(language: &Language) -> Option<&'static LanguageConfig> {
     match language {
         Language::C17 => Some(&C17_CONFIG),
@@ -1023,7 +1096,7 @@ pub fn get_config(language: &Language) -> Option<&'static LanguageConfig> {
         Language::K => Some(&K_CONFIG),
         Language::Haxe => Some(&HAXE_CONFIG),
         Language::Raku => Some(&RAKU_CONFIG),
-        Language::Malbolge => Some(&MALBOLGE_CONFIG),
+
         Language::Shakespeare => Some(&SHAKESPEARE_CONFIG),
         Language::Unlambda => Some(&UNLAMBDA_CONFIG),
         Language::Snobol4 => Some(&SNOBOL4_CONFIG),
@@ -1032,6 +1105,14 @@ pub fn get_config(language: &Language) -> Option<&'static LanguageConfig> {
         Language::Uiua => Some(&UIUA_CONFIG),
         Language::Odin => Some(&ODIN_CONFIG),
         Language::ObjectiveC => Some(&OBJECTIVE_C_CONFIG),
+        Language::DenoJs => Some(&DENO_JS_CONFIG),
+        Language::DenoTs => Some(&DENO_TS_CONFIG),
+        Language::BunJs => Some(&BUN_JS_CONFIG),
+        Language::BunTs => Some(&BUN_TS_CONFIG),
+        Language::Gleam => Some(&GLEAM_CONFIG),
+        Language::Sml => Some(&SML_CONFIG),
+        Language::Fennel => Some(&FENNEL_CONFIG),
+        Language::Flix => Some(&FLIX_CONFIG),
         Language::Unknown => None,
     }
 }
@@ -1121,7 +1202,7 @@ mod tests {
             Language::K,
             Language::Haxe,
             Language::Raku,
-            Language::Malbolge,
+
             Language::Shakespeare,
             Language::Unlambda,
             Language::Snobol4,
@@ -1130,6 +1211,14 @@ mod tests {
             Language::Uiua,
             Language::Odin,
             Language::ObjectiveC,
+            Language::DenoJs,
+            Language::DenoTs,
+            Language::BunJs,
+            Language::BunTs,
+            Language::Gleam,
+            Language::Sml,
+            Language::Fennel,
+            Language::Flix,
         ];
 
         for lang in &languages {

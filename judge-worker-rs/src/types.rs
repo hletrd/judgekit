@@ -136,7 +136,7 @@ pub enum Language {
     K,
     Haxe,
     Raku,
-    Malbolge,
+
     Shakespeare,
     Unlambda,
     #[serde(rename = "snobol4")]
@@ -147,6 +147,18 @@ pub enum Language {
     Odin,
     #[serde(rename = "objective_c")]
     ObjectiveC,
+    #[serde(rename = "deno_js")]
+    DenoJs,
+    #[serde(rename = "deno_ts")]
+    DenoTs,
+    #[serde(rename = "bun_js")]
+    BunJs,
+    #[serde(rename = "bun_ts")]
+    BunTs,
+    Gleam,
+    Sml,
+    Fennel,
+    Flix,
     #[serde(other)]
     Unknown,
 }

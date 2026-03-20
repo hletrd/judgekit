@@ -15,15 +15,15 @@
 
 <p align="center">
   A secure, cross-platform code evaluation platform for programming assignments.<br/>
-  Docker-sandboxed execution for <a href="docs/languages.md">86 language variants</a> on both AMD64 and ARM64.
+  Docker-sandboxed execution for <a href="docs/languages.md">92 language variants</a> on both AMD64 and ARM64.
 </p>
 
 ---
 
 ## Features
 
-- **Cross-platform (AMD64 + ARM64)** — Full stack runs natively on both architectures: Next.js app, Rust judge worker, Rust sidecars, and all 69 Docker judge images. Deploy on x86-64 servers or ARM64 (AWS Graviton, Ampere Altra, Apple Silicon) with automatic architecture detection — no emulation, no cross-compilation
-- **86 languages** — C/C++, Java, Python, Rust, Go, Assembly (NASM), Objective-C, Haxe, Raku, Odin, and [76 more](docs/languages.md), all with multi-arch Docker images and admin-customizable compile/run settings
+- **Cross-platform (AMD64 + ARM64)** — Full stack runs natively on both architectures: Next.js app, Rust judge worker, Rust sidecars, and all 72 Docker judge images. Deploy on x86-64 servers or ARM64 (AWS Graviton, Ampere Altra, Apple Silicon) with automatic architecture detection — no emulation, no cross-compilation
+- **92 languages** — C/C++, Java, Python, Rust, Go, Deno, Bun, Gleam, Standard ML, and [83 more](docs/languages.md), all with multi-arch Docker images and admin-customizable compile/run settings
 - **Secure execution** — Docker containers with no network, seccomp, memory/CPU limits
 - **Role-based access** — Super admin, admin, instructor, student
 - **Classroom management** — Groups, enrollments, assignments with deadlines and late penalties
@@ -72,7 +72,7 @@ See [Language presets](docs/languages.md#docker-image-presets) for preset option
 
 ## Docker Judge Images (amd64)
 
-66 language-specific Docker images for sandboxed code execution. Sizes measured on amd64 (x86-64). APL and Simula images pending (build from source issues).
+69 language-specific Docker images for sandboxed code execution. Sizes measured on amd64 (x86-64).
 
 | Image | Size | Image | Size |
 |-------|------|-------|------|
@@ -80,35 +80,37 @@ See [Language presets](docs/languages.md#docker-image-presets) for preset option
 | `judge-bash` | 15 MB | `judge-tcl` | 20 MB |
 | `judge-nasm` | 34 MB | `judge-perl` | 64 MB |
 | `judge-python` | 71 MB | `judge-commonlisp` | 80 MB |
-| `judge-umjunsik` | 113 MB | `judge-malbolge` | 114 MB |
-| `judge-unlambda` | 114 MB | `judge-algol68` | 115 MB |
-| `judge-k` | 115 MB | `judge-forth` | 116 MB |
-| `judge-lolcode` | 116 MB | `judge-brainfuck` | 119 MB |
-| `judge-icon` | 120 MB | `judge-smalltalk` | 122 MB |
-| `judge-postscript` | 124 MB | `judge-ruby` | 128 MB |
-| `judge-erlang` | 147 MB | `judge-j` | 150 MB |
+| `judge-umjunsik` | 113 MB | `judge-unlambda` | 114 MB |
+| `judge-algol68` | 115 MB | `judge-k` | 115 MB |
+| `judge-forth` | 116 MB | `judge-lolcode` | 116 MB |
+| `judge-brainfuck` | 119 MB | `judge-icon` | 120 MB |
+| `judge-smalltalk` | 122 MB | `judge-postscript` | 124 MB |
+| `judge-ruby` | 128 MB | `judge-erlang` | 147 MB |
+| `judge-j` | 150 MB | `judge-bun` | 153 MB |
 | `judge-php` | 155 MB | `judge-bqn` | 157 MB |
-| `judge-elixir` | 173 MB | `judge-b` | 177 MB |
-| `judge-shakespeare` | 199 MB | `judge-esoteric` | 201 MB |
-| `judge-uiua` | 202 MB | `judge-pascal` | 219 MB |
-| `judge-prolog` | 245 MB | `judge-node` | 257 MB |
-| `judge-raku` | 258 MB | `judge-clojure` | 312 MB |
-| `judge-fortran` | 323 MB | `judge-cpp` | 340 MB |
-| `judge-go` | 357 MB | `judge-racket` | 359 MB |
-| `judge-haxe` | 377 MB | `judge-intercal` | 384 MB |
-| `judge-scheme` | 404 MB | `judge-objective-c` | 427 MB |
-| `judge-freebasic` | 436 MB | `judge-ada` | 443 MB |
-| `judge-cobol` | 443 MB | `judge-powershell` | 461 MB |
-| `judge-dart` | 492 MB | `judge-v` | 492 MB |
-| `judge-ocaml` | 554 MB | `judge-d` | 563 MB |
-| `judge-crystal` | 581 MB | `judge-jvm` | 593 MB |
-| `judge-zig` | 598 MB | `judge-groovy` | 613 MB |
-| `judge-nim` | 727 MB | `judge-scala` | 780 MB |
-| `judge-clang` | 879 MB | `judge-octave` | 830 MB |
-| `judge-fsharp` | 985 MB | `judge-csharp` | 1.07 GB |
-| `judge-rust` | 1.21 GB | `judge-r` | 1.27 GB |
-| `judge-julia` | 1.50 GB | `judge-haskell` | 1.81 GB |
-| `judge-odin` | 1.81 GB | `judge-swift` | 2.79 GB |
+| `judge-elixir` | 173 MB | `judge-deno` | 194 MB |
+| `judge-b` | 177 MB | `judge-shakespeare` | 199 MB |
+| `judge-esoteric` | 201 MB | `judge-uiua` | 202 MB |
+| `judge-pascal` | 219 MB | `judge-prolog` | 245 MB |
+| `judge-node` | 257 MB | `judge-raku` | 258 MB |
+| `judge-clojure` | 312 MB | `judge-fortran` | 323 MB |
+| `judge-cpp` | 340 MB | `judge-go` | 357 MB |
+| `judge-racket` | 359 MB | `judge-haxe` | 377 MB |
+| `judge-intercal` | 384 MB | `judge-scheme` | 404 MB |
+| `judge-objective-c` | 427 MB | `judge-freebasic` | 436 MB |
+| `judge-ada` | 443 MB | `judge-cobol` | 443 MB |
+| `judge-powershell` | 461 MB | `judge-dart` | 492 MB |
+| `judge-v` | 492 MB | `judge-sml` | 493 MB |
+| `judge-ocaml` | 554 MB | | |
+| `judge-d` | 563 MB | `judge-crystal` | 581 MB |
+| `judge-jvm` | 593 MB | `judge-zig` | 598 MB |
+| `judge-groovy` | 613 MB | `judge-nim` | 727 MB |
+| `judge-scala` | 780 MB | `judge-clang` | 879 MB |
+| `judge-octave` | 830 MB | `judge-fsharp` | 985 MB |
+| `judge-csharp` | 1.07 GB | `judge-rust` | 1.21 GB |
+| `judge-r` | 1.27 GB | `judge-julia` | 1.50 GB |
+| `judge-haskell` | 1.81 GB | `judge-odin` | 1.81 GB |
+| `judge-swift` | 2.79 GB | | |
 
 ## Tech Stack
 
@@ -151,7 +153,7 @@ judgekit/
 
 - [Deployment Guide](docs/deployment.md) — provisioning, deploy scripts, nginx, post-deploy checks
 - [Authentication](docs/authentication.md) — sign-in flow, cookie architecture, API smoke test
-- [Languages](docs/languages.md) — all 86 variants, Docker image presets, admin management
+- [Languages](docs/languages.md) — all 92 variants, Docker image presets, admin management
 
 ## License
 

@@ -15,9 +15,9 @@ JudgeKit is a secure online judge platform for programming assignments. Next.js 
 | `tests/` | Playwright E2E tests, Vitest unit/integration tests |
 | `data/` | SQLite database (gitignored) |
 
-## Supported Languages (86)
+## Supported Languages (92)
 
-JudgeKit supports 86 language variants across 69 Docker images:
+JudgeKit supports 92 language variants across 72 Docker images:
 
 | # | Language ID | Description | Docker Image |
 |---|-------------|-------------|--------------|
@@ -42,7 +42,7 @@ JudgeKit supports 86 language variants across 69 Docker images:
 | 19 | `objective_c` | Objective-C (GCC gobjc) | `judge-objective-c` |
 | 20 | `csharp` | C# (Mono 6.12) | `judge-csharp` |
 | 21 | `fsharp` | F# (.NET 8) | `judge-fsharp` |
-| 22 | `vbnet` | Visual Basic .NET (.NET 8) | `judge-fsharp` |
+| 22 | `vbnet` | Visual Basic .NET (.NET SDK 10.0) | `judge-fsharp` |
 | 23 | `r` | R 4.5 | `judge-r` |
 | 24 | `perl` | Perl 5.40 | `judge-perl` |
 | 25 | `php` | PHP 8.4 | `judge-php` |
@@ -61,7 +61,7 @@ JudgeKit supports 86 language variants across 69 Docker images:
 | 38 | `fortran` | Fortran (GFortran 14) | `judge-fortran` |
 | 39 | `pascal` | Pascal (FPC 3.2) | `judge-pascal` |
 | 40 | `delphi` | Delphi (FPC, Delphi mode) | `judge-pascal` |
-| 41 | `nasm` | Assembly (NASM, x86-64) | `judge-nasm` |
+| 41 | `nasm` | Assembly (NASM x86-64 / GNU as AArch64) | `judge-nasm` |
 | 42 | `cobol` | COBOL (GnuCOBOL 3.2) | `judge-cobol` |
 | 43 | `scala` | Scala 3.5 | `judge-scala` |
 | 44 | `erlang` | Erlang 27 | `judge-erlang` |
@@ -103,10 +103,17 @@ JudgeKit supports 86 language variants across 69 Docker images:
 | 80 | `snobol4` | SNOBOL4 (CSNOBOL4) | `judge-snobol4` |
 | 81 | `lolcode` | LOLCODE (lci) | `judge-lolcode` |
 | 82 | `intercal` | INTERCAL (C-INTERCAL) | `judge-intercal` |
-| 83 | `malbolge` | Malbolge | `judge-malbolge` |
-| 84 | `shakespeare` | Shakespeare (shakespearelang) | `judge-shakespeare` |
-| 85 | `unlambda` | Unlambda | `judge-unlambda` |
-| 86 | `umjunsik` | 엄준식 (Umjunsik) | `judge-umjunsik` |
+| 83 | `shakespeare` | Shakespeare (shakespearelang) | `judge-shakespeare` |
+| 84 | `unlambda` | Unlambda | `judge-unlambda` |
+| 85 | `umjunsik` | 엄준식 (Umjunsik) | `judge-umjunsik` |
+| 86 | `deno_js` | JavaScript (Deno) | `judge-deno` |
+| 87 | `deno_ts` | TypeScript (Deno) | `judge-deno` |
+| 88 | `bun_js` | JavaScript (Bun) | `judge-bun` |
+| 89 | `bun_ts` | TypeScript (Bun) | `judge-bun` |
+| 90 | `gleam` | Gleam (Erlang target) | `judge-gleam` |
+| 91 | `sml` | Standard ML (Poly/ML) | `judge-sml` |
+| 92 | `fennel` | Fennel (Lua VM) | `judge-lua` |
+| 93 | `flix` | Flix (JVM) | `judge-jvm` |
 
 ## Adding a New Language
 
@@ -181,21 +188,7 @@ Changes take effect immediately for new submissions without restarting services.
 | `judge-lua` | 14 MB | Alpine 3.21 | — |
 | `judge-awk` | 13 MB | Alpine 3.21 | — |
 
-**Total: ~24 GB** (down from ~31.1 GB, saved **~7.1 GB / 23%**)
-| `judge-pascal` | 219 MB | Debian Bookworm slim (no change) |
-| `judge-esoteric` | 201 MB | Debian Bookworm (no change) |
-| `judge-python` | 180 MB | Debian Bookworm slim -> **Alpine** |
-| `judge-elixir` | 173 MB | Alpine (no change) |
-| `judge-erlang` | 147 MB | Alpine (no change) |
-| `judge-ruby` | 128 MB | Alpine (no change) |
-| `judge-brainfuck` | 119 MB | Debian Bookworm slim (no change) |
-| `judge-commonlisp` | 80 MB | Alpine (no change) |
-| `judge-tcl` | 20 MB | Alpine (no change) |
-| `judge-bash` | 15 MB | Alpine (no change) |
-| `judge-lua` | 14 MB | Alpine (no change) |
-| `judge-awk` | 13 MB | Alpine (no change) |
-
-**Bold** entries indicate images lightened in this migration. Total current: ~31 GB across 44 images.
+**Total: ~24 GB** across 68 images (down from ~31.1 GB, saved **~7.1 GB / 23%**)
 
 ## Docker Image Management API
 
@@ -259,11 +252,19 @@ JudgeKit supports full contest management with two scoring models and two schedu
 
 ### Known Flaky Languages (E2E)
 
-`fsharp` and `freebasic` were previously flaky but are now fixed:
+6 languages remain in KNOWN_FLAKY (45 passed, 6 skipped, 0 failed). Per-language individual tests run in ~5 minutes:
+- **simula**: No Docker image (GNU Cim won't compile)
+- **intercal**: No A+B solution possible in INTERCAL
+- **unlambda**: No A+B solution possible in Unlambda
+- **umjunsik**: Korean esoteric lang — compiler compiles to Lamina IR, syntax unclear
+- **k**: ngn/k can't read stdin in script mode (eoleof error)
+- **uiua**: Needs GLIBC 2.39+ (rebuilt with Ubuntu 24.10 base)
+
+Previously flaky, now fixed:
 - **F#**: Dockerfile sets `HOME=/tmp` and `DOTNET_CLI_HOME=/tmp` so the .NET SDK writes to writable directories.
 - **FreeBASIC**: SourceForge download uses `--retry 5 --retry-delay 10 --max-time 180` with file-based download instead of piped tar.
 
-All 86 language variants are expected to pass the A+B E2E test. Test cases use only positive single-digit sums (≤9) to maximize esoteric language compatibility.
+Test cases use only positive single-digit sums (<=9) to maximize esoteric language compatibility.
 
 ## Setup
 

@@ -39,6 +39,16 @@ Last updated: 2026-03-20
 - The deploy script auto-detects server architecture (`uname -m` → `linux/amd64` or `linux/arm64`) and passes `--platform` to all Docker builds.
 - Do not assume the long-lived hosts still accept the seeded credentials unless freshly reset.
 
+## 2026-03-20 session changes (new runtimes batch)
+
+- **8 new language variants added**: Deno JS/TS (`judge-deno`), Bun JS/TS (`judge-bun`), Gleam (`judge-gleam`), Standard ML (`judge-sml`), Fennel (reuses `judge-lua`), Flix (reuses `judge-jvm`).
+- **4 new Docker images**: `judge-deno` (official Alpine), `judge-bun` (official Alpine), `judge-gleam` (Erlang 27 + Gleam 1.7), `judge-sml` (Debian + Poly/ML).
+- **2 existing images modified**: `judge-lua` (+fennel binary), `judge-jvm` (+flix.jar).
+- **Total language count**: 93 language variants across 73 Docker images.
+- **F# / VB.NET upgraded**: .NET SDK 8.0 → 10.0.
+- **Assembly cross-platform**: `judge-nasm` now uses NASM on x86-64 and GNU `as` on AArch64, with an `asm-compile` wrapper script.
+- **FIFO queue fix**: Judge claim endpoint uses `ORDER BY submitted_at ASC, rowid ASC` for deterministic ordering when submissions share the same second.
+
 ## 2026-03-20 session changes (Docker build fixes batch)
 
 - **10 failing Docker images fixed**: All 10 languages whose Docker builds failed in the expansion batch are now fixed:

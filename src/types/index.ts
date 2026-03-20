@@ -98,7 +98,7 @@ export type Language =
   | "k"
   | "haxe"
   | "raku"
-  | "malbolge"
+
   | "shakespeare"
   | "unlambda"
   | "snobol4"
@@ -106,4 +106,12 @@ export type Language =
   | "simula"
   | "uiua"
   | "odin"
-  | "objective_c";
+  | "objective_c"
+  | "deno_js"
+  | "deno_ts"
+  | "bun_js"
+  | "bun_ts"
+  | "gleam"
+  | "sml"
+  | "fennel"
+  | "flix";

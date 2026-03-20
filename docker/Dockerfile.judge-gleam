@@ -1,0 +1,7 @@
+FROM ghcr.io/gleam-lang/gleam:v1.7.0-erlang-alpine
+
+RUN adduser -D -s /bin/false judge && \
+    mkdir -p /workspace && chown judge:judge /workspace
+
+WORKDIR /workspace
+USER judge

@@ -374,11 +374,6 @@ services:
       dockerfile: docker/Dockerfile.judge-raku
     image: judge-raku:${GIT_SHA:-latest}
 
-  judge-malbolge:
-    build:
-      context: .
-      dockerfile: docker/Dockerfile.judge-malbolge
-    image: judge-malbolge:${GIT_SHA:-latest}
 
   judge-shakespeare:
     build:
@@ -427,3 +422,27 @@ services:
       context: .
       dockerfile: docker/Dockerfile.judge-objective-c
     image: judge-objective-c:${GIT_SHA:-latest}
+
+  judge-deno:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.judge-deno
+    image: judge-deno:${GIT_SHA:-latest}
+
+  judge-bun:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.judge-bun
+    image: judge-bun:${GIT_SHA:-latest}
+
+  judge-gleam:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.judge-gleam
+    image: judge-gleam:${GIT_SHA:-latest}
+
+  judge-sml:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.judge-sml
+    image: judge-sml:${GIT_SHA:-latest}

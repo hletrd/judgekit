@@ -523,6 +523,40 @@ int main() {
     printf("%d\\n", a + b);
     return 0;
 }`,
+  deno_js: `const input = await new Response(Deno.stdin.readable).text();
+const [a, b] = input.trim().split(/\\s+/).map(Number);
+console.log(a + b);`,
+  deno_ts: `const input: string = await new Response(Deno.stdin.readable).text();
+const [a, b] = input.trim().split(/\\s+/).map(Number);
+console.log(a + b);`,
+  bun_js: `const input = await Bun.stdin.text();
+const [a, b] = input.trim().split(/\\s+/).map(Number);
+console.log(a + b);`,
+  bun_ts: `const input: string = await Bun.stdin.text();
+const [a, b] = input.trim().split(/\\s+/).map(Number);
+console.log(a + b);`,
+  gleam: `import gleam/io
+import gleam/int
+import gleam/string
+import gleam/erlang
+
+pub fn main() {
+  let assert Ok(line) = erlang.get_line("")
+  let trimmed = string.trim(line)
+  let assert [a_str, b_str] = string.split(trimmed, " ")
+  let assert Ok(a) = int.parse(a_str)
+  let assert Ok(b) = int.parse(b_str)
+  io.println(int.to_string(a + b))
+}`,
+  sml: `val line = valOf (TextIO.inputLine TextIO.stdIn);
+val tokens = String.tokens Char.isSpace line;
+val [a, b] = map (valOf o Int.fromString) tokens;
+val _ = print (Int.toString (a + b) ^ "\\n");
+val _ = OS.Process.exit OS.Process.success;`,
+  fennel: `(let [line (io.read :l)
+      (a b) (line:match "(%S+)%s+(%S+)")]
+  (print (math.floor (+ (tonumber a) (tonumber b)))))`,
+  flix: ``,
 };
 
 // Keep inputs as positive single-digit numbers with single-digit sums (≤ 9)
@@ -606,12 +640,21 @@ async function waitForJudging(
 
 // ── Shared state for serial test suite ──
 const KNOWN_FLAKY = new Set<string>([
-  "simula",        // Docker image won't build (GNU Cim)
-  "intercal",      // No A+B solution possible
-  "unlambda",      // No A+B solution possible
-  "umjunsik",      // Needs testing
-  "k",             // Wrong output (solution needs fix)
-  "uiua",          // GLIBC_2.39 missing in image
+  "simula",        // No Docker image (GNU Cim won't compile)
+  "intercal",      // No A+B solution possible in INTERCAL
+  "unlambda",      // No A+B solution possible in Unlambda
+  "umjunsik",      // Korean esoteric lang — compiler compiles to Lamina IR, syntax unclear
+  "k",             // ngn/k can't read stdin in script mode (eoleof error)
+  "uiua",          // Needs GLIBC 2.39+ (rebuilding with Ubuntu 24.10)
+  // New languages — untested on server
+  "gleam",         // Needs project template setup verification
+  "flix",          // No A+B solution yet
+  "deno_js",       // Untested
+  "deno_ts",       // Untested
+  "bun_js",        // Untested
+  "bun_ts",        // Untested
+  "sml",           // Untested
+  "fennel",        // Untested
 ]);
 
 let sharedContext: Awaited<ReturnType<typeof import("@playwright/test").chromium.launch>> extends { newContext: infer F } ? never : never;

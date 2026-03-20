@@ -1,25 +1,7 @@
-FROM debian:bookworm-slim
-
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends curl ca-certificates unzip && \
-    ARCH=$(dpkg --print-architecture) && \
-    if [ "$ARCH" = "amd64" ]; then \
-      curl -fsSL https://github.com/uiua-lang/uiua/releases/download/0.18.1/uiua-bin-x86_64-unknown-linux-gnu-no-audio.zip -o /tmp/uiua.zip && \
-      unzip /tmp/uiua.zip -d /tmp/uiua-bin && \
-      cp /tmp/uiua-bin/uiua /usr/local/bin/uiua && chmod +x /usr/local/bin/uiua && \
-      rm -rf /tmp/uiua.zip /tmp/uiua-bin; \
-    else \
-      apt-get install -y --no-install-recommends gcc libc6-dev pkg-config && \
-      curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable && \
-      . /root/.cargo/env && cargo install uiua && \
-      cp /root/.cargo/bin/uiua /usr/local/bin/uiua && \
-      rm -rf /root/.cargo /root/.rustup && \
-      apt-get purge -y gcc libc6-dev pkg-config; \
-    fi && \
-    apt-get purge -y curl ca-certificates unzip && \
-    apt-get autoremove -y && rm -rf /var/lib/apt/lists/* && \
-    useradd -m -s /bin/false judge && \
-    mkdir -p /workspace && chown judge:judge /workspace
-
+FROM ubuntu:24.10
+RUN apt-get update && apt-get install -y --no-install-recommends curl ca-certificates && \
+    curl -fsSL https://github.com/uiua-lang/uiua/releases/latest/download/uiua-x86_64-unknown-linux-gnu.tar.gz | tar xz -C /usr/local/bin && \
+    rm -rf /var/lib/apt/lists/* && \
+    useradd -m -s /bin/false judge && mkdir -p /workspace && chown judge:judge /workspace
 WORKDIR /workspace
 USER judge

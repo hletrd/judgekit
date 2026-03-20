@@ -7,6 +7,7 @@ RUN apk add --no-cache bash curl unzip && \
     unzip -q /tmp/kotlin-compiler.zip -d /opt && \
     ln -s /opt/kotlinc/bin/kotlinc /usr/local/bin/kotlinc && \
     rm -f /tmp/kotlin-compiler.zip && \
+    curl -fsSL "https://github.com/flix/flix/releases/latest/download/flix.jar" -o /opt/flix.jar && \
     adduser -D -s /bin/false judge && \
     mkdir -p /workspace && \
     chown judge:judge /workspace

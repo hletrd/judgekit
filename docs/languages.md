@@ -1,6 +1,6 @@
-# Supported Languages (86 variants)
+# Supported Languages (92 variants)
 
-69 Docker images covering 86 language variants.
+72 Docker images covering 92 language variants. E2E test suite runs per-language individual tests (~5 minutes); 45 passed, 6 skipped (KNOWN_FLAKY), 0 failed.
 
 | # | Language ID | Description | Docker Image |
 |---|-------------|-------------|--------------|
@@ -12,19 +12,19 @@
 | 6 | `cpp23` | C++ (C++23, GCC) | `judge-cpp` |
 | 7 | `clang_c23` | C (C23, Clang) | `judge-clang` |
 | 8 | `clang_cpp23` | C++ (C++23, Clang) | `judge-clang` |
-| 9 | `llvm_ir` | LLVM IR | `judge-clang` |
+| 9 | `llvm_ir` | LLVM IR (compiled with clang) | `judge-clang` |
 | 10 | `java` | Java 25 | `judge-jvm` |
 | 11 | `kotlin` | Kotlin 2.3 | `judge-jvm` |
 | 12 | `python` | Python 3.14 | `judge-python` |
 | 13 | `javascript` | Node.js 24 | `judge-node` |
-| 14 | `typescript` | TypeScript 5.9 | `judge-node` |
-| 15 | `coffeescript` | CoffeeScript 2.7 | `judge-node` |
+| 14 | `typescript` | TypeScript 5.9 (Node.js 24) | `judge-node` |
+| 15 | `coffeescript` | CoffeeScript 2.7 (Node.js 24) | `judge-node` |
 | 16 | `rust` | Rust 1.94 | `judge-rust` |
 | 17 | `go` | Go 1.26 | `judge-go` |
 | 18 | `swift` | Swift 6.2 | `judge-swift` |
 | 19 | `csharp` | C# (Mono 6.12) | `judge-csharp` |
 | 20 | `fsharp` | F# (.NET 8) | `judge-fsharp` |
-| 21 | `vbnet` | Visual Basic .NET (.NET 8) | `judge-fsharp` |
+| 21 | `vbnet` | Visual Basic .NET (.NET SDK 10.0) | `judge-fsharp` |
 | 22 | `r` | R 4.5 | `judge-r` |
 | 23 | `perl` | Perl 5.40 | `judge-perl` |
 | 24 | `php` | PHP 8.4 | `judge-php` |
@@ -71,7 +71,7 @@
 | 65 | `apl` | APL (GNU APL) | `judge-apl` |
 | 66 | `freebasic` | FreeBASIC | `judge-freebasic` |
 | 67 | `smalltalk` | Smalltalk (GNU Smalltalk) | `judge-smalltalk` |
-| 68 | `nasm` | Assembly (NASM, x86-64) | `judge-nasm` |
+| 68 | `nasm` | Assembly (NASM x86-64 / GNU as AArch64) | `judge-nasm` |
 | 69 | `objective_c` | Objective-C (GCC gobjc) | `judge-objective-c` |
 | 70 | `forth` | Forth (Gforth) | `judge-forth` |
 | 71 | `raku` | Raku (Rakudo) | `judge-raku` |
@@ -86,12 +86,26 @@
 | 80 | `snobol4` | SNOBOL4 (CSNOBOL4) | `judge-snobol4` |
 | 81 | `lolcode` | LOLCODE (lci) | `judge-lolcode` |
 | 82 | `intercal` | INTERCAL (C-INTERCAL) | `judge-intercal` |
-| 83 | `malbolge` | Malbolge | `judge-malbolge` |
-| 84 | `shakespeare` | Shakespeare (shakespearelang) | `judge-shakespeare` |
-| 85 | `unlambda` | Unlambda | `judge-unlambda` |
-| 86 | `umjunsik` | 엄준식 (Umjunsik) | `judge-umjunsik` |
+| 83 | `shakespeare` | Shakespeare (shakespearelang) | `judge-shakespeare` |
+| 84 | `unlambda` | Unlambda | `judge-unlambda` |
+| 85 | `umjunsik` | 엄준식 (Umjunsik) | `judge-umjunsik` |
+| 86 | `deno_js` | JavaScript (Deno) | `judge-deno` |
+| 87 | `deno_ts` | TypeScript (Deno) | `judge-deno` |
+| 88 | `bun_js` | JavaScript (Bun) | `judge-bun` |
+| 89 | `bun_ts` | TypeScript (Bun) | `judge-bun` |
+| 90 | `gleam` | Gleam (Erlang target) | `judge-gleam` |
+| 91 | `sml` | Standard ML (Poly/ML) | `judge-sml` |
+| 92 | `fennel` | Fennel (Lua VM) | `judge-lua` |
 
-All Docker images verified buildable. Only `fsharp` and `freebasic` remain in KNOWN_FLAKY (runtime issues).
+### KNOWN_FLAKY (6 languages)
+
+These languages are skipped in E2E tests:
+- **simula**: No Docker image (GNU Cim won't compile)
+- **intercal**: No A+B solution possible in INTERCAL
+- **unlambda**: No A+B solution possible in Unlambda
+- **umjunsik**: Korean esoteric lang — compiler compiles to Lamina IR, syntax unclear
+- **k**: ngn/k can't read stdin in script mode (eoleof error)
+- **uiua**: Needs GLIBC 2.39+ (rebuilt with Ubuntu 24.10 base)
 
 ## Docker Image Presets
 
@@ -100,7 +114,7 @@ All Docker images verified buildable. Only `fsharp` and `freebasic` remain in KN
 | `core` | C/C++, Python, Java/Kotlin | ~0.8 GB |
 | `popular` | Core + Node.js, Rust, Go | ~2.5 GB |
 | `extended` | Popular + Ruby, Lua, Bash, C#, PHP, Perl, Swift, R, Haskell, Dart, Zig | ~8 GB |
-| `all` | All 69 images | ~30 GB |
+| `all` | All 72 images | ~30 GB |
 
 ## Admin Language Management
 
