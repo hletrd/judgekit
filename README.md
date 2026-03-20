@@ -70,6 +70,37 @@ See [Language presets](docs/languages.md#docker-image-presets) for preset option
 
 </details>
 
+## Docker Judge Images (amd64)
+
+44 language-specific Docker images are used for sandboxed code execution. Sizes measured on amd64 (x86-64):
+
+| Image | Size | Image | Size |
+|-------|------|-------|------|
+| `judge-awk` | 13 MB | `judge-lua` | 14 MB |
+| `judge-bash` | 15 MB | `judge-tcl` | 20 MB |
+| `judge-perl` | 64 MB | `judge-python` | 71 MB |
+| `judge-commonlisp` | 80 MB | `judge-brainfuck` | 119 MB |
+| `judge-postscript` | 124 MB | `judge-ruby` | 128 MB |
+| `judge-erlang` | 147 MB | `judge-php` | 155 MB |
+| `judge-elixir` | 173 MB | `judge-esoteric` | 201 MB |
+| `judge-pascal` | 219 MB | `judge-prolog` | 245 MB |
+| `judge-node` | 257 MB | `judge-clojure` | 312 MB |
+| `judge-fortran` | 323 MB | `judge-cpp` | 340 MB |
+| `judge-go` | 357 MB | `judge-racket` | 359 MB |
+| `judge-scheme` | 404 MB | `judge-ada` | 443 MB |
+| `judge-cobol` | 443 MB | `judge-powershell` | 461 MB |
+| `judge-dart` | 492 MB | `judge-v` | 492 MB |
+| `judge-ocaml` | 554 MB | `judge-d` | 563 MB |
+| `judge-crystal` | 581 MB | `judge-jvm` | 593 MB |
+| `judge-zig` | 598 MB | `judge-groovy` | 613 MB |
+| `judge-nim` | 727 MB | `judge-scala` | 780 MB |
+| `judge-clang` | 879 MB | `judge-octave` | 830 MB |
+| `judge-csharp` | 1.07 GB | `judge-rust` | 1.21 GB |
+| `judge-r` | 1.27 GB | `judge-julia` | 1.50 GB |
+| `judge-swift` | 2.79 GB | `judge-haskell` | 3.97 GB |
+
+**Total: ~26 GB** across 44 images.
+
 ## Tech Stack
 
 | Layer | Technology |
