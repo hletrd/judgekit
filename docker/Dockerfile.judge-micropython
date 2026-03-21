@@ -1,0 +1,6 @@
+FROM alpine:edge
+RUN apk add --no-cache micropython && \
+    adduser -D -s /bin/false judge && \
+    mkdir -p /workspace && chown judge:judge /workspace
+WORKDIR /workspace
+USER judge

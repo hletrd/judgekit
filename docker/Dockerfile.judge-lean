@@ -1,0 +1,19 @@
+FROM ubuntu:24.04
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl ca-certificates gcc libc-dev zstd && \
+    ARCH=$(dpkg --print-architecture) && \
+    if [ "$ARCH" = "amd64" ]; then \
+      curl -L -o /tmp/lean.tar.zst https://github.com/leanprover/lean4/releases/download/v4.28.0/lean-4.28.0-linux.tar.zst; \
+    else \
+      curl -L -o /tmp/lean.tar.zst https://github.com/leanprover/lean4/releases/download/v4.28.0/lean-4.28.0-linux_aarch64.tar.zst; \
+    fi && \
+    mkdir -p /opt/lean && \
+    unzstd /tmp/lean.tar.zst && \
+    tar -xf /tmp/lean.tar -C /opt/lean --strip-components=1 && \
+    rm -f /tmp/lean.tar.zst /tmp/lean.tar && \
+    apt-get purge -y curl zstd && apt-get autoremove -y && rm -rf /var/lib/apt/lists/*
+ENV PATH="/opt/lean/bin:$PATH"
+RUN useradd -m -s /bin/false judge && \
+    mkdir -p /workspace && chown judge:judge /workspace
+WORKDIR /workspace
+USER judge

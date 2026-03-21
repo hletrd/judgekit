@@ -1,0 +1,16 @@
+FROM ubuntu:22.04 AS builder
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl ca-certificates gcc libc-dev && \
+    curl -sSL https://github.com/koka-lang/koka/releases/download/v3.1.2/koka-v3.1.2-linux-x64.tar.gz | tar -xz -C /usr/local && \
+    rm -rf /var/lib/apt/lists/*
+
+FROM ubuntu:22.04
+RUN apt-get update && apt-get install -y --no-install-recommends gcc libc-dev && \
+    rm -rf /var/lib/apt/lists/*
+COPY --from=builder /usr/local/bin/koka /usr/local/bin/koka
+COPY --from=builder /usr/local/lib/koka /usr/local/lib/koka
+COPY --from=builder /usr/local/share/koka /usr/local/share/koka
+RUN useradd -m -s /bin/false judge && \
+    mkdir -p /workspace && chown judge:judge /workspace
+WORKDIR /workspace
+USER judge

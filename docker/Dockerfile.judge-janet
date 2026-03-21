@@ -1,0 +1,12 @@
+FROM alpine:3.21 AS builder
+RUN apk add --no-cache build-base git && \
+    git clone --depth 1 --branch v1.40.1 https://github.com/janet-lang/janet.git /tmp/janet && \
+    cd /tmp/janet && make -j$(nproc) && make install DESTDIR=/install PREFIX=/usr
+
+FROM alpine:3.21
+COPY --from=builder /install/usr/bin/janet /usr/bin/janet
+COPY --from=builder /install/usr/lib/libjanet.* /usr/lib/
+RUN adduser -D -s /bin/false judge && \
+    mkdir -p /workspace && chown judge:judge /workspace
+WORKDIR /workspace
+USER judge

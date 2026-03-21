@@ -1,0 +1,16 @@
+FROM debian:bookworm-slim AS builder
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential cmake git ca-certificates && \
+    git clone --depth 1 --branch v3.2 https://github.com/albertodemichelis/squirrel.git /tmp/squirrel && \
+    cd /tmp/squirrel && mkdir build && cd build && \
+    cmake .. -DCMAKE_INSTALL_PREFIX=/usr/local && make -j$(nproc) && make install
+
+FROM debian:bookworm-slim
+COPY --from=builder /usr/local/bin/sq /usr/local/bin/sq
+COPY --from=builder /usr/local/lib/libsquirrel* /usr/local/lib/
+COPY --from=builder /usr/local/lib/libsqstdlib* /usr/local/lib/
+RUN ldconfig && \
+    useradd -m -s /bin/false judge && \
+    mkdir -p /workspace && chown judge:judge /workspace
+WORKDIR /workspace
+USER judge

@@ -422,3 +422,75 @@ services:
       context: .
       dockerfile: docker/Dockerfile.judge-sml
     image: judge-sml:${GIT_SHA:-latest}
+
+  judge-micropython:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.judge-micropython
+    image: judge-micropython:${GIT_SHA:-latest}
+
+  judge-squirrel:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.judge-squirrel
+    image: judge-squirrel:${GIT_SHA:-latest}
+
+  judge-rexx:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.judge-rexx
+    image: judge-rexx:${GIT_SHA:-latest}
+
+  judge-hy:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.judge-hy
+    image: judge-hy:${GIT_SHA:-latest}
+
+  judge-arturo:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.judge-arturo
+    image: judge-arturo:${GIT_SHA:-latest}
+
+  judge-janet:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.judge-janet
+    image: judge-janet:${GIT_SHA:-latest}
+
+  judge-c3:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.judge-c3
+    image: judge-c3:${GIT_SHA:-latest}
+
+  judge-vala:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.judge-vala
+    image: judge-vala:${GIT_SHA:-latest}
+
+  judge-nelua:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.judge-nelua
+    image: judge-nelua:${GIT_SHA:-latest}
+
+  judge-hare:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.judge-hare
+    image: judge-hare:${GIT_SHA:-latest}
+
+  judge-koka:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.judge-koka
+    image: judge-koka:${GIT_SHA:-latest}
+
+  judge-lean:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.judge-lean
+    image: judge-lean:${GIT_SHA:-latest}

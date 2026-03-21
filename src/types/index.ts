@@ -109,4 +109,16 @@ export type Language =
   | "gleam"
   | "sml"
   | "fennel"
-  | "flix";
+  | "flix"
+  | "micropython"
+  | "squirrel"
+  | "rexx"
+  | "hy"
+  | "arturo"
+  | "janet"
+  | "c3"
+  | "vala"
+  | "nelua"
+  | "hare"
+  | "koka"
+  | "lean";

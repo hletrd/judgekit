@@ -1,0 +1,15 @@
+FROM debian:bookworm-slim AS builder
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    git build-essential gcc libc-dev lua5.4 liblua5.4-dev ca-certificates && \
+    git clone --depth 1 https://github.com/edubart/nelua-lang.git /tmp/nelua && \
+    cd /tmp/nelua && make -j$(nproc) && make install PREFIX=/usr/local
+
+FROM debian:bookworm-slim
+RUN apt-get update && apt-get install -y --no-install-recommends gcc libc-dev lua5.4 && \
+    rm -rf /var/lib/apt/lists/*
+COPY --from=builder /usr/local/bin/nelua /usr/local/bin/nelua
+COPY --from=builder /usr/local/lib/nelua /usr/local/lib/nelua
+RUN useradd -m -s /bin/false judge && \
+    mkdir -p /workspace && chown judge:judge /workspace
+WORKDIR /workspace
+USER judge

@@ -154,6 +154,18 @@ pub enum Language {
     Sml,
     Fennel,
     Flix,
+    Micropython,
+    Squirrel,
+    Rexx,
+    Hy,
+    Arturo,
+    Janet,
+    C3,
+    Vala,
+    Nelua,
+    Hare,
+    Koka,
+    Lean,
     #[serde(other)]
     Unknown,
 }

@@ -965,6 +965,131 @@ static FLIX_CONFIG: LanguageConfig = LanguageConfig {
     run_command: FLIX_RUN,
 };
 
+// MicroPython
+static MICROPYTHON_RUN: &[&str] = &["micropython", "/workspace/solution.py"];
+
+static MICROPYTHON_CONFIG: LanguageConfig = LanguageConfig {
+    extension: ".py",
+    docker_image: "judge-micropython:latest",
+    compile_command: None,
+    run_command: MICROPYTHON_RUN,
+};
+
+// Squirrel
+static SQUIRREL_RUN: &[&str] = &["sq", "/workspace/solution.nut"];
+
+static SQUIRREL_CONFIG: LanguageConfig = LanguageConfig {
+    extension: ".nut",
+    docker_image: "judge-squirrel:latest",
+    compile_command: None,
+    run_command: SQUIRREL_RUN,
+};
+
+// Rexx (Regina)
+static REXX_RUN: &[&str] = &["regina", "/workspace/solution.rexx"];
+
+static REXX_CONFIG: LanguageConfig = LanguageConfig {
+    extension: ".rexx",
+    docker_image: "judge-rexx:latest",
+    compile_command: None,
+    run_command: REXX_RUN,
+};
+
+// Hy
+static HY_RUN: &[&str] = &["hy", "/workspace/solution.hy"];
+
+static HY_CONFIG: LanguageConfig = LanguageConfig {
+    extension: ".hy",
+    docker_image: "judge-hy:latest",
+    compile_command: None,
+    run_command: HY_RUN,
+};
+
+// Arturo
+static ARTURO_RUN: &[&str] = &["arturo", "/workspace/solution.art"];
+
+static ARTURO_CONFIG: LanguageConfig = LanguageConfig {
+    extension: ".art",
+    docker_image: "judge-arturo:latest",
+    compile_command: None,
+    run_command: ARTURO_RUN,
+};
+
+// Janet
+static JANET_RUN: &[&str] = &["janet", "/workspace/solution.janet"];
+
+static JANET_CONFIG: LanguageConfig = LanguageConfig {
+    extension: ".janet",
+    docker_image: "judge-janet:latest",
+    compile_command: None,
+    run_command: JANET_RUN,
+};
+
+// C3
+static C3_COMPILE: &[&str] = &["c3c", "compile", "-o", "/workspace/solution", "/workspace/solution.c3"];
+static C3_RUN: &[&str] = &["/workspace/solution"];
+
+static C3_CONFIG: LanguageConfig = LanguageConfig {
+    extension: ".c3",
+    docker_image: "judge-c3:latest",
+    compile_command: Some(C3_COMPILE),
+    run_command: C3_RUN,
+};
+
+// Vala
+static VALA_COMPILE: &[&str] = &["valac", "-o", "/workspace/solution", "/workspace/solution.vala"];
+static VALA_RUN: &[&str] = &["/workspace/solution"];
+
+static VALA_CONFIG: LanguageConfig = LanguageConfig {
+    extension: ".vala",
+    docker_image: "judge-vala:latest",
+    compile_command: Some(VALA_COMPILE),
+    run_command: VALA_RUN,
+};
+
+// Nelua
+static NELUA_COMPILE: &[&str] = &["nelua", "-o", "/workspace/solution", "/workspace/solution.nelua"];
+static NELUA_RUN: &[&str] = &["/workspace/solution"];
+
+static NELUA_CONFIG: LanguageConfig = LanguageConfig {
+    extension: ".nelua",
+    docker_image: "judge-nelua:latest",
+    compile_command: Some(NELUA_COMPILE),
+    run_command: NELUA_RUN,
+};
+
+// Hare
+static HARE_COMPILE: &[&str] = &["hare", "build", "-o", "/workspace/solution", "/workspace/solution.ha"];
+static HARE_RUN: &[&str] = &["/workspace/solution"];
+
+static HARE_CONFIG: LanguageConfig = LanguageConfig {
+    extension: ".ha",
+    docker_image: "judge-hare:latest",
+    compile_command: Some(HARE_COMPILE),
+    run_command: HARE_RUN,
+};
+
+// Koka
+static KOKA_COMPILE: &[&str] = &["koka", "-O2", "-o", "/workspace/solution", "/workspace/solution.kk"];
+static KOKA_RUN: &[&str] = &["/workspace/solution"];
+
+static KOKA_CONFIG: LanguageConfig = LanguageConfig {
+    extension: ".kk",
+    docker_image: "judge-koka:latest",
+    compile_command: Some(KOKA_COMPILE),
+    run_command: KOKA_RUN,
+};
+
+// Lean 4
+static LEAN_RUN: &[&str] = &["lean", "--run", "/workspace/solution.lean"];
+
+static LEAN_CONFIG: LanguageConfig = LanguageConfig {
+    extension: ".lean",
+    docker_image: "judge-lean:latest",
+    compile_command: None,
+    run_command: LEAN_RUN,
+};
+
 pub fn get_config(language: &Language) -> Option<&'static LanguageConfig> {
     match language {
         Language::C17 => Some(&C17_CONFIG),
@@ -1056,6 +1181,18 @@ pub fn get_config(language: &Language) -> Option<&'static LanguageConfig> {
         Language::Sml => Some(&SML_CONFIG),
         Language::Fennel => Some(&FENNEL_CONFIG),
         Language::Flix => Some(&FLIX_CONFIG),
+        Language::Micropython => Some(&MICROPYTHON_CONFIG),
+        Language::Squirrel => Some(&SQUIRREL_CONFIG),
+        Language::Rexx => Some(&REXX_CONFIG),
+        Language::Hy => Some(&HY_CONFIG),
+        Language::Arturo => Some(&ARTURO_CONFIG),
+        Language::Janet => Some(&JANET_CONFIG),
+        Language::C3 => Some(&C3_CONFIG),
+        Language::Vala => Some(&VALA_CONFIG),
+        Language::Nelua => Some(&NELUA_CONFIG),
+        Language::Hare => Some(&HARE_CONFIG),
+        Language::Koka => Some(&KOKA_CONFIG),
+        Language::Lean => Some(&LEAN_CONFIG),
         Language::Unknown => None,
     }
 }
@@ -1157,6 +1294,18 @@ mod tests {
             Language::Sml,
             Language::Fennel,
             Language::Flix,
+            Language::Micropython,
+            Language::Squirrel,
+            Language::Rexx,
+            Language::Hy,
+            Language::Arturo,
+            Language::Janet,
+            Language::C3,
+            Language::Vala,
+            Language::Nelua,
+            Language::Hare,
+            Language::Koka,
+            Language::Lean,
         ];
 
         for lang in &languages {

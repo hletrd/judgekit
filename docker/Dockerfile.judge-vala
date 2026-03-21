@@ -1,0 +1,8 @@
+FROM debian:bookworm-slim
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    valac libglib2.0-dev build-essential pkg-config && \
+    rm -rf /var/lib/apt/lists/*
+RUN useradd -m -s /bin/false judge && \
+    mkdir -p /workspace && chown judge:judge /workspace
+WORKDIR /workspace
+USER judge
