@@ -1,0 +1,698 @@
+import {
+  mysqlTable,
+  text,
+  varchar,
+  int,
+  boolean,
+  timestamp,
+  json,
+  double,
+  bigint,
+  uniqueIndex,
+  index,
+} from "drizzle-orm/mysql-core";
+import { nanoid } from "nanoid";
+import { generateSubmissionId } from "@/lib/submissions/id";
+import type { ExamMode, ScoringModel } from "@/types";
+
+export const users = mysqlTable("users", {
+  id: varchar("id", { length: 36 })
+    .primaryKey()
+    .$defaultFn(() => nanoid()),
+  username: varchar("username", { length: 255 }).unique().notNull(),
+  email: varchar("email", { length: 255 }).unique(),
+  name: text("name").notNull(),
+  className: varchar("class_name", { length: 255 }),
+  passwordHash: text("password_hash"),
+  role: varchar("role", { length: 255 }).notNull().default("student"),
+  isActive: boolean("is_active").default(true),
+  mustChangePassword: boolean("must_change_password").default(false),
+  tokenInvalidatedAt: timestamp("token_invalidated_at"),
+  emailVerified: timestamp("email_verified"),
+  image: text("image"),
+  preferredLanguage: varchar("preferred_language", { length: 255 }),
+  preferredTheme: varchar("preferred_theme", { length: 255 }),
+  editorTheme: varchar("editor_theme", { length: 255 }),
+  createdAt: timestamp("created_at")
+    .notNull()
+    .$defaultFn(() => new Date(Date.now())),
+  // NOTE: $defaultFn only fires on INSERT. Use withUpdatedAt() from @/lib/db/helpers for every UPDATE.
+  updatedAt: timestamp("updated_at")
+    .notNull()
+    .$defaultFn(() => new Date(Date.now())),
+});
+
+export const sessions = mysqlTable("sessions", {
+  sessionToken: varchar("session_token", { length: 255 }).primaryKey(),
+  userId: varchar("user_id", { length: 36 })
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  expires: timestamp("expires").notNull(),
+});
+
+export const accounts = mysqlTable("accounts", {
+  id: varchar("id", { length: 36 })
+    .primaryKey()
+    .$defaultFn(() => nanoid()),
+  userId: varchar("user_id", { length: 36 })
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  type: varchar("type", { length: 255 }).notNull(),
+  provider: varchar("provider", { length: 255 }).notNull(),
+  providerAccountId: varchar("provider_account_id", { length: 255 }).notNull(),
+  refresh_token: text("refresh_token"),
+  access_token: text("access_token"),
+  expires_at: int("expires_at"),
+  token_type: varchar("token_type", { length: 255 }),
+  scope: varchar("scope", { length: 255 }),
+  id_token: text("id_token"),
+  session_state: varchar("session_state", { length: 255 }),
+});
+
+export const loginEvents = mysqlTable(
+  "login_events",
+  {
+    id: varchar("id", { length: 36 })
+      .primaryKey()
+      .$defaultFn(() => nanoid()),
+    outcome: varchar("outcome", { length: 255 }).notNull(),
+    attemptedIdentifier: varchar("attempted_identifier", { length: 255 }),
+    userId: varchar("user_id", { length: 36 }).references(() => users.id, { onDelete: "set null" }),
+    ipAddress: varchar("ip_address", { length: 255 }),
+    userAgent: text("user_agent"),
+    requestMethod: varchar("request_method", { length: 255 }),
+    requestPath: varchar("request_path", { length: 255 }),
+    createdAt: timestamp("created_at")
+      .notNull()
+      .$defaultFn(() => new Date(Date.now())),
+  },
+  (table) => [
+    index("login_events_outcome_idx").on(table.outcome),
+    index("login_events_user_idx").on(table.userId),
+    index("login_events_created_at_idx").on(table.createdAt),
+  ]
+);
+
+export const auditEvents = mysqlTable(
+  "audit_events",
+  {
+    id: varchar("id", { length: 36 })
+      .primaryKey()
+      .$defaultFn(() => nanoid()),
+    actorId: varchar("actor_id", { length: 36 }).references(() => users.id, { onDelete: "set null" }),
+    actorRole: varchar("actor_role", { length: 255 }),
+    action: varchar("action", { length: 255 }).notNull(),
+    resourceType: varchar("resource_type", { length: 255 }).notNull(),
+    resourceId: varchar("resource_id", { length: 255 }),
+    resourceLabel: varchar("resource_label", { length: 255 }),
+    summary: text("summary").notNull(),
+    details: text("details"),
+    ipAddress: varchar("ip_address", { length: 255 }),
+    userAgent: text("user_agent"),
+    requestMethod: varchar("request_method", { length: 255 }),
+    requestPath: varchar("request_path", { length: 255 }),
+    createdAt: timestamp("created_at")
+      .notNull()
+      .$defaultFn(() => new Date(Date.now())),
+  },
+  (table) => [
+    index("audit_events_actor_idx").on(table.actorId),
+    index("audit_events_action_idx").on(table.action),
+    index("audit_events_resource_type_idx").on(table.resourceType),
+    index("audit_events_created_at_idx").on(table.createdAt),
+  ]
+);
+
+export const groups = mysqlTable("groups", {
+  id: varchar("id", { length: 36 })
+    .primaryKey()
+    .$defaultFn(() => nanoid()),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  instructorId: varchar("instructor_id", { length: 36 }).references(() => users.id, {
+    onDelete: "set null",
+  }),
+  isArchived: boolean("is_archived").default(false),
+  createdAt: timestamp("created_at")
+    .notNull()
+    .$defaultFn(() => new Date(Date.now())),
+  // NOTE: $defaultFn only fires on INSERT. Use withUpdatedAt() from @/lib/db/helpers for every UPDATE.
+  updatedAt: timestamp("updated_at")
+    .notNull()
+    .$defaultFn(() => new Date(Date.now())),
+});
+
+export const enrollments = mysqlTable(
+  "enrollments",
+  {
+    id: varchar("id", { length: 36 })
+      .primaryKey()
+      .$defaultFn(() => nanoid()),
+    userId: varchar("user_id", { length: 36 })
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    groupId: varchar("group_id", { length: 36 })
+      .notNull()
+      .references(() => groups.id, { onDelete: "cascade" }),
+    enrolledAt: timestamp("enrolled_at")
+      .notNull()
+      .$defaultFn(() => new Date(Date.now())),
+  },
+  (table) => [
+    uniqueIndex("enrollments_user_group_idx").on(table.userId, table.groupId),
+    index("enrollments_user_idx").on(table.userId),
+    index("enrollments_group_idx").on(table.groupId),
+  ]
+);
+
+export const problems = mysqlTable("problems", {
+  id: varchar("id", { length: 36 })
+    .primaryKey()
+    .$defaultFn(() => nanoid()),
+  title: varchar("title", { length: 255 }).notNull(),
+  description: text("description"),
+  timeLimitMs: int("time_limit_ms").default(2000),
+  memoryLimitMb: int("memory_limit_mb").default(256),
+  visibility: varchar("visibility", { length: 255 }).default("private"),
+  showCompileOutput: boolean("show_compile_output").notNull().default(true),
+  showDetailedResults: boolean("show_detailed_results").notNull().default(true),
+  showRuntimeErrors: boolean("show_runtime_errors").notNull().default(true),
+  allowAiAssistant: boolean("allow_ai_assistant").notNull().default(true),
+  comparisonMode: varchar("comparison_mode", { length: 255 }).notNull().default("exact"),
+  floatAbsoluteError: double("float_absolute_error"),
+  floatRelativeError: double("float_relative_error"),
+  authorId: varchar("author_id", { length: 36 }).references(() => users.id, {
+    onDelete: "set null",
+  }),
+  createdAt: timestamp("created_at")
+    .notNull()
+    .$defaultFn(() => new Date(Date.now())),
+  // NOTE: $defaultFn only fires on INSERT. Use withUpdatedAt() from @/lib/db/helpers for every UPDATE.
+  updatedAt: timestamp("updated_at")
+    .notNull()
+    .$defaultFn(() => new Date(Date.now())),
+});
+
+export const testCases = mysqlTable(
+  "test_cases",
+  {
+    id: varchar("id", { length: 36 })
+      .primaryKey()
+      .$defaultFn(() => nanoid()),
+    problemId: varchar("problem_id", { length: 36 })
+      .notNull()
+      .references(() => problems.id, { onDelete: "cascade" }),
+    input: text("input").notNull(),
+    expectedOutput: text("expected_output").notNull(),
+    isVisible: boolean("is_visible").default(false),
+    sortOrder: int("sort_order").default(0),
+  },
+  (table) => [index("test_cases_problem_idx").on(table.problemId)]
+);
+
+export const problemGroupAccess = mysqlTable(
+  "problem_group_access",
+  {
+    id: varchar("id", { length: 36 })
+      .primaryKey()
+      .$defaultFn(() => nanoid()),
+    problemId: varchar("problem_id", { length: 36 })
+      .notNull()
+      .references(() => problems.id, { onDelete: "cascade" }),
+    groupId: varchar("group_id", { length: 36 })
+      .notNull()
+      .references(() => groups.id, { onDelete: "cascade" }),
+  },
+  (table) => [
+    index("pga_problem_idx").on(table.problemId),
+    index("pga_group_idx").on(table.groupId),
+    uniqueIndex("pga_problem_group_idx").on(table.problemId, table.groupId),
+  ]
+);
+
+export const assignments = mysqlTable(
+  "assignments",
+  {
+    id: varchar("id", { length: 36 })
+      .primaryKey()
+      .$defaultFn(() => nanoid()),
+    groupId: varchar("group_id", { length: 36 })
+      .notNull()
+      .references(() => groups.id, { onDelete: "cascade" }),
+    title: varchar("title", { length: 255 }).notNull(),
+    description: text("description"),
+    startsAt: timestamp("starts_at"),
+    deadline: timestamp("deadline"),
+    lateDeadline: timestamp("late_deadline"),
+    latePenalty: double("late_penalty").default(0),
+    examMode: varchar("exam_mode", { length: 255 }).$type<ExamMode>().notNull().default("none"),
+    examDurationMinutes: int("exam_duration_minutes"),
+    scoringModel: varchar("scoring_model", { length: 255 }).$type<ScoringModel>().notNull().default("ioi"),
+    accessCode: varchar("access_code", { length: 255 }),
+    freezeLeaderboardAt: timestamp("freeze_leaderboard_at"),
+    enableAntiCheat: boolean("enable_anti_cheat").notNull().default(false),
+    createdAt: timestamp("created_at")
+      .notNull()
+      .$defaultFn(() => new Date(Date.now())),
+    updatedAt: timestamp("updated_at")
+      .notNull()
+      .$defaultFn(() => new Date(Date.now())),
+  },
+  (table) => [
+    index("assignments_group_idx").on(table.groupId),
+    index("assignments_access_code_idx").on(table.accessCode),
+  ]
+);
+
+export const examSessions = mysqlTable(
+  "exam_sessions",
+  {
+    id: varchar("id", { length: 36 })
+      .primaryKey()
+      .$defaultFn(() => nanoid()),
+    assignmentId: varchar("assignment_id", { length: 36 })
+      .notNull()
+      .references(() => assignments.id, { onDelete: "cascade" }),
+    userId: varchar("user_id", { length: 36 })
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    startedAt: timestamp("started_at").notNull(),
+    personalDeadline: timestamp("personal_deadline").notNull(),
+    ipAddress: varchar("ip_address", { length: 255 }),
+  },
+  (table) => [
+    uniqueIndex("exam_sessions_assignment_user_idx").on(table.assignmentId, table.userId),
+    index("exam_sessions_assignment_idx").on(table.assignmentId),
+    index("exam_sessions_user_idx").on(table.userId),
+  ]
+);
+
+export const assignmentProblems = mysqlTable(
+  "assignment_problems",
+  {
+    id: varchar("id", { length: 36 })
+      .primaryKey()
+      .$defaultFn(() => nanoid()),
+    assignmentId: varchar("assignment_id", { length: 36 })
+      .notNull()
+      .references(() => assignments.id, { onDelete: "cascade" }),
+    problemId: varchar("problem_id", { length: 36 })
+      .notNull()
+      .references(() => problems.id, { onDelete: "cascade" }),
+    points: int("points").default(100),
+    sortOrder: int("sort_order").default(0),
+  },
+  (table) => [
+    index("ap_assignment_idx").on(table.assignmentId),
+    index("ap_problem_idx").on(table.problemId),
+    uniqueIndex("ap_assignment_problem_idx").on(table.assignmentId, table.problemId),
+  ]
+);
+
+export const judgeWorkers = mysqlTable(
+  "judge_workers",
+  {
+    id: varchar("id", { length: 36 })
+      .primaryKey()
+      .$defaultFn(() => nanoid()),
+    hostname: varchar("hostname", { length: 255 }).notNull(),
+    alias: varchar("alias", { length: 255 }),
+    ipAddress: varchar("ip_address", { length: 255 }),
+    secretToken: text("secret_token"),
+    concurrency: int("concurrency").notNull().default(1),
+    activeTasks: int("active_tasks").notNull().default(0),
+    version: varchar("version", { length: 255 }),
+    labels: json("labels").$type<string[]>().default([]),
+    status: varchar("status", { length: 255 }).notNull().default("online"),
+    registeredAt: timestamp("registered_at")
+      .notNull()
+      .$defaultFn(() => new Date(Date.now())),
+    lastHeartbeatAt: timestamp("last_heartbeat_at")
+      .notNull()
+      .$defaultFn(() => new Date(Date.now())),
+    deregisteredAt: timestamp("deregistered_at"),
+  },
+  (table) => [
+    index("judge_workers_status_idx").on(table.status),
+    index("judge_workers_last_heartbeat_idx").on(table.lastHeartbeatAt),
+  ]
+);
+
+export const submissions = mysqlTable(
+  "submissions",
+  {
+    id: varchar("id", { length: 36 })
+      .primaryKey()
+      .$defaultFn(() => generateSubmissionId()),
+    userId: varchar("user_id", { length: 36 })
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    problemId: varchar("problem_id", { length: 36 })
+      .notNull()
+      .references(() => problems.id, { onDelete: "cascade" }),
+    assignmentId: varchar("assignment_id", { length: 36 }).references(() => assignments.id, {
+      onDelete: "set null",
+    }),
+    language: varchar("language", { length: 255 }).notNull(),
+    sourceCode: text("source_code").notNull(),
+    status: varchar("status", { length: 255 }).default("pending"),
+    judgeClaimToken: varchar("judge_claim_token", { length: 255 }),
+    judgeClaimedAt: timestamp("judge_claimed_at"),
+    judgeWorkerId: varchar("judge_worker_id", { length: 36 }),
+    compileOutput: text("compile_output"),
+    executionTimeMs: int("execution_time_ms"),
+    memoryUsedKb: int("memory_used_kb"),
+    score: double("score"),
+    judgedAt: timestamp("judged_at"),
+    ipAddress: varchar("ip_address", { length: 255 }),
+    submittedAt: timestamp("submitted_at")
+      .notNull()
+      .$defaultFn(() => new Date(Date.now())),
+  },
+  (table) => [
+    index("submissions_user_problem_idx").on(table.userId, table.problemId),
+    index("submissions_assignment_user_problem_idx").on(table.assignmentId, table.userId, table.problemId),
+    index("submissions_status_idx").on(table.status),
+    index("submissions_user_idx").on(table.userId),
+    index("submissions_problem_idx").on(table.problemId),
+    index("submissions_assignment_idx").on(table.assignmentId),
+    index("submissions_judge_worker_idx").on(table.judgeWorkerId),
+  ]
+);
+
+export const languageConfigs = mysqlTable("language_configs", {
+  id: varchar("id", { length: 36 })
+    .primaryKey()
+    .$defaultFn(() => nanoid()),
+  language: varchar("language", { length: 255 }).unique().notNull(),
+  displayName: varchar("display_name", { length: 255 }).notNull(),
+  standard: varchar("standard", { length: 255 }),
+  extension: varchar("extension", { length: 255 }).notNull(),
+  dockerImage: varchar("docker_image", { length: 255 }).notNull(),
+  compiler: varchar("compiler", { length: 255 }),
+  compileCommand: text("compile_command"),
+  runCommand: text("run_command").notNull(),
+  dockerfile: text("dockerfile"),
+  isEnabled: boolean("is_enabled").default(true),
+  updatedAt: timestamp("updated_at")
+    .notNull()
+    .$defaultFn(() => new Date(Date.now())),
+});
+
+export const systemSettings = mysqlTable("system_settings", {
+  id: varchar("id", { length: 36 })
+    .primaryKey()
+    .$defaultFn(() => "global"),
+  siteTitle: varchar("site_title", { length: 255 }),
+  siteDescription: text("site_description"),
+  timeZone: varchar("time_zone", { length: 255 }),
+  aiAssistantEnabled: boolean("ai_assistant_enabled").notNull().default(true),
+  // Rate Limiting (Login)
+  loginRateLimitMaxAttempts: int("login_rate_limit_max_attempts"),
+  loginRateLimitWindowMs: int("login_rate_limit_window_ms"),
+  loginRateLimitBlockMs: int("login_rate_limit_block_ms"),
+  // Rate Limiting (API)
+  apiRateLimitMax: int("api_rate_limit_max"),
+  apiRateLimitWindowMs: int("api_rate_limit_window_ms"),
+  // Rate Limiting (Submissions)
+  submissionRateLimitMaxPerMinute: int("submission_rate_limit_max_per_minute"),
+  submissionMaxPending: int("submission_max_pending"),
+  submissionGlobalQueueLimit: int("submission_global_queue_limit"),
+  // Judge Defaults
+  defaultTimeLimitMs: int("default_time_limit_ms"),
+  defaultMemoryLimitMb: int("default_memory_limit_mb"),
+  maxSourceCodeSizeBytes: int("max_source_code_size_bytes"),
+  staleClaimTimeoutMs: int("stale_claim_timeout_ms"),
+  // Session & Auth
+  sessionMaxAgeSeconds: int("session_max_age_seconds"),
+  minPasswordLength: int("min_password_length"),
+  // Pagination
+  defaultPageSize: int("default_page_size"),
+  // Real-time / SSE
+  maxSseConnectionsPerUser: int("max_sse_connections_per_user"),
+  ssePollIntervalMs: int("sse_poll_interval_ms"),
+  sseTimeoutMs: int("sse_timeout_ms"),
+  updatedAt: timestamp("updated_at")
+    .notNull()
+    .$defaultFn(() => new Date(Date.now())),
+});
+
+export const rateLimits = mysqlTable(
+  "rate_limits",
+  {
+    id: varchar("id", { length: 36 })
+      .primaryKey()
+      .$defaultFn(() => nanoid()),
+    key: varchar("key", { length: 255 }).notNull(),
+    attempts: int("attempts").notNull().default(0),
+    windowStartedAt: bigint("window_started_at", { mode: "number" }).notNull(),
+    blockedUntil: bigint("blocked_until", { mode: "number" }),
+    consecutiveBlocks: int("consecutive_blocks").default(0),
+    lastAttempt: bigint("last_attempt", { mode: "number" }).notNull(),
+    createdAt: bigint("created_at", { mode: "number" }).$defaultFn(() => Date.now()),
+  },
+  (table) => [
+    uniqueIndex("rate_limits_key_idx").on(table.key),
+  ]
+);
+
+export const submissionComments = mysqlTable(
+  "submission_comments",
+  {
+    id: varchar("id", { length: 36 })
+      .primaryKey()
+      .$defaultFn(() => nanoid()),
+    submissionId: varchar("submission_id", { length: 36 })
+      .notNull()
+      .references(() => submissions.id, { onDelete: "cascade" }),
+    authorId: varchar("author_id", { length: 36 })
+      .references(() => users.id, { onDelete: "set null" }),
+    content: text("content").notNull(),
+    createdAt: timestamp("created_at")
+      .notNull()
+      .$defaultFn(() => new Date(Date.now())),
+    updatedAt: timestamp("updated_at")
+      .notNull()
+      .$defaultFn(() => new Date(Date.now())),
+  },
+  (table) => [
+    index("sc_submission_idx").on(table.submissionId),
+    index("sc_author_idx").on(table.authorId),
+  ]
+);
+
+export const scoreOverrides = mysqlTable(
+  "score_overrides",
+  {
+    id: varchar("id", { length: 36 })
+      .primaryKey()
+      .$defaultFn(() => nanoid()),
+    assignmentId: varchar("assignment_id", { length: 36 })
+      .notNull()
+      .references(() => assignments.id, { onDelete: "cascade" }),
+    problemId: varchar("problem_id", { length: 36 })
+      .notNull()
+      .references(() => problems.id, { onDelete: "cascade" }),
+    userId: varchar("user_id", { length: 36 })
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    overrideScore: double("override_score").notNull(),
+    reason: text("reason"),
+    createdBy: varchar("created_by", { length: 36 })
+      .references(() => users.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at")
+      .notNull()
+      .$defaultFn(() => new Date()),
+  },
+  (table) => [
+    uniqueIndex("score_overrides_assignment_problem_user_idx").on(
+      table.assignmentId,
+      table.problemId,
+      table.userId
+    ),
+    index("score_overrides_assignment_idx").on(table.assignmentId),
+  ]
+);
+
+export const problemSets = mysqlTable("problem_sets", {
+  id: varchar("id", { length: 36 })
+    .primaryKey()
+    .$defaultFn(() => nanoid()),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  createdBy: varchar("created_by", { length: 36 }).references(() => users.id, {
+    onDelete: "set null",
+  }),
+  createdAt: timestamp("created_at")
+    .notNull()
+    .$defaultFn(() => new Date(Date.now())),
+  updatedAt: timestamp("updated_at")
+    .notNull()
+    .$defaultFn(() => new Date(Date.now())),
+});
+
+export const problemSetProblems = mysqlTable(
+  "problem_set_problems",
+  {
+    id: varchar("id", { length: 36 })
+      .primaryKey()
+      .$defaultFn(() => nanoid()),
+    problemSetId: varchar("problem_set_id", { length: 36 })
+      .notNull()
+      .references(() => problemSets.id, { onDelete: "cascade" }),
+    problemId: varchar("problem_id", { length: 36 })
+      .notNull()
+      .references(() => problems.id, { onDelete: "cascade" }),
+    sortOrder: int("sort_order").default(0),
+  },
+  (table) => [
+    index("psp_problem_set_idx").on(table.problemSetId),
+    index("psp_problem_idx").on(table.problemId),
+    uniqueIndex("psp_problem_set_problem_idx").on(table.problemSetId, table.problemId),
+  ]
+);
+
+export const problemSetGroupAccess = mysqlTable(
+  "problem_set_group_access",
+  {
+    id: varchar("id", { length: 36 })
+      .primaryKey()
+      .$defaultFn(() => nanoid()),
+    problemSetId: varchar("problem_set_id", { length: 36 })
+      .notNull()
+      .references(() => problemSets.id, { onDelete: "cascade" }),
+    groupId: varchar("group_id", { length: 36 })
+      .notNull()
+      .references(() => groups.id, { onDelete: "cascade" }),
+    assignedAt: timestamp("assigned_at")
+      .notNull()
+      .$defaultFn(() => new Date(Date.now())),
+  },
+  (table) => [
+    index("psga_problem_set_idx").on(table.problemSetId),
+    index("psga_group_idx").on(table.groupId),
+    uniqueIndex("psga_problem_set_group_idx").on(table.problemSetId, table.groupId),
+  ]
+);
+
+export const submissionResults = mysqlTable(
+  "submission_results",
+  {
+    id: varchar("id", { length: 36 })
+      .primaryKey()
+      .$defaultFn(() => nanoid()),
+    submissionId: varchar("submission_id", { length: 36 })
+      .notNull()
+      .references(() => submissions.id, { onDelete: "cascade" }),
+    testCaseId: varchar("test_case_id", { length: 36 })
+      .notNull()
+      .references(() => testCases.id, { onDelete: "cascade" }),
+    status: varchar("status", { length: 255 }).notNull(),
+    actualOutput: text("actual_output"),
+    executionTimeMs: int("execution_time_ms"),
+    memoryUsedKb: int("memory_used_kb"),
+  },
+  (table) => [
+    index("sr_submission_idx").on(table.submissionId),
+    index("sr_test_case_idx").on(table.testCaseId),
+  ]
+);
+
+export const plugins = mysqlTable("plugins", {
+  id: varchar("id", { length: 255 }).primaryKey(),
+  enabled: boolean("enabled").notNull().default(false),
+  config: json("config"),
+  updatedAt: timestamp("updated_at")
+    .notNull()
+    .$defaultFn(() => new Date(Date.now())),
+});
+
+export const chatMessages = mysqlTable("chat_messages", {
+  id: varchar("id", { length: 36 })
+    .primaryKey()
+    .$defaultFn(() => nanoid()),
+  userId: varchar("user_id", { length: 36 }).references(() => users.id, { onDelete: "cascade" }),
+  sessionId: varchar("session_id", { length: 255 }).notNull(),
+  role: varchar("role", { length: 255 }).notNull(), // "user" | "assistant" | "system"
+  content: text("content").notNull(),
+  problemId: varchar("problem_id", { length: 36 }),
+  model: varchar("model", { length: 255 }),
+  provider: varchar("provider", { length: 255 }),
+  createdAt: timestamp("created_at")
+    .notNull()
+    .$defaultFn(() => new Date(Date.now())),
+});
+
+export const contestAccessTokens = mysqlTable(
+  "contest_access_tokens",
+  {
+    id: varchar("id", { length: 36 })
+      .primaryKey()
+      .$defaultFn(() => nanoid()),
+    assignmentId: varchar("assignment_id", { length: 36 })
+      .notNull()
+      .references(() => assignments.id, { onDelete: "cascade" }),
+    userId: varchar("user_id", { length: 36 })
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    redeemedAt: timestamp("redeemed_at")
+      .notNull()
+      .$defaultFn(() => new Date(Date.now())),
+    ipAddress: varchar("ip_address", { length: 255 }),
+  },
+  (table) => [
+    uniqueIndex("cat_assignment_user_idx").on(table.assignmentId, table.userId),
+  ]
+);
+
+export const roles = mysqlTable(
+  "roles",
+  {
+    id: varchar("id", { length: 36 })
+      .primaryKey()
+      .$defaultFn(() => nanoid()),
+    name: varchar("name", { length: 255 }).unique().notNull(),
+    displayName: varchar("display_name", { length: 255 }).notNull(),
+    description: text("description"),
+    isBuiltin: boolean("is_builtin").notNull().default(false),
+    level: int("level").notNull().default(0),
+    capabilities: json("capabilities").$type<string[]>().notNull().default([]),
+    createdAt: timestamp("created_at")
+      .notNull()
+      .$defaultFn(() => new Date(Date.now())),
+    updatedAt: timestamp("updated_at")
+      .notNull()
+      .$defaultFn(() => new Date(Date.now())),
+  },
+  (table) => [
+    uniqueIndex("roles_name_idx").on(table.name),
+    index("roles_level_idx").on(table.level),
+  ]
+);
+
+export const antiCheatEvents = mysqlTable(
+  "anti_cheat_events",
+  {
+    id: varchar("id", { length: 36 })
+      .primaryKey()
+      .$defaultFn(() => nanoid()),
+    assignmentId: varchar("assignment_id", { length: 36 })
+      .notNull()
+      .references(() => assignments.id, { onDelete: "cascade" }),
+    userId: varchar("user_id", { length: 36 })
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    eventType: varchar("event_type", { length: 255 }).notNull(),
+    details: text("details"),
+    ipAddress: varchar("ip_address", { length: 255 }),
+    userAgent: text("user_agent"),
+    createdAt: timestamp("created_at")
+      .notNull()
+      .$defaultFn(() => new Date(Date.now())),
+  },
+  (table) => [
+    index("ace_assignment_user_idx").on(table.assignmentId, table.userId),
+    index("ace_assignment_type_idx").on(table.assignmentId, table.eventType),
+    index("ace_assignment_created_idx").on(table.assignmentId, table.createdAt),
+  ]
+);
