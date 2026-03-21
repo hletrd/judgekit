@@ -310,6 +310,7 @@ export const judgeWorkers = sqliteTable(
     hostname: text("hostname").notNull(),
     alias: text("alias"),
     ipAddress: text("ip_address"),
+    secretToken: text("secret_token"),
     concurrency: integer("concurrency").notNull().default(1),
     activeTasks: integer("active_tasks").notNull().default(0),
     version: text("version"),

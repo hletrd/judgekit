@@ -79,12 +79,14 @@ impl ApiClient {
     pub async fn heartbeat(
         &self,
         worker_id: &str,
+        worker_secret: Option<&str>,
         active_tasks: usize,
         available_slots: usize,
         uptime_seconds: u64,
     ) -> Result<(), String> {
         let body = HeartbeatRequest {
             worker_id,
+            worker_secret,
             active_tasks,
             available_slots,
             uptime_seconds,
@@ -107,8 +109,8 @@ impl ApiClient {
     }
 
     /// Deregister this worker from the app server.
-    pub async fn deregister(&self, worker_id: &str) -> Result<(), String> {
-        let body = DeregisterRequest { worker_id };
+    pub async fn deregister(&self, worker_id: &str, worker_secret: Option<&str>) -> Result<(), String> {
+        let body = DeregisterRequest { worker_id, worker_secret };
 
         let response = self
             .client

@@ -71,28 +71,30 @@ async fn main() {
     );
 
     // Register with the app server
-    let worker_id: Option<String> = match client.register(&worker_hostname, concurrency).await {
-        Ok(resp) => {
-            tracing::info!(
-                worker_id = %resp.data.worker_id,
-                heartbeat_interval_ms = resp.data.heartbeat_interval_ms,
-                "Registered with app server"
-            );
-            Some(resp.data.worker_id)
-        }
-        Err(e) => {
-            tracing::warn!(
-                error = %e,
-                "Failed to register with app server — running without registration"
-            );
-            None
-        }
-    };
+    let (worker_id, worker_secret): (Option<String>, Option<String>) =
+        match client.register(&worker_hostname, concurrency).await {
+            Ok(resp) => {
+                tracing::info!(
+                    worker_id = %resp.data.worker_id,
+                    heartbeat_interval_ms = resp.data.heartbeat_interval_ms,
+                    "Registered with app server"
+                );
+                (Some(resp.data.worker_id), resp.data.worker_secret)
+            }
+            Err(e) => {
+                tracing::warn!(
+                    error = %e,
+                    "Failed to register with app server — running without registration"
+                );
+                (None, None)
+            }
+        };
 
     // Spawn heartbeat task if registered
     let heartbeat_handle = if let Some(ref wid) = worker_id {
         let client = Arc::clone(&client);
         let wid = wid.clone();
+        let wsecret = worker_secret.clone();
         let active_tasks = Arc::clone(&active_tasks);
         let heartbeat_cancel = tokio_util::sync::CancellationToken::new();
         let heartbeat_cancel_clone = heartbeat_cancel.clone();
@@ -112,7 +114,7 @@ async fn main() {
                 let available = concurrency.saturating_sub(current_active);
                 let uptime = start_time.elapsed().as_secs();
 
-                match client.heartbeat(&wid, current_active, available, uptime).await {
+                match client.heartbeat(&wid, wsecret.as_deref(), current_active, available, uptime).await {
                     Ok(()) => {
                         if consecutive_failures > 0 {
                             tracing::info!("Heartbeat recovered after {} failures", consecutive_failures);
@@ -261,7 +263,7 @@ async fn main() {
 
     // Deregister from the app server
     if let Some(ref wid) = worker_id {
-        if let Err(e) = client.deregister(wid).await {
+        if let Err(e) = client.deregister(wid, worker_secret.as_deref()).await {
             tracing::warn!(error = %e, "Failed to deregister — server will mark as stale");
         } else {
             tracing::info!("Deregistered from app server");

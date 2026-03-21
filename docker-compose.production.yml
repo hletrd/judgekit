@@ -42,7 +42,10 @@ services:
     image: judgekit-judge-worker:latest
     container_name: judgekit-judge-worker
     restart: unless-stopped
-    privileged: true
+    cap_add:
+      - SYS_ADMIN
+    security_opt:
+      - apparmor:unconfined
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - /judge-workspaces:/judge-workspaces  # Identity-mapped so sibling containers see the same path

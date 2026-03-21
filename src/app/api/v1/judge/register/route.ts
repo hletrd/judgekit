@@ -6,6 +6,7 @@ import { isJudgeAuthorized } from "@/lib/judge/auth";
 import { extractClientIp } from "@/lib/security/ip";
 import { logger } from "@/lib/logger";
 import { z } from "zod";
+import { randomBytes } from "node:crypto";
 
 const registerSchema = z.object({
   hostname: z.string().min(1).max(255),
@@ -30,6 +31,7 @@ export async function POST(request: NextRequest) {
 
     const { hostname, concurrency, version, labels } = parsed.data;
     const ipAddress = extractClientIp(request.headers);
+    const workerSecret = randomBytes(32).toString("hex");
 
     const [worker] = await db
       .insert(judgeWorkers)
@@ -40,6 +42,7 @@ export async function POST(request: NextRequest) {
         version: version ?? null,
         labels: labels ?? [],
         status: "online",
+        secretToken: workerSecret,
       })
       .returning({ id: judgeWorkers.id });
 
@@ -50,6 +53,7 @@ export async function POST(request: NextRequest) {
 
     return apiSuccess({
       workerId: worker.id,
+      workerSecret,
       heartbeatIntervalMs: HEARTBEAT_INTERVAL_MS,
       staleClaimTimeoutMs: STALE_CLAIM_TIMEOUT_MS,
     });

@@ -52,7 +52,7 @@ export async function GET(request: NextRequest) {
       activeJudging,
       totalConcurrency,
     });
-  } catch {
+  } catch (error) {
     return apiSuccess({
       workersOnline: 0,
       workersStale: 0,

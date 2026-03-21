@@ -254,6 +254,8 @@ pub struct RegisterRequest<'a> {
 pub struct RegisterResponseData {
     #[serde(rename = "workerId")]
     pub worker_id: String,
+    #[serde(rename = "workerSecret")]
+    pub worker_secret: Option<String>,
     #[serde(rename = "heartbeatIntervalMs")]
     pub heartbeat_interval_ms: u64,
     #[serde(rename = "staleClaimTimeoutMs")]
@@ -269,6 +271,8 @@ pub struct RegisterResponse {
 pub struct HeartbeatRequest<'a> {
     #[serde(rename = "workerId")]
     pub worker_id: &'a str,
+    #[serde(rename = "workerSecret", skip_serializing_if = "Option::is_none")]
+    pub worker_secret: Option<&'a str>,
     #[serde(rename = "activeTasks")]
     pub active_tasks: usize,
     #[serde(rename = "availableSlots")]
@@ -281,6 +285,8 @@ pub struct HeartbeatRequest<'a> {
 pub struct DeregisterRequest<'a> {
     #[serde(rename = "workerId")]
     pub worker_id: &'a str,
+    #[serde(rename = "workerSecret", skip_serializing_if = "Option::is_none")]
+    pub worker_secret: Option<&'a str>,
 }
 
 #[derive(Debug, Clone, Serialize)]

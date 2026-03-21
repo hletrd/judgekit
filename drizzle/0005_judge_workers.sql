@@ -17,6 +17,8 @@ CREATE INDEX `judge_workers_last_heartbeat_idx` ON `judge_workers` (`last_heartb
 --> statement-breakpoint
 ALTER TABLE `judge_workers` ADD `alias` text;
 --> statement-breakpoint
+ALTER TABLE `judge_workers` ADD `secret_token` text;
+--> statement-breakpoint
 ALTER TABLE `judge_workers` ADD `ip_address` text;
 --> statement-breakpoint
 ALTER TABLE `submissions` ADD `judge_worker_id` text;

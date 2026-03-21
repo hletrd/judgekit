@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
       .orderBy(desc(judgeWorkers.registeredAt));
 
     return apiSuccess(workers);
-  } catch {
+  } catch (error) {
     return apiSuccess([]);
   }
 }

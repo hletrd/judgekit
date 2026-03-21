@@ -1,4 +1,5 @@
 import { NextRequest } from "next/server";
+import { timingSafeEqual } from "node:crypto";
 import { apiSuccess, apiError } from "@/lib/api/responses";
 import { db } from "@/lib/db";
 import { judgeWorkers } from "@/lib/db/schema";
@@ -9,6 +10,7 @@ import { z } from "zod";
 
 const heartbeatSchema = z.object({
   workerId: z.string().min(1),
+  workerSecret: z.string().min(1).optional(),
   activeTasks: z.number().int().nonnegative(),
   availableSlots: z.number().int().nonnegative(),
   uptimeSeconds: z.number().nonnegative().optional(),
@@ -28,8 +30,24 @@ export async function POST(request: NextRequest) {
       return apiError(parsed.error.issues[0]?.message ?? "invalidRequest", 400);
     }
 
-    const { workerId, activeTasks } = parsed.data;
+    const { workerId, workerSecret, activeTasks } = parsed.data;
     const now = new Date();
+
+    // Validate per-worker secret if provided
+    if (workerSecret) {
+      const worker = await db.query.judgeWorkers.findFirst({
+        where: eq(judgeWorkers.id, workerId),
+        columns: { secretToken: true },
+      });
+      if (!worker) return apiError("workerNotFound", 404);
+      if (worker.secretToken) {
+        const a = Buffer.from(workerSecret);
+        const b = Buffer.from(worker.secretToken);
+        if (a.length !== b.length || !timingSafeEqual(a, b)) {
+          return apiError("invalidWorkerSecret", 403);
+        }
+      }
+    }
 
     const result = db
       .update(judgeWorkers)
