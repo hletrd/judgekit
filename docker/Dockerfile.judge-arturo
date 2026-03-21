@@ -1,6 +1,12 @@
-FROM arturolang/arturo:latest
-USER root
-RUN adduser -D -s /bin/false judge 2>/dev/null || useradd -m -s /bin/false judge && \
+FROM ubuntu:22.04
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl ca-certificates libpcre3-dev libssl-dev gcc g++ git make && \
+    curl -sSL https://get.arturo-lang.io | bash && \
+    cp /root/.arturo/bin/arturo /usr/local/bin/arturo && \
+    chmod +x /usr/local/bin/arturo && \
+    apt-get purge -y curl git make && apt-get autoremove -y && \
+    rm -rf /var/lib/apt/lists/* /root/.arturo
+RUN useradd -m -s /bin/false judge && \
     mkdir -p /workspace && chown judge:judge /workspace
 WORKDIR /workspace
 USER judge

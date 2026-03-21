@@ -130,15 +130,6 @@
 
 Pending — will be tested after Docker images are built on ARM64.
 
-### Newly Fixed (previously flaky, now passing)
-
-- **flix**: Flix 0.69.2 with build-jar + Files.readString approach
-- **gleam**: Gleam 1.14.0 with Erlang FFI and erl direct run
-- **umjunsik**: Python interpreter with fixed 0-indexed jump targets
-- **lolcode**: tr wrapper for space-separated input
-- **uiua**: Ubuntu 25.04, &sc syntax for 0.18.x
-- **shakespeare**: tr wrapper for space-separated input
-
 ## Docker Image Presets
 
 | Preset | Languages | Est. Size |
