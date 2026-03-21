@@ -88,8 +88,9 @@ See [Language presets](docs/languages.md#docker-image-presets) for preset option
 | `judge-ruby` | 128 MB | `judge-erlang` | 147 MB |
 | `judge-j` | 150 MB | `judge-bun` | 153 MB |
 | `judge-php` | 155 MB | `judge-bqn` | 157 MB |
-| `judge-elixir` | 173 MB | `judge-deno` | 194 MB |
-| `judge-b` | 177 MB | `judge-shakespeare` | 199 MB |
+| `judge-elixir` | 173 MB | `judge-b` | 177 MB |
+| `judge-gleam` | 184 MB | `judge-deno` | 194 MB |
+| `judge-shakespeare` | 199 MB | | |
 | `judge-esoteric` | 201 MB | `judge-uiua` | 202 MB |
 | `judge-pascal` | 219 MB | `judge-prolog` | 245 MB |
 | `judge-node` | 257 MB | `judge-raku` | 258 MB |

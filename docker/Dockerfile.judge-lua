@@ -1,6 +1,7 @@
 FROM alpine:3.21
 
 RUN apk add --no-cache lua5.4 curl && \
+    ln -sf /usr/bin/lua5.4 /usr/bin/lua && \
     curl -fsSL -o /usr/local/bin/fennel https://fennel-lang.org/downloads/fennel-1.5.1 && \
     chmod +x /usr/local/bin/fennel && \
     apk del curl && \

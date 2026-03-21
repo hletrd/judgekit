@@ -426,6 +426,8 @@ All deployment credentials, SSH access, target hosts, and runtime secrets are do
 - **SSH access commands** — ready-to-use `sshpass`/`ssh` commands for each target
 - **Docker & Nginx** — container management commands, nginx config paths
 
+**CRITICAL**: Always read `ENV.md` for deployment targets, SSH credentials (hosts, users, passwords, keys), web admin logins, E2E test credentials, and remote directory paths. Never hardcode credentials in code or agent instructions. `ENV.md` contains ready-to-use SSH commands, Docker Compose commands, and E2E test invocations for each target environment.
+
 ## Deployment
 
 **RULE: Always read `ENV.md` before any deployment, SSH, or E2E testing task.** Never guess credentials or host addresses — they are all documented in `ENV.md`. Failing to read it first leads to failed deploys and wasted time.

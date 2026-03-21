@@ -439,12 +439,19 @@ main`,
   algol68: `BEGIN
   INT a, b;
   read((a, b));
-  print((a + b, new line))
+  print((whole(a + b, 0), new line))
 END`,
   umjunsik: `어떻게
-`,
+엄식?
+어엄식?
+동탄어?준.......
+엄어,
+어엄어어.
+준...
+식어어!
+이 사람이름이냐ㅋㅋ`,
   intercal: ``,
-  k: `0N!+/."I"$" "\\:*0:""`,
+  k: "`0:$+/`I$\" \"\\*0:`",
   haxe: `class Solution {
   static function main() {
     var line = Sys.stdin().readLine();
@@ -548,11 +555,11 @@ pub fn main() {
   let assert Ok(b) = int.parse(b_str)
   io.println(int.to_string(a + b))
 }`,
-  sml: `val line = valOf (TextIO.inputLine TextIO.stdIn);
-val tokens = String.tokens Char.isSpace line;
-val [a, b] = map (valOf o Int.fromString) tokens;
-val _ = print (Int.toString (a + b) ^ "\\n");
-val _ = OS.Process.exit OS.Process.success;`,
+  sml: `val () = let
+  val line = case TextIO.inputLine TextIO.stdIn of SOME s => s | NONE => ""
+  val nums = List.mapPartial Int.fromString (String.tokens Char.isSpace line)
+  val sum = List.foldl op+ 0 nums
+in print (Int.toString sum ^ "\\n") end;`,
   fennel: `(let [line (io.read :l)
       (a b) (line:match "(%S+)%s+(%S+)")]
   (print (math.floor (+ (tonumber a) (tonumber b)))))`,
@@ -640,21 +647,15 @@ async function waitForJudging(
 
 // ── Shared state for serial test suite ──
 const KNOWN_FLAKY = new Set<string>([
-  "simula",        // No Docker image (GNU Cim won't compile)
-  "intercal",      // No A+B solution possible in INTERCAL
-  "unlambda",      // No A+B solution possible in Unlambda
-  "umjunsik",      // Korean esoteric lang — compiler compiles to Lamina IR, syntax unclear
-  "k",             // ngn/k can't read stdin in script mode (eoleof error)
-  "uiua",          // Needs GLIBC 2.39+ (rebuilding with Ubuntu 24.10)
-  // New languages — untested on server
-  "gleam",         // Needs project template setup verification
-  "flix",          // No A+B solution yet
-  "deno_js",       // Untested
-  "deno_ts",       // Untested
-  "bun_js",        // Untested
-  "bun_ts",        // Untested
-  "sml",           // Untested
-  "fennel",        // Untested
+  "intercal",      // Output is Roman numerals — can't match decimal expected output
+  "unlambda",      // No feasible A+B solution in combinator calculus
+  "flix",          // No A+B solution yet (complex functional JVM language)
+  "lolcode",       // GIMMEH reads full lines — can't parse space-separated input
+  "simula",        // GNU Cim 5.1 won't compile on modern Debian
+  "umjunsik",      // Rust crate is a compiler to Lamina IR, not an interpreter
+  "k",             // ngn/k can't read stdin in script mode (eoleof)
+  "uiua",          // API changed in 0.18.x — partition syntax incompatible
+  "shakespeare",   // shakespearelang parser rejects our play format
 ]);
 
 let sharedContext: Awaited<ReturnType<typeof import("@playwright/test").chromium.launch>> extends { newContext: infer F } ? never : never;

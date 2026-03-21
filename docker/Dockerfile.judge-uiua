@@ -1,6 +1,9 @@
-FROM ubuntu:24.10
-RUN apt-get update && apt-get install -y --no-install-recommends curl ca-certificates && \
-    curl -fsSL https://github.com/uiua-lang/uiua/releases/latest/download/uiua-x86_64-unknown-linux-gnu.tar.gz | tar xz -C /usr/local/bin && \
+FROM ubuntu:25.04
+RUN apt-get update && apt-get install -y --no-install-recommends curl ca-certificates unzip libasound2t64 && \
+    curl -fsSL https://github.com/uiua-lang/uiua/releases/latest/download/uiua-bin-x86_64-unknown-linux-gnu.zip -o /tmp/uiua.zip && \
+    unzip /tmp/uiua.zip -d /usr/local/bin && \
+    chmod +x /usr/local/bin/uiua && \
+    rm /tmp/uiua.zip && \
     rm -rf /var/lib/apt/lists/* && \
     useradd -m -s /bin/false judge && mkdir -p /workspace && chown judge:judge /workspace
 WORKDIR /workspace
