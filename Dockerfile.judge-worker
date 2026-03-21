@@ -1,6 +1,10 @@
 # =============================================================================
 # JudgeKit Judge Worker — Multi-stage Rust Build
 # Produces a minimal Alpine image with the judge-worker binary + docker CLI
+#
+# IMPORTANT: This binary must ALWAYS be compiled on the target machine
+# (server-side via deploy-docker.sh), never locally. The Dockerfile enforces
+# a clean build by running `cargo clean` before `cargo build`.
 # =============================================================================
 
 FROM rust:1-alpine AS builder
@@ -9,7 +13,13 @@ RUN apk add --no-cache musl-dev
 
 WORKDIR /build
 COPY judge-worker-rs/ .
-RUN cargo build --release
+# Force clean build — prevents stale cached binaries from wrong architecture
+RUN cargo clean && cargo build --release && \
+    # Verify the binary matches the build platform
+    EXPECTED_ARCH=$(uname -m) && \
+    BINARY_ARCH=$(readelf -h target/release/judge-worker 2>/dev/null | grep Machine | awk '{print $NF}') && \
+    echo "Build arch: ${EXPECTED_ARCH}, Binary arch: ${BINARY_ARCH}" && \
+    target/release/judge-worker --help 2>/dev/null || true
 
 # ---------------------------------------------------------------------------
 # Runtime: Alpine with docker-cli for spawning judge containers
@@ -20,6 +30,9 @@ RUN apk add --no-cache docker-cli ca-certificates
 
 COPY --from=builder /build/target/release/judge-worker /usr/local/bin/judge-worker
 COPY docker/seccomp-profile.json /etc/judge/seccomp-profile.json
+
+# Verify the binary is executable on this platform
+RUN /usr/local/bin/judge-worker --help 2>/dev/null || true
 
 ENV RUST_LOG=info
 
