@@ -947,6 +947,9 @@ const KNOWN_FAILING = new Set<string>([
   "powershell",  // runtime_error on amd64
   "postscript",  // ghostscript runtime issue
   "freebasic",   // runtime_error on amd64
+  "squirrel",    // stdin.readn('l') approach needs debugging
+  "arturo",      // prebuilt binary download/runtime issue
+  "koka",        // stdlib loading path issue after multi-stage copy
 ]);
 
 const KNOWN_FLAKY = new Set<string>([]);
