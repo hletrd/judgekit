@@ -1,4 +1,4 @@
-FROM debian:bookworm-slim AS builder
+FROM debian:trixie-slim AS builder
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl ca-certificates build-essential cmake git llvm-dev libclang-dev zlib1g-dev && \
     ARCH=$(dpkg --print-architecture) && \
@@ -13,7 +13,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
       make -j$(nproc) && make install; \
     fi
 
-FROM debian:bookworm-slim
+FROM debian:trixie-slim
 RUN apt-get update && apt-get install -y --no-install-recommends gcc libc-dev && \
     rm -rf /var/lib/apt/lists/*
 COPY --from=builder /opt/c3 /opt/c3

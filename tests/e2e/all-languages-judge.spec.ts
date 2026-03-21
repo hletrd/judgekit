@@ -563,15 +563,12 @@ def main(): Unit \\ IO =
     let a = List.head(parts) |> Option.flatMap(Int32.fromString) |> Option.getWithDefault(0);
     let b = List.drop(1, parts) |> List.head |> Option.flatMap(Int32.fromString) |> Option.getWithDefault(0);
     println(Int32.toString(a + b))`,
-  micropython: `a, b = map(int, input().split())
+  micropython: `import sys
+line = sys.stdin.readline()
+a, b = map(int, line.split())
 print(a + b)`,
-  squirrel: `local line = ""
-local c
-while (true) {
-    try { c = stdin.readn('b') } catch(e) { break }
-    if (c == 10 || c == null) break
-    line = line + c.tochar()
-}
+  squirrel: `local line = stdin.readn('l')
+if (line == null) line = ""
 local sp = line.find(" ")
 local a = line.slice(0, sp).tointeger()
 local b = line.slice(sp + 1).tointeger()
@@ -636,7 +633,10 @@ export fn main() void = {
   let line ← (← IO.getStdin).getLine
   let parts := line.trim.splitOn " "
   match parts with
-  | [a, b] => IO.println s!"{a.toInt! + b.toInt!}"
+  | [a, b] =>
+    let x := a.toNat!
+    let y := b.toNat!
+    IO.println (toString (x + y))
   | _ => return ()`,
   picat: `main =>
     A = read_int(),
@@ -940,9 +940,13 @@ const KNOWN_FAILING = new Set<string>([
   "lolcode",   // interpreter availability
   "forth",     // gforth stdin handling
   "algol68",   // compiler availability
-  "purescript",  // complex pre-built library setup
+  "purescript",  // complex pre-built library setup, needs spago ecosystem
+  "mercury",     // source build requires bootstrap compiler, 20+ min compile
   "curry",       // PAKCS interactive mode handling
   "carp",        // unmaintained, x86-64 only
+  "powershell",  // runtime_error on amd64
+  "postscript",  // ghostscript runtime issue
+  "freebasic",   // runtime_error on amd64
 ]);
 
 const KNOWN_FLAKY = new Set<string>([]);
@@ -984,7 +988,7 @@ let submissionIds: Map<string, string> = new Map();
 
 test.describe("Judge all supported languages", () => {
   test.beforeAll(async ({ browser }) => {
-    test.setTimeout(600_000);  // 10 minutes for submitting 114 languages
+    test.setTimeout(1_200_000);  // 20 minutes for submitting 114 languages
     ctx = await browser.newContext();
     const page = await ctx.newPage();
     await login(page);

@@ -1207,7 +1207,7 @@ export const JUDGE_LANGUAGE_CONFIGS: Record<Language, JudgeLanguageDefinition> =
     extension: ".nelua",
     dockerImage: "judge-nelua:latest",
     compiler: "Nelua",
-    compileCommand: ["nelua", "-o", "/workspace/solution", "/workspace/solution.nelua"],
+    compileCommand: ["sh", "-c", "HOME=/tmp nelua -o /workspace/solution /workspace/solution.nelua"],
     runCommand: ["/workspace/solution"],
   },
   hare: {
@@ -1217,7 +1217,7 @@ export const JUDGE_LANGUAGE_CONFIGS: Record<Language, JudgeLanguageDefinition> =
     extension: ".ha",
     dockerImage: "judge-hare:latest",
     compiler: "Hare",
-    compileCommand: ["hare", "build", "-o", "/workspace/solution", "/workspace/solution.ha"],
+    compileCommand: ["sh", "-c", "HOME=/tmp HARECACHE=/tmp/hare hare build -o /workspace/solution /workspace/solution.ha"],
     runCommand: ["/workspace/solution"],
   },
   koka: {
@@ -1227,7 +1227,7 @@ export const JUDGE_LANGUAGE_CONFIGS: Record<Language, JudgeLanguageDefinition> =
     extension: ".kk",
     dockerImage: "judge-koka:latest",
     compiler: `Koka ${JUDGE_TOOLCHAIN_VERSIONS.koka}`,
-    compileCommand: ["koka", "-O2", "-o", "/workspace/solution", "/workspace/solution.kk"],
+    compileCommand: ["sh", "-c", "HOME=/tmp koka -O2 --outputdir=/tmp/koka-out -o /workspace/solution /workspace/solution.kk"],
     runCommand: ["/workspace/solution"],
   },
   lean: {

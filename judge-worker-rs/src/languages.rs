@@ -1048,7 +1048,7 @@ static VALA_CONFIG: LanguageConfig = LanguageConfig {
 };
 
 // Nelua
-static NELUA_COMPILE: &[&str] = &["nelua", "-o", "/workspace/solution", "/workspace/solution.nelua"];
+static NELUA_COMPILE: &[&str] = &["sh", "-c", "HOME=/tmp nelua -o /workspace/solution /workspace/solution.nelua"];
 static NELUA_RUN: &[&str] = &["/workspace/solution"];
 
 static NELUA_CONFIG: LanguageConfig = LanguageConfig {
@@ -1059,7 +1059,7 @@ static NELUA_CONFIG: LanguageConfig = LanguageConfig {
 };
 
 // Hare
-static HARE_COMPILE: &[&str] = &["hare", "build", "-o", "/workspace/solution", "/workspace/solution.ha"];
+static HARE_COMPILE: &[&str] = &["sh", "-c", "HOME=/tmp HARECACHE=/tmp/hare hare build -o /workspace/solution /workspace/solution.ha"];
 static HARE_RUN: &[&str] = &["/workspace/solution"];
 
 static HARE_CONFIG: LanguageConfig = LanguageConfig {
@@ -1070,7 +1070,7 @@ static HARE_CONFIG: LanguageConfig = LanguageConfig {
 };
 
 // Koka
-static KOKA_COMPILE: &[&str] = &["koka", "-O2", "-o", "/workspace/solution", "/workspace/solution.kk"];
+static KOKA_COMPILE: &[&str] = &["sh", "-c", "HOME=/tmp koka -O2 --outputdir=/tmp/koka-out -o /workspace/solution /workspace/solution.kk"];
 static KOKA_RUN: &[&str] = &["/workspace/solution"];
 
 static KOKA_CONFIG: LanguageConfig = LanguageConfig {
@@ -1088,6 +1088,157 @@ static LEAN_CONFIG: LanguageConfig = LanguageConfig {
     docker_image: "judge-lean:latest",
     compile_command: None,
     run_command: LEAN_RUN,
+};
+
+// Picat
+static PICAT_RUN: &[&str] = &["picat", "/workspace/solution.pi"];
+
+static PICAT_CONFIG: LanguageConfig = LanguageConfig {
+    extension: ".pi",
+    docker_image: "judge-picat:latest",
+    compile_command: None,
+    run_command: PICAT_RUN,
+};
+
+// Mercury
+static MERCURY_COMPILE: &[&str] = &["sh", "-c", "cd /workspace && mmc --make solution 2>&1"];
+static MERCURY_RUN: &[&str] = &["/workspace/solution"];
+
+static MERCURY_CONFIG: LanguageConfig = LanguageConfig {
+    extension: ".m",
+    docker_image: "judge-mercury:latest",
+    compile_command: Some(MERCURY_COMPILE),
+    run_command: MERCURY_RUN,
+};
+
+// WebAssembly (WAT)
+static WAT_COMPILE: &[&str] = &["wat2wasm", "/workspace/solution.wat", "-o", "/workspace/solution.wasm"];
+static WAT_RUN: &[&str] = &["wasmtime", "/workspace/solution.wasm"];
+
+static WAT_CONFIG: LanguageConfig = LanguageConfig {
+    extension: ".wat",
+    docker_image: "judge-wat:latest",
+    compile_command: Some(WAT_COMPILE),
+    run_command: WAT_RUN,
+};
+
+// PureScript
+static PURESCRIPT_COMPILE: &[&str] = &["sh", "-c", "cp /workspace/solution.purs /opt/ps/src/Main.purs && cd /opt/ps && purs compile 'src/**/*.purs' '.spago/p/*/src/**/*.purs' --output output 2>&1"];
+static PURESCRIPT_RUN: &[&str] = &["node", "-e", "require('/opt/ps/output/Main/index.js').main()"];
+
+static PURESCRIPT_CONFIG: LanguageConfig = LanguageConfig {
+    extension: ".purs",
+    docker_image: "judge-purescript:latest",
+    compile_command: Some(PURESCRIPT_COMPILE),
+    run_command: PURESCRIPT_RUN,
+};
+
+// Modula-2
+static MODULA2_COMPILE: &[&str] = &["gm2", "-O2", "-fpim4", "-o", "/workspace/solution", "/workspace/solution.mod"];
+static MODULA2_RUN: &[&str] = &["/workspace/solution"];
+
+static MODULA2_CONFIG: LanguageConfig = LanguageConfig {
+    extension: ".mod",
+    docker_image: "judge-modula2:latest",
+    compile_command: Some(MODULA2_COMPILE),
+    run_command: MODULA2_RUN,
+};
+
+// Factor
+static FACTOR_RUN: &[&str] = &["/opt/factor/factor", "/workspace/solution.factor"];
+
+static FACTOR_CONFIG: LanguageConfig = LanguageConfig {
+    extension: ".factor",
+    docker_image: "judge-factor:latest",
+    compile_command: None,
+    run_command: FACTOR_RUN,
+};
+
+// SPARK (Ada subset)
+static SPARK_COMPILE: &[&str] = &["gnatmake", "-O2", "-o", "/workspace/solution", "/workspace/solution.adb"];
+static SPARK_RUN: &[&str] = &["/workspace/solution"];
+
+static SPARK_CONFIG: LanguageConfig = LanguageConfig {
+    extension: ".adb",
+    docker_image: "judge-ada:latest",
+    compile_command: Some(SPARK_COMPILE),
+    run_command: SPARK_RUN,
+};
+
+// MiniZinc
+static MINIZINC_RUN: &[&str] = &["sh", "-c", "read A B && echo \"a=$A; b=$B;\" > /workspace/data.dzn && minizinc --solver Gecode /workspace/solution.mzn /workspace/data.dzn"];
+
+static MINIZINC_CONFIG: LanguageConfig = LanguageConfig {
+    extension: ".mzn",
+    docker_image: "judge-minizinc:latest",
+    compile_command: None,
+    run_command: MINIZINC_RUN,
+};
+
+// Curry (PAKCS)
+static CURRY_COMPILE: &[&str] = &["sh", "-c", "cd /workspace && pakcs :load solution :save :quit 2>&1"];
+static CURRY_RUN: &[&str] = &["/workspace/solution"];
+
+static CURRY_CONFIG: LanguageConfig = LanguageConfig {
+    extension: ".curry",
+    docker_image: "judge-curry:latest",
+    compile_command: Some(CURRY_COMPILE),
+    run_command: CURRY_RUN,
+};
+
+// Clean
+static CLEAN_COMPILE: &[&str] = &["sh", "-c", "cd /workspace && clm -I /opt/clean/lib/StdEnv Solution -o /workspace/solution 2>&1"];
+static CLEAN_RUN: &[&str] = &["/workspace/solution"];
+
+static CLEAN_CONFIG: LanguageConfig = LanguageConfig {
+    extension: ".icl",
+    docker_image: "judge-clean:latest",
+    compile_command: Some(CLEAN_COMPILE),
+    run_command: CLEAN_RUN,
+};
+
+// Roc
+static ROC_COMPILE: &[&str] = &["roc", "build", "--optimize", "/workspace/solution.roc", "--output", "/workspace/solution"];
+static ROC_RUN: &[&str] = &["/workspace/solution"];
+
+static ROC_CONFIG: LanguageConfig = LanguageConfig {
+    extension: ".roc",
+    docker_image: "judge-roc:latest",
+    compile_command: Some(ROC_COMPILE),
+    run_command: ROC_RUN,
+};
+
+// Carp
+static CARP_COMPILE: &[&str] = &["sh", "-c", "cd /workspace && carp -b solution.carp 2>&1"];
+static CARP_RUN: &[&str] = &["/workspace/out/solution"];
+
+static CARP_CONFIG: LanguageConfig = LanguageConfig {
+    extension: ".carp",
+    docker_image: "judge-carp:latest",
+    compile_command: Some(CARP_COMPILE),
+    run_command: CARP_RUN,
+};
+
+// Grain
+static GRAIN_COMPILE: &[&str] = &["grain", "compile", "/workspace/solution.gr", "-o", "/workspace/solution.wasm"];
+static GRAIN_RUN: &[&str] = &["grain", "run", "/workspace/solution.wasm"];
+
+static GRAIN_CONFIG: LanguageConfig = LanguageConfig {
+    extension: ".gr",
+    docker_image: "judge-grain:latest",
+    compile_command: Some(GRAIN_COMPILE),
+    run_command: GRAIN_RUN,
+};
+
+// Pony
+static PONY_COMPILE: &[&str] = &["sh", "-c", "cd /workspace && mkdir -p build && cp solution.pony build/main.pony && cd build && ponyc -o /workspace --bin-name solution 2>&1"];
+static PONY_RUN: &[&str] = &["/workspace/solution"];
+
+static PONY_CONFIG: LanguageConfig = LanguageConfig {
+    extension: ".pony",
+    docker_image: "judge-pony:latest",
+    compile_command: Some(PONY_COMPILE),
+    run_command: PONY_RUN,
 };
 
 pub fn get_config(language: &Language) -> Option<&'static LanguageConfig> {
@@ -1193,6 +1344,20 @@ pub fn get_config(language: &Language) -> Option<&'static LanguageConfig> {
         Language::Hare => Some(&HARE_CONFIG),
         Language::Koka => Some(&KOKA_CONFIG),
         Language::Lean => Some(&LEAN_CONFIG),
+        Language::Picat => Some(&PICAT_CONFIG),
+        Language::Mercury => Some(&MERCURY_CONFIG),
+        Language::Wat => Some(&WAT_CONFIG),
+        Language::Purescript => Some(&PURESCRIPT_CONFIG),
+        Language::Modula2 => Some(&MODULA2_CONFIG),
+        Language::Factor => Some(&FACTOR_CONFIG),
+        Language::Spark => Some(&SPARK_CONFIG),
+        Language::Minizinc => Some(&MINIZINC_CONFIG),
+        Language::Curry => Some(&CURRY_CONFIG),
+        Language::Clean => Some(&CLEAN_CONFIG),
+        Language::Roc => Some(&ROC_CONFIG),
+        Language::Carp => Some(&CARP_CONFIG),
+        Language::Grain => Some(&GRAIN_CONFIG),
+        Language::Pony => Some(&PONY_CONFIG),
         Language::Unknown => None,
     }
 }
@@ -1306,6 +1471,20 @@ mod tests {
             Language::Hare,
             Language::Koka,
             Language::Lean,
+            Language::Picat,
+            Language::Mercury,
+            Language::Wat,
+            Language::Purescript,
+            Language::Modula2,
+            Language::Factor,
+            Language::Spark,
+            Language::Minizinc,
+            Language::Curry,
+            Language::Clean,
+            Language::Roc,
+            Language::Carp,
+            Language::Grain,
+            Language::Pony,
         ];
 
         for lang in &languages {

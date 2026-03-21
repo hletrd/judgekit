@@ -1,11 +1,13 @@
-FROM ubuntu:22.04
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    curl ca-certificates libpcre3-dev libssl-dev gcc g++ git make && \
-    curl -sSL https://get.arturo-lang.io | bash && \
-    cp /root/.arturo/bin/arturo /usr/local/bin/arturo && \
+FROM debian:bookworm-slim
+RUN apt-get update && apt-get install -y --no-install-recommends curl ca-certificates && \
+    ARCH=$(dpkg --print-architecture) && \
+    if [ "$ARCH" = "amd64" ]; then \
+      curl -sSL https://get.arturo-lang.io/latest-linux -o /usr/local/bin/arturo; \
+    else \
+      curl -sSL https://get.arturo-lang.io/latest-linux-arm -o /usr/local/bin/arturo; \
+    fi && \
     chmod +x /usr/local/bin/arturo && \
-    apt-get purge -y curl git make && apt-get autoremove -y && \
-    rm -rf /var/lib/apt/lists/* /root/.arturo
+    apt-get purge -y curl && apt-get autoremove -y && rm -rf /var/lib/apt/lists/*
 RUN useradd -m -s /bin/false judge && \
     mkdir -p /workspace && chown judge:judge /workspace
 WORKDIR /workspace
