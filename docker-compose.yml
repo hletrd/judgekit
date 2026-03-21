@@ -344,12 +344,6 @@ services:
       dockerfile: docker/Dockerfile.judge-umjunsik
     image: judge-umjunsik:${GIT_SHA:-latest}
 
-  judge-intercal:
-    build:
-      context: .
-      dockerfile: docker/Dockerfile.judge-intercal
-    image: judge-intercal:${GIT_SHA:-latest}
-
   judge-k:
     build:
       context: .
@@ -375,12 +369,6 @@ services:
       dockerfile: docker/Dockerfile.judge-shakespeare
     image: judge-shakespeare:${GIT_SHA:-latest}
 
-  judge-unlambda:
-    build:
-      context: .
-      dockerfile: docker/Dockerfile.judge-unlambda
-    image: judge-unlambda:${GIT_SHA:-latest}
-
   judge-snobol4:
     build:
       context: .
@@ -392,12 +380,6 @@ services:
       context: .
       dockerfile: docker/Dockerfile.judge-icon
     image: judge-icon:${GIT_SHA:-latest}
-
-  judge-simula:
-    build:
-      context: .
-      dockerfile: docker/Dockerfile.judge-simula
-    image: judge-simula:${GIT_SHA:-latest}
 
   judge-uiua:
     build:

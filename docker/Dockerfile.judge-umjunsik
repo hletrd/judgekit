@@ -1,12 +1,7 @@
-FROM rust:slim-bookworm AS builder
+FROM python:3.10-slim-bookworm
 
-RUN cargo install umjunsik
-
-FROM debian:bookworm-slim
-
-COPY --from=builder /usr/local/cargo/bin/umjunsik /usr/local/bin/umjunsik
-
-RUN useradd -m -s /bin/false judge && \
+RUN pip install --no-cache-dir umjunsik==2.0.2 && \
+    useradd -m -s /bin/false judge && \
     mkdir -p /workspace && chown judge:judge /workspace
 
 WORKDIR /workspace

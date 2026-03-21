@@ -131,17 +131,14 @@ pub enum Language {
     #[serde(rename = "algol68")]
     Algol68,
     Umjunsik,
-    Intercal,
     K,
     Haxe,
     Raku,
 
     Shakespeare,
-    Unlambda,
     #[serde(rename = "snobol4")]
     Snobol4,
     Icon,
-    Simula,
     Uiua,
     Odin,
     #[serde(rename = "objective_c")]

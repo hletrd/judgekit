@@ -15,15 +15,15 @@
 
 <p align="center">
   A secure, cross-platform code evaluation platform for programming assignments.<br/>
-  Docker-sandboxed execution for <a href="docs/languages.md">92 language variants</a> on both AMD64 and ARM64.
+  Docker-sandboxed execution for <a href="docs/languages.md">89 language variants</a> on both AMD64 and ARM64.
 </p>
 
 ---
 
 ## Features
 
-- **Cross-platform (AMD64 + ARM64)** — Full stack runs natively on both architectures: Next.js app, Rust judge worker, Rust sidecars, and all 72 Docker judge images. Deploy on x86-64 servers or ARM64 (AWS Graviton, Ampere Altra, Apple Silicon) with automatic architecture detection — no emulation, no cross-compilation
-- **92 languages** — C/C++, Java, Python, Rust, Go, Deno, Bun, Gleam, Standard ML, and [83 more](docs/languages.md), all with multi-arch Docker images and admin-customizable compile/run settings
+- **Cross-platform (AMD64 + ARM64)** — Full stack runs natively on both architectures: Next.js app, Rust judge worker, Rust sidecars, and all 69 Docker judge images. Deploy on x86-64 servers or ARM64 (AWS Graviton, Ampere Altra, Apple Silicon) with automatic architecture detection — no emulation, no cross-compilation
+- **89 languages** — C/C++, Java, Python, Rust, Go, Deno, Bun, Gleam, Standard ML, and [80 more](docs/languages.md), all with multi-arch Docker images and admin-customizable compile/run settings
 - **Secure execution** — Docker containers with no network, seccomp, memory/CPU limits
 - **Role-based access** — Super admin, admin, instructor, student
 - **Classroom management** — Groups, enrollments, assignments with deadlines and late penalties
@@ -80,23 +80,22 @@ See [Language presets](docs/languages.md#docker-image-presets) for preset option
 | `judge-bash` | 15 MB | `judge-tcl` | 20 MB |
 | `judge-nasm` | 34 MB | `judge-perl` | 64 MB |
 | `judge-python` | 71 MB | `judge-commonlisp` | 80 MB |
-| `judge-umjunsik` | 113 MB | `judge-unlambda` | 114 MB |
-| `judge-algol68` | 115 MB | `judge-k` | 115 MB |
-| `judge-forth` | 116 MB | `judge-lolcode` | 116 MB |
-| `judge-brainfuck` | 119 MB | `judge-icon` | 120 MB |
-| `judge-smalltalk` | 122 MB | `judge-postscript` | 124 MB |
-| `judge-ruby` | 128 MB | `judge-erlang` | 147 MB |
-| `judge-bun` | 153 MB | `judge-php` | 155 MB |
-| `judge-bqn` | 157 MB | `judge-elixir` | 173 MB |
-| `judge-b` | 177 MB | `judge-gleam` | 184 MB |
-| `judge-deno` | 194 MB | `judge-shakespeare` | 199 MB |
-| `judge-esoteric` | 201 MB | `judge-uiua` | 202 MB |
-| `judge-pascal` | 219 MB | `judge-prolog` | 245 MB |
-| `judge-node` | 257 MB | `judge-raku` | 258 MB |
-| `judge-clojure` | 312 MB | `judge-fortran` | 323 MB |
-| `judge-cpp` | 340 MB | `judge-go` | 357 MB |
-| `judge-racket` | 359 MB | `judge-haxe` | 377 MB |
-| `judge-intercal` | 384 MB | `judge-scheme` | 404 MB |
+| `judge-umjunsik` | 113 MB | `judge-algol68` | 115 MB |
+| `judge-k` | 115 MB | `judge-forth` | 116 MB |
+| `judge-lolcode` | 116 MB | `judge-brainfuck` | 119 MB |
+| `judge-icon` | 120 MB | `judge-smalltalk` | 122 MB |
+| `judge-postscript` | 124 MB | `judge-ruby` | 128 MB |
+| `judge-erlang` | 147 MB | `judge-bun` | 153 MB |
+| `judge-php` | 155 MB | `judge-bqn` | 157 MB |
+| `judge-elixir` | 173 MB | `judge-b` | 177 MB |
+| `judge-gleam` | 184 MB | `judge-deno` | 194 MB |
+| `judge-shakespeare` | 199 MB | `judge-esoteric` | 201 MB |
+| `judge-uiua` | 202 MB | `judge-pascal` | 219 MB |
+| `judge-prolog` | 245 MB | `judge-node` | 257 MB |
+| `judge-raku` | 258 MB | `judge-clojure` | 312 MB |
+| `judge-fortran` | 323 MB | `judge-cpp` | 340 MB |
+| `judge-go` | 357 MB | `judge-racket` | 359 MB |
+| `judge-haxe` | 377 MB | `judge-scheme` | 404 MB |
 | `judge-objective-c` | 427 MB | `judge-freebasic` | 436 MB |
 | `judge-ada` | 443 MB | `judge-cobol` | 443 MB |
 | `judge-powershell` | 461 MB | `judge-dart` | 492 MB |
@@ -153,7 +152,7 @@ judgekit/
 
 - [Deployment Guide](docs/deployment.md) — provisioning, deploy scripts, nginx, post-deploy checks
 - [Authentication](docs/authentication.md) — sign-in flow, cookie architecture, API smoke test
-- [Languages](docs/languages.md) — all 92 variants, Docker image presets, admin management
+- [Languages](docs/languages.md) — all 89 variants, Docker image presets, admin management
 
 ## License
 

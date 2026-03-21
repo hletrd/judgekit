@@ -1,6 +1,6 @@
-# Supported Languages (92 variants)
+# Supported Languages (89 variants)
 
-72 Docker images covering 92 language variants. E2E test suite (amd64): 85 passed, 8 skipped (KNOWN_FLAKY), 0 failed (~2.2 min).
+69 Docker images covering 89 language variants. E2E test suite (amd64): 84 passed, 5 skipped (KNOWN_FLAKY), 0 failed (~2.2 min).
 
 | # | Language ID | Description | Docker Image | E2E (amd64) |
 |---|-------------|-------------|--------------|-------------|
@@ -81,29 +81,23 @@
 | 76 | `k` | K (ngn/k) | `judge-k` | ⚠️ Skip (ngn/k can't read stdin in script mode) |
 | 77 | `icon` | Icon | `judge-icon` | ✅ Pass |
 | 78 | `algol68` | Algol 68 (a68g) | `judge-algol68` | ✅ Pass |
-| 79 | `simula` | Simula (GNU Cim) | `judge-simula` | ⚠️ Skip (GNU Cim 5.1 won't compile on modern Debian) |
-| 80 | `snobol4` | SNOBOL4 (CSNOBOL4) | `judge-snobol4` | ✅ Pass |
-| 81 | `lolcode` | LOLCODE (lci) | `judge-lolcode` | ⚠️ Skip (GIMMEH reads full lines, can't parse space-separated input) |
-| 82 | `intercal` | INTERCAL (C-INTERCAL) | `judge-intercal` | ⚠️ Skip (output is Roman numerals, can't match decimal expected output) |
-| 83 | `shakespeare` | Shakespeare (shakespearelang) | `judge-shakespeare` | ✅ Pass |
-| 84 | `unlambda` | Unlambda | `judge-unlambda` | ⚠️ Skip (no feasible A+B solution in combinator calculus) |
-| 85 | `umjunsik` | 엄준식 (Umjunsik) | `judge-umjunsik` | ⚠️ Skip (Rust crate is compiler only, not interpreter) |
-| 86 | `deno_js` | JavaScript (Deno) | `judge-deno` | ✅ Pass |
-| 87 | `deno_ts` | TypeScript (Deno) | `judge-deno` | ✅ Pass |
-| 88 | `bun_js` | JavaScript (Bun) | `judge-bun` | ✅ Pass |
-| 89 | `bun_ts` | TypeScript (Bun) | `judge-bun` | ✅ Pass |
-| 90 | `gleam` | Gleam (Erlang target) | `judge-gleam` | ⚠️ Skip (gleam_stdlib compile error with project template setup) |
-| 91 | `sml` | Standard ML (Poly/ML) | `judge-sml` | ✅ Pass |
-| 92 | `fennel` | Fennel (Lua VM) | `judge-lua` | ✅ Pass |
+| 79 | `snobol4` | SNOBOL4 (CSNOBOL4) | `judge-snobol4` | ✅ Pass |
+| 80 | `lolcode` | LOLCODE (lci) | `judge-lolcode` | ⚠️ Skip (GIMMEH reads full lines, can't parse space-separated input) |
+| 81 | `shakespeare` | Shakespeare (shakespearelang) | `judge-shakespeare` | ✅ Pass |
+| 82 | `umjunsik` | 엄준식 (Umjunsik) | `judge-umjunsik` | ⚠️ Skip (Rust crate is compiler only, not interpreter) |
+| 83 | `deno_js` | JavaScript (Deno) | `judge-deno` | ✅ Pass |
+| 84 | `deno_ts` | TypeScript (Deno) | `judge-deno` | ✅ Pass |
+| 85 | `bun_js` | JavaScript (Bun) | `judge-bun` | ✅ Pass |
+| 86 | `bun_ts` | TypeScript (Bun) | `judge-bun` | ✅ Pass |
+| 87 | `gleam` | Gleam (Erlang target) | `judge-gleam` | ⚠️ Skip (gleam_stdlib compile error with project template setup) |
+| 88 | `sml` | Standard ML (Poly/ML) | `judge-sml` | ✅ Pass |
+| 89 | `fennel` | Fennel (Lua VM) | `judge-lua` | ✅ Pass |
 
-### KNOWN_FLAKY (8 languages)
+### KNOWN_FLAKY (5 languages)
 
 These languages are skipped in E2E tests:
-- **intercal**: Output is Roman numerals, can't match decimal expected output
-- **unlambda**: No feasible A+B solution in combinator calculus
 - **flix**: No A+B solution yet (language not yet in table)
 - **lolcode**: GIMMEH reads full lines, can't parse space-separated input
-- **simula**: GNU Cim 5.1 won't compile on modern Debian
 - **umjunsik**: Rust crate is compiler only (Lamina IR), not interpreter
 - **k**: ngn/k can't read stdin in script mode (eoleof)
 - **gleam**: gleam_stdlib compile error with project template setup

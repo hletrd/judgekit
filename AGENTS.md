@@ -15,9 +15,9 @@ JudgeKit is a secure online judge platform for programming assignments. Next.js 
 | `tests/` | Playwright E2E tests, Vitest unit/integration tests |
 | `data/` | SQLite database (gitignored) |
 
-## Supported Languages (92)
+## Supported Languages (89)
 
-JudgeKit supports 92 language variants across 72 Docker images:
+JudgeKit supports 89 language variants across 69 Docker images:
 
 | # | Language ID | Description | Docker Image |
 |---|-------------|-------------|--------------|
@@ -98,21 +98,18 @@ JudgeKit supports 92 language variants across 72 Docker images:
 | 76 | `uiua` | Uiua | `judge-uiua` |
 | 77 | `icon` | Icon | `judge-icon` |
 | 78 | `algol68` | Algol 68 (a68g) | `judge-algol68` |
-| 79 | `simula` | Simula (GNU Cim) | `judge-simula` |
-| 80 | `snobol4` | SNOBOL4 (CSNOBOL4) | `judge-snobol4` |
-| 81 | `lolcode` | LOLCODE (lci) | `judge-lolcode` |
-| 82 | `intercal` | INTERCAL (C-INTERCAL) | `judge-intercal` |
-| 83 | `shakespeare` | Shakespeare (shakespearelang) | `judge-shakespeare` |
-| 84 | `unlambda` | Unlambda | `judge-unlambda` |
-| 85 | `umjunsik` | 엄준식 (Umjunsik) | `judge-umjunsik` |
-| 86 | `deno_js` | JavaScript (Deno) | `judge-deno` |
-| 87 | `deno_ts` | TypeScript (Deno) | `judge-deno` |
-| 88 | `bun_js` | JavaScript (Bun) | `judge-bun` |
-| 89 | `bun_ts` | TypeScript (Bun) | `judge-bun` |
-| 90 | `gleam` | Gleam (Erlang target) | `judge-gleam` |
-| 91 | `sml` | Standard ML (Poly/ML) | `judge-sml` |
-| 92 | `fennel` | Fennel (Lua VM) | `judge-lua` |
-| 93 | `flix` | Flix (JVM) | `judge-jvm` |
+| 79 | `snobol4` | SNOBOL4 (CSNOBOL4) | `judge-snobol4` |
+| 80 | `lolcode` | LOLCODE (lci) | `judge-lolcode` |
+| 81 | `shakespeare` | Shakespeare (shakespearelang) | `judge-shakespeare` |
+| 82 | `umjunsik` | 엄준식 (Umjunsik) | `judge-umjunsik` |
+| 83 | `deno_js` | JavaScript (Deno) | `judge-deno` |
+| 84 | `deno_ts` | TypeScript (Deno) | `judge-deno` |
+| 85 | `bun_js` | JavaScript (Bun) | `judge-bun` |
+| 86 | `bun_ts` | TypeScript (Bun) | `judge-bun` |
+| 87 | `gleam` | Gleam (Erlang target) | `judge-gleam` |
+| 88 | `sml` | Standard ML (Poly/ML) | `judge-sml` |
+| 89 | `fennel` | Fennel (Lua VM) | `judge-lua` |
+| 90 | `flix` | Flix (JVM) | `judge-jvm` |
 
 ## Adding a New Language
 
@@ -251,13 +248,12 @@ JudgeKit supports full contest management with two scoring models and two schedu
 
 ### Known Flaky Languages (E2E)
 
-6 languages remain in KNOWN_FLAKY (45 passed, 6 skipped, 0 failed). Per-language individual tests run in ~5 minutes:
-- **simula**: No Docker image (GNU Cim won't compile)
-- **intercal**: No A+B solution possible in INTERCAL
-- **unlambda**: No A+B solution possible in Unlambda
+5 languages remain in KNOWN_FLAKY. Per-language individual tests run in ~5 minutes:
 - **umjunsik**: Korean esoteric lang — compiler compiles to Lamina IR, syntax unclear
 - **k**: ngn/k can't read stdin in script mode (eoleof error)
-- **uiua**: Needs GLIBC 2.39+ (rebuilt with Ubuntu 24.10 base)
+- **flix**: No A+B solution yet (complex functional JVM language)
+- **lolcode**: GIMMEH reads full lines — can't parse space-separated input
+- **gleam**: gleam_stdlib compile error with project template setup
 
 Previously flaky, now fixed:
 - **F#**: Dockerfile sets `HOME=/tmp` and `DOTNET_CLI_HOME=/tmp` so the .NET SDK writes to writable directories.

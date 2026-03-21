@@ -789,17 +789,6 @@ static UMJUNSIK_CONFIG: LanguageConfig = LanguageConfig {
     run_command: UMJUNSIK_RUN,
 };
 
-// INTERCAL
-static INTERCAL_COMPILE: &[&str] = &["ick", "-b", "/workspace/solution.i"];
-static INTERCAL_RUN: &[&str] = &["/workspace/solution"];
-
-static INTERCAL_CONFIG: LanguageConfig = LanguageConfig {
-    extension: ".i",
-    docker_image: "judge-intercal:latest",
-    compile_command: Some(INTERCAL_COMPILE),
-    run_command: INTERCAL_RUN,
-};
-
 // K (ngn/k)
 static K_RUN: &[&str] = &["k", "/workspace/solution.k"];
 
@@ -845,16 +834,6 @@ static SHAKESPEARE_CONFIG: LanguageConfig = LanguageConfig {
     run_command: SHAKESPEARE_RUN,
 };
 
-// Unlambda
-static UNLAMBDA_RUN: &[&str] = &["unlambda", "/workspace/solution.unl"];
-
-static UNLAMBDA_CONFIG: LanguageConfig = LanguageConfig {
-    extension: ".unl",
-    docker_image: "judge-unlambda:latest",
-    compile_command: None,
-    run_command: UNLAMBDA_RUN,
-};
-
 // SNOBOL4
 static SNOBOL4_RUN: &[&str] = &["snobol4", "/workspace/solution.sno"];
 
@@ -874,17 +853,6 @@ static ICON_CONFIG: LanguageConfig = LanguageConfig {
     docker_image: "judge-icon:latest",
     compile_command: Some(ICON_COMPILE),
     run_command: ICON_RUN,
-};
-
-// Simula
-static SIMULA_COMPILE: &[&str] = &["sh", "-c", "cd /workspace && cim /workspace/solution.sim -o /workspace/solution"];
-static SIMULA_RUN: &[&str] = &["/workspace/solution"];
-
-static SIMULA_CONFIG: LanguageConfig = LanguageConfig {
-    extension: ".sim",
-    docker_image: "judge-simula:latest",
-    compile_command: Some(SIMULA_COMPILE),
-    run_command: SIMULA_RUN,
 };
 
 // Uiua
@@ -1081,16 +1049,13 @@ pub fn get_config(language: &Language) -> Option<&'static LanguageConfig> {
         Language::Forth => Some(&FORTH_CONFIG),
         Language::Algol68 => Some(&ALGOL68_CONFIG),
         Language::Umjunsik => Some(&UMJUNSIK_CONFIG),
-        Language::Intercal => Some(&INTERCAL_CONFIG),
         Language::K => Some(&K_CONFIG),
         Language::Haxe => Some(&HAXE_CONFIG),
         Language::Raku => Some(&RAKU_CONFIG),
 
         Language::Shakespeare => Some(&SHAKESPEARE_CONFIG),
-        Language::Unlambda => Some(&UNLAMBDA_CONFIG),
         Language::Snobol4 => Some(&SNOBOL4_CONFIG),
         Language::Icon => Some(&ICON_CONFIG),
-        Language::Simula => Some(&SIMULA_CONFIG),
         Language::Uiua => Some(&UIUA_CONFIG),
         Language::Odin => Some(&ODIN_CONFIG),
         Language::ObjectiveC => Some(&OBJECTIVE_C_CONFIG),
@@ -1186,16 +1151,13 @@ mod tests {
             Language::Forth,
             Language::Algol68,
             Language::Umjunsik,
-            Language::Intercal,
             Language::K,
             Language::Haxe,
             Language::Raku,
 
             Language::Shakespeare,
-            Language::Unlambda,
             Language::Snobol4,
             Language::Icon,
-            Language::Simula,
             Language::Uiua,
             Language::Odin,
             Language::ObjectiveC,

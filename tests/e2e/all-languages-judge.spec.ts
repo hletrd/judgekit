@@ -449,8 +449,7 @@ END`,
 준...
 식어어!
 이 사람이름이냐ㅋㅋ`,
-  intercal: ``,
-  k: "`0:$+/`I$\" \"\\*0:`",
+  k: '`0:$+/`I$" "\\*0:"/dev/stdin"',
   haxe: `class Solution {
   static function main() {
     var line = Sys.stdin().readLine();
@@ -485,7 +484,6 @@ Juliet: You are the sum of yourself and me.
 Juliet: Open your heart!
 
 [Exeunt]`,
-  unlambda: "",
   snobol4: `        INPUT BREAK(' ') . A ' ' REM . B
         OUTPUT = A + B
 END`,
@@ -498,13 +496,6 @@ END`,
     }
     write(a + b)
 end`,
-  simula: `Begin
-  Integer a, b;
-  a := InInt;
-  b := InInt;
-  OutInt(a + b, 0);
-  OutImage;
-End`,
   uiua: `&p/+⊜⋕≠@ .&sc`,
   odin: `package main
 
@@ -562,7 +553,16 @@ in print (Int.toString sum ^ "\\n") end;`,
   fennel: `(let [line (io.read :l)
       (a b) (line:match "(%S+)%s+(%S+)")]
   (print (math.floor (+ (tonumber a) (tonumber b)))))`,
-  flix: ``,
+  flix: `import java.io.BufferedReader
+import java.io.InputStreamReader
+
+def main(): Unit \ IO =
+    let reader = new BufferedReader(new InputStreamReader(System.in));
+    let line = reader.readLine();
+    let parts = String.splitOn({substr = " "}, line);
+    let a = List.head(parts) |> Option.flatMap(Int32.fromString) |> Option.getWithDefault(0);
+    let b = List.drop(1, parts) |> List.head |> Option.flatMap(Int32.fromString) |> Option.getWithDefault(0);
+    println(a + b)`,
 };
 
 // Keep inputs as positive single-digit numbers with single-digit sums (≤ 9)
@@ -646,14 +646,6 @@ async function waitForJudging(
 
 // ── Shared state for serial test suite ──
 const KNOWN_FLAKY = new Set<string>([
-  "intercal",      // Output is Roman numerals — can't match decimal expected output
-  "unlambda",      // No feasible A+B solution in combinator calculus
-  "flix",          // No A+B solution yet (complex functional JVM language)
-  "lolcode",       // GIMMEH reads full lines — can't parse space-separated input
-  "simula",        // GNU Cim 5.1 won't compile on modern Debian
-  "umjunsik",      // Rust crate is a compiler to Lamina IR, not an interpreter
-  "k",             // ngn/k can't read stdin in script mode (eoleof)
-  "gleam",         // gleam_stdlib compile error with project template setup
 ]);
 
 let sharedContext: Awaited<ReturnType<typeof import("@playwright/test").chromium.launch>> extends { newContext: infer F } ? never : never;
