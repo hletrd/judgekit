@@ -344,12 +344,6 @@ services:
       dockerfile: docker/Dockerfile.judge-umjunsik
     image: judge-umjunsik:${GIT_SHA:-latest}
 
-  judge-k:
-    build:
-      context: .
-      dockerfile: docker/Dockerfile.judge-k
-    image: judge-k:${GIT_SHA:-latest}
-
   judge-haxe:
     build:
       context: .
