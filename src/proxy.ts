@@ -73,8 +73,13 @@ function createSecuredNextResponse(request: NextRequest) {
 
   response.headers.set("Content-Security-Policy", csp);
 
-  if (!isDev && request.nextUrl.protocol === "https:") {
-    response.headers.set("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
+  if (!isDev) {
+    if (request.headers.get("x-forwarded-proto") === "https") {
+      response.headers.set("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
+    } else {
+      // Clear any cached HSTS policy for HTTP-only sites
+      response.headers.set("Strict-Transport-Security", "max-age=0");
+    }
   }
 
   return response;
