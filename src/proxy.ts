@@ -73,7 +73,7 @@ function createSecuredNextResponse(request: NextRequest) {
 
   response.headers.set("Content-Security-Policy", csp);
 
-  if (!isDev) {
+  if (!isDev && request.nextUrl.protocol === "https:") {
     response.headers.set("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
   }
 
