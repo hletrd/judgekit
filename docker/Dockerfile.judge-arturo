@@ -1,14 +1,10 @@
+FROM arturolang/arturo:mini AS base
+
 FROM debian:bookworm-slim
-RUN apt-get update && apt-get install -y --no-install-recommends curl ca-certificates && \
-    ARCH=$(dpkg --print-architecture) && \
-    if [ "$ARCH" = "amd64" ]; then \
-      curl -sSL https://get.arturo-lang.io/latest-linux -o /usr/local/bin/arturo; \
-    else \
-      curl -sSL https://get.arturo-lang.io/latest-linux-arm -o /usr/local/bin/arturo; \
-    fi && \
-    chmod +x /usr/local/bin/arturo && \
-    apt-get purge -y curl && apt-get autoremove -y && rm -rf /var/lib/apt/lists/*
-RUN useradd -m -s /bin/false judge && \
+COPY --from=base /usr/local/bin/arturo /usr/local/bin/arturo
+COPY --from=base /usr/local/lib/ /usr/local/lib/
+RUN ldconfig && \
+    useradd -m -s /bin/false judge && \
     mkdir -p /workspace && chown judge:judge /workspace
 WORKDIR /workspace
 USER judge

@@ -791,7 +791,7 @@ export const JUDGE_LANGUAGE_CONFIGS: Record<Language, JudgeLanguageDefinition> =
     dockerImage: "judge-fsharp:latest",
     compiler: "dotnet fsi (.NET 10)",
     compileCommand: null,
-    runCommand: ["dotnet", "fsi", "/workspace/solution.fsx"],
+    runCommand: ["sh", "-c", "HOME=/tmp DOTNET_CLI_HOME=/tmp dotnet fsi /workspace/solution.fsx"],
   },
   apl: {
     language: "apl",
@@ -883,7 +883,7 @@ export const JUDGE_LANGUAGE_CONFIGS: Record<Language, JudgeLanguageDefinition> =
     compileCommand: [
       "sh",
       "-c",
-      "mkdir -p /workspace/out && echo '<Project Sdk=\"Microsoft.NET.Sdk\"><PropertyGroup><OutputType>Exe</OutputType><RootNamespace>Solution</RootNamespace></PropertyGroup></Project>' > /workspace/out/solution.vbproj && cp /workspace/solution.vb /workspace/out/Program.vb && cd /workspace/out && dotnet build -c Release -o /workspace/bin --nologo -v q",
+      "export HOME=/tmp DOTNET_CLI_HOME=/tmp && mkdir -p /workspace/out && echo '<Project Sdk=\"Microsoft.NET.Sdk\"><PropertyGroup><OutputType>Exe</OutputType><RootNamespace>Solution</RootNamespace></PropertyGroup></Project>' > /workspace/out/solution.vbproj && cp /workspace/solution.vb /workspace/out/Program.vb && cd /workspace/out && dotnet build -c Release -o /workspace/bin --nologo -v q",
     ],
     runCommand: ["/workspace/bin/solution"],
   },
@@ -1227,7 +1227,7 @@ export const JUDGE_LANGUAGE_CONFIGS: Record<Language, JudgeLanguageDefinition> =
     extension: ".kk",
     dockerImage: "judge-koka:latest",
     compiler: `Koka ${JUDGE_TOOLCHAIN_VERSIONS.koka}`,
-    compileCommand: ["sh", "-c", "HOME=/tmp koka -O2 --outputdir=/tmp/koka-out -o /workspace/solution /workspace/solution.kk"],
+    compileCommand: ["sh", "-c", "HOME=/tmp KOKA_HOME=/usr/local koka -O2 --outputdir=/tmp/koka-out -o /workspace/solution /workspace/solution.kk"],
     runCommand: ["/workspace/solution"],
   },
   lean: {
@@ -1287,7 +1287,7 @@ export const JUDGE_LANGUAGE_CONFIGS: Record<Language, JudgeLanguageDefinition> =
     extension: ".mod",
     dockerImage: "judge-modula2:latest",
     compiler: `GCC gm2 ${JUDGE_TOOLCHAIN_VERSIONS.fortran}`,
-    compileCommand: ["gm2", "-O2", "-fpim4", "-o", "/workspace/solution", "/workspace/solution.mod"],
+    compileCommand: ["gm2", "-O2", "-fiso", "-o", "/workspace/solution", "/workspace/solution.mod"],
     runCommand: ["/workspace/solution"],
   },
   factor: {
@@ -1298,7 +1298,7 @@ export const JUDGE_LANGUAGE_CONFIGS: Record<Language, JudgeLanguageDefinition> =
     dockerImage: "judge-factor:latest",
     compiler: null,
     compileCommand: null,
-    runCommand: ["/opt/factor/factor", "/workspace/solution.factor"],
+    runCommand: ["sh", "-c", "HOME=/tmp FACTOR_HOME=/opt/factor /opt/factor/factor /workspace/solution.factor"],
   },
   spark: {
     language: "spark",

@@ -424,14 +424,34 @@ _start:
   bqn: `l ← •GetLine@
 w ← ' '((⊢-˜+\`×·¬⊢)∘=⊔⊢)l
 •Out •Repr +´•BQN¨w`,
-  lolcode: `HAI 1.2
-I HAS A a ITZ 0
-I HAS A b ITZ 0
-GIMMEH a
-GIMMEH b
-a IS NOW A NUMBR
-b IS NOW A NUMBR
-VISIBLE SUM OF a AN b
+  lolcode: `HAI 1.3
+CAN HAS STRING?
+I HAS A line
+GIMMEH line
+I HAS A len ITZ STRING'Z LEN line
+I HAS A sp ITZ 0
+I HAS A i ITZ 0
+IM IN YR findsp UPPIN YR i TIL BOTH SAEM i AN len
+  BOTH SAEM (STRING'Z AT line AN i) AN " "
+  O RLY?
+  YA RLY
+    sp R i
+    GTFO
+  OIC
+IM OUTTA YR findsp
+I HAS A as ITZ ""
+I HAS A j ITZ 0
+IM IN YR loopa UPPIN YR j TIL BOTH SAEM j AN sp
+  as R SMOOSH as AN (STRING'Z AT line AN j) MKAY
+IM OUTTA YR loopa
+I HAS A bs ITZ ""
+j R SUM OF sp AN 1
+IM IN YR loopb UPPIN YR j TIL BOTH SAEM j AN len
+  bs R SMOOSH bs AN (STRING'Z AT line AN j) MKAY
+IM OUTTA YR loopb
+as IS NOW A NUMBR
+bs IS NOW A NUMBR
+VISIBLE SUM OF as AN bs
 KTHXBYE`,
   forth: `: main pad 80 stdin read-line throw drop pad swap evaluate + . cr ;
 main`,
@@ -567,8 +587,8 @@ def main(): Unit \\ IO =
 line = sys.stdin.readline()
 a, b = map(int, line.split())
 print(a + b)`,
-  squirrel: `local line = stdin.readn('l')
-if (line == null) line = ""
+  squirrel: `local line = ""
+try { while(true) { local c = stdin.readn('b'); if(c == 10 || c == 13) break; line = line + c.tochar(); } } catch(e) {}
 local sp = line.find(" ")
 local a = line.slice(0, sp).tointeger()
 local b = line.slice(sp + 1).tointeger()
@@ -631,11 +651,11 @@ export fn main() void = {
   println( (a + b).show )`,
   lean: `def main : IO Unit := do
   let line ← (← IO.getStdin).getLine
-  let parts := line.trim.split (· == ' ') |>.filter (· != "")
+  let parts := line.trimRight.splitOn " "
   match parts with
   | [a, b] =>
-    let x := a.toInt!
-    let y := b.toInt!
+    let x := a.toNat!
+    let y := b.toNat!
     IO.println (toString (x + y))
   | _ => return ()`,
   picat: `main =>
@@ -746,7 +766,8 @@ main = do
     [a, b] -> log (show (fromMaybe 0 (fromString a) + fromMaybe 0 (fromString b)))
     _ -> pure unit`,
   modula2: `MODULE solution;
-FROM InOut IMPORT ReadInt, WriteInt, WriteLn;
+FROM SWholeIO IMPORT ReadInt, WriteInt;
+FROM STextIO IMPORT WriteLn;
 VAR a, b: INTEGER;
 BEGIN
   ReadInt(a);
@@ -932,33 +953,15 @@ async function waitForJudging(
 // Languages with known issues on the current judge infrastructure.
 // Tagged test.fixme() so they show as "to-do" rather than failures.
 const KNOWN_FAILING = new Set<string>([
-  "fsharp",    // .NET SDK build instability
-  "vbnet",     // .NET SDK build instability
-  "nasm",      // x86 asm — arch-dependent, fails on aarch64
-  "bqn",       // interpreter availability
-  "lolcode",   // interpreter availability
-  "forth",     // gforth stdin handling
-  "algol68",   // compiler availability
-  "purescript",  // complex pre-built library setup, needs spago ecosystem
-  "mercury",     // source build requires bootstrap compiler, 20+ min compile
+  "fsharp",      // .NET SDK needs HOME=/tmp (fixing)
+  "vbnet",       // .NET SDK needs HOME=/tmp (fixing)
+  "purescript",  // needs spago ecosystem pre-built in Docker
+  "mercury",     // apt repo is amd64-only, no arm64 packages
   "curry",       // PAKCS interactive mode handling
   "carp",        // unmaintained, x86-64 only
-  "powershell",  // runtime_error on amd64
-  "postscript",  // ghostscript runtime issue
-  "freebasic",   // runtime_error on amd64
-  "squirrel",    // stdin.readn('l') approach needs debugging
-  "arturo",      // prebuilt binary download/runtime issue
-  "koka",        // stdlib loading path issue after multi-stage copy
-  "lean",        // not yet seeded on server
-  "picat",       // not yet seeded on server
-  "wat",         // not yet seeded on server (WebAssembly text format)
-  "modula2",     // not yet seeded on server
-  "factor",      // not yet seeded on server
-  "spark",       // not yet seeded on server
-  "minizinc",    // not yet seeded on server
+  "roc",         // downloads platform at compile time, no network in sandbox
+  "grain",       // compiler internal error (grainc.js crash)
 ]);
-
-const KNOWN_FLAKY = new Set<string>([]);
 
 /** Per-language timeout overrides (ms). JVM/compiled languages get more time. */
 const LANGUAGE_TIMEOUTS: Record<string, number> = {
@@ -1075,13 +1078,12 @@ test.describe("Judge all supported languages", () => {
   // Generate one test per language
   for (const language of Object.keys(SOLUTIONS)) {
     const isFailing = KNOWN_FAILING.has(language);
-    const isFlaky = KNOWN_FLAKY.has(language);
     const langTimeout = LANGUAGE_TIMEOUTS[language] ?? 120_000;
 
     // Known-failing languages: mark as fixme so they appear as "todo" not "fail"
     const testFn = isFailing ? test.fixme : test;
 
-    testFn(`${language}${isFlaky ? " (flaky)" : ""}`, async () => {
+    testFn(language, async () => {
       test.setTimeout(langTimeout);
       if (!problemId) { test.skip(true, "setup failed"); return; }
 
@@ -1107,7 +1109,6 @@ test.describe("Judge all supported languages", () => {
               continue;
             }
             const err = await subRes.text();
-            if (isFlaky) { test.skip(true, `submit ${subRes.status()}`); return; }
             expect.soft(subRes.status(), `Submit failed: ${err}`).toBe(201);
             return;
           }
@@ -1115,11 +1116,6 @@ test.describe("Judge all supported languages", () => {
         }
 
         const result = await waitForJudging(ctx, submissionId, langTimeout);
-
-        if (isFlaky && result.status !== "accepted") {
-          test.skip(true, `${result.status}: ${result.compileOutput?.slice(0, 80) ?? ""}`);
-          return;
-        }
 
         // Detailed failure diagnostics
         const diagnosticMsg = [
@@ -1131,7 +1127,6 @@ test.describe("Judge all supported languages", () => {
 
         expect.soft(result.status, diagnosticMsg).toBe("accepted");
       } catch (e) {
-        if (isFlaky) { test.skip(true, String(e).slice(0, 80)); return; }
         expect.soft(false, `${language} error: ${String(e).slice(0, 200)}`).toBe(true);
       }
     });

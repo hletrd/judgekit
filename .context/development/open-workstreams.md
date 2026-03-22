@@ -1,6 +1,6 @@
 # Open Workstreams
 
-Last updated: 2026-03-20
+Last updated: 2026-03-22
 
 The `dashboard-rendering-audit-and-editor-upgrades` batch is now locally verified and its plan docs are reconciled. All currently tracked local workstreams are closed after the runtime-expansion batch below.
 
@@ -115,16 +115,26 @@ The `dashboard-rendering-audit-and-editor-upgrades` batch is now locally verifie
 - README updated to 100 language variants across 82 Docker images.
 - Plan source: `.context/new-languages-plan.md`
 
+## Recently closed (2026-03-22 session — Phase 3 + test fixes)
+
+- **14 new PL/compiler research languages added** (Phase 3): Picat, Mercury, WAT, PureScript, Modula-2, Factor, SPARK, MiniZinc, Curry, Clean, Roc, Carp, Grain, Pony.
+- 13 new Docker images. SPARK reuses judge-ada.
+- Total now: 114 language variants across 95 Docker images.
+- KNOWN_FLAKY removed entirely. KNOWN_FLAKY dead code cleaned from E2E tests.
+- 5 previously-failing languages now pass (postscript, forth, bqn, algol68, nasm).
+- Fixes applied to: fsharp/vbnet (HOME=/tmp), nelua/hare (writable cache), koka (KOKA_HOME), c3 (GLIBC via trixie), lean (trimRight), freebasic (libncurses), factor (FACTOR_HOME), micropython (sys.stdin), squirrel (stdin reading), arturo (prebuilt binary), powershell (HOME=/tmp).
+- KNOWN_FAILING reduced from 21 to 8: fsharp, vbnet, purescript, mercury, curry, carp, roc, grain.
+- README, docs/languages.md, AGENTS.md updated to 114 variants / 95 images.
+
 ## Still open
 
 - `P3.6` composite unique index on `problem_group_access` is still blocked pending explicit approval for the destructive `db:push` step
 - `P1.7` tutor/TA infrastructure remains open
 - `P2.4` remains open only for broader incremental adoption beyond the groups/problems/submissions slice
 - `dockerfile` column added to `language_configs` table manually (needs proper Drizzle migration)
-- vlang Docker image still fails to build from source reliably (tracked in KNOWN_FLAKY)
 
 ## Safety note
 
-- Test host (oj-internal.maum.ai) was reverified on 2026-03-19 after the full deployment.
+- Test host (oj-internal.maum.ai) was reverified on 2026-03-22 after full deployment with rebuilt app + worker + 12 new language images.
 - Nginx config on test host gets overwritten during deploy — ensure `/tmp/judgekit-nginx.conf` backup exists or fix the deploy script's nginx step.
 - Future sessions should isolate the next coherent batch before updating deployment-facing docs again.

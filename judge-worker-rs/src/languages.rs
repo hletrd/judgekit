@@ -623,7 +623,7 @@ static DELPHI_CONFIG: LanguageConfig = LanguageConfig {
 };
 
 // F# (script mode via dotnet fsi)
-static FSHARP_RUN: &[&str] = &["dotnet", "fsi", "/workspace/solution.fsx"];
+static FSHARP_RUN: &[&str] = &["sh", "-c", "HOME=/tmp DOTNET_CLI_HOME=/tmp dotnet fsi /workspace/solution.fsx"];
 
 static FSHARP_CONFIG: LanguageConfig = LanguageConfig {
     extension: ".fsx",
@@ -717,7 +717,7 @@ static LLVM_IR_CONFIG: LanguageConfig = LanguageConfig {
 // Visual Basic .NET (reuses judge-fsharp)
 static VBNET_COMPILE: &[&str] = &[
     "sh", "-c",
-    "mkdir -p /workspace/out && echo '<Project Sdk=\"Microsoft.NET.Sdk\"><PropertyGroup><OutputType>Exe</OutputType><RootNamespace>Solution</RootNamespace></PropertyGroup></Project>' > /workspace/out/solution.vbproj && cp /workspace/solution.vb /workspace/out/Program.vb && cd /workspace/out && dotnet build -c Release -o /workspace/bin --nologo -v q",
+    "export HOME=/tmp DOTNET_CLI_HOME=/tmp && mkdir -p /workspace/out && echo '<Project Sdk=\"Microsoft.NET.Sdk\"><PropertyGroup><OutputType>Exe</OutputType><RootNamespace>Solution</RootNamespace></PropertyGroup></Project>' > /workspace/out/solution.vbproj && cp /workspace/solution.vb /workspace/out/Program.vb && cd /workspace/out && dotnet build -c Release -o /workspace/bin --nologo -v q",
 ];
 static VBNET_RUN: &[&str] = &["/workspace/bin/solution"];
 
@@ -1070,7 +1070,7 @@ static HARE_CONFIG: LanguageConfig = LanguageConfig {
 };
 
 // Koka
-static KOKA_COMPILE: &[&str] = &["sh", "-c", "HOME=/tmp koka -O2 --outputdir=/tmp/koka-out -o /workspace/solution /workspace/solution.kk"];
+static KOKA_COMPILE: &[&str] = &["sh", "-c", "HOME=/tmp KOKA_HOME=/usr/local koka -O2 --outputdir=/tmp/koka-out -o /workspace/solution /workspace/solution.kk"];
 static KOKA_RUN: &[&str] = &["/workspace/solution"];
 
 static KOKA_CONFIG: LanguageConfig = LanguageConfig {
@@ -1134,7 +1134,7 @@ static PURESCRIPT_CONFIG: LanguageConfig = LanguageConfig {
 };
 
 // Modula-2
-static MODULA2_COMPILE: &[&str] = &["gm2", "-O2", "-fpim4", "-o", "/workspace/solution", "/workspace/solution.mod"];
+static MODULA2_COMPILE: &[&str] = &["gm2", "-O2", "-fiso", "-o", "/workspace/solution", "/workspace/solution.mod"];
 static MODULA2_RUN: &[&str] = &["/workspace/solution"];
 
 static MODULA2_CONFIG: LanguageConfig = LanguageConfig {
@@ -1145,7 +1145,7 @@ static MODULA2_CONFIG: LanguageConfig = LanguageConfig {
 };
 
 // Factor
-static FACTOR_RUN: &[&str] = &["/opt/factor/factor", "/workspace/solution.factor"];
+static FACTOR_RUN: &[&str] = &["sh", "-c", "HOME=/tmp FACTOR_HOME=/opt/factor /opt/factor/factor /workspace/solution.factor"];
 
 static FACTOR_CONFIG: LanguageConfig = LanguageConfig {
     extension: ".factor",

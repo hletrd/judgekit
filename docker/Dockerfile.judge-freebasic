@@ -1,7 +1,7 @@
 FROM debian:bookworm-slim
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        curl ca-certificates libncurses5 libx11-6 libxext6 libxpm4 libxrandr2 \
+        curl ca-certificates libncurses5 libncurses-dev libx11-6 libxext6 libxpm4 libxrandr2 \
         libgpm2 libtinfo6 gcc libc6-dev libgcc-12-dev && \
     ARCH=$(dpkg --print-architecture) && \
     if [ "$ARCH" = "amd64" ]; then FB_ARCH="x86_64"; \
