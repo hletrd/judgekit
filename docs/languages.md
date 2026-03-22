@@ -121,7 +121,7 @@
 
 ### ARM64 Build Summary
 
-**69 of 71 existing images built on ARM64** (oj.auraedu.me, Ampere Altra). 2 are amd64-only:
+**69 of 71 existing images built on ARM64** (production, Ampere Altra). 2 are amd64-only:
 - **B (BCause)**: uses x86-64 inline assembly (`syscall` instruction), fundamentally incompatible with ARM64
 - **APL (GNU APL 1.8)**: `make` fails on ARM64 due to old C++ code with portability issues
 
@@ -129,7 +129,7 @@
 
 ### amd64 E2E Summary (2026-03-21)
 
-**81 of 88 existing languages passed** on amd64 (oj-internal.maum.ai). 7 failures:
+**81 of 88 existing languages passed** on amd64 (test server). 7 failures:
 - **fsharp**: .NET runtime issue
 - **vbnet**: Compilation failure (.NET)
 - **nasm**: Assembly test issue

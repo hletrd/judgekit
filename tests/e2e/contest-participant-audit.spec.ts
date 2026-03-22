@@ -5,7 +5,7 @@
  * all four sections render correctly.
  *
  * Run against a live server:
- *   PLAYWRIGHT_BASE_URL=http://oj-internal.maum.ai E2E_USERNAME=admin E2E_PASSWORD=xxx npx playwright test tests/e2e/contest-participant-audit.spec.ts
+ *   PLAYWRIGHT_BASE_URL=<from ENV.md> E2E_USERNAME=<from ENV.md> E2E_PASSWORD='<from ENV.md>' npx playwright test tests/e2e/contest-participant-audit.spec.ts
  */
 
 import { test, expect } from "@playwright/test";

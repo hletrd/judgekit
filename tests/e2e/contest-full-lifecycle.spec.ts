@@ -5,7 +5,7 @@
  * student joins → submits → scoring (IOI/ICPC) → leaderboard → anti-cheat → analytics
  *
  * Run:
- *   PLAYWRIGHT_BASE_URL=http://oj-internal.maum.ai E2E_USERNAME=test_admin E2E_PASSWORD='mcl1234~' npx playwright test tests/e2e/contest-full-lifecycle.spec.ts
+ *   PLAYWRIGHT_BASE_URL=<from ENV.md> E2E_USERNAME=<from ENV.md> E2E_PASSWORD='<from ENV.md>' npx playwright test tests/e2e/contest-full-lifecycle.spec.ts
  */
 
 import { test, expect, type Page, type APIRequestContext } from "@playwright/test";

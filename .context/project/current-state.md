@@ -29,8 +29,8 @@ Last updated: 2026-03-21
 
 ## Operational notes
 
-- **Test host**: `oj-internal.maum.ai` (10.50.1.116, amd64), deployed via `deploy-docker.sh` with server-side Docker builds.
-- **Production host**: `oj.auraedu.me` (arm64 Ampere Altra), deployed via `deploy-docker.sh` with SSH key auth.
+- **Test host**: amd64, deployed via `deploy-docker.sh` with server-side Docker builds. See ENV.md for hostname/credentials.
+- **Production host**: arm64 (Ampere Altra), deployed via `deploy-docker.sh` with SSH key auth. See ENV.md for hostname/credentials.
 - Both hosts run Docker Compose with `judgekit-app` and `judgekit-judge-worker` containers.
 - The judge worker runs with `privileged: true` and `/judge-workspaces:/judge-workspaces` volume mount (identity-mapped so sibling judge containers can access source files).
 - `TMPDIR=/judge-workspaces` is set on the worker so temp files land on the shared host path.
@@ -54,7 +54,7 @@ Last updated: 2026-03-21
 
 ## 2026-03-21 session changes (production arm64 deployment)
 
-- **Production deployed**: Full deploy to `oj.auraedu.me` (arm64 Ampere Altra) via `deploy-docker.sh`.
+- **Production deployed**: Full deploy to production (arm64 Ampere Altra) via `deploy-docker.sh`.
 - **69 of 70 Docker images built on arm64**. 2 are amd64-only: `judge-b` (x86 inline asm), `judge-apl` (make fails on arm64).
 - **PowerShell fixed for arm64**: Switched from Microsoft container registry (no arm64) to GitHub tar.gz release with arch-aware download.
 - **J language removed**: No arm64 binary, unmaintained. Removed from all configs.
@@ -65,10 +65,10 @@ Last updated: 2026-03-21
 - **Worker Dockerfile hardened**: `cargo clean` before build + arch verification to prevent stale binary issues.
 - **Deploy script fixed**: `.env.production` is now preserved per-target (not overwritten on redeploy). `AUTH_URL` is patched to match the target domain on first deploy only.
 - **Nginx fixed**: Production `online-judge` config proxy_pass updated from port 3000 to 3100.
-- **AUTH_URL fixed**: Production `.env.production` set to `https://oj.auraedu.me` (was incorrectly `http://oj-internal.maum.ai`).
+- **AUTH_URL fixed**: Production `.env.production` set to correct HTTPS URL (was incorrectly pointing to test server HTTP).
 - **DB restored**: Old production DB (13 users, 46 problems, 404 submissions) restored from `/home/ubuntu/online-judge/data/judge.db`. Rate_limits table recreated with new schema (key, consecutive_blocks columns).
 - **Language compile commands fixed on production**: vlang (VMODULES), zig (cache dir), scala (mkdir), nim (nimcache), dart (compile exe), prolog, clojure, groovy.
-- **E2E on arm64**: Rate limits prevent full 88-language serial E2E on production. First 14-28 languages pass consistently. Full E2E should run against oj-internal.maum.ai (test server).
+- **E2E on arm64**: Rate limits prevent full 88-language serial E2E on production. First 14-28 languages pass consistently. Full E2E should run against the test server (see ENV.md).
 
 ## 2026-03-20 session changes (new runtimes batch)
 

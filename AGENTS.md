@@ -289,7 +289,7 @@ The recommended deployment method. Workflow:
 Usage:
 ```bash
 # Full deployment (password auth)
-SSH_PASSWORD='...' REMOTE_HOST=10.50.1.116 REMOTE_USER=platform ./deploy-docker.sh
+SSH_PASSWORD='...' REMOTE_HOST=... REMOTE_USER=... ./deploy-docker.sh
 
 # Full deployment (key auth)
 SSH_KEY=key.pem REMOTE_HOST=... REMOTE_USER=... DOMAIN=... ./deploy-docker.sh

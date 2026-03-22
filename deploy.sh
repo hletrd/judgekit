@@ -3,14 +3,13 @@ set -euo pipefail
 
 # ============================================================
 # JudgeKit All-in-One Deployment Script
-# Target: platform@10.50.1.116 (NFS VM)
-# Domain: oj-internal.maum.ai
+# See ENV.md for deployment targets and credentials.
 # ============================================================
 
-REMOTE_HOST="${NFS_HOST:-10.50.1.116}"
-REMOTE_USER="${NFS_USER:-platform}"
-REMOTE_DIR="/home/platform/judgekit"
-DOMAIN="oj-internal.maum.ai"
+REMOTE_HOST="${REMOTE_HOST:?REMOTE_HOST is required (see ENV.md)}"
+REMOTE_USER="${REMOTE_USER:?REMOTE_USER is required (see ENV.md)}"
+REMOTE_DIR="/home/${REMOTE_USER}/judgekit"
+DOMAIN="${DOMAIN:?DOMAIN is required (see ENV.md)}"
 APP_PORT=3100
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
@@ -162,7 +161,7 @@ info "Configuring nginx for ${DOMAIN}..."
 remote "sudo tee /etc/nginx/sites-available/judgekit > /dev/null" <<'NGINX_EOF'
 server {
     listen 80;
-    server_name oj-internal.maum.ai;
+    server_name ${DOMAIN};
 
     client_max_body_size 50M;
 

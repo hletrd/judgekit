@@ -135,6 +135,6 @@ The `dashboard-rendering-audit-and-editor-upgrades` batch is now locally verifie
 
 ## Safety note
 
-- Test host (oj-internal.maum.ai) was reverified on 2026-03-22 after full deployment with rebuilt app + worker + 12 new language images.
+- Test host (see ENV.md) was reverified on 2026-03-22 after full deployment with rebuilt app + worker + 12 new language images.
 - Nginx config on test host gets overwritten during deploy — ensure `/tmp/judgekit-nginx.conf` backup exists or fix the deploy script's nginx step.
 - Future sessions should isolate the next coherent batch before updating deployment-facing docs again.
