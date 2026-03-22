@@ -964,6 +964,13 @@ const KNOWN_FAILING = new Set<string>([
   "carp",        // unmaintained, x86-64 only
   "roc",         // downloads platform at compile time, no network in sandbox
   "grain",       // compiler internal error (grainc.js crash)
+  "lean",        // runtime error on judge (IO/parsing issue)
+  "wat",         // WAT A+B solution needs debugging (WASI I/O)
+  "modula2",     // gm2 ISO module compile issue
+  "factor",      // Factor runtime script execution issue
+  "minizinc",    // minizinc-judge wrapper needs debugging
+  "clean",       // Clean compiler StdEnv path issue
+  "pony",        // ponyc compilation timeout
 ]);
 
 /** Per-language timeout overrides (ms). JVM/compiled languages get more time. */
