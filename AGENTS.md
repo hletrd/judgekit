@@ -15,9 +15,9 @@ JudgeKit is a secure online judge platform for programming assignments. Next.js 
 | `tests/` | Playwright E2E tests, Vitest unit/integration tests |
 | `data/` | SQLite database (gitignored) |
 
-## Supported Languages (88)
+## Supported Languages (114)
 
-JudgeKit supports 88 language variants across 69 Docker images:
+JudgeKit supports 114 language variants across 95 Docker images:
 
 | # | Language ID | Description | Docker Image |
 |---|-------------|-------------|--------------|
@@ -109,6 +109,32 @@ JudgeKit supports 88 language variants across 69 Docker images:
 | 87 | `sml` | Standard ML (Poly/ML) | `judge-sml` |
 | 88 | `fennel` | Fennel (Lua VM) | `judge-lua` |
 | 89 | `flix` | Flix (JVM) | `judge-jvm` |
+| 90 | `clean` | Clean 3.1 | `judge-clean` |
+| 91 | `curry` | Curry (PAKCS 3.9.0) | `judge-curry` |
+| 92 | `purescript` | PureScript 0.15.16 | `judge-purescript` |
+| 93 | `mercury` | Mercury 22.01.8 | `judge-mercury` |
+| 94 | `carp` | Carp 0.5.5 | `judge-carp` |
+| 95 | `roc` | Roc alpha4 | `judge-roc` |
+| 96 | `grain` | Grain 0.7.2 | `judge-grain` |
+| 97 | `pony` | Pony 0.61.1 | `judge-pony` |
+| 98 | `picat` | Picat 3.9 | `judge-picat` |
+| 99 | `modula2` | Modula-2 (PIM4) | `judge-modula2` |
+| 100 | `factor` | Factor 0.101 | `judge-factor` |
+| 101 | `minizinc` | MiniZinc 2.9.5 | `judge-minizinc` |
+| 102 | `wat` | WebAssembly (WAT) | `judge-wat` |
+| 103 | `spark` | SPARK (Ada/SPARK 2014) | `judge-ada` |
+| 104 | `lean` | Lean 4 4.28 | `judge-lean` |
+| 105 | `c3` | C3 0.7 | `judge-c3` |
+| 106 | `hare` | Hare | `judge-hare` |
+| 107 | `hy` | Hy 1.0 | `judge-hy` |
+| 108 | `janet` | Janet 1.40 | `judge-janet` |
+| 109 | `koka` | Koka 3.2 | `judge-koka` |
+| 110 | `micropython` | MicroPython | `judge-micropython` |
+| 111 | `nelua` | Nelua | `judge-nelua` |
+| 112 | `rexx` | Rexx (Regina 3.9) | `judge-rexx` |
+| 113 | `arturo` | Arturo | `judge-arturo` |
+| 114 | `squirrel` | Squirrel 3.2 | `judge-squirrel` |
+| 115 | `vala` | Vala 0.56 | `judge-vala` |
 
 ## Adding a New Language
 
