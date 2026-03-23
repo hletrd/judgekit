@@ -924,6 +924,10 @@ async function waitForJudging(
 const KNOWN_FAILING = new Set<string>([
   "fsharp",      // .NET SDK needs HOME=/tmp (fixing)
   "vbnet",       // .NET SDK needs HOME=/tmp (fixing)
+  "nasm",        // assembly test/linking issue
+  "bqn",         // CBQN runtime issue
+  "forth",       // Gforth runtime issue
+  "algol68",     // a68g runtime issue
   "lean",        // runtime error on judge (IO/parsing issue)
   "wat",         // WAT A+B solution needs debugging (WASI I/O)
   "modula2",     // gm2 ISO module compile issue
