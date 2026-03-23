@@ -59,7 +59,7 @@
 | 53 | `groovy` | Groovy 4.0 | `judge-groovy` | ✅ | ✅ | ✅ | ✅ |
 | 54 | `octave` | GNU Octave 9 | `judge-octave` | ✅ | ✅ | ✅ | ✅ |
 | 55 | `crystal` | Crystal 1.14 | `judge-crystal` | ✅ | ✅ | ✅ | ✅ |
-| 56 | `powershell` | PowerShell 7.5 | `judge-powershell` | ✅ | ✅ | ✅ | ❌ |
+| 56 | `powershell` | PowerShell 7.5 | `judge-powershell` | ✅ | ✅ | ❌ | ❌ |
 | 57 | `postscript` | PostScript (Ghostscript 10) | `judge-postscript` | ✅ | ✅ | ✅ | ✅ |
 | 58 | `brainfuck` | Brainfuck | `judge-brainfuck` | ✅ | ✅ | ✅ | ✅ |
 | 59 | `befunge` | Befunge-93 | `judge-esoteric` | ✅ | ✅ | ✅ | ✅ |
@@ -129,7 +129,8 @@
 
 ### amd64 E2E Summary (2026-03-23)
 
-**108 of 114 languages passed** on amd64 (test server). 6 failures:
+**107 of 114 languages passed** on amd64 (test server). 7 failures:
+- **powershell**: PowerShell runtime error
 - **arturo**: Arturo runtime issue (amd64-only image)
 - **mercury**: Mercury runtime issue
 - **purescript**: PureScript runtime issue
