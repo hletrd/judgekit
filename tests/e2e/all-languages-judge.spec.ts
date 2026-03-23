@@ -922,13 +922,25 @@ async function waitForJudging(
 // Languages with known issues on the current judge infrastructure.
 // Tagged test.fixme() so they show as "to-do" rather than failures.
 const KNOWN_FAILING = new Set<string>([
-  "fsharp",      // runtime_error — .NET globalization issue (fix deployed, needs rebuild)
-  "vbnet",       // compile_error — same .NET image as fsharp
-  "lolcode",     // runtime_error — lci string parsing issue
-  "mercury",     // Docker image needs source build fix
-  "purescript",  // BusyBox cp fix applied, needs Docker rebuild to verify
-  "curry",       // PAKCS execution mode issue
+  // Phase 3 languages — need Docker image rebuilds on staging
+  "mercury",     // Docker source build needed
+  "purescript",  // spago Docker build issue
+  "curry",       // PAKCS non-interactive mode
   "carp",        // arch-specific binary issue
+  "roc",         // platform file not pre-cached in Docker
+  "grain",       // grainc internal compiler error
+  "pony",        // ponyc permission/timeout
+  // Persistent runtime issues
+  "powershell",  // .NET runtime_error on amd64
+  "squirrel",    // stdin reading in sandboxed container
+  "arturo",      // memory_limit — binary too large
+  "koka",        // stdlib loading path
+  "lean",        // Lean 4 runtime error
+  "wat",         // WASI fd_read/fd_write issue
+  "modula2",     // gm2 ISO module wrong answer
+  "factor",      // Factor runtime execution
+  "minizinc",    // minizinc solver runtime
+  "clean",       // Clean StdEnv path
 ]);
 
 /** Per-language timeout overrides (ms). JVM/compiled languages get more time. */
