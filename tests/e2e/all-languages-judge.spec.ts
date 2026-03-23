@@ -922,23 +922,12 @@ async function waitForJudging(
 // Languages with known issues on the current judge infrastructure.
 // Tagged test.fixme() so they show as "to-do" rather than failures.
 const KNOWN_FAILING = new Set<string>([
-  "fsharp",      // .NET SDK needs HOME=/tmp (fixing)
-  "vbnet",       // .NET SDK needs HOME=/tmp (fixing)
-  "nasm",        // assembly test/linking issue
-  "bqn",         // CBQN runtime issue
-  "forth",       // Gforth runtime issue
-  "algol68",     // a68g runtime issue
-  "lean",        // runtime error on judge (IO/parsing issue)
-  "wat",         // WAT A+B solution needs debugging (WASI I/O)
-  "modula2",     // gm2 ISO module compile issue
-  "factor",      // Factor runtime script execution issue
-  "minizinc",    // minizinc-judge wrapper needs debugging
-  "clean",       // Clean compiler StdEnv path issue
-  "pony",        // ponyc compilation timeout
-  "squirrel",    // stdin.readn('l') not working in sandboxed container
-  "koka",        // stdlib loading path issue after multi-stage copy
-  "powershell",  // PowerShell runtime error on amd64 staging
-  "lolcode",     // LOLCODE 1.3 string parsing for space-separated input
+  "arturo",      // memory_limit — binary too large for sandbox
+  "mercury",     // Docker image needs source build fix
+  "purescript",  // spago ecosystem Docker build fails
+  "curry",       // PAKCS execution mode issue
+  "roc",         // downloads platform at compile time, no network in sandbox
+  "carp",        // arch-specific binary issue
 ]);
 
 /** Per-language timeout overrides (ms). JVM/compiled languages get more time. */
