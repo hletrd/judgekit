@@ -915,7 +915,7 @@ export const JUDGE_LANGUAGE_CONFIGS: Record<Language, JudgeLanguageDefinition> =
     dockerImage: "judge-lolcode:latest",
     compiler: null,
     compileCommand: null,
-    runCommand: ["lci", "/workspace/solution.lol"],
+    runCommand: ["sh", "-c", "tr ' ' '\\n' < /dev/stdin | lci /workspace/solution.lol"],
   },
   forth: {
     language: "forth",

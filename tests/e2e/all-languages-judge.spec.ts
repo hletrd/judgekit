@@ -935,7 +935,6 @@ const KNOWN_FAILING = new Set<string>([
   "vbnet",       // dotnet build fails in judge sandbox
   "powershell",  // pwsh produces empty output in judge sandbox
   // Interpreter stdin issues
-  "lolcode",     // lci can't parse space-separated single-line input
 ]);
 
 /** Per-language timeout overrides (ms). JVM/compiled languages get more time. */

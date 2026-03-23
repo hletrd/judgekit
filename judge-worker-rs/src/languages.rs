@@ -750,7 +750,7 @@ static BQN_CONFIG: LanguageConfig = LanguageConfig {
 };
 
 // LOLCODE
-static LOLCODE_RUN: &[&str] = &["lci", "/workspace/solution.lol"];
+static LOLCODE_RUN: &[&str] = &["sh", "-c", "tr ' ' '\\n' < /dev/stdin | lci /workspace/solution.lol"];
 
 static LOLCODE_CONFIG: LanguageConfig = LanguageConfig {
     extension: ".lol",
