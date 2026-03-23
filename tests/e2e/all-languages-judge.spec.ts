@@ -930,7 +930,11 @@ const KNOWN_FAILING = new Set<string>([
   "roc",         // platform file not pre-cached in Docker
   "grain",       // grainc internal compiler error
   "pony",        // ponyc permission/timeout
-  // Persistent runtime issues
+  // .NET runtime — empty output in judge sandbox (works in direct Docker)
+  "fsharp",      // dotnet fsi produces empty output in judge sandbox
+  "vbnet",       // dotnet build fails in judge sandbox
+  "powershell",  // pwsh produces empty output in judge sandbox
+  // Interpreter stdin issues
   "lolcode",     // lci can't parse space-separated single-line input
 ]);
 
