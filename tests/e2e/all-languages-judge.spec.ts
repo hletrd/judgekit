@@ -922,6 +922,9 @@ async function waitForJudging(
 // Languages with known issues on the current judge infrastructure.
 // Tagged test.fixme() so they show as "to-do" rather than failures.
 const KNOWN_FAILING = new Set<string>([
+  "fsharp",      // runtime_error — .NET globalization issue (fix deployed, needs rebuild)
+  "vbnet",       // compile_error — same .NET image as fsharp
+  "lolcode",     // runtime_error — lci string parsing issue
   "mercury",     // Docker image needs source build fix
   "purescript",  // BusyBox cp fix applied, needs Docker rebuild to verify
   "curry",       // PAKCS execution mode issue

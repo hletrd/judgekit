@@ -23,8 +23,8 @@
 | 17 | `go` | Go 1.26 | `judge-go` | ✅ | ✅ | ✅ | ✅ |
 | 18 | `swift` | Swift 6.2 | `judge-swift` | ✅ | ✅ | ✅ | ✅ |
 | 19 | `csharp` | C# (Mono 6.12) | `judge-csharp` | ✅ | ✅ | ✅ | ✅ |
-| 20 | `fsharp` | F# (.NET 10) | `judge-fsharp` | ✅ | ✅ | ✅ | ❌ |
-| 21 | `vbnet` | Visual Basic .NET (.NET 10) | `judge-fsharp` | ✅ | ✅ | ✅ | ❌ |
+| 20 | `fsharp` | F# (.NET 10) | `judge-fsharp` | ✅ | ✅ | ❌ | ❌ |
+| 21 | `vbnet` | Visual Basic .NET (.NET 10) | `judge-fsharp` | ✅ | ✅ | ❌ | ❌ |
 | 22 | `r` | R 4.5 | `judge-r` | ✅ | ✅ | ✅ | ✅ |
 | 23 | `perl` | Perl 5.40 | `judge-perl` | ✅ | ✅ | ✅ | ✅ |
 | 24 | `php` | PHP 8.4 | `judge-php` | ✅ | ✅ | ✅ | ✅ |
@@ -82,7 +82,7 @@
 | 76 | `icon` | Icon | `judge-icon` | ✅ | ✅ | ✅ | ✅ |
 | 77 | `algol68` | Algol 68 (a68g) | `judge-algol68` | ✅ | ✅ | ✅ | ❌ |
 | 78 | `snobol4` | SNOBOL4 (CSNOBOL4) | `judge-snobol4` | ✅ | ✅ | ✅ | ✅ |
-| 79 | `lolcode` | LOLCODE (lci) | `judge-lolcode` | ✅ | ✅ | ✅ | ❌ |
+| 79 | `lolcode` | LOLCODE (lci) | `judge-lolcode` | ✅ | ✅ | ❌ | ❌ |
 | 80 | `shakespeare` | Shakespeare (shakespearelang) | `judge-shakespeare` | ✅ | ✅ | ✅ | ✅ |
 | 81 | `umjunsik` | 엄준식 (Umjunsik) | `judge-umjunsik` | ✅ | ✅ | ✅ | ✅ |
 | 82 | `deno_js` | JavaScript (Deno) | `judge-deno` | ✅ | ✅ | ✅ | ✅ |
@@ -130,13 +130,13 @@
 ### amd64 E2E Summary (2026-03-23)
 
 **107 of 114 languages passed** on amd64 (test server). 7 failures:
-- **powershell**: PowerShell runtime error
-- **arturo**: Arturo runtime issue (amd64-only image)
-- **mercury**: Mercury runtime issue
-- **purescript**: PureScript runtime issue
-- **curry**: Curry runtime issue (amd64-only image)
-- **roc**: Roc runtime issue
-- **carp**: Carp runtime issue (amd64-only image)
+- **fsharp**: .NET runtime error (globalization fix pending rebuild)
+- **vbnet**: .NET compile error (same image as fsharp)
+- **lolcode**: lci runtime error (string parsing)
+- **mercury**: Mercury Docker build issue
+- **purescript**: PureScript Docker rebuild pending
+- **curry**: PAKCS execution mode issue
+- **carp**: Arch-specific binary issue
 
 0 languages with unknown amd64 E2E status remaining.
 
