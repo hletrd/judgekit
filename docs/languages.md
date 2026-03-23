@@ -23,8 +23,8 @@
 | 17 | `go` | Go 1.26 | `judge-go` | ✅ | ✅ | ✅ | ✅ |
 | 18 | `swift` | Swift 6.2 | `judge-swift` | ✅ | ✅ | ✅ | ✅ |
 | 19 | `csharp` | C# (Mono 6.12) | `judge-csharp` | ✅ | ✅ | ✅ | ✅ |
-| 20 | `fsharp` | F# (.NET 10) | `judge-fsharp` | ✅ | ✅ | ❌ | ❌ |
-| 21 | `vbnet` | Visual Basic .NET (.NET 10) | `judge-fsharp` | ✅ | ✅ | ❌ | ❌ |
+| 20 | `fsharp` | F# (.NET 10) | `judge-fsharp` | ✅ | ✅ | ✅ | ❌ |
+| 21 | `vbnet` | Visual Basic .NET (.NET 10) | `judge-fsharp` | ✅ | ✅ | ✅ | ❌ |
 | 22 | `r` | R 4.5 | `judge-r` | ✅ | ✅ | ✅ | ✅ |
 | 23 | `perl` | Perl 5.40 | `judge-perl` | ✅ | ✅ | ✅ | ✅ |
 | 24 | `php` | PHP 8.4 | `judge-php` | ✅ | ✅ | ✅ | ✅ |
@@ -59,7 +59,7 @@
 | 53 | `groovy` | Groovy 4.0 | `judge-groovy` | ✅ | ✅ | ✅ | ✅ |
 | 54 | `octave` | GNU Octave 9 | `judge-octave` | ✅ | ✅ | ✅ | ✅ |
 | 55 | `crystal` | Crystal 1.14 | `judge-crystal` | ✅ | ✅ | ✅ | ✅ |
-| 56 | `powershell` | PowerShell 7.5 | `judge-powershell` | ✅ | ✅ | ❌ | ❌ |
+| 56 | `powershell` | PowerShell 7.5 | `judge-powershell` | ✅ | ✅ | ✅ | ❌ |
 | 57 | `postscript` | PostScript (Ghostscript 10) | `judge-postscript` | ✅ | ✅ | ✅ | ✅ |
 | 58 | `brainfuck` | Brainfuck | `judge-brainfuck` | ✅ | ✅ | ✅ | ✅ |
 | 59 | `befunge` | Befunge-93 | `judge-esoteric` | ✅ | ✅ | ✅ | ✅ |
@@ -71,18 +71,18 @@
 | 65 | `apl` | APL (GNU APL) | `judge-apl` | ✅ | ❌ make fails | ✅ | ❌ |
 | 66 | `freebasic` | FreeBASIC | `judge-freebasic` | ✅ | ✅ | ✅ | ✅ |
 | 67 | `smalltalk` | Smalltalk (GNU Smalltalk) | `judge-smalltalk` | ✅ | ✅ | ✅ | ✅ |
-| 68 | `nasm` | Assembly (NASM x86-64 / GNU as AArch64) | `judge-nasm` | ✅ | ✅ | ❌ | ❌ |
+| 68 | `nasm` | Assembly (NASM x86-64 / GNU as AArch64) | `judge-nasm` | ✅ | ✅ | ✅ | ❌ |
 | 69 | `objective_c` | Objective-C (GCC gobjc) | `judge-objective-c` | ✅ | ✅ | ✅ | ✅ |
-| 70 | `forth` | Forth (Gforth) | `judge-forth` | ✅ | ✅ | ❌ | ❌ |
+| 70 | `forth` | Forth (Gforth) | `judge-forth` | ✅ | ✅ | ✅ | ❌ |
 | 71 | `raku` | Raku (Rakudo) | `judge-raku` | ✅ | ✅ | ✅ | ✅ |
 | 72 | `haxe` | Haxe 4.3 (Python backend) | `judge-haxe` | ✅ | ✅ | ✅ | ✅ |
 | 73 | `odin` | Odin | `judge-odin` | ✅ | ✅ | ✅ | ✅ |
 | 74 | `uiua` | Uiua | `judge-uiua` | ✅ | ✅ | ✅ | ✅ |
-| 75 | `bqn` | BQN (CBQN) | `judge-bqn` | ✅ | ✅ | ❌ | ❌ |
+| 75 | `bqn` | BQN (CBQN) | `judge-bqn` | ✅ | ✅ | ✅ | ❌ |
 | 76 | `icon` | Icon | `judge-icon` | ✅ | ✅ | ✅ | ✅ |
-| 77 | `algol68` | Algol 68 (a68g) | `judge-algol68` | ✅ | ✅ | ❌ | ❌ |
+| 77 | `algol68` | Algol 68 (a68g) | `judge-algol68` | ✅ | ✅ | ✅ | ❌ |
 | 78 | `snobol4` | SNOBOL4 (CSNOBOL4) | `judge-snobol4` | ✅ | ✅ | ✅ | ✅ |
-| 79 | `lolcode` | LOLCODE (lci) | `judge-lolcode` | ✅ | ✅ | ❌ | ❌ |
+| 79 | `lolcode` | LOLCODE (lci) | `judge-lolcode` | ✅ | ✅ | ✅ | ❌ |
 | 80 | `shakespeare` | Shakespeare (shakespearelang) | `judge-shakespeare` | ✅ | ✅ | ✅ | ✅ |
 | 81 | `umjunsik` | 엄준식 (Umjunsik) | `judge-umjunsik` | ✅ | ✅ | ✅ | ✅ |
 | 82 | `deno_js` | JavaScript (Deno) | `judge-deno` | ✅ | ✅ | ✅ | ✅ |
@@ -93,31 +93,31 @@
 | 87 | `sml` | Standard ML (Poly/ML) | `judge-sml` | ✅ | ✅ | ✅ | ✅ |
 | 88 | `fennel` | Fennel (Lua VM) | `judge-lua` | ✅ | ✅ | ✅ | ✅ |
 | 89 | `micropython` | MicroPython | `judge-micropython` | ✅ | ❓ | ✅ | ❓ |
-| 90 | `squirrel` | Squirrel 3.2 | `judge-squirrel` | ✅ | ❓ | ❌ | ❌ |
+| 90 | `squirrel` | Squirrel 3.2 | `judge-squirrel` | ✅ | ❓ | ✅ | ❌ |
 | 91 | `rexx` | Rexx (Regina) | `judge-rexx` | ✅ | ❓ | ✅ | ❓ |
 | 92 | `hy` | Hy (Lisp on Python) | `judge-hy` | ✅ | ❓ | ✅ | ❓ |
-| 93 | `arturo` | Arturo | `judge-arturo` | ✅ | ❌ amd64 only | ✅ | ❌ |
+| 93 | `arturo` | Arturo | `judge-arturo` | ✅ | ❌ amd64 only | ❌ | ❌ |
 | 94 | `janet` | Janet | `judge-janet` | ✅ | ❓ | ✅ | ❓ |
 | 95 | `c3` | C3 | `judge-c3` | ✅ | ❌ amd64 only | ✅ | ❌ |
 | 96 | `vala` | Vala | `judge-vala` | ✅ | ❓ | ✅ | ❓ |
 | 97 | `nelua` | Nelua | `judge-nelua` | ✅ | ❓ | ✅ | ❓ |
 | 98 | `hare` | Hare | `judge-hare` | ✅ | ❓ | ✅ | ❓ |
-| 99 | `koka` | Koka | `judge-koka` | ✅ | ❌ amd64 only | ❌ | ❌ |
-| 100 | `lean` | Lean 4 | `judge-lean` | ✅ | ❓ | ❌ | ❌ |
+| 99 | `koka` | Koka | `judge-koka` | ✅ | ❌ amd64 only | ✅ | ❌ |
+| 100 | `lean` | Lean 4 | `judge-lean` | ✅ | ❓ | ✅ | ❌ |
 | 101 | `picat` | Picat 3.9 | `judge-picat` | ✅ | ❌ build from src | ✅ | ❌ |
-| 102 | `mercury` | Mercury 22.01.8 | `judge-mercury` | ✅ | ✅ | ✅ | ❌ |
-| 103 | `wat` | WebAssembly (WAT, wabt+wasmtime) | `judge-wat` | ✅ | ✅ | ❌ | ❌ |
-| 104 | `purescript` | PureScript 0.15.16 | `judge-purescript` | ✅ | ✅ | ✅ | ❌ |
-| 105 | `modula2` | Modula-2 (GCC gm2) | `judge-modula2` | ✅ | ✅ | ❌ | ❌ |
-| 106 | `factor` | Factor 0.101 | `judge-factor` | ✅ | ❌ amd64 only | ❌ | ❌ |
+| 102 | `mercury` | Mercury 22.01.8 | `judge-mercury` | ✅ | ✅ | ❌ | ❌ |
+| 103 | `wat` | WebAssembly (WAT, wabt+wasmtime) | `judge-wat` | ✅ | ✅ | ✅ | ❌ |
+| 104 | `purescript` | PureScript 0.15.16 | `judge-purescript` | ✅ | ✅ | ❌ | ❌ |
+| 105 | `modula2` | Modula-2 (GCC gm2) | `judge-modula2` | ✅ | ✅ | ✅ | ❌ |
+| 106 | `factor` | Factor 0.101 | `judge-factor` | ✅ | ❌ amd64 only | ✅ | ❌ |
 | 107 | `spark` | SPARK (Ada/SPARK 2014, GNAT) | `judge-ada` | ✅ | ✅ | ✅ | ❓ |
-| 108 | `minizinc` | MiniZinc 2.9.5 | `judge-minizinc` | ✅ | ❌ amd64 only | ❌ | ❌ |
-| 109 | `curry` | Curry (PAKCS 3.9.0) | `judge-curry` | ✅ | ❌ amd64 only | ✅ | ❌ |
-| 110 | `clean` | Clean 3.1 | `judge-clean` | ✅ | ✅ | ❌ | ❌ |
-| 111 | `roc` | Roc (alpha4) | `judge-roc` | ✅ | ✅ | ✅ | ❌ |
-| 112 | `carp` | Carp 0.5.5 | `judge-carp` | ✅ | ❌ amd64 only | ✅ | ❌ |
+| 108 | `minizinc` | MiniZinc 2.9.5 | `judge-minizinc` | ✅ | ❌ amd64 only | ✅ | ❌ |
+| 109 | `curry` | Curry (PAKCS 3.9.0) | `judge-curry` | ✅ | ❌ amd64 only | ❌ | ❌ |
+| 110 | `clean` | Clean 3.1 | `judge-clean` | ✅ | ✅ | ✅ | ❌ |
+| 111 | `roc` | Roc (alpha4) | `judge-roc` | ✅ | ✅ | ❌ | ❌ |
+| 112 | `carp` | Carp 0.5.5 | `judge-carp` | ✅ | ❌ amd64 only | ❌ | ❌ |
 | 113 | `grain` | Grain 0.7.2 | `judge-grain` | ✅ | ❌ x64 only | ✅ | ❌ |
-| 114 | `pony` | Pony 0.61.1 | `judge-pony` | ✅ | ✅ | ❌ | ❌ |
+| 114 | `pony` | Pony 0.61.1 | `judge-pony` | ✅ | ✅ | ✅ | ❌ |
 
 ### ARM64 Build Summary
 
@@ -129,24 +129,13 @@
 
 ### amd64 E2E Summary (2026-03-23)
 
-**97 of 114 languages passed** on amd64 (test server). 17 failures:
-- **fsharp**: .NET runtime issue
-- **vbnet**: Compilation failure (.NET)
-- **nasm**: Assembly test issue
-- **bqn**: CBQN runtime issue
-- **lolcode**: lci interpreter issue
-- **forth**: Gforth runtime issue
-- **algol68**: a68g runtime issue
-- **powershell**: PowerShell runtime issue
-- **squirrel**: Squirrel runtime issue
-- **koka**: Koka runtime issue (amd64-only image)
-- **lean**: Lean 4 runtime issue
-- **wat**: WAT/wasmtime runtime issue
-- **modula2**: Modula-2 runtime issue
-- **factor**: Factor runtime issue (amd64-only image)
-- **minizinc**: MiniZinc runtime issue (amd64-only image)
-- **clean**: Clean runtime issue
-- **pony**: Pony runtime issue
+**108 of 114 languages passed** on amd64 (test server). 6 failures:
+- **arturo**: Arturo runtime issue (amd64-only image)
+- **mercury**: Mercury runtime issue
+- **purescript**: PureScript runtime issue
+- **curry**: Curry runtime issue (amd64-only image)
+- **roc**: Roc runtime issue
+- **carp**: Carp runtime issue (amd64-only image)
 
 0 languages with unknown amd64 E2E status remaining.
 
