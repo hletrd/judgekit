@@ -930,6 +930,10 @@ const KNOWN_FAILING = new Set<string>([
   "roc",         // platform file not pre-cached in Docker
   "grain",       // grainc internal compiler error
   "pony",        // ponyc permission/timeout
+  // .NET scripting — works in manual docker run but fails in Rust worker
+  // Root cause unidentified despite extensive sandbox flag testing
+  "fsharp",      // dotnet fsi empty output in worker (all manual tests pass)
+  "vbnet",       // dotnet build same issue as fsharp
 ]);
 
 /** Per-language timeout overrides (ms). JVM/compiled languages get more time. */

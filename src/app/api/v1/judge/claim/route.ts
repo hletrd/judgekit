@@ -157,7 +157,7 @@ export async function POST(request: NextRequest) {
       floatRelativeError: problem.floatRelativeError ?? null,
       testCases: cases,
       // Language config overrides from DB (used by worker when present)
-      dockerImage: langConfig?.dockerImage ?? null,
+      dockerImage: langConfig?.dockerImage?.trim() || null,
       compileCommand: langConfig?.compileCommand?.trim() ? ["sh", "-c", langConfig.compileCommand] : null,
       runCommand: langConfig?.runCommand?.trim() ? ["sh", "-c", langConfig.runCommand] : null,
     });
