@@ -647,7 +647,7 @@ static CRYSTAL_CONFIG: LanguageConfig = LanguageConfig {
 };
 
 // PowerShell
-static POWERSHELL_RUN: &[&str] = &["sh", "-c", "HOME=/tmp DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1 DOTNET_SKIP_WORKLOAD_INTEGRITY_CHECK=true pwsh -NoProfile -NonInteractive -File /workspace/solution.ps1 2>/dev/null"];
+static POWERSHELL_RUN: &[&str] = &["pwsh", "-NoProfile", "-NonInteractive", "-File", "/workspace/solution.ps1"];
 
 static POWERSHELL_CONFIG: LanguageConfig = LanguageConfig {
     extension: ".ps1",
@@ -681,7 +681,7 @@ static DELPHI_CONFIG: LanguageConfig = LanguageConfig {
 };
 
 // F# (script mode via dotnet fsi)
-static FSHARP_RUN: &[&str] = &["sh", "-c", "HOME=/tmp DOTNET_CLI_HOME=/tmp DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1 DOTNET_SKIP_WORKLOAD_INTEGRITY_CHECK=true dotnet fsi /workspace/solution.fsx 2>/dev/null"];
+static FSHARP_RUN: &[&str] = &["dotnet", "fsi", "/workspace/solution.fsx"];
 
 static FSHARP_CONFIG: LanguageConfig = LanguageConfig {
     extension: ".fsx",
@@ -784,7 +784,7 @@ static LLVM_IR_CONFIG: LanguageConfig = LanguageConfig {
 // Visual Basic .NET (reuses judge-fsharp)
 static VBNET_COMPILE: &[&str] = &[
     "sh", "-c",
-    "export HOME=/tmp DOTNET_CLI_HOME=/tmp DOTNET_SKIP_WORKLOAD_INTEGRITY_CHECK=true && mkdir -p /workspace/out && echo '<Project Sdk=\"Microsoft.NET.Sdk\"><PropertyGroup><OutputType>Exe</OutputType><RootNamespace>Solution</RootNamespace></PropertyGroup></Project>' > /workspace/out/solution.vbproj && cp /workspace/solution.vb /workspace/out/Program.vb && cd /workspace/out && dotnet build -c Release -o /workspace/bin --nologo -v q 2>/dev/null",
+    "mkdir -p /workspace/out && echo '<Project Sdk=\"Microsoft.NET.Sdk\"><PropertyGroup><OutputType>Exe</OutputType><RootNamespace>Solution</RootNamespace></PropertyGroup></Project>' > /workspace/out/solution.vbproj && cp /workspace/solution.vb /workspace/out/Program.vb && cd /workspace/out && dotnet build -c Release -o /workspace/bin --nologo -v q",
 ];
 static VBNET_RUN: &[&str] = &["/workspace/bin/solution"];
 

@@ -761,7 +761,7 @@ export const JUDGE_LANGUAGE_CONFIGS: Record<Language, JudgeLanguageDefinition> =
     dockerImage: "judge-powershell:latest",
     compiler: `PowerShell ${JUDGE_TOOLCHAIN_VERSIONS.powershell}`,
     compileCommand: null,
-    runCommand: ["sh", "-c", "HOME=/tmp DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1 DOTNET_SKIP_WORKLOAD_INTEGRITY_CHECK=true pwsh -NoProfile -NonInteractive -File /workspace/solution.ps1 2>/dev/null"],
+    runCommand: ["pwsh", "-NoProfile", "-NonInteractive", "-File", "/workspace/solution.ps1"],
   },
   postscript: {
     language: "postscript",
@@ -791,7 +791,7 @@ export const JUDGE_LANGUAGE_CONFIGS: Record<Language, JudgeLanguageDefinition> =
     dockerImage: "judge-fsharp:latest",
     compiler: "dotnet fsi (.NET 10)",
     compileCommand: null,
-    runCommand: ["sh", "-c", "HOME=/tmp DOTNET_CLI_HOME=/tmp DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1 DOTNET_SKIP_WORKLOAD_INTEGRITY_CHECK=true dotnet fsi /workspace/solution.fsx 2>/dev/null"],
+    runCommand: ["dotnet", "fsi", "/workspace/solution.fsx"],
   },
   apl: {
     language: "apl",
@@ -883,7 +883,7 @@ export const JUDGE_LANGUAGE_CONFIGS: Record<Language, JudgeLanguageDefinition> =
     compileCommand: [
       "sh",
       "-c",
-      "export HOME=/tmp DOTNET_CLI_HOME=/tmp DOTNET_SKIP_WORKLOAD_INTEGRITY_CHECK=true && mkdir -p /workspace/out && echo '<Project Sdk=\"Microsoft.NET.Sdk\"><PropertyGroup><OutputType>Exe</OutputType><RootNamespace>Solution</RootNamespace></PropertyGroup></Project>' > /workspace/out/solution.vbproj && cp /workspace/solution.vb /workspace/out/Program.vb && cd /workspace/out && dotnet build -c Release -o /workspace/bin --nologo -v q 2>/dev/null",
+      "mkdir -p /workspace/out && echo '<Project Sdk=\"Microsoft.NET.Sdk\"><PropertyGroup><OutputType>Exe</OutputType><RootNamespace>Solution</RootNamespace></PropertyGroup></Project>' > /workspace/out/solution.vbproj && cp /workspace/solution.vb /workspace/out/Program.vb && cd /workspace/out && dotnet build -c Release -o /workspace/bin --nologo -v q",
     ],
     runCommand: ["/workspace/bin/solution"],
   },
