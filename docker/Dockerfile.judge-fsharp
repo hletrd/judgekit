@@ -8,4 +8,9 @@ RUN adduser -D -s /bin/false judge && \
     mkdir -p /tmp/.dotnet /tmp/.nuget && chmod 777 /tmp/.dotnet /tmp/.nuget && \
     dotnet fsi --version > /dev/null 2>&1 || true
 WORKDIR /workspace
+ENV HOME=/tmp \
+    DOTNET_CLI_HOME=/tmp \
+    DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1 \
+    DOTNET_SKIP_WORKLOAD_INTEGRITY_CHECK=true \
+    DOTNET_NOLOGO=1
 USER judge

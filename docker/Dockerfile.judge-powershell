@@ -12,4 +12,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends curl ca-certifi
     mkdir -p /workspace && chown judge:judge /workspace
 
 WORKDIR /workspace
+ENV HOME=/tmp \
+    DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1 \
+    DOTNET_SKIP_WORKLOAD_INTEGRITY_CHECK=true \
+    DOTNET_NOLOGO=1
 USER judge
