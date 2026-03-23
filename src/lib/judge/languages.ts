@@ -791,7 +791,7 @@ export const JUDGE_LANGUAGE_CONFIGS: Record<Language, JudgeLanguageDefinition> =
     dockerImage: "judge-fsharp:latest",
     compiler: "dotnet fsi (.NET 10)",
     compileCommand: null,
-    runCommand: ["sh", "-c", "HOME=/tmp DOTNET_CLI_HOME=/tmp dotnet fsi /workspace/solution.fsx"],
+    runCommand: ["sh", "-c", "HOME=/tmp DOTNET_CLI_HOME=/tmp DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1 dotnet fsi /workspace/solution.fsx"],
   },
   apl: {
     language: "apl",
