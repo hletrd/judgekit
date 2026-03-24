@@ -111,7 +111,7 @@
 | 105 | `modula2` | Modula-2 (GCC gm2) | `judge-modula2` | ✅ | ✅ | ✅ | ✅ |
 | 106 | `factor` | Factor 0.101 | `judge-factor` | ✅ | ❌ x64 only | ✅ | ❌ x64 only binary |
 | 107 | `spark` | SPARK (Ada/SPARK 2014, GNAT) | `judge-ada` | ✅ | ✅ | ✅ | ✅ |
-| 108 | `minizinc` | MiniZinc 2.9.5 | `judge-minizinc` | ✅ | ✅ | ✅ | ✅ |
+| 108 | `minizinc` | MiniZinc 2.9.5 | `judge-minizinc` | ✅ | ❌ amd64 only | ✅ | ❌ amd64 only binary |
 | 109 | `curry` | Curry (PAKCS 3.9.0) | `judge-curry` | ✅ | ✅ | ✅ | ✅ |
 | 110 | `clean` | Clean 3.1 | `judge-clean` | ✅ | ✅ | ✅ | ✅ |
 | 111 | `roc` | Roc (alpha4) | `judge-roc` | ✅ | ✅ | ✅ | ✅ |
@@ -132,12 +132,13 @@
 
 ### arm64 E2E Summary (2026-03-24)
 
-**109 of 114 languages pass** on arm64. 5 failures (architecture limits):
+**108 of 114 languages pass** on arm64. 6 failures (architecture limits):
 - **b**: x86-64 inline assembly
 - **apl**: GNU APL build fails on ARM64
 - **c3**: amd64 only binary
 - **grain**: x64 only binary
 - **factor**: x64 only binary
+- **minizinc**: x86_64 only binary (no ARM64 release)
 
 ## Docker Image Presets
 
