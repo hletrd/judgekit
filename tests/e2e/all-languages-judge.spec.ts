@@ -798,7 +798,7 @@ main! = |_args|
             Stdout.line!("0")`,
   carp: `(defn main []
   (let [line (IO.get-line)
-        parts (String.split-by &line &[\\space])
+        parts (String.words &line)
         a (Int.from-string &(Array.unsafe-nth &parts 0))
         b (Int.from-string &(Array.unsafe-nth &parts 1))]
     (println* (+ a b))))`,
