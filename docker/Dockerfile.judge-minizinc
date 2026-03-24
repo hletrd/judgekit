@@ -12,7 +12,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
       ln -s /opt/minizinc/bin/minizinc /usr/local/bin/minizinc && \
       rm /tmp/minizinc.tgz; \
     elif [ "$TARGETARCH" = "arm64" ]; then \
-      apt-get install -y --no-install-recommends minizinc; \
+      apt-get install -y minizinc gecode-flatzinc; \
     fi && \
     apt-get purge -y curl && apt-get autoremove -y && rm -rf /var/lib/apt/lists/* && \
     useradd --no-create-home --shell /usr/sbin/nologin judge && \
