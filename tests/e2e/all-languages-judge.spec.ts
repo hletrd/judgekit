@@ -624,7 +624,9 @@ export fn main() void = {
     const b = strconv::stoi(strings::next_token(&tok) as str)!;
     fmt::printfln("{}", a + b)!;
 };`,
-  koka: `fun main()
+  koka: `import std/os/readline
+
+fun main()
   val line = readline()
   val parts = line.trim.split(" ")
   val a = parts[0].default("0").parse-int.default(0)
@@ -674,13 +676,13 @@ main(!IO) :-
   (import "wasi_snapshot_preview1" "fd_write" (func $fd_write (param i32 i32 i32 i32) (result i32)))
   (memory (export "memory") 1)
   (func (export "_start")
+    (local $i i32) (local $a i32) (local $b i32) (local $c i32)
     ;; Read stdin into memory at offset 100
     (i32.store (i32.const 0) (i32.const 100))  ;; iov_base
     (i32.store (i32.const 4) (i32.const 64))   ;; iov_len
     (call $fd_read (i32.const 0) (i32.const 0) (i32.const 1) (i32.const 8))
     drop
     ;; Parse first number
-    (local $i i32) (local $a i32) (local $b i32) (local $c i32)
     (local.set $i (i32.const 100))
     (block $done1
       (loop $loop1
@@ -920,8 +922,7 @@ async function waitForJudging(
 // Languages with known issues on the current judge infrastructure.
 // Tagged test.fixme() so they show as "to-do" rather than failures.
 const KNOWN_FAILING = new Set<string>([
-  "fsharp",      // dotnet publish compile fails in worker (module Program approach)
-  "apl",         // wrong_answer — GNU APL output format issue
+  "apl",         // GNU APL build fails on ARM64, output format issues
 ]);
 
 /** Per-language timeout overrides (ms). JVM/compiled languages get more time. */
@@ -953,6 +954,7 @@ const LANGUAGE_TIMEOUTS: Record<string, number> = {
   curry: 150_000,
   minizinc: 120_000,
   wat: 120_000,
+  lolcode: 120_000,
 };
 
 let sharedContext: Awaited<ReturnType<typeof import("@playwright/test").chromium.launch>> extends { newContext: infer F } ? never : never;
