@@ -1302,7 +1302,7 @@ static CURRY_CONFIG: LanguageConfig = LanguageConfig {
 };
 
 // Clean
-static CLEAN_COMPILE: &[&str] = &["sh", "-c", "export HOME=/tmp && cd /workspace && clm -I /opt/clean/lib/StdEnv Solution -o /workspace/solution 2>&1"];
+static CLEAN_COMPILE: &[&str] = &["sh", "-c", "export HOME=/tmp CLEANPATH=/opt/clean/StdEnv:/opt/clean/lib PATH=/opt/clean/bin:$PATH && cd /workspace && cp solution.icl Solution.icl && clm Solution -o /workspace/solution 2>&1"];
 static CLEAN_RUN: &[&str] = &["sh", "-c", "HOME=/tmp /workspace/solution"];
 
 static CLEAN_CONFIG: LanguageConfig = LanguageConfig {
