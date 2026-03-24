@@ -1,4 +1,4 @@
-FROM debian:bookworm-slim
+FROM ubuntu:24.04
 
 RUN apt-get update && apt-get install -y --no-install-recommends curl ca-certificates unzip && \
     ARCH=$(dpkg --print-architecture) && \
@@ -10,7 +10,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends curl ca-certifi
     chmod +x /usr/local/bin/arturo && \
     rm -rf /tmp/arturo.zip /tmp/arturo-extract && \
     apt-get purge -y curl unzip && apt-get autoremove -y && rm -rf /var/lib/apt/lists/* && \
-    useradd -m -s /bin/false judge && \
+    useradd --no-create-home --shell /usr/sbin/nologin judge && \
     mkdir -p /workspace && chown judge:judge /workspace
 
 WORKDIR /workspace
