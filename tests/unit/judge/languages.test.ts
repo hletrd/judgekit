@@ -9,22 +9,22 @@ describe("judge language definitions", () => {
   it("recognizes Java and Kotlin as supported judge languages", () => {
     expect(isJudgeLanguage("java")).toBe(true);
     expect(isJudgeLanguage("kotlin")).toBe(true);
-    expect(isJudgeLanguage("ruby")).toBe(false);
+    expect(isJudgeLanguage("ruby")).toBe(true);
   });
 
-  it("recognizes all 16 supported languages and rejects unknown ones", () => {
+  it("recognizes all core supported languages and rejects unknown ones", () => {
     const supported = [
       "c17", "c23", "cpp20", "cpp23",
       "java", "kotlin",
       "python", "javascript", "typescript",
       "rust", "go", "swift", "csharp",
       "r", "perl", "php",
+      "ruby", "lua", "haskell", "dart",
     ];
     for (const lang of supported) {
       expect(isJudgeLanguage(lang), `${lang} should be recognized`).toBe(true);
     }
-    expect(isJudgeLanguage("ruby")).toBe(false);
-    expect(isJudgeLanguage("lua")).toBe(false);
+    expect(isJudgeLanguage("nonexistent")).toBe(false);
     expect(isJudgeLanguage("")).toBe(false);
   });
 
@@ -204,7 +204,9 @@ describe("judge language definitions", () => {
     expect(compile).toContain("mcs");
     expect(compile).toContain("/workspace/solution.cs");
     expect(compile).toContain("/workspace/solution.exe");
-    expect(def?.runCommand).toEqual(["mono", "/workspace/solution.exe"]);
+    const run = serializeJudgeCommand(def?.runCommand);
+    expect(run).toContain("mono");
+    expect(run).toContain("/workspace/solution.exe");
   });
 
   // ── Scripting (other) ─────────────────────────────────────────────────────
@@ -242,8 +244,7 @@ describe("judge language definitions", () => {
   // ── getJudgeLanguageDefinition: null for unknown language ─────────────────
 
   it("returns null for an unknown language", () => {
-    expect(getJudgeLanguageDefinition("ruby")).toBeNull();
-    expect(getJudgeLanguageDefinition("lua")).toBeNull();
+    expect(getJudgeLanguageDefinition("nonexistent")).toBeNull();
     expect(getJudgeLanguageDefinition("")).toBeNull();
   });
 
