@@ -1,25 +1,23 @@
 FROM debian:trixie-slim
 
-ARG TARGETARCH
-
 RUN apt-get update && apt-get install -y --no-install-recommends \
       curl ca-certificates libgl1 && \
-    if [ "$TARGETARCH" = "amd64" ]; then \
+    ARCH=$(dpkg --print-architecture) && \
+    if [ "$ARCH" = "amd64" ]; then \
       curl -fsSL -o /tmp/minizinc.tgz \
         "https://github.com/MiniZinc/MiniZincIDE/releases/download/2.9.5/MiniZincIDE-2.9.5-bundle-linux-x86_64.tgz" && \
       mkdir -p /opt/minizinc && \
       tar xzf /tmp/minizinc.tgz -C /opt/minizinc --strip-components=1 && \
       ln -s /opt/minizinc/bin/minizinc /usr/local/bin/minizinc && \
       rm /tmp/minizinc.tgz; \
-    elif [ "$TARGETARCH" = "arm64" ]; then \
-      apt-get install -y minizinc gecode-flatzinc && \
-      apt-mark manual minizinc gecode-flatzinc; \
+    else \
+      apt-get install -y minizinc gecode-flatzinc; \
     fi && \
-    apt-get purge -y curl ca-certificates && apt-get autoremove -y && rm -rf /var/lib/apt/lists/* && \
+    rm -rf /var/lib/apt/lists/* && \
     useradd --no-create-home --shell /usr/sbin/nologin judge && \
     mkdir -p /workspace && chown judge:judge /workspace
 
-RUN printf '#!/bin/sh\nread A B\necho "a=$A; b=$B;" > /workspace/data.dzn\nexec minizinc --solver Gecode "$@" /workspace/data.dzn\n' > /usr/local/bin/minizinc-judge && \
+RUN printf '#!/bin/sh\nread A B\necho "a=$A; b=$B;" > /workspace/data.dzn\nminizinc --solver Gecode "$@" /workspace/data.dzn | grep -v "^[-=]*$"\n' > /usr/local/bin/minizinc-judge && \
     chmod +x /usr/local/bin/minizinc-judge
 
 WORKDIR /workspace
