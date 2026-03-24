@@ -1299,7 +1299,7 @@ static CURRY_CONFIG: LanguageConfig = LanguageConfig {
 };
 
 // Clean
-static CLEAN_COMPILE: &[&str] = &["sh", "-c", "export HOME=/tmp CLEANPATH=/opt/clean/StdEnv:/opt/clean/lib PATH=/opt/clean/bin:$PATH && cd /workspace && cp solution.icl Solution.icl && clm Solution -o /workspace/solution 2>&1"];
+static CLEAN_COMPILE: &[&str] = &["sh", "-c", "export HOME=/tmp CLEANPATH=/opt/clean/StdEnv:/opt/clean/lib PATH=/opt/clean/bin:$PATH CLM_ARTIFACTS_PATH=/tmp/clean-artifacts && mkdir -p /tmp/clean-artifacts && cd /workspace && cp solution.icl Solution.icl && clm Solution -o /workspace/solution 2>&1"];
 static CLEAN_RUN: &[&str] = &["sh", "-c", "HOME=/tmp /workspace/solution"];
 
 static CLEAN_CONFIG: LanguageConfig = LanguageConfig {
@@ -1307,7 +1307,7 @@ static CLEAN_CONFIG: LanguageConfig = LanguageConfig {
     docker_image: "judge-clean:latest",
     compile_command: Some(CLEAN_COMPILE),
     run_command: CLEAN_RUN,
-    needs_exec_tmp: false,
+    needs_exec_tmp: true,
 };
 
 // Roc

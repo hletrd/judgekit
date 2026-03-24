@@ -1341,7 +1341,7 @@ export const JUDGE_LANGUAGE_CONFIGS: Record<Language, JudgeLanguageDefinition> =
     compiler: `Clean ${JUDGE_TOOLCHAIN_VERSIONS.clean}`,
     compileCommand: [
       "sh", "-c",
-      "export HOME=/tmp CLEANPATH=/opt/clean/StdEnv:/opt/clean/lib PATH=/opt/clean/bin:$PATH && cd /workspace && cp solution.icl Solution.icl && clm Solution -o /workspace/solution 2>&1",
+      "export HOME=/tmp CLEANPATH=/opt/clean/StdEnv:/opt/clean/lib PATH=/opt/clean/bin:$PATH CLM_ARTIFACTS_PATH=/tmp/clean-artifacts && mkdir -p /tmp/clean-artifacts && cd /workspace && cp solution.icl Solution.icl && clm Solution -o /workspace/solution 2>&1",
     ],
     runCommand: ["sh", "-c", "HOME=/tmp /workspace/solution"],
   },
