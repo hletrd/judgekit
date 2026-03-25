@@ -17,7 +17,7 @@
 | 11 | `kotlin` | Kotlin 2.3 | `judge-jvm` | ✅ | ✅ | ✅ | ✅ |
 | 12 | `python` | Python 3.14 | `judge-python` | ✅ | ✅ | ✅ | ✅ |
 | 13 | `javascript` | Node.js 24 | `judge-node` | ✅ | ✅ | ✅ | ✅ |
-| 14 | `typescript` | TypeScript 5.9 (Node.js 24) | `judge-node` | ✅ | ✅ | ✅ | ✅ |
+| 14 | `typescript` | TypeScript 6.0 (Node.js 24) | `judge-node` | ✅ | ✅ | ✅ | ✅ |
 | 15 | `coffeescript` | CoffeeScript 2.7 (Node.js 24) | `judge-node` | ✅ | ✅ | ✅ | ✅ |
 | 16 | `rust` | Rust 1.94 | `judge-rust` | ✅ | ✅ | ✅ | ✅ |
 | 17 | `go` | Go 1.26 | `judge-go` | ✅ | ✅ | ✅ | ✅ |

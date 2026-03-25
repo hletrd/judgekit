@@ -8,7 +8,7 @@ export const JUDGE_TOOLCHAIN_VERSIONS = {
   python: "3.14.3",
   rust: "1.94.0",
   swift: "6.2.4",
-  typescript: "5.9.3",
+  typescript: "6.0",
   mono: "6.12",
   r: "4.5",
   perl: "5.40",
