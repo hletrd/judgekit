@@ -1,23 +1,54 @@
 FROM debian:bookworm-slim AS builder
 
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends git make gcc binutils libc6-dev ca-certificates && \
-    git clone --depth 1 https://github.com/Spydr06/BCause.git /tmp/bcause && \
-    cd /tmp/bcause && \
-    sed -i 's/-Wno-incompatible-library-redeclaration//g' Makefile && \
-    make && \
-    cp /tmp/bcause/bcause /usr/local/bin/bcause && \
-    cp /tmp/bcause/libb.a /usr/local/lib/libb.a && \
-    rm -rf /tmp/bcause
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    git make gcc binutils libc6-dev ca-certificates curl && \
+    rm -rf /var/lib/apt/lists/* && \
+    mkdir -p /staging/bin /staging/lib
+
+# amd64: BCause (x86-64 native codegen)
+# arm64: bext-lang/b (Rust-based, has aarch64 codegen via GAS)
+RUN set -eux; \
+    ARCH=$(dpkg --print-architecture); \
+    if [ "$ARCH" = "amd64" ]; then \
+        git clone --depth 1 https://github.com/Spydr06/BCause.git /tmp/bcause && \
+        cd /tmp/bcause && \
+        sed -i 's/-Wno-incompatible-library-redeclaration//g' Makefile && \
+        make && \
+        cp /tmp/bcause/bcause /staging/bin/bcause && \
+        cp /tmp/bcause/libb.a /staging/lib/libb.a; \
+    elif [ "$ARCH" = "arm64" ]; then \
+        curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable --profile minimal && \
+        export PATH="/root/.cargo/bin:$PATH" && \
+        git clone --depth 1 https://github.com/bext-lang/b.git /tmp/bext-b && \
+        cd /tmp/bext-b && \
+        make && \
+        cp /tmp/bext-b/build/b /staging/bin/b-compiler; \
+    fi
 
 FROM debian:bookworm-slim
 
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends binutils libc6-dev && \
+# amd64: BCause needs as + ld (binutils)
+# arm64: bext-lang/b invokes as + cc (gcc) to assemble and link with libc
+RUN set -eux; \
+    apt-get update; \
+    ARCH=$(dpkg --print-architecture); \
+    if [ "$ARCH" = "amd64" ]; then \
+        apt-get install -y --no-install-recommends binutils libc6-dev; \
+    elif [ "$ARCH" = "arm64" ]; then \
+        apt-get install -y --no-install-recommends gcc binutils libc6-dev; \
+    fi; \
     rm -rf /var/lib/apt/lists/*
 
-COPY --from=builder /usr/local/bin/bcause /usr/local/bin/bcause
-COPY --from=builder /usr/local/lib/libb.a /usr/local/lib/libb.a
+COPY --from=builder /staging/bin/ /usr/local/bin/
+COPY --from=builder /staging/lib/ /usr/local/lib/
+
+# arm64: wrapper invokes bext-lang/b with -hist flag for traditional B escape sequences (*n)
+RUN set -eux; \
+    ARCH=$(dpkg --print-architecture); \
+    if [ "$ARCH" = "arm64" ]; then \
+        printf '#!/bin/sh\nexec /usr/local/bin/b-compiler -hist "$@"\n' > /usr/local/bin/bcause && \
+        chmod +x /usr/local/bin/bcause; \
+    fi
 
 RUN useradd --create-home --shell /usr/sbin/nologin judge && \
     mkdir -p /workspace && \
