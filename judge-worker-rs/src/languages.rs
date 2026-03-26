@@ -867,7 +867,7 @@ static UMJUNSIK_CONFIG: LanguageConfig = LanguageConfig {
 // Haxe
 static HAXE_COMPILE: &[&str] = &[
     "sh", "-c",
-    "cd /workspace && haxe --main Solution --python /workspace/solution_out.py",
+    "HOME=/tmp && cp /workspace/solution.hx /workspace/Solution.hx && cd /workspace && haxe --main Solution --python /workspace/solution_out.py 2>&1",
 ];
 static HAXE_RUN: &[&str] = &["python3", "/workspace/solution_out.py"];
 
@@ -1031,7 +1031,7 @@ static SML_CONFIG: LanguageConfig = LanguageConfig {
     docker_image: "judge-sml:latest",
     compile_command: Some(SML_COMPILE),
     run_command: SML_RUN,
-    needs_exec_tmp: false,
+    needs_exec_tmp: true,
 };
 
 // Fennel (runs on Lua VM)

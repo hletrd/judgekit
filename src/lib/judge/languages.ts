@@ -956,7 +956,7 @@ export const JUDGE_LANGUAGE_CONFIGS: Record<Language, JudgeLanguageDefinition> =
     compileCommand: [
       "sh",
       "-c",
-      "cd /workspace && haxe --main Solution --python /workspace/solution_out.py",
+      "HOME=/tmp && cp /workspace/solution.hx /workspace/Solution.hx && cd /workspace && haxe --main Solution --python /workspace/solution_out.py 2>&1",
     ],
     runCommand: ["python3", "/workspace/solution_out.py"],
   },
