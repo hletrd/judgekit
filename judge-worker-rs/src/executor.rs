@@ -36,11 +36,11 @@ async fn execute_inner(client: &ApiClient, config: &Config, submission: Submissi
         .or(lang_config.map(|c| c.docker_image))
         .unwrap_or("alpine:latest");
     let compile_command: Option<Vec<&str>> = match &submission.compile_command {
-        Some(cmd) if !cmd.is_empty() => Some(cmd.iter().map(|s| s.as_str()).collect()),
+        Some(cmd) if !cmd.is_empty() && !cmd.iter().all(|s| s.is_empty()) => Some(cmd.iter().map(|s| s.as_str()).collect()),
         _ => lang_config.and_then(|c| c.compile_command.map(|c| c.to_vec())),
     };
     let run_command: Vec<&str> = match &submission.run_command {
-        Some(cmd) if !cmd.is_empty() => cmd.iter().map(|s| s.as_str()).collect(),
+        Some(cmd) if !cmd.is_empty() && !cmd.iter().all(|s| s.is_empty()) => cmd.iter().map(|s| s.as_str()).collect(),
         _ => lang_config.map(|c| c.run_command.to_vec()).unwrap_or_default(),
     };
     let extension = lang_config.map(|c| c.extension).unwrap_or(default_ext);
