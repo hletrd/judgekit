@@ -899,7 +899,7 @@ static SHAKESPEARE_CONFIG: LanguageConfig = LanguageConfig {
     docker_image: "judge-shakespeare:latest",
     compile_command: None,
     run_command: SHAKESPEARE_RUN,
-    needs_exec_tmp: false,
+    needs_exec_tmp: true,
 };
 
 // SNOBOL4
