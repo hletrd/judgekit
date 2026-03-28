@@ -206,8 +206,8 @@ export async function canAccessSubmission(
     return true;
   }
 
-  // Built-in role fallback
-  if (role === "super_admin" || role === "admin" || role === "instructor") {
+  // Built-in admin/super_admin bypass
+  if (role === "super_admin" || role === "admin") {
     return true;
   }
 
@@ -219,5 +219,6 @@ export async function canAccessSubmission(
     return true;
   }
 
+  // Instructors: scoped to their own groups via canViewAssignmentSubmissions
   return canViewAssignmentSubmissions(submission.assignmentId, userId, role);
 }

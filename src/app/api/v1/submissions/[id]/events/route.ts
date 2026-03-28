@@ -68,10 +68,16 @@ export async function GET(
     const hasAccess = await canAccessSubmission(submission, user.id, user.role);
     if (!hasAccess) return forbidden();
 
+    const isOwner = submission.userId === user.id;
+    const isPrivileged = user.role === "admin" || user.role === "super_admin" || user.role === "instructor";
+
     // If already in a terminal state, return the full submission immediately as a single event
     if (!IN_PROGRESS_JUDGE_STATUSES.has(submission.status ?? "")) {
       const fullSubmission = await queryFullSubmission(id);
-      const body = `event: result\ndata: ${JSON.stringify(fullSubmission)}\n\n`;
+      const sanitized = (!isOwner && !isPrivileged && fullSubmission)
+        ? stripSourceCode(fullSubmission)
+        : fullSubmission;
+      const body = `event: result\ndata: ${JSON.stringify(sanitized)}\n\n`;
       // Decrement connection count for non-streaming early return
       const count = activeConnections.get(userId) ?? 1;
       if (count <= 1) {
@@ -153,8 +159,11 @@ export async function GET(
               if (!IN_PROGRESS_JUDGE_STATUSES.has(status)) {
                 const fullSubmission = await queryFullSubmission(id);
                 if (closed) return;
+                const sanitized = (!isOwner && !isPrivileged && fullSubmission)
+                  ? stripSourceCode(fullSubmission)
+                  : fullSubmission;
                 controller.enqueue(
-                  encoder.encode(`event: result\ndata: ${JSON.stringify(fullSubmission)}\n\n`)
+                  encoder.encode(`event: result\ndata: ${JSON.stringify(sanitized)}\n\n`)
                 );
                 close();
                 return;
@@ -191,6 +200,11 @@ function sseHeaders(): HeadersInit {
     Connection: "keep-alive",
     "X-Accel-Buffering": "no",
   };
+}
+
+function stripSourceCode<T extends Record<string, unknown>>(obj: T): Omit<T, "sourceCode"> {
+  const { sourceCode: _, ...rest } = obj;
+  return rest as Omit<T, "sourceCode">;
 }
 
 async function queryFullSubmission(id: string) {
