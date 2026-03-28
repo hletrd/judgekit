@@ -53,7 +53,8 @@ export function ContestQuickStats({
       const data: LeaderboardData = json.data;
       if (!data?.entries) return;
 
-      const participantCount = data.entries.length;
+      // Keep the server-side participantCount (all enrolled students) stable —
+      // leaderboard entries only include users with submissions, which is fewer.
       const submittedCount = data.entries.filter(
         (e) => e.problems.some((p) => p.score > 0 || p.solved)
       ).length;
@@ -71,7 +72,7 @@ export function ContestQuickStats({
         data.entries.some((e) => e.problems[pi]?.solved || (e.problems[pi]?.score ?? 0) >= data.problems[pi].points)
       ).length;
 
-      setStats({ participantCount, submittedCount, avgScore, problemsSolvedCount });
+      setStats((prev) => ({ ...prev, submittedCount, avgScore, problemsSolvedCount }));
     } catch {
       // ignore
     }
