@@ -3,7 +3,7 @@ import { apiSuccess, apiError } from "@/lib/api/responses";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { db, sqlite } from "@/lib/db";
-import { assignments, scoreOverrides } from "@/lib/db/schema";
+import { assignments, enrollments, scoreOverrides } from "@/lib/db/schema";
 import { recordAuditEvent } from "@/lib/audit/events";
 import { canManageGroupResourcesAsync } from "@/lib/assignments/management";
 import { getApiUser, forbidden, notFound, unauthorized, csrfForbidden } from "@/lib/api/auth";
@@ -85,6 +85,15 @@ export async function POST(
     }
 
     const { problemId, userId, overrideScore, reason } = parsed.data;
+
+    // Verify the target user is enrolled in the group
+    const targetEnrollment = await db.query.enrollments.findFirst({
+      where: and(eq(enrollments.groupId, result.groupId), eq(enrollments.userId, userId)),
+      columns: { id: true },
+    });
+    if (!targetEnrollment) {
+      return apiError("userNotEnrolled", 400);
+    }
 
     // Upsert: delete existing then insert (atomic transaction)
     sqlite.transaction(() => {
