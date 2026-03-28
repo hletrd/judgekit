@@ -1,26 +1,49 @@
 FROM debian:bookworm-slim
 
-ARG TARGETARCH
-
 RUN apt-get update && apt-get install -y --no-install-recommends \
-      curl ca-certificates swi-prolog sqlite3 libsqlite3-dev rlwrap && \
-    if [ "$TARGETARCH" = "amd64" ]; then \
+      curl ca-certificates swi-prolog sqlite3 libsqlite3-dev rlwrap make gettext-base && \
+    ARCH=$(dpkg --print-architecture) && \
+    if [ "$ARCH" = "amd64" ]; then \
       curl -fsSL -o /tmp/pakcs.tar.gz \
         https://www.curry-lang.org/pakcs/download/pakcs-3.9.0-amd64-Linux.tar.gz && \
       mkdir -p /opt/pakcs && \
       tar xzf /tmp/pakcs.tar.gz -C /opt/pakcs --strip-components=1 && \
-      rm /tmp/pakcs.tar.gz; \
-    elif [ "$TARGETARCH" = "arm64" ]; then \
-      apt-get install -y --no-install-recommends \
-        build-essential git wget libgmp-dev libffi-dev libncurses-dev zlib1g-dev && \
-      curl -fsSL https://get.haskellstack.org/ | sh && \
-      git clone --depth 1 --branch Version3.9.0 https://git.ps.informatik.uni-kiel.de/curry/pakcs.git /tmp/pakcs-src && \
-      cd /tmp/pakcs-src && \
-      make && \
-      make install PREFIX=/opt/pakcs && \
-      rm -rf /tmp/pakcs-src ~/.stack; \
+      rm /tmp/pakcs.tar.gz && \
+      ln -sf /usr/bin/swipl /opt/pakcs/bin/swiprolog && \
+      chmod -R a+rX /opt/pakcs && \
+      cd /opt/pakcs && make CI_BUILD=yes; \
+    elif [ "$ARCH" = "arm64" ]; then \
+      dpkg --add-architecture amd64 && \
+      apt-get update && \
+      apt-get install -y --no-install-recommends qemu-user-static libc6:amd64 libstdc++6:amd64 libgmp10:amd64 && \
+      curl -fsSL -o /tmp/pakcs.tar.gz \
+        https://www.curry-lang.org/pakcs/download/pakcs-3.9.0-amd64-Linux.tar.gz && \
+      mkdir -p /opt/pakcs && \
+      tar xzf /tmp/pakcs.tar.gz -C /opt/pakcs --strip-components=1 && \
+      rm /tmp/pakcs.tar.gz && \
+      ln -sf /usr/bin/swipl /opt/pakcs/bin/swiprolog && \
+      mv /opt/pakcs/bin/pakcs-frontend /opt/pakcs/bin/pakcs-frontend.amd64 && \
+      printf '#!/bin/sh\nexec /usr/bin/qemu-x86_64-static /opt/pakcs/bin/pakcs-frontend.amd64 "$@"\n' > /opt/pakcs/bin/pakcs-frontend && \
+      chmod +x /opt/pakcs/bin/pakcs-frontend && \
+      chmod -R a+rX /opt/pakcs && \
+      cd /opt/pakcs && \
+      export MAJORVERSION=3 MINORVERSION=9 REVISIONVERSION=0 BUILDVERSION=0 && \
+      export VERSION=3.9.0 COMPILERDATE=2025-10-29 ROOT=/opt/pakcs && \
+      export PAKCSINSTALLDIR="" && \
+      export BASEVERSION=$(cat /opt/pakcs/lib/VERSION) && \
+      envsubst < src/pakcsversion.pl.in > src/pakcsversion.pl && \
+      cp scripts/pakcs.sh bin/pakcs && chmod +x bin/pakcs && \
+      cp scripts/cleancurry.sh bin/cleancurry && chmod +x bin/cleancurry && \
+      cp scripts/pakcs-fcypp.sh bin/pakcs-fcypp && chmod +x bin/pakcs-fcypp && \
+      mkdir -p lib/.curry/pakcs-3.9.0 && \
+      cd lib && \
+      /opt/pakcs/bin/pakcs-frontend --flat -Wnone -i. Prelude -o .curry/pakcs-3.9.0 -D__PAKCS__=309 && \
+      cd /opt/pakcs/src && \
+      rm -f prologbasics.pl && cp swibasics.pl prologbasics.pl && \
+      echo "compile(c2p). c2p('/opt/pakcs/lib/Prelude'), compile('/opt/pakcs/lib/.curry/pakcs-3.9.0/Prelude'),loader:loadAndCompile('/opt/pakcs/lib/.curry/pakcs-3.9.0/Prelude.pl',[],create). saveprog_entry('swi.state',user:pakcsMain)." | /opt/pakcs/bin/swiprolog -q -O && \
+      mv swi.state c2p.state && mv c2p.state pakcs && chmod +x pakcs; \
     fi && \
-    ln -sf /opt/pakcs/bin/pakcs-frontend /usr/local/bin/pakcs && \
+    ln -sf /opt/pakcs/bin/pakcs /usr/local/bin/pakcs && \
     apt-get purge -y curl && apt-get autoremove -y && rm -rf /var/lib/apt/lists/* && \
     useradd --no-create-home --shell /usr/sbin/nologin judge && \
     mkdir -p /workspace && chown judge:judge /workspace

@@ -1,10 +1,24 @@
 FROM ubuntu:25.04
-RUN apt-get update && apt-get install -y --no-install-recommends curl ca-certificates unzip libasound2t64 && \
-    curl -fsSL https://github.com/uiua-lang/uiua/releases/latest/download/uiua-bin-x86_64-unknown-linux-gnu.zip -o /tmp/uiua.zip && \
-    unzip /tmp/uiua.zip -d /usr/local/bin && \
-    chmod +x /usr/local/bin/uiua && \
-    rm /tmp/uiua.zip && \
-    rm -rf /var/lib/apt/lists/* && \
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      curl ca-certificates unzip libasound2t64 && \
+    ARCH=$(dpkg --print-architecture) && \
+    if [ "$ARCH" = "amd64" ]; then \
+      curl -fsSL https://github.com/uiua-lang/uiua/releases/latest/download/uiua-bin-x86_64-unknown-linux-gnu.zip -o /tmp/uiua.zip && \
+      unzip /tmp/uiua.zip -d /usr/local/bin && \
+      chmod +x /usr/local/bin/uiua && \
+      rm /tmp/uiua.zip; \
+    elif [ "$ARCH" = "arm64" ]; then \
+      apt-get install -y --no-install-recommends build-essential gcc pkg-config libasound2-dev && \
+      curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable --profile minimal && \
+      . /root/.cargo/env && \
+      cargo install uiua --locked && \
+      cp /root/.cargo/bin/uiua /usr/local/bin/uiua && \
+      rm -rf /root/.cargo /root/.rustup && \
+      apt-get purge -y build-essential gcc pkg-config libasound2-dev; \
+    fi && \
+    apt-get autoremove -y && rm -rf /var/lib/apt/lists/* && \
     useradd -m -s /bin/false judge && mkdir -p /workspace && chown judge:judge /workspace
+
 WORKDIR /workspace
 USER judge

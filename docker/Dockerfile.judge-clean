@@ -1,6 +1,6 @@
 FROM debian:bookworm-slim
 
-RUN apt-get update && apt-get install -y --no-install-recommends curl ca-certificates && \
+RUN apt-get update && apt-get install -y --no-install-recommends curl ca-certificates gcc libc6-dev && \
     ARCH=$(dpkg --print-architecture) && \
     if [ "$ARCH" = "amd64" ]; then \
       curl -fsSL -o /tmp/clean.tar.gz https://ftp.cs.ru.nl/Clean/Clean31/linux/clean3.1_64.tar.gz; \
@@ -9,12 +9,16 @@ RUN apt-get update && apt-get install -y --no-install-recommends curl ca-certifi
     fi && \
     mkdir -p /opt/clean && \
     tar xzf /tmp/clean.tar.gz -C /opt/clean --strip-components=1 && \
+    mkdir -p /opt/clean/lib && \
+    ln -sf /opt/clean/exe /opt/clean/lib/exe && \
+    ln -sf /opt/clean/StdEnv /opt/clean/lib/StdEnv && \
     ln -sf /opt/clean/bin/clm /usr/local/bin/clm && \
     rm /tmp/clean.tar.gz && \
-    apt-get purge -y curl && apt-get autoremove -y && rm -rf /var/lib/apt/lists/* && \
+    apt-get purge -y curl ca-certificates && apt-get autoremove -y && rm -rf /var/lib/apt/lists/* && \
     useradd --no-create-home --shell /usr/sbin/nologin judge && \
     mkdir -p /workspace && chown judge:judge /workspace
 
+ENV CLEAN_HOME=/opt/clean
 ENV CLEANPATH=/opt/clean/StdEnv:/opt/clean/lib
 
 WORKDIR /workspace

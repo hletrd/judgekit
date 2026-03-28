@@ -1,6 +1,6 @@
 FROM node:24-alpine
 
-RUN apk add --no-cache curl tar bash && \
+RUN apk add --no-cache curl tar bash git && \
     ARCH=$(uname -m) && \
     if [ "$ARCH" = "x86_64" ]; then PS_URL="https://github.com/purescript/purescript/releases/download/v0.15.16/linux64.tar.gz"; \
     elif [ "$ARCH" = "aarch64" ]; then PS_URL="https://github.com/purescript/purescript/releases/download/v0.15.16/linux-arm64.tar.gz"; fi && \
@@ -19,7 +19,9 @@ RUN mkdir -p /opt/purescript-project && \
     # Write a Main that exercises all required imports so they get compiled into the cache
     printf 'module Main where\nimport Prelude\nimport Effect (Effect)\nimport Effect.Console (log)\nimport Data.String.Common (split, trim)\nimport Data.String.Pattern (Pattern(..))\nimport Data.Int (fromString)\nimport Data.Maybe (fromMaybe)\nimport Node.FS.Sync (readTextFile)\nimport Node.Encoding (Encoding(..))\nmain :: Effect Unit\nmain = pure unit\n' > /opt/purescript-project/src/Main.purs && \
     spago build && \
-    chmod -R a+rX /opt/purescript-project
+    # Save spago cache to persistent location (not /tmp which is replaced by tmpfs at runtime)
+    cp -r /tmp/root/spago-nodejs /opt/spago-cache 2>/dev/null || true && \
+    chmod -R a+rX /opt/purescript-project /opt/spago-cache
 
 WORKDIR /workspace
 USER judge
