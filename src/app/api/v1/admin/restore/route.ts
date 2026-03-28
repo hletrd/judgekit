@@ -47,19 +47,23 @@ export async function POST(request: NextRequest) {
 
     const dbPath = getDbPath();
 
-    // Create automatic backup before restore
+    // Create automatic backup before restore using WAL-safe backup API
     const backupTimestamp = new Date().toISOString().replace(/[:.]/g, "-");
     const backupPath = `${dbPath}.pre-restore-${backupTimestamp}`;
 
     if (existsSync(dbPath)) {
-      await fs.copyFile(dbPath, backupPath);
+      const { sqlite: sqliteConn } = await import("@/lib/db");
+      try {
+        await sqliteConn.backup(backupPath);
+      } catch {
+        // Fallback to file copy if backup API fails
+        await fs.copyFile(dbPath, backupPath);
+      }
     }
-
-    // Write the uploaded file
-    await fs.writeFile(dbPath, buffer);
 
     logger.info({ backupPath }, "Pre-restore backup saved");
 
+    // Record audit BEFORE closing the connection (audit writes to current DB)
     recordAuditEvent({
       actorId: user.id,
       actorRole: user.role,
@@ -71,9 +75,33 @@ export async function POST(request: NextRequest) {
       request,
     });
 
+    // Close the live SQLite connection before overwriting the file
+    const { sqlite: sqliteConn2 } = await import("@/lib/db");
+    try {
+      sqliteConn2.close();
+    } catch (closeErr) {
+      logger.warn({ err: closeErr }, "Failed to close SQLite connection before restore");
+    }
+
+    // Remove orphaned WAL and SHM files from the old database
+    for (const ext of ["-wal", "-shm"]) {
+      await fs.unlink(dbPath + ext).catch(() => {});
+    }
+
+    // Write the new database file
+    const tempPath = dbPath + ".restore-tmp";
+    await fs.writeFile(tempPath, buffer);
+    await fs.rename(tempPath, dbPath);
+
+    // Schedule process restart after response is sent
+    setTimeout(() => {
+      logger.info("Restarting process after database restore");
+      process.exit(0);
+    }, 500);
+
     return NextResponse.json({
       success: true,
-      message: "Database restored. Please restart the application.",
+      message: "Database restored. The server will restart automatically.",
     });
   } catch (error) {
     logger.error({ err: error }, "Database restore error");
