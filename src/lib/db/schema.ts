@@ -364,7 +364,7 @@ export const submissions = sqliteTable(
       .notNull()
       .references(() => problems.id, { onDelete: "cascade" }),
     assignmentId: text("assignment_id").references(() => assignments.id, {
-      onDelete: "set null",
+      onDelete: "restrict",
     }),
     language: text("language").notNull(),
     sourceCode: text("source_code").notNull(),
