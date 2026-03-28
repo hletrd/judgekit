@@ -134,6 +134,7 @@
     "table": {
       "number": "#",
       "title": "Title",
+      "tags": "Tags",
       "progress": "Progress",
       "author": "Author",
       "timeLimit": "Time Limit",
@@ -279,7 +280,17 @@
     "pagination": {
       "showingRange": "Showing {start}-{end} of {total} problems",
       "page": "Page {current} of {total}"
-    }
+    },
+    "sequenceNumberLabel": "Problem Number",
+    "sequenceNumberPlaceholder": "Auto (optional)",
+    "sequenceNumberHint": "Fixed display number for this problem. Leave empty for auto-numbering.",
+    "tagsLabel": "Tags",
+    "tagsPlaceholder": "Add tags...",
+    "tagsHint": "Press Enter or comma to add a tag. Max 20 tags.",
+    "tooManyTags": "Maximum 20 tags per problem",
+    "filterByTag": "Filter by tag",
+    "allTags": "All tags",
+    "noTags": "No tags"
   },
   "problemSets": {
     "title": "Problem Sets",

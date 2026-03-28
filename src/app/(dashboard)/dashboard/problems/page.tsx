@@ -13,13 +13,14 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { db } from "@/lib/db";
-import { enrollments, problemGroupAccess, problems, submissions, users } from "@/lib/db/schema";
-import { desc, eq, and, like, or, sql, inArray } from "drizzle-orm";
+import { enrollments, problemGroupAccess, problems, submissions, users, tags, problemTags } from "@/lib/db/schema";
+import { desc, eq, and, like, or, sql, inArray, asc } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { PaginationControls } from "@/components/pagination-controls";
+import { FilterSelect } from "@/components/filter-select";
 
 type ProblemProgress = "solved" | "attempted" | "untried";
 type ProblemFilter = "all" | "solved" | "unsolved" | "attempted";
@@ -69,20 +70,21 @@ function buildPageHref(
   page: number,
   progressFilter: ProblemFilter,
   visibilityFilter: VisibilityFilter,
-  search: string
+  search: string,
+  tagFilter: string
 ) {
   const params = new URLSearchParams();
   if (page > 1) params.set("page", String(page));
   if (progressFilter !== "all") params.set("progress", progressFilter);
   if (visibilityFilter !== "all") params.set("visibility", visibilityFilter);
   if (search) params.set("search", search);
+  if (tagFilter) params.set("tag", tagFilter);
   const qs = params.toString();
   return qs ? `${PAGE_PATH}?${qs}` : PAGE_PATH;
 }
 
 /**
  * Build the SQL access filter for non-admin users.
- * Mirrors the pattern from the API route: public OR authored OR group-enrolled.
  */
 function buildAccessFilter(userId: string) {
   return or(
@@ -99,9 +101,6 @@ function buildAccessFilter(userId: string) {
   );
 }
 
-/**
- * Combine all where-clause fragments, dropping any undefined values.
- */
 function combineFilters(...filters: (ReturnType<typeof eq> | undefined)[]) {
   const defined = filters.filter(Boolean) as Exclude<(typeof filters)[number], undefined>[];
   if (defined.length === 0) return undefined;
@@ -112,7 +111,7 @@ function combineFilters(...filters: (ReturnType<typeof eq> | undefined)[]) {
 export default async function ProblemsPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ progress?: string; page?: string; search?: string; visibility?: string }>;
+  searchParams?: Promise<{ progress?: string; page?: string; search?: string; visibility?: string; tag?: string }>;
 }) {
   const session = await auth();
   if (!session?.user) redirect("/login");
@@ -125,6 +124,7 @@ export default async function ProblemsPage({
   const currentPage = normalizePage(resolvedSearchParams?.page);
   const searchQuery = normalizeSearch(resolvedSearchParams?.search);
   const currentVisibility = normalizeVisibilityFilter(resolvedSearchParams?.visibility);
+  const currentTag = resolvedSearchParams?.tag?.trim() ?? "";
 
   const t = await getTranslations("problems");
   const tCommon = await getTranslations("common");
@@ -139,6 +139,12 @@ export default async function ProblemsPage({
     session.user.role === "super_admin" ||
     session.user.role === "instructor";
 
+  // Fetch all tags for the filter dropdown
+  const allTags = await db
+    .select({ id: tags.id, name: tags.name, color: tags.color })
+    .from(tags)
+    .orderBy(asc(tags.name));
+
   // Build search filter (title or author name)
   const searchFilter =
     searchQuery
@@ -148,24 +154,32 @@ export default async function ProblemsPage({
         )
       : undefined;
 
-  // Build visibility filter (only for managers; students always see accessible problems regardless)
+  // Build visibility filter
   const visibilityDbFilter =
     canManageProblems && currentVisibility !== "all"
       ? eq(problems.visibility, currentVisibility)
       : undefined;
 
-  // For non-admins, push access control to the DB using an EXISTS subquery
+  // Access filter for non-admins
   const accessFilter = canManageProblems
     ? undefined
     : buildAccessFilter(session.user.id);
 
-  const baseWhereClause = combineFilters(searchFilter, visibilityDbFilter, accessFilter);
+  // Tag filter: restrict to problems that have this tag
+  const tagFilter = currentTag
+    ? sql`exists (
+        select 1 from ${problemTags}
+        inner join ${tags} on ${problemTags.tagId} = ${tags.id}
+        where ${problemTags.problemId} = ${problems.id}
+          and ${tags.name} = ${currentTag}
+      )`
+    : undefined;
 
-  // ─── Two paths: DB-level pagination when no progress filter, lightweight ID
-  // fetch + in-memory progress filter otherwise. ───
+  const baseWhereClause = combineFilters(searchFilter, visibilityDbFilter, accessFilter, tagFilter);
 
   let filteredProblems: Array<{
     id: string;
+    sequenceNumber: number | null;
     title: string;
     timeLimitMs: number | null;
     memoryLimitMb: number | null;
@@ -175,14 +189,13 @@ export default async function ProblemsPage({
     author: { name: string | null } | null;
     progress: ProblemProgress;
     latestStatus: string | null;
+    problemTags: Array<{ name: string; color: string | null }>;
   }>;
   let totalCount: number;
   let clampedPage: number;
 
   if (currentFilter === "all") {
-    // ── Path A: No progress filter → full DB-level pagination ──
-
-    // Count query
+    // Path A: No progress filter
     const [countRow] = await db
       .select({ count: sql<number>`count(*)` })
       .from(problems)
@@ -194,19 +207,17 @@ export default async function ProblemsPage({
     clampedPage = Math.min(currentPage, totalPages);
     const offset = (clampedPage - 1) * PAGE_SIZE;
 
-    // Paginated problem rows
     const pageProblems = await db
       .select({
         id: problems.id,
+        sequenceNumber: problems.sequenceNumber,
         title: problems.title,
         timeLimitMs: problems.timeLimitMs,
         memoryLimitMb: problems.memoryLimitMb,
         visibility: problems.visibility,
         authorId: problems.authorId,
         createdAt: problems.createdAt,
-        author: {
-          name: users.name,
-        },
+        author: { name: users.name },
       })
       .from(problems)
       .leftJoin(users, eq(problems.authorId, users.id))
@@ -215,7 +226,6 @@ export default async function ProblemsPage({
       .limit(PAGE_SIZE)
       .offset(offset);
 
-    // Fetch submission statuses only for problems on this page
     const pageIds = pageProblems.map((p) => p.id);
     const problemStatuses = new Map<string, Array<string | null>>();
     const latestStatusMap = new Map<string, { status: string | null; submittedAt: Date | null }>();
@@ -237,7 +247,6 @@ export default async function ProblemsPage({
         const arr = problemStatuses.get(row.problemId) ?? [];
         arr.push(row.status);
         problemStatuses.set(row.problemId, arr);
-
         const existing = latestStatusMap.get(row.problemId);
         if (!existing || (row.submittedAt && (!existing.submittedAt || row.submittedAt > existing.submittedAt))) {
           latestStatusMap.set(row.problemId, { status: row.status, submittedAt: row.submittedAt });
@@ -245,16 +254,33 @@ export default async function ProblemsPage({
       }
     }
 
+    // Fetch tags for page problems
+    const problemTagsMap = new Map<string, Array<{ name: string; color: string | null }>>();
+    if (pageIds.length > 0) {
+      const tagRows = await db
+        .select({
+          problemId: problemTags.problemId,
+          name: tags.name,
+          color: tags.color,
+        })
+        .from(problemTags)
+        .innerJoin(tags, eq(problemTags.tagId, tags.id))
+        .where(inArray(problemTags.problemId, pageIds));
+      for (const row of tagRows) {
+        const arr = problemTagsMap.get(row.problemId) ?? [];
+        arr.push({ name: row.name, color: row.color });
+        problemTagsMap.set(row.problemId, arr);
+      }
+    }
+
     filteredProblems = pageProblems.map((p) => ({
       ...p,
       progress: getProblemProgress(problemStatuses.get(p.id) ?? []),
       latestStatus: latestStatusMap.get(p.id)?.status ?? null,
+      problemTags: problemTagsMap.get(p.id) ?? [],
     }));
   } else {
-    // ── Path B: Progress filter active → fetch lightweight IDs, filter in
-    // memory, then load full rows only for the current page ──
-
-    // Step 1: Get all accessible problem IDs matching search/visibility filters
+    // Path B: Progress filter active
     const idRows = await db
       .select({ id: problems.id })
       .from(problems)
@@ -263,7 +289,6 @@ export default async function ProblemsPage({
       .orderBy(desc(problems.createdAt));
     const allIds = idRows.map((r) => r.id);
 
-    // Step 2: Fetch submission statuses for these problems for the current user
     const problemStatuses = new Map<string, Array<string | null>>();
     const latestStatusMap = new Map<string, { status: string | null; submittedAt: Date | null }>();
     if (allIds.length > 0) {
@@ -284,7 +309,6 @@ export default async function ProblemsPage({
         const arr = problemStatuses.get(row.problemId) ?? [];
         arr.push(row.status);
         problemStatuses.set(row.problemId, arr);
-
         const existing = latestStatusMap.get(row.problemId);
         if (!existing || (row.submittedAt && (!existing.submittedAt || row.submittedAt > existing.submittedAt))) {
           latestStatusMap.set(row.problemId, { status: row.status, submittedAt: row.submittedAt });
@@ -292,7 +316,6 @@ export default async function ProblemsPage({
       }
     }
 
-    // Step 3: Compute progress per problem and filter
     const matchingIds: string[] = [];
     for (const id of allIds) {
       const progress = getProblemProgress(problemStatuses.get(id) ?? []);
@@ -301,33 +324,46 @@ export default async function ProblemsPage({
       else if (currentFilter === "unsolved" && progress !== "solved") matchingIds.push(id);
     }
 
-    // Step 4: Paginate the filtered IDs
     totalCount = matchingIds.length;
     const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
     clampedPage = Math.min(currentPage, totalPages);
     const offset = (clampedPage - 1) * PAGE_SIZE;
     const pageIds = matchingIds.slice(offset, offset + PAGE_SIZE);
 
-    // Step 5: Fetch full problem rows only for the current page
     if (pageIds.length > 0) {
       const pageProblems = await db
         .select({
           id: problems.id,
+          sequenceNumber: problems.sequenceNumber,
           title: problems.title,
           timeLimitMs: problems.timeLimitMs,
           memoryLimitMb: problems.memoryLimitMb,
           visibility: problems.visibility,
           authorId: problems.authorId,
           createdAt: problems.createdAt,
-          author: {
-            name: users.name,
-          },
+          author: { name: users.name },
         })
         .from(problems)
         .leftJoin(users, eq(problems.authorId, users.id))
         .where(inArray(problems.id, pageIds));
 
-      // Re-order to match the original sorted order (by pageIds order)
+      // Fetch tags for page problems
+      const problemTagsMap = new Map<string, Array<{ name: string; color: string | null }>>();
+      const tagRows = await db
+        .select({
+          problemId: problemTags.problemId,
+          name: tags.name,
+          color: tags.color,
+        })
+        .from(problemTags)
+        .innerJoin(tags, eq(problemTags.tagId, tags.id))
+        .where(inArray(problemTags.problemId, pageIds));
+      for (const row of tagRows) {
+        const arr = problemTagsMap.get(row.problemId) ?? [];
+        arr.push({ name: row.name, color: row.color });
+        problemTagsMap.set(row.problemId, arr);
+      }
+
       const rowMap = new Map(pageProblems.map((p) => [p.id, p]));
       filteredProblems = pageIds
         .map((id) => {
@@ -337,6 +373,7 @@ export default async function ProblemsPage({
             ...p,
             progress: getProblemProgress(problemStatuses.get(id) ?? []),
             latestStatus: latestStatusMap.get(id)?.status ?? null,
+            problemTags: problemTagsMap.get(id) ?? [],
           };
         })
         .filter((p): p is NonNullable<typeof p> => p !== null);
@@ -349,7 +386,6 @@ export default async function ProblemsPage({
   const offset = (clampedPage - 1) * PAGE_SIZE;
   const rangeStart = totalCount === 0 ? 0 : offset + 1;
   const rangeEnd = offset + filteredProblems.length;
-  const hasNextPage = clampedPage < totalPages;
 
   const progressLabels = {
     solved: t("progress.solved"),
@@ -407,11 +443,11 @@ export default async function ProblemsPage({
   }
 
   function getFilterHref(filter: ProblemFilter) {
-    return buildPageHref(1, filter, currentVisibility, searchQuery);
+    return buildPageHref(1, filter, currentVisibility, searchQuery, currentTag);
   }
 
   return (
-    <div className="space-y-4">
+    <div>
       <div className="mb-4 flex justify-between items-center">
         <h2 className="text-2xl font-bold">{t("title")}</h2>
         {canManageProblems && (
@@ -421,7 +457,7 @@ export default async function ProblemsPage({
         )}
       </div>
 
-      {/* Search & Filter card */}
+      {/* Search & Filter card - matching admin users style */}
       <Card>
         <CardContent>
           <form className="flex flex-col gap-4 md:flex-row md:items-end" method="get">
@@ -440,21 +476,35 @@ export default async function ProblemsPage({
 
             {canManageProblems && (
               <div className="space-y-1.5">
-                <label className="text-sm font-medium" htmlFor="problem-visibility">
+                <label className="block text-sm font-medium" htmlFor="problem-visibility">
                   {t("filterByVisibility")}
                 </label>
-                <select
-                  id="problem-visibility"
+                <FilterSelect
                   name="visibility"
                   defaultValue={currentVisibility}
-                  className="flex h-10 min-w-40 rounded-md border border-input bg-background px-3 py-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
-                >
-                  {VISIBILITY_FILTER_VALUES.map((v) => (
-                    <option key={v} value={v}>
-                      {visibilityFilterLabels[v]}
-                    </option>
-                  ))}
-                </select>
+                  placeholder={t("visibilityFilter.all")}
+                  options={VISIBILITY_FILTER_VALUES.map((v) => ({
+                    value: v,
+                    label: visibilityFilterLabels[v],
+                  }))}
+                />
+              </div>
+            )}
+
+            {allTags.length > 0 && (
+              <div className="space-y-1.5">
+                <label className="block text-sm font-medium">
+                  {t("filterByTag")}
+                </label>
+                <FilterSelect
+                  name="tag"
+                  defaultValue={currentTag}
+                  placeholder={t("allTags")}
+                  options={[
+                    { value: "", label: t("allTags") },
+                    ...allTags.map((tag) => ({ value: tag.name, label: tag.name })),
+                  ]}
+                />
               </div>
             )}
 
@@ -473,7 +523,7 @@ export default async function ProblemsPage({
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="mt-4">
         <CardHeader>
           <CardTitle>{t("available")}</CardTitle>
         </CardHeader>
@@ -500,6 +550,7 @@ export default async function ProblemsPage({
               <TableRow>
                 <TableHead className="w-12">{t("table.number")}</TableHead>
                 <TableHead>{t("table.title")}</TableHead>
+                <TableHead>{t("table.tags")}</TableHead>
                 <TableHead>{t("table.progress")}</TableHead>
                 <TableHead>{t("table.author")}</TableHead>
                 <TableHead>{t("table.timeLimit")}</TableHead>
@@ -511,11 +562,31 @@ export default async function ProblemsPage({
             <TableBody>
               {filteredProblems.map((problem, index) => (
                 <TableRow key={problem.id}>
-                  <TableCell className="text-muted-foreground">{offset + index + 1}</TableCell>
+                  <TableCell className="text-muted-foreground font-mono">
+                    {problem.sequenceNumber ?? offset + index + 1}
+                  </TableCell>
                   <TableCell className="font-medium">
                     <Link href={`/dashboard/problems/${problem.id}`} className="text-primary hover:underline">
                       {problem.title}
                     </Link>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex flex-wrap gap-1">
+                      {problem.problemTags.map((tag) => (
+                        <Link
+                          key={tag.name}
+                          href={buildPageHref(1, currentFilter, currentVisibility, searchQuery, tag.name)}
+                        >
+                          <Badge
+                            variant="outline"
+                            className="cursor-pointer hover:bg-accent text-xs"
+                            style={tag.color ? { borderColor: tag.color, color: tag.color } : undefined}
+                          >
+                            {tag.name}
+                          </Badge>
+                        </Link>
+                      ))}
+                    </div>
                   </TableCell>
                   <TableCell>{renderProgress(problem.progress, problem.latestStatus)}</TableCell>
                   <TableCell>{problem.author?.name || tCommon("system")}</TableCell>
@@ -544,7 +615,7 @@ export default async function ProblemsPage({
               ))}
               {filteredProblems.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center text-muted-foreground">
+                  <TableCell colSpan={9} className="text-center text-muted-foreground">
                     {t("noProblems")}
                   </TableCell>
                 </TableRow>
@@ -552,15 +623,14 @@ export default async function ProblemsPage({
             </TableBody>
           </Table>
           </div>
+
+          <PaginationControls
+            currentPage={clampedPage}
+            totalPages={totalPages}
+            buildHref={(page) => buildPageHref(page, currentFilter, currentVisibility, searchQuery, currentTag)}
+          />
         </CardContent>
       </Card>
-
-      {/* Pagination controls */}
-      <PaginationControls
-        currentPage={clampedPage}
-        totalPages={totalPages}
-        buildHref={(page) => buildPageHref(page, currentFilter, currentVisibility, searchQuery)}
-      />
     </div>
   );
 }

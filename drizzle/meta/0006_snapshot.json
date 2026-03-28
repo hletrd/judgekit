@@ -1,0 +1,7 @@
+{
+  "id": "0006_add_tags_and_sequence_number",
+  "prevId": "0005_judge_workers",
+  "version": "6",
+  "dialect": "sqlite",
+  "tables": {}
+}

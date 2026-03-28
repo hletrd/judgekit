@@ -43,6 +43,13 @@
       "when": 1774310400000,
       "tag": "0005_judge_workers",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1774915200000,
+      "tag": "0006_add_tags_and_sequence_number",
+      "breakpoints": true
     }
   ]
 }

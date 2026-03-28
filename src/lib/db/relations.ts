@@ -25,6 +25,8 @@ import {
   antiCheatEvents,
   roles,
   judgeWorkers,
+  tags,
+  problemTags,
 } from "./schema";
 
 export const usersRelations = relations(users, ({ many }) => ({
@@ -104,6 +106,7 @@ export const problemsRelations = relations(problems, ({ one, many }) => ({
   assignmentProblems: many(assignmentProblems),
   submissions: many(submissions),
   problemSetProblems: many(problemSetProblems),
+  problemTags: many(problemTags),
 }));
 
 export const testCasesRelations = relations(testCases, ({ one, many }) => ({
@@ -299,6 +302,25 @@ export const rolesRelations = relations(roles, () => ({}));
 
 export const judgeWorkersRelations = relations(judgeWorkers, ({ many }) => ({
   submissions: many(submissions),
+}));
+
+export const tagsRelations = relations(tags, ({ one, many }) => ({
+  creator: one(users, {
+    fields: [tags.createdBy],
+    references: [users.id],
+  }),
+  problemTags: many(problemTags),
+}));
+
+export const problemTagsRelations = relations(problemTags, ({ one }) => ({
+  problem: one(problems, {
+    fields: [problemTags.problemId],
+    references: [problems.id],
+  }),
+  tag: one(tags, {
+    fields: [problemTags.tagId],
+    references: [tags.id],
+  }),
 }));
 
 export const antiCheatEventsRelations = relations(

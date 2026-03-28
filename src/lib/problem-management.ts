@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { db, sqlite } from "@/lib/db";
-import { problems, testCases } from "@/lib/db/schema";
+import { problems, testCases, tags, problemTags } from "@/lib/db/schema";
 import type { ProblemMutationInput } from "@/lib/validators/problem-management";
 import { sanitizeHtml } from "@/lib/security/sanitize-html";
 
@@ -16,6 +16,42 @@ function mapTestCases(problemId: string, values: ProblemMutationInput["testCases
   }));
 }
 
+/**
+ * Resolve tag names to tag IDs, creating any that don't exist yet.
+ * Returns an array of tag IDs.
+ */
+function resolveTagIds(tagNames: string[], createdBy: string): string[] {
+  const tagIds: string[] = [];
+  for (const name of tagNames) {
+    const trimmed = name.trim();
+    if (!trimmed) continue;
+    const existing = db
+      .select({ id: tags.id })
+      .from(tags)
+      .where(eq(tags.name, trimmed))
+      .get();
+    if (existing) {
+      tagIds.push(existing.id);
+    } else {
+      const newId = nanoid();
+      db.insert(tags)
+        .values({ id: newId, name: trimmed, createdBy, createdAt: new Date() })
+        .run();
+      tagIds.push(newId);
+    }
+  }
+  return tagIds;
+}
+
+function syncProblemTags(problemId: string, tagIds: string[]) {
+  db.delete(problemTags).where(eq(problemTags.problemId, problemId)).run();
+  for (const tagId of tagIds) {
+    db.insert(problemTags)
+      .values({ id: nanoid(), problemId, tagId })
+      .run();
+  }
+}
+
 export function createProblemWithTestCases(input: ProblemMutationInput, authorId: string) {
   const id = nanoid();
   const now = new Date();
@@ -24,6 +60,7 @@ export function createProblemWithTestCases(input: ProblemMutationInput, authorId
     db.insert(problems)
       .values({
         id,
+        sequenceNumber: input.sequenceNumber ?? null,
         title: input.title,
         description: sanitizeHtml(input.description),
         timeLimitMs: input.timeLimitMs,
@@ -46,6 +83,11 @@ export function createProblemWithTestCases(input: ProblemMutationInput, authorId
     if (mappedTestCases.length > 0) {
       db.insert(testCases).values(mappedTestCases).run();
     }
+
+    if (input.tags.length > 0) {
+      const tagIds = resolveTagIds(input.tags, authorId);
+      syncProblemTags(id, tagIds);
+    }
   });
 
   execute();
@@ -53,12 +95,13 @@ export function createProblemWithTestCases(input: ProblemMutationInput, authorId
   return id;
 }
 
-export function updateProblemWithTestCases(problemId: string, input: ProblemMutationInput) {
+export function updateProblemWithTestCases(problemId: string, input: ProblemMutationInput, actorId?: string) {
   const now = new Date();
 
   const execute = sqlite.transaction(() => {
     db.update(problems)
       .set({
+        sequenceNumber: input.sequenceNumber ?? null,
         title: input.title,
         description: sanitizeHtml(input.description),
         timeLimitMs: input.timeLimitMs,
@@ -82,6 +125,9 @@ export function updateProblemWithTestCases(problemId: string, input: ProblemMuta
     if (mappedTestCases.length > 0) {
       db.insert(testCases).values(mappedTestCases).run();
     }
+
+    const tagIds = resolveTagIds(input.tags, actorId ?? "");
+    syncProblemTags(problemId, tagIds);
   });
 
   execute();

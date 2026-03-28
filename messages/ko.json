@@ -134,6 +134,7 @@
     "table": {
       "number": "#",
       "title": "제목",
+      "tags": "태그",
       "progress": "진행 상태",
       "author": "작성자",
       "timeLimit": "시간 제한",
@@ -279,7 +280,17 @@
     "pagination": {
       "showingRange": "{total}개 중 {start}-{end}번 표시",
       "page": "{total}페이지 중 {current}페이지"
-    }
+    },
+    "sequenceNumberLabel": "문제 번호",
+    "sequenceNumberPlaceholder": "자동 (선택사항)",
+    "sequenceNumberHint": "이 문제의 고정 표시 번호입니다. 비워두면 자동 번호가 부여됩니다.",
+    "tagsLabel": "태그",
+    "tagsPlaceholder": "태그 추가...",
+    "tagsHint": "Enter 또는 쉼표로 태그를 추가합니다. 최대 20개.",
+    "tooManyTags": "문제당 태그는 최대 20개까지 추가할 수 있습니다",
+    "filterByTag": "태그 필터",
+    "allTags": "전체 태그",
+    "noTags": "태그 없음"
   },
   "problemSets": {
     "title": "문제 묶음",

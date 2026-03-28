@@ -3,7 +3,7 @@ import { getTranslations } from "next-intl/server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { problems, submissions } from "@/lib/db/schema";
+import { problems, submissions, problemTags, tags } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import CreateProblemForm from "@/app/(dashboard)/dashboard/problems/create/create-problem-form";
 import { ProblemDeleteButton } from "../problem-delete-button";
@@ -46,6 +46,14 @@ export default async function EditProblemPage({ params }: { params: Promise<{ id
     (left, right) => (left.sortOrder ?? 0) - (right.sortOrder ?? 0)
   );
 
+  // Fetch tags for this problem
+  const problemTagRows = await db
+    .select({ name: tags.name })
+    .from(problemTags)
+    .innerJoin(tags, eq(problemTags.tagId, tags.id))
+    .where(eq(problemTags.problemId, problem.id));
+  const problemTagNames = problemTagRows.map((t) => t.name);
+
   return (
     <div className="mx-auto max-w-4xl space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -67,6 +75,7 @@ export default async function EditProblemPage({ params }: { params: Promise<{ id
               id: problem.id,
               title: problem.title,
               description: problem.description ?? "",
+              sequenceNumber: problem.sequenceNumber ?? null,
               timeLimitMs: problem.timeLimitMs ?? 2000,
               memoryLimitMb: problem.memoryLimitMb ?? 256,
               visibility: (problem.visibility ?? "private") as "public" | "private" | "hidden",
@@ -82,6 +91,7 @@ export default async function EditProblemPage({ params }: { params: Promise<{ id
                 expectedOutput: testCase.expectedOutput,
                 isVisible: testCase.isVisible ?? false,
               })),
+              tags: problemTagNames,
             }}
             testCasesLocked={hasSubmissions}
             allowTestCaseOverride={hasSubmissions && canOverrideTestCases}

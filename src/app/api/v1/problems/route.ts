@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
-import { problems, problemGroupAccess, enrollments } from "@/lib/db/schema";
-import { eq, desc, sql, and, or } from "drizzle-orm";
+import { problems, problemGroupAccess, enrollments, tags, problemTags } from "@/lib/db/schema";
+import { eq, desc, sql, and, or, inArray } from "drizzle-orm";
 import { getApiUser, unauthorized, forbidden, isInstructor, isAdmin, csrfForbidden } from "@/lib/api/auth";
 import { recordAuditEvent } from "@/lib/audit/events";
 import { parsePagination } from "@/lib/api/pagination";
@@ -95,6 +95,7 @@ export async function POST(request: NextRequest) {
     const parsedInput = problemMutationSchema.safeParse({
       title: body.title,
       description: body.description ?? "",
+      sequenceNumber: body.sequenceNumber ?? null,
       timeLimitMs: body.timeLimitMs ?? 2000,
       memoryLimitMb: body.memoryLimitMb ?? 256,
       visibility: body.visibility ?? "private",
@@ -106,6 +107,7 @@ export async function POST(request: NextRequest) {
       floatAbsoluteError: body.floatAbsoluteError,
       floatRelativeError: body.floatRelativeError,
       testCases: body.testCases ?? [],
+      tags: body.tags ?? [],
     });
 
     if (!parsedInput.success) {

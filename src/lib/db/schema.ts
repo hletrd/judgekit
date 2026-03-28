@@ -169,6 +169,7 @@ export const problems = sqliteTable("problems", {
   id: text("id")
     .primaryKey()
     .$defaultFn(() => nanoid()),
+  sequenceNumber: integer("sequence_number"),
   title: text("title").notNull(),
   description: text("description"),
   timeLimitMs: integer("time_limit_ms").default(2000),
@@ -667,6 +668,46 @@ export const roles = sqliteTable(
   (table) => [
     uniqueIndex("roles_name_idx").on(table.name),
     index("roles_level_idx").on(table.level),
+  ]
+);
+
+export const tags = sqliteTable(
+  "tags",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => nanoid()),
+    name: text("name").notNull(),
+    color: text("color"),
+    createdBy: text("created_by").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    createdAt: integer("created_at", { mode: "timestamp" })
+      .notNull()
+      .$defaultFn(() => new Date(Date.now())),
+  },
+  (table) => [
+    uniqueIndex("tags_name_idx").on(table.name),
+  ]
+);
+
+export const problemTags = sqliteTable(
+  "problem_tags",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => nanoid()),
+    problemId: text("problem_id")
+      .notNull()
+      .references(() => problems.id, { onDelete: "cascade" }),
+    tagId: text("tag_id")
+      .notNull()
+      .references(() => tags.id, { onDelete: "cascade" }),
+  },
+  (table) => [
+    index("pt_problem_idx").on(table.problemId),
+    index("pt_tag_idx").on(table.tagId),
+    uniqueIndex("pt_problem_tag_idx").on(table.problemId, table.tagId),
   ]
 );
 

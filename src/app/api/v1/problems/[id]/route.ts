@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { apiSuccess, apiError } from "@/lib/api/responses";
 import { db } from "@/lib/db";
-import { assignmentProblems, problems, submissions, testCases } from "@/lib/db/schema";
+import { assignmentProblems, problems, submissions, testCases, problemTags, tags } from "@/lib/db/schema";
 import { eq, sql } from "drizzle-orm";
 import { getApiUser, unauthorized, forbidden, notFound, isAdmin, csrfForbidden } from "@/lib/api/auth";
 import { recordAuditEvent } from "@/lib/audit/events";
@@ -15,6 +15,7 @@ import { logger } from "@/lib/logger";
 const problemPatchSchema = z.object({
   title: z.string().min(1).max(200).optional(),
   description: z.string().optional(),
+  sequenceNumber: z.number().int().min(1).nullable().optional(),
   timeLimitMs: z.number().int().min(100).max(30000).optional(),
   memoryLimitMb: z.number().int().min(16).max(1024).optional(),
   visibility: z.enum(["public", "private", "hidden"]).optional(),
@@ -31,6 +32,7 @@ const problemPatchSchema = z.object({
     expectedOutput: z.string(),
     sortOrder: z.number().int().optional(),
   })).optional(),
+  tags: z.array(z.string().min(1).max(50)).max(20).optional(),
   allowLockedTestCases: z.boolean().optional(),
 }).strict();
 
@@ -109,9 +111,21 @@ export async function PATCH(
       return apiError("testCasesLocked", 409);
     }
 
+    // Resolve existing tags if not provided in update
+    let existingTagNames: string[] = [];
+    if (body.tags === undefined) {
+      const existingProblemTags = await db
+        .select({ name: tags.name })
+        .from(problemTags)
+        .innerJoin(tags, eq(problemTags.tagId, tags.id))
+        .where(eq(problemTags.problemId, id));
+      existingTagNames = existingProblemTags.map((t) => t.name);
+    }
+
     const parsedInput = problemMutationSchema.safeParse({
       title: body.title ?? problem.title,
       description: body.description ?? problem.description ?? "",
+      sequenceNumber: body.sequenceNumber !== undefined ? body.sequenceNumber : problem.sequenceNumber ?? null,
       timeLimitMs: body.timeLimitMs ?? problem.timeLimitMs ?? 2000,
       memoryLimitMb: body.memoryLimitMb ?? problem.memoryLimitMb ?? 256,
       visibility: body.visibility ?? problem.visibility ?? "private",
@@ -131,13 +145,14 @@ export async function PATCH(
             expectedOutput: testCase.expectedOutput,
             isVisible: testCase.isVisible ?? false,
           })),
+      tags: body.tags ?? existingTagNames,
     });
 
     if (!parsedInput.success) {
       return apiError(parsedInput.error.issues[0]?.message ?? "updateError", 400);
     }
 
-    await updateProblemWithTestCases(id, parsedInput.data);
+    await updateProblemWithTestCases(id, parsedInput.data, user.id);
 
     const updated = await db.query.problems.findFirst({
       where: eq(problems.id, id),

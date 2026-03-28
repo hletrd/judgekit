@@ -174,6 +174,7 @@ export const problems = mysqlTable("problems", {
   id: varchar("id", { length: 36 })
     .primaryKey()
     .$defaultFn(() => nanoid()),
+  sequenceNumber: int("sequence_number"),
   title: varchar("title", { length: 255 }).notNull(),
   description: text("description"),
   timeLimitMs: int("time_limit_ms").default(2000),
@@ -672,6 +673,46 @@ export const roles = mysqlTable(
   (table) => [
     uniqueIndex("roles_name_idx").on(table.name),
     index("roles_level_idx").on(table.level),
+  ]
+);
+
+export const tags = mysqlTable(
+  "tags",
+  {
+    id: varchar("id", { length: 36 })
+      .primaryKey()
+      .$defaultFn(() => nanoid()),
+    name: varchar("name", { length: 255 }).notNull(),
+    color: varchar("color", { length: 255 }),
+    createdBy: varchar("created_by", { length: 36 }).references(() => users.id, {
+      onDelete: "set null",
+    }),
+    createdAt: timestamp("created_at")
+      .notNull()
+      .$defaultFn(() => new Date(Date.now())),
+  },
+  (table) => [
+    uniqueIndex("tags_name_idx").on(table.name),
+  ]
+);
+
+export const problemTags = mysqlTable(
+  "problem_tags",
+  {
+    id: varchar("id", { length: 36 })
+      .primaryKey()
+      .$defaultFn(() => nanoid()),
+    problemId: varchar("problem_id", { length: 36 })
+      .notNull()
+      .references(() => problems.id, { onDelete: "cascade" }),
+    tagId: varchar("tag_id", { length: 36 })
+      .notNull()
+      .references(() => tags.id, { onDelete: "cascade" }),
+  },
+  (table) => [
+    index("pt_problem_idx").on(table.problemId),
+    index("pt_tag_idx").on(table.tagId),
+    uniqueIndex("pt_problem_tag_idx").on(table.problemId, table.tagId),
   ]
 );
 

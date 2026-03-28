@@ -1,10 +1,10 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { nanoid } from "nanoid";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
 import { apiFetch } from "@/lib/api/client";
 import { toast } from "sonner";
 import { ProblemDescription } from "@/components/problem-description";
@@ -29,6 +30,7 @@ export type ProblemFormInitialData = {
   id: string;
   title: string;
   description: string;
+  sequenceNumber: number | null;
   timeLimitMs: number;
   memoryLimitMb: number;
   visibility: ProblemVisibility;
@@ -40,6 +42,7 @@ export type ProblemFormInitialData = {
   floatAbsoluteError: number | null;
   floatRelativeError: number | null;
   testCases: ProblemTestCaseDraft[];
+  tags: string[];
 };
 
 type CreateProblemFormProps = {
@@ -77,6 +80,9 @@ export default function CreateProblemForm({
   const [title, setTitle] = useState(initialProblem?.title ?? "");
   const [description, setDescription] = useState(initialProblem?.description ?? "");
   const [descriptionTab, setDescriptionTab] = useState<"write" | "preview">("write");
+  const [sequenceNumber, setSequenceNumber] = useState<string>(
+    initialProblem?.sequenceNumber?.toString() ?? ""
+  );
   const [timeLimitMs, setTimeLimitMs] = useState(initialProblem?.timeLimitMs ?? 2000);
   const [memoryLimitMb, setMemoryLimitMb] = useState(initialProblem?.memoryLimitMb ?? 256);
   const [visibility, setVisibility] = useState<ProblemVisibility>(initialProblem?.visibility ?? "private");
@@ -95,8 +101,77 @@ export default function CreateProblemForm({
   );
   const areTestCasesEditable = !testCasesLocked || testCaseOverrideEnabled;
 
+  // Tags state
+  const [currentTags, setCurrentTags] = useState<string[]>(initialProblem?.tags ?? []);
+  const [tagInput, setTagInput] = useState("");
+  const [tagSuggestions, setTagSuggestions] = useState<Array<{ id: string; name: string; color: string | null }>>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const tagInputRef = useRef<HTMLInputElement>(null);
+  const suggestionsRef = useRef<HTMLDivElement>(null);
+
   const testCaseInputFileRefs = useRef<HTMLInputElement[]>([]);
   const testCaseOutputFileRefs = useRef<HTMLInputElement[]>([]);
+
+  // Fetch tag suggestions
+  const fetchSuggestions = useCallback(async (query: string) => {
+    try {
+      const res = await apiFetch(`/api/v1/tags?q=${encodeURIComponent(query)}&limit=10`);
+      if (res.ok) {
+        const data = await res.json();
+        setTagSuggestions(data.data ?? []);
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  useEffect(() => {
+    if (tagInput.trim().length > 0) {
+      const timeout = setTimeout(() => fetchSuggestions(tagInput.trim()), 200);
+      return () => clearTimeout(timeout);
+    } else {
+      setTagSuggestions([]);
+    }
+  }, [tagInput, fetchSuggestions]);
+
+  // Close suggestions on click outside
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (
+        suggestionsRef.current &&
+        !suggestionsRef.current.contains(e.target as Node) &&
+        tagInputRef.current &&
+        !tagInputRef.current.contains(e.target as Node)
+      ) {
+        setShowSuggestions(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  function addTag(name: string) {
+    const trimmed = name.trim();
+    if (!trimmed || currentTags.includes(trimmed) || currentTags.length >= 20) return;
+    setCurrentTags((prev) => [...prev, trimmed]);
+    setTagInput("");
+    setShowSuggestions(false);
+  }
+
+  function removeTag(name: string) {
+    setCurrentTags((prev) => prev.filter((t) => t !== name));
+  }
+
+  function handleTagKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === "Enter" || e.key === ",") {
+      e.preventDefault();
+      if (tagInput.trim()) {
+        addTag(tagInput);
+      }
+    } else if (e.key === "Backspace" && !tagInput && currentTags.length > 0) {
+      setCurrentTags((prev) => prev.slice(0, -1));
+    }
+  }
 
   function getErrorMessage(error: unknown) {
     if (!(error instanceof Error)) {
@@ -175,12 +250,14 @@ export default function CreateProblemForm({
 
     try {
       const isEditing = mode === "edit" && initialProblem;
+      const parsedSeqNum = sequenceNumber ? parseInt(sequenceNumber, 10) : null;
       const res = await apiFetch(isEditing ? `/api/v1/problems/${initialProblem.id}` : "/api/v1/problems", {
         method: isEditing ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           title,
           description,
+          sequenceNumber: parsedSeqNum && Number.isFinite(parsedSeqNum) && parsedSeqNum > 0 ? parsedSeqNum : null,
           timeLimitMs,
           memoryLimitMb,
           visibility,
@@ -191,6 +268,7 @@ export default function CreateProblemForm({
           comparisonMode,
           floatAbsoluteError: comparisonMode === "float" ? parseFloat(floatAbsoluteError) || null : null,
           floatRelativeError: comparisonMode === "float" ? parseFloat(floatRelativeError) || null : null,
+          tags: currentTags,
           ...(areTestCasesEditable
             ? { testCases: testCases.map(({ _key: _, ...rest }) => rest) }
             : {}),
@@ -218,14 +296,28 @@ export default function CreateProblemForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      <div className="space-y-2">
-        <Label htmlFor="title">{t("titleLabel")}</Label>
-        <Input 
-          id="title" 
-          value={title} 
-          onChange={(e) => setTitle(e.target.value)} 
-          required 
-        />
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-[1fr_200px]">
+        <div className="space-y-2">
+          <Label htmlFor="title">{t("titleLabel")}</Label>
+          <Input
+            id="title"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            required
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="sequenceNumber">{t("sequenceNumberLabel")}</Label>
+          <Input
+            id="sequenceNumber"
+            type="number"
+            min={1}
+            value={sequenceNumber}
+            onChange={(e) => setSequenceNumber(e.target.value)}
+            placeholder={t("sequenceNumberPlaceholder")}
+          />
+          <p className="text-xs text-muted-foreground">{t("sequenceNumberHint")}</p>
+        </div>
       </div>
 
       <div className="space-y-2">
@@ -253,6 +345,66 @@ export default function CreateProblemForm({
             </div>
           </TabsContent>
         </Tabs>
+      </div>
+
+      {/* Tags */}
+      <div className="space-y-2">
+        <Label>{t("tagsLabel")}</Label>
+        <div className="flex flex-wrap gap-1.5 rounded-md border p-2 min-h-[42px] focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/50">
+          {currentTags.map((tag) => (
+            <Badge key={tag} variant="secondary" className="gap-1 pr-1">
+              {tag}
+              <button
+                type="button"
+                onClick={() => removeTag(tag)}
+                className="ml-0.5 rounded-full p-0.5 hover:bg-muted-foreground/20"
+              >
+                <X className="size-3" />
+              </button>
+            </Badge>
+          ))}
+          <div className="relative flex-1 min-w-[120px]">
+            <input
+              ref={tagInputRef}
+              type="text"
+              value={tagInput}
+              onChange={(e) => {
+                setTagInput(e.target.value);
+                setShowSuggestions(true);
+              }}
+              onFocus={() => {
+                if (tagInput.trim()) setShowSuggestions(true);
+              }}
+              onKeyDown={handleTagKeyDown}
+              placeholder={currentTags.length === 0 ? t("tagsPlaceholder") : ""}
+              className="w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground h-7"
+              disabled={isLoading}
+            />
+            {showSuggestions && tagSuggestions.length > 0 && (
+              <div
+                ref={suggestionsRef}
+                className="absolute left-0 top-full z-50 mt-1 w-56 rounded-md border bg-popover p-1 shadow-md"
+              >
+                {tagSuggestions
+                  .filter((s) => !currentTags.includes(s.name))
+                  .map((suggestion) => (
+                    <button
+                      key={suggestion.id}
+                      type="button"
+                      className="w-full rounded-sm px-2 py-1.5 text-left text-sm hover:bg-accent hover:text-accent-foreground"
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        addTag(suggestion.name);
+                      }}
+                    >
+                      {suggestion.name}
+                    </button>
+                  ))}
+              </div>
+            )}
+          </div>
+        </div>
+        <p className="text-xs text-muted-foreground">{t("tagsHint")}</p>
       </div>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -514,9 +666,9 @@ export default function CreateProblemForm({
       </div>
 
       <div className="flex justify-end gap-2">
-        <Button 
-          type="button" 
-          variant="outline" 
+        <Button
+          type="button"
+          variant="outline"
           onClick={() => router.back()}
           disabled={isLoading}
         >
