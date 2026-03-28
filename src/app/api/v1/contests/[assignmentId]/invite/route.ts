@@ -6,7 +6,7 @@ import { apiSuccess, apiError } from "@/lib/api/responses";
 import { getContestAssignment, type ContestAssignmentRow } from "@/lib/assignments/contests";
 import { db, sqlite } from "@/lib/db";
 import { users, enrollments, contestAccessTokens } from "@/lib/db/schema";
-import { and, eq, like, or, sql } from "drizzle-orm";
+import { and, eq, inArray, like, or, sql } from "drizzle-orm";
 import { logger } from "@/lib/logger";
 
 function canManage(user: { id: string; role: string }, assignment: ContestAssignmentRow): boolean {
@@ -40,7 +40,9 @@ export async function GET(
     const query = request.nextUrl.searchParams.get("q")?.trim() ?? "";
     if (!query) return apiSuccess([]);
 
-    const likePattern = `%${query.toLowerCase()}%`;
+    // Escape LIKE wildcards in user input
+    const escaped = query.toLowerCase().replace(/[%_]/g, "\\$&");
+    const likePattern = `%${escaped}%`;
     const results = await db
       .select({
         id: users.id,
@@ -53,22 +55,32 @@ export async function GET(
         and(
           eq(users.isActive, true),
           or(
-            sql`lower(${users.username}) like ${likePattern}`,
-            sql`lower(${users.name}) like ${likePattern}`
+            sql`lower(${users.username}) like ${likePattern} escape '\\'`,
+            sql`lower(${users.name}) like ${likePattern} escape '\\'`
           )
         )
       )
       .limit(10);
 
-    // Mark which users are already enrolled
-    const enriched = [];
-    for (const u of results) {
-      const enrolled = await db.query.enrollments.findFirst({
-        where: and(eq(enrollments.groupId, assignment.groupId), eq(enrollments.userId, u.id)),
-        columns: { id: true },
-      });
-      enriched.push({ ...u, alreadyEnrolled: Boolean(enrolled) });
-    }
+    // Batch enrollment check (avoids N+1 query pattern)
+    const userIds = results.map((u) => u.id);
+    const enrolledRows = userIds.length > 0
+      ? await db
+          .select({ userId: enrollments.userId })
+          .from(enrollments)
+          .where(
+            and(
+              eq(enrollments.groupId, assignment.groupId),
+              inArray(enrollments.userId, userIds)
+            )
+          )
+      : [];
+    const enrolledSet = new Set(enrolledRows.map((r) => r.userId));
+
+    const enriched = results.map((u) => ({
+      ...u,
+      alreadyEnrolled: enrolledSet.has(u.id),
+    }));
 
     return apiSuccess(enriched);
   } catch (error) {
@@ -107,8 +119,6 @@ export async function POST(
 
     if (!targetUser) return apiError("userNotFound", 404);
 
-    const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? null;
-
     const execute = sqlite.transaction(() => {
       // Create contest access token if not exists
       const existingToken = db
@@ -129,7 +139,7 @@ export async function POST(
             assignmentId,
             userId: targetUser.id,
             redeemedAt: new Date(),
-            ipAddress: ip,
+            ipAddress: null, // Instructor-initiated invite; invitee IP not available
           })
           .run();
       }
