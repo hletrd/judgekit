@@ -1,4 +1,4 @@
-import { execFile } from "child_process";
+import { execFile, spawn } from "child_process";
 import { promisify } from "util";
 
 const exec = promisify(execFile);
@@ -86,17 +86,39 @@ export async function buildDockerImage(
     return { success: false, error: "Invalid dockerfile path" };
   }
 
-  try {
-    const { stdout, stderr } = await exec(
-      "docker",
-      ["build", "-t", imageName, "-f", dockerfilePath, "."],
-      { timeout: 600_000, maxBuffer: 10 * 1024 * 1024 },
-    );
-    return { success: true, logs: (stdout + "\n" + stderr).trim() };
-  } catch (error) {
-    const msg = error instanceof Error ? error.message : String(error);
-    return { success: false, error: msg };
-  }
+  return new Promise((resolve) => {
+    const proc = spawn("docker", ["build", "-t", imageName, "-f", dockerfilePath, "."]);
+    let stdout = "";
+    let stderr = "";
+
+    proc.stdout.on("data", (chunk: Buffer) => {
+      stdout += chunk.toString();
+      if (stdout.length > 2 * 1024 * 1024) stdout = stdout.slice(-2 * 1024 * 1024);
+    });
+    proc.stderr.on("data", (chunk: Buffer) => {
+      stderr += chunk.toString();
+      if (stderr.length > 2 * 1024 * 1024) stderr = stderr.slice(-2 * 1024 * 1024);
+    });
+
+    const timer = setTimeout(() => {
+      proc.kill();
+      resolve({ success: false, error: "docker build timed out after 600s" });
+    }, 600_000);
+
+    proc.on("close", (code) => {
+      clearTimeout(timer);
+      if (code === 0) {
+        resolve({ success: true, logs: (stdout + "\n" + stderr).trim() });
+      } else {
+        resolve({ success: false, error: stderr.trim() || stdout.trim() });
+      }
+    });
+
+    proc.on("error", (err) => {
+      clearTimeout(timer);
+      resolve({ success: false, error: err.message });
+    });
+  });
 }
 
 /** Get disk usage info */

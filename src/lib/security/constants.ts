@@ -23,16 +23,6 @@ export function getSubmissionGlobalQueueLimit() {
 export const MIN_PASSWORD_LENGTH = 8;
 /** @deprecated Use getMaxSourceCodeSizeBytes() */
 export const MAX_SOURCE_CODE_SIZE_BYTES = 256 * 1024;
-/** @deprecated Use getSubmissionRateLimitMaxPerMinute() */
-export const SUBMISSION_RATE_LIMIT_MAX_PER_MINUTE = parseInt(
-  process.env.SUBMISSION_RATE_LIMIT_MAX_PER_MINUTE || "120",
-  10
-);
-/** @deprecated Use getSubmissionMaxPending() */
-export const SUBMISSION_MAX_PENDING = parseInt(
-  process.env.SUBMISSION_MAX_PENDING || "200",
-  10
-);
 /** @deprecated Use getSubmissionGlobalQueueLimit() */
 export const SUBMISSION_GLOBAL_QUEUE_LIMIT = parseInt(
   process.env.SUBMISSION_GLOBAL_QUEUE_LIMIT || "100",

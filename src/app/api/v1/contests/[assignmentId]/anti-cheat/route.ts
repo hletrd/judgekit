@@ -10,6 +10,9 @@ import { consumeApiRateLimit } from "@/lib/security/api-rate-limit";
 import { getContestAssignment } from "@/lib/assignments/contests";
 import { logger } from "@/lib/logger";
 
+/** last heartbeat insert time per "assignmentId:userId" — only insert once per 60s */
+const lastHeartbeatTime = new Map<string, number>();
+
 const VALID_EVENT_TYPES = [
   "tab_switch",
   "copy",
@@ -81,20 +84,26 @@ export async function POST(
     const { eventType, details: rawDetails } = parsed.data;
     const details = rawDetails ?? null;
 
-    // Heartbeat events are tracked but don't need to store details
+    // Heartbeat events: only insert a DB row once per 60 seconds to reduce churn
     if (eventType === "heartbeat") {
-      db.insert(antiCheatEvents)
-        .values({
-          id: nanoid(),
-          assignmentId,
-          userId: user.id,
-          eventType: "heartbeat",
-          details: null,
-          ipAddress: request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? null,
-          userAgent: null,
-          createdAt: new Date(),
-        })
-        .run();
+      const heartbeatKey = `${assignmentId}:${user.id}`;
+      const now = Date.now();
+      const last = lastHeartbeatTime.get(heartbeatKey) ?? 0;
+      if (now - last >= 60_000) {
+        lastHeartbeatTime.set(heartbeatKey, now);
+        db.insert(antiCheatEvents)
+          .values({
+            id: nanoid(),
+            assignmentId,
+            userId: user.id,
+            eventType: "heartbeat",
+            details: null,
+            ipAddress: request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? null,
+            userAgent: null,
+            createdAt: new Date(),
+          })
+          .run();
+      }
       return apiSuccess({ logged: true });
     }
 

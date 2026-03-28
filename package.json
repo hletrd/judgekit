@@ -43,6 +43,7 @@
     "drizzle-orm": "^0.45.1",
     "isomorphic-dompurify": "^3.0.0",
     "katex": "^0.16.38",
+    "lru-cache": "^11.2.7",
     "lucide-react": "^0.577.0",
     "mysql2": "^3.20.0",
     "nanoid": "^5.1.6",

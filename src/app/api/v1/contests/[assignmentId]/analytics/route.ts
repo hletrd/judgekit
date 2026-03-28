@@ -1,4 +1,5 @@
 import { NextRequest } from "next/server";
+import { LRUCache } from "lru-cache";
 import { getApiUser, unauthorized, isAdmin, isInstructor } from "@/lib/api/auth";
 import { apiSuccess, apiError } from "@/lib/api/responses";
 import { computeContestAnalytics } from "@/lib/assignments/contest-analytics";
@@ -6,32 +7,7 @@ import { sqlite } from "@/lib/db";
 import { consumeApiRateLimit } from "@/lib/security/api-rate-limit";
 import { logger } from "@/lib/logger";
 
-const analyticsCache = new Map<string, { data: unknown; timestamp: number }>();
-const CACHE_TTL_MS = 60_000; // 60 seconds
-
-function getCachedAnalytics(key: string) {
-  const cached = analyticsCache.get(key);
-  if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
-    return cached.data;
-  }
-  return null;
-}
-
-function setCachedAnalytics(key: string, data: unknown) {
-  analyticsCache.set(key, { data, timestamp: Date.now() });
-  // Prevent unbounded cache growth — O(n) linear scan instead of O(n log n) sort
-  if (analyticsCache.size > 100) {
-    let oldestKey: string | null = null;
-    let oldestTs = Infinity;
-    for (const [k, v] of analyticsCache) {
-      if (v.timestamp < oldestTs) {
-        oldestTs = v.timestamp;
-        oldestKey = k;
-      }
-    }
-    if (oldestKey) analyticsCache.delete(oldestKey);
-  }
-}
+const analyticsCache = new LRUCache<string, any>({ max: 100, ttl: 60_000 });
 
 type AssignmentRow = {
   groupId: string;
@@ -72,11 +48,11 @@ export async function GET(
     }
 
     const cacheKey = assignmentId;
-    const cached = getCachedAnalytics(cacheKey);
+    const cached = analyticsCache.get(cacheKey);
     if (cached) return apiSuccess(cached);
 
     const analytics = computeContestAnalytics(assignmentId);
-    setCachedAnalytics(cacheKey, analytics);
+    analyticsCache.set(cacheKey, analytics);
     return apiSuccess(analytics);
   } catch (error) {
     logger.error({ err: error }, "GET analytics error");
