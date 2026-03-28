@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { apiError } from "@/lib/api/responses";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
+import { inArray } from "drizzle-orm";
 import { getApiUser, unauthorized, forbidden, isAdmin, isInstructor, csrfForbidden } from "@/lib/api/auth";
 import { recordAuditEvent } from "@/lib/audit/events";
 import { nanoid } from "nanoid";
@@ -59,8 +60,9 @@ export async function POST(request: NextRequest) {
       return apiError("duplicateUsernamesInRequest", 400);
     }
 
-    // Check existing usernames in DB (case-insensitive)
+    // Check existing usernames in DB (case-insensitive, scoped to request usernames only)
     const existingUsers = await db.query.users.findMany({
+      where: inArray(users.username, [...uniqueRequestUsernames]),
       columns: { username: true },
     });
     const existingUsernameSet = new Set(existingUsers.map((u) => u.username.toLowerCase()));

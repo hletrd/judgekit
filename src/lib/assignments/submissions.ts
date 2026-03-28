@@ -548,33 +548,6 @@ export async function getAssignmentStatusRows(
     assignmentId
   );
 
-  // ---- SQL-aggregated per-user "latest submission" across all problems ----
-  const userLatestStmt = sqlite.prepare<[string], UserLatestRow>(`
-    WITH ranked AS (
-      SELECT
-        s.user_id,
-        s.id AS sub_id,
-        s.status,
-        s.submitted_at,
-        ROW_NUMBER() OVER (
-          PARTITION BY s.user_id
-          ORDER BY s.submitted_at DESC, s.id DESC
-        ) AS rn
-      FROM submissions s
-      WHERE s.assignment_id = ?
-    )
-    SELECT
-      user_id AS userId,
-      COUNT(*) AS totalAttempts,
-      MAX(CASE WHEN rn = 1 THEN sub_id END)       AS latestSubId,
-      MAX(CASE WHEN rn = 1 THEN status END)        AS latestStatus,
-      MAX(CASE WHEN rn = 1 THEN submitted_at END)  AS latestSubmittedAt
-    FROM ranked
-    GROUP BY user_id
-  `);
-
-  const userLatestRows: UserLatestRow[] = userLatestStmt.all(assignmentId);
-
   // ---- Build lookup maps from aggregated rows ----
   // Key: "userId:problemId" -> ProblemAggRow
   const problemAggMap = new Map<string, ProblemAggRow>();
@@ -582,9 +555,29 @@ export async function getAssignmentStatusRows(
     problemAggMap.set(`${row.userId}:${row.problemId}`, row);
   }
 
+  // ---- Derive per-user aggregates from problem-level data (avoids duplicate table scan) ----
   const userLatestMap = new Map<string, UserLatestRow>();
-  for (const row of userLatestRows) {
-    userLatestMap.set(row.userId, row);
+  for (const row of problemAggRows) {
+    const existing = userLatestMap.get(row.userId);
+    if (!existing) {
+      userLatestMap.set(row.userId, {
+        userId: row.userId,
+        totalAttempts: row.attemptCount,
+        latestSubId: row.latestSubId,
+        latestStatus: row.latestStatus,
+        latestSubmittedAt: row.latestSubmittedAt,
+      });
+    } else {
+      existing.totalAttempts += row.attemptCount;
+      if (
+        row.latestSubmittedAt != null &&
+        (existing.latestSubmittedAt == null || row.latestSubmittedAt > existing.latestSubmittedAt)
+      ) {
+        existing.latestSubId = row.latestSubId;
+        existing.latestStatus = row.latestStatus;
+        existing.latestSubmittedAt = row.latestSubmittedAt;
+      }
+    }
   }
 
   // ---- Score overrides (small result set — one per user/problem at most) ----

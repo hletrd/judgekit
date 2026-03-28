@@ -19,10 +19,17 @@ function getCachedAnalytics(key: string) {
 
 function setCachedAnalytics(key: string, data: unknown) {
   analyticsCache.set(key, { data, timestamp: Date.now() });
-  // Prevent unbounded cache growth
+  // Prevent unbounded cache growth — O(n) linear scan instead of O(n log n) sort
   if (analyticsCache.size > 100) {
-    const oldest = [...analyticsCache.entries()].sort((a, b) => a[1].timestamp - b[1].timestamp)[0];
-    if (oldest) analyticsCache.delete(oldest[0]);
+    let oldestKey: string | null = null;
+    let oldestTs = Infinity;
+    for (const [k, v] of analyticsCache) {
+      if (v.timestamp < oldestTs) {
+        oldestTs = v.timestamp;
+        oldestKey = k;
+      }
+    }
+    if (oldestKey) analyticsCache.delete(oldestKey);
   }
 }
 
