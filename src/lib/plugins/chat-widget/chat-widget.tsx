@@ -45,6 +45,14 @@ export default function ChatWidget(_props: PluginWidgetProps) {
   // Use URL context first, fall back to event context
   const problemContext = urlProblemContext ?? eventContext;
 
+  // Hide AI assistant entirely in contest/assignment context
+  const isInContestContext = Boolean(
+    urlProblemContext?.assignmentId ||
+    pathname.includes("/contests/") ||
+    searchParams?.get("assignmentId")
+  );
+  if (isInContestContext) return null;
+
   // Reset chat when navigating to a different page
   const prevPathRef = useRef(pathname);
   useEffect(() => {
