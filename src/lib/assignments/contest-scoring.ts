@@ -90,71 +90,69 @@ export function computeContestRanking(assignmentId: string, cutoffSec?: number):
   const latePenalty = meta.latePenalty ?? 0;
 
   // Get all submissions aggregated per (user, problem) with problem points.
-  // Uses positional ? parameters to avoid SQL injection.
-  // deadlineSec and latePenalty are bound for late-penalty scoring logic.
+  // Uses a window function to compute first_ac_at per (user, problem) in O(n),
+  // replacing the previous O(n^2) doubly-correlated subquery for wrongBeforeAc.
   function buildScoringQuery(withCutoff: boolean): string {
     return `
-      WITH user_problem AS (
+      WITH base AS (
         SELECT
-          s.user_id AS userId,
+          s.user_id,
+          s.problem_id,
+          s.score,
+          s.submitted_at,
+          COALESCE(ap.points, 100) AS points,
           u.username,
           u.name,
-          u.class_name AS className,
-          s.problem_id AS problemId,
-          COALESCE(ap.points, 100) AS points,
-          COUNT(*) AS attemptCount,
-          MAX(
-            CASE
-              WHEN s.score IS NOT NULL THEN
-                CASE
-                  WHEN ? IS NOT NULL AND ? > 0 AND ? != 'windowed'
-                       AND s.submitted_at IS NOT NULL AND s.submitted_at > ?
-                  THEN ROUND(MIN(MAX(s.score, 0), 100) / 100.0 * COALESCE(ap.points, 100), 2)
-                       * (1.0 - ? / 100.0)
-                  ELSE ROUND(MIN(MAX(s.score, 0), 100) / 100.0 * COALESCE(ap.points, 100), 2)
-                END
-              ELSE NULL
-            END
-          ) AS bestScore,
-          MAX(CASE WHEN s.score = 100 THEN 1 ELSE 0 END) AS hasAc,
-          MIN(CASE WHEN s.score = 100 THEN s.submitted_at ELSE NULL END) AS firstAcAt,
-          (SELECT COUNT(*) FROM submissions s2
-           WHERE s2.assignment_id = s.assignment_id
-             AND s2.user_id = s.user_id
-             AND s2.problem_id = s.problem_id
-             AND (s2.score IS NULL OR s2.score < 100)
-             ${withCutoff ? "AND s2.submitted_at <= ?" : ""}
-             AND s2.submitted_at < COALESCE(
-               (SELECT MIN(s3.submitted_at) FROM submissions s3
-                WHERE s3.assignment_id = s.assignment_id
-                  AND s3.user_id = s.user_id
-                  AND s3.problem_id = s.problem_id
-                  AND s3.score = 100
-                  ${withCutoff ? "AND s3.submitted_at <= ?" : ""}),
-               9999999999
-             )
-          ) AS wrongBeforeAc
+          u.class_name,
+          MIN(CASE WHEN s.score = 100 THEN s.submitted_at ELSE NULL END)
+            OVER (PARTITION BY s.user_id, s.problem_id) AS first_ac_at
         FROM submissions s
-        INNER JOIN assignment_problems ap ON ap.assignment_id = s.assignment_id AND ap.problem_id = s.problem_id
+        INNER JOIN assignment_problems ap
+          ON ap.assignment_id = s.assignment_id AND ap.problem_id = s.problem_id
         INNER JOIN users u ON u.id = s.user_id
         WHERE s.assignment_id = ?${withCutoff ? " AND s.submitted_at <= ?" : ""}
-        GROUP BY s.user_id, s.problem_id
       )
-      SELECT * FROM user_problem
+      SELECT
+        user_id AS userId,
+        username,
+        name,
+        class_name AS className,
+        problem_id AS problemId,
+        points,
+        COUNT(*) AS attemptCount,
+        MAX(
+          CASE
+            WHEN score IS NOT NULL THEN
+              CASE
+                WHEN ? IS NOT NULL AND ? > 0 AND ? != 'windowed'
+                     AND submitted_at IS NOT NULL AND submitted_at > ?
+                THEN ROUND(MIN(MAX(score, 0), 100) / 100.0 * points, 2)
+                     * (1.0 - ? / 100.0)
+                ELSE ROUND(MIN(MAX(score, 0), 100) / 100.0 * points, 2)
+              END
+            ELSE NULL
+          END
+        ) AS bestScore,
+        MAX(CASE WHEN score = 100 THEN 1 ELSE 0 END) AS hasAc,
+        MIN(CASE WHEN score = 100 THEN submitted_at ELSE NULL END) AS firstAcAt,
+        SUM(CASE WHEN (score IS NULL OR score < 100)
+                  AND submitted_at < COALESCE(first_ac_at, 9999999999)
+             THEN 1 ELSE 0 END) AS wrongBeforeAc
+      FROM base
+      GROUP BY user_id, problem_id
     `;
   }
 
-  // Positional params: deadlineSec, latePenalty, examMode, deadlineSec, latePenalty, assignmentId
-  // With cutoff: ...latePenalty, cutoffSec (wrongBeforeAc s2), cutoffSec (s3), assignmentId, cutoffSec (main WHERE)
-  // (some values repeated because each ? is independent)
+  // Positional params:
+  //   assignmentId, [cutoffSec], deadlineSec, latePenalty, examMode, deadlineSec, latePenalty
   const rows =
     cutoffSec != null
       ? sqlite
-          .prepare<[number | null, number, string, number | null, number, number, number, string, number], RawLeaderboardRow>(buildScoringQuery(true))
-          .all(deadlineSec, latePenalty, meta.examMode ?? "none", deadlineSec, latePenalty, cutoffSec, cutoffSec, assignmentId, cutoffSec)
+          .prepare<[string, number, number | null, number, string, number | null, number], RawLeaderboardRow>(buildScoringQuery(true))
+          .all(assignmentId, cutoffSec, deadlineSec, latePenalty, meta.examMode ?? "none", deadlineSec, latePenalty)
       : sqlite
-          .prepare<[number | null, number, string, number | null, number, string], RawLeaderboardRow>(buildScoringQuery(false))
-          .all(deadlineSec, latePenalty, meta.examMode ?? "none", deadlineSec, latePenalty, assignmentId);
+          .prepare<[string, number | null, number, string, number | null, number], RawLeaderboardRow>(buildScoringQuery(false))
+          .all(assignmentId, deadlineSec, latePenalty, meta.examMode ?? "none", deadlineSec, latePenalty);
 
   // Group by user
   const userMap = new Map<
