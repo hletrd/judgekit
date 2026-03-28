@@ -32,7 +32,7 @@ export async function GET(
 
     if (!group) return notFound("Group");
 
-    const hasAccess = await canAccessGroup(id, user.id, assertUserRole(user.role as string));
+    const hasAccess = await canAccessGroup(id, user.id, user.role);
     if (!hasAccess) return forbidden();
 
     const groupAssignments = await db.query.assignments.findMany({
@@ -81,7 +81,7 @@ export async function POST(
     const canManage = canManageGroupResources(
       group.instructorId,
       user.id,
-      assertUserRole(user.role as string)
+      user.role
     );
 
     if (!canManage) return forbidden();
@@ -107,7 +107,7 @@ export async function POST(
 
     const manageableProblemIds = new Set(
       (
-        await getManageableProblemsForGroup(id, user.id, assertUserRole(user.role as string))
+        await getManageableProblemsForGroup(id, user.id, user.role)
       ).map((problem) => problem.id)
     );
 

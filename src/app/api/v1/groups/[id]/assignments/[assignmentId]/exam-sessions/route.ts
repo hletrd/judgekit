@@ -21,7 +21,7 @@ export const GET = createApiHandler({
     const canManage = canManageGroupResources(
       group.instructorId,
       user.id,
-      assertUserRole(user.role as string)
+      user.role
     );
     if (!canManage) return forbidden();
 

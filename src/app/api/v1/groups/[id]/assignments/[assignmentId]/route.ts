@@ -12,7 +12,7 @@ import {
 } from "@/lib/assignments/management";
 import { assignmentMutationSchema } from "@/lib/validators/assignments";
 import { canAccessGroup } from "@/lib/auth/permissions";
-import { assertUserRole, isUserRole } from "@/lib/security/constants";
+import { isUserRole } from "@/lib/security/constants";
 import { createApiHandler, isAdmin, forbidden, notFound } from "@/lib/api/handler";
 
 export const GET = createApiHandler({
@@ -57,7 +57,7 @@ export const PATCH = createApiHandler({
     const canManage = canManageGroupResources(
       group.instructorId,
       user.id,
-      assertUserRole(user.role as string)
+      user.role
     );
 
     if (!canManage) return forbidden();
@@ -139,7 +139,7 @@ export const PATCH = createApiHandler({
     if (body.problems !== undefined) {
       const manageableProblemIds = new Set(
         (
-          await getManageableProblemsForGroup(id, user.id, assertUserRole(user.role as string))
+          await getManageableProblemsForGroup(id, user.id, user.role)
         ).map((problem) => problem.id)
       );
 
@@ -210,7 +210,7 @@ export const DELETE = createApiHandler({
     const canManage = canManageGroupResources(
       group.instructorId,
       user.id,
-      assertUserRole(user.role as string)
+      user.role
     );
 
     if (!canManage) return forbidden();

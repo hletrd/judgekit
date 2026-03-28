@@ -9,8 +9,8 @@ import {
   problems,
 } from "@/lib/db/schema";
 import { syncGroupAccessRows } from "@/lib/problem-sets/management";
+import { resolveCapabilities } from "@/lib/capabilities/cache";
 import type { AssignmentMutationInput } from "@/lib/validators/assignments";
-import type { UserRole } from "@/types";
 
 type AssignmentManagerProblem = {
   id: string;
@@ -22,15 +22,30 @@ type AssignmentManagerProblem = {
 export function canManageGroupResources(
   groupInstructorId: string | null,
   userId: string,
-  role: UserRole
+  role: string
 ) {
-  return role === "super_admin" || role === "admin" || groupInstructorId === userId;
+  if (role === "super_admin" || role === "admin") return true;
+  if (groupInstructorId === userId) return true;
+  return false;
+}
+
+/**
+ * Async version that supports custom roles via capability check.
+ */
+export async function canManageGroupResourcesAsync(
+  groupInstructorId: string | null,
+  userId: string,
+  role: string
+): Promise<boolean> {
+  if (canManageGroupResources(groupInstructorId, userId, role)) return true;
+  const caps = await resolveCapabilities(role);
+  return caps.has("assignments.edit");
 }
 
 export async function getManageableProblemsForGroup(
   groupId: string,
   userId: string,
-  role: UserRole
+  role: string
 ): Promise<AssignmentManagerProblem[]> {
   if (role === "super_admin" || role === "admin") {
     return db

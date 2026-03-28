@@ -5,9 +5,8 @@ import { z } from "zod";
 import { db, sqlite } from "@/lib/db";
 import { assignments, scoreOverrides } from "@/lib/db/schema";
 import { recordAuditEvent } from "@/lib/audit/events";
-import { canManageGroupResources } from "@/lib/assignments/management";
+import { canManageGroupResourcesAsync } from "@/lib/assignments/management";
 import { getApiUser, forbidden, notFound, unauthorized, csrfForbidden } from "@/lib/api/auth";
-import { assertUserRole } from "@/lib/security/constants";
 import { consumeApiRateLimit } from "@/lib/security/api-rate-limit";
 import { logger } from "@/lib/logger";
 
@@ -42,10 +41,10 @@ async function resolveAssignmentAndAuthorize(
 
   if (!group) return { error: notFound("Group") };
 
-  const canManage = canManageGroupResources(
+  const canManage = await canManageGroupResourcesAsync(
     group.instructorId,
     user.id,
-    assertUserRole(user.role as string)
+    user.role
   );
 
   if (!canManage) return { error: forbidden() };

@@ -14,7 +14,7 @@ import { createApiHandler, forbidden, notFound } from "@/lib/api/handler";
 export const GET = createApiHandler({
   handler: async (_req: NextRequest, { user, params }) => {
     const { id } = params;
-    const hasAccess = await canAccessGroup(id, user.id, assertUserRole(user.role as string));
+    const hasAccess = await canAccessGroup(id, user.id, user.role);
     if (!hasAccess) return forbidden();
 
     const members = await db.query.enrollments.findMany({
@@ -51,7 +51,7 @@ export const POST = createApiHandler({
     const canManage = canManageGroupResources(
       group.instructorId,
       user.id,
-      assertUserRole(user.role as string)
+      user.role
     );
 
     if (!canManage) return forbidden();
