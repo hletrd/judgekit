@@ -11,17 +11,17 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
       cd /opt/FreeBASIC-1.10.1-linux-x86_64 && ./install.sh -i /usr/local && \
       rm -rf /opt/FreeBASIC-1.10.1-linux-x86_64 /tmp/fbc.tar.gz; \
     elif [ "$ARCH" = "arm64" ]; then \
-      apt-get install -y --no-install-recommends make g++ xz-utils && \
-      curl -fSL --retry 5 --retry-delay 10 --max-time 300 -o /tmp/fbc-bootstrap.tar.xz \
-        "https://sourceforge.net/projects/fbc/files/FreeBASIC-1.10.1/Source/FreeBASIC-1.10.2-source-bootstrap-arm.tar.xz/download" && \
-      mkdir -p /tmp/fbc-bootstrap && \
-      tar -xJf /tmp/fbc-bootstrap.tar.xz -C /tmp/fbc-bootstrap --strip-components=1 && \
-      cd /tmp/fbc-bootstrap && \
-      make bootstrap-minimal && \
-      export PATH="$(pwd)/bin:$PATH" && \
-      make install prefix=/usr/local && \
-      rm -rf /tmp/fbc-bootstrap /tmp/fbc-bootstrap.tar.xz && \
-      apt-get purge -y make g++ xz-utils; \
+      dpkg --add-architecture amd64 && \
+      apt-get update && \
+      apt-get install -y --no-install-recommends qemu-user-static libc6:amd64 libncurses5:amd64 libgcc-s1:amd64 libtinfo6:amd64 gcc-x86-64-linux-gnu && \
+      curl -fSL --retry 5 --retry-delay 10 --max-time 180 -o /tmp/fbc.tar.gz \
+        "https://sourceforge.net/projects/fbc/files/FreeBASIC-1.10.1/Binaries-Linux/FreeBASIC-1.10.1-linux-x86_64.tar.gz/download" && \
+      tar -xzf /tmp/fbc.tar.gz -C /opt && \
+      cd /opt/FreeBASIC-1.10.1-linux-x86_64 && ./install.sh -i /usr/local && \
+      mv /usr/local/bin/fbc /usr/local/bin/fbc.amd64 && \
+      printf '#!/bin/sh\nexec /usr/bin/qemu-x86_64-static /usr/local/bin/fbc.amd64 "$@"\n' > /usr/local/bin/fbc && \
+      chmod +x /usr/local/bin/fbc && \
+      rm -rf /opt/FreeBASIC-1.10.1-linux-x86_64 /tmp/fbc.tar.gz; \
     fi && \
     apt-get autoremove -y && rm -rf /var/lib/apt/lists/* && \
     useradd --create-home --shell /usr/sbin/nologin judge && \
