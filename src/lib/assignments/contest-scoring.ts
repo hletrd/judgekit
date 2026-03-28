@@ -41,6 +41,33 @@ export type LeaderboardEntry = {
   problems: LeaderboardProblemResult[];
 };
 
+const rankingCache = new Map<string, { data: { scoringModel: ScoringModel; entries: LeaderboardEntry[] }; timestamp: number }>();
+const RANKING_CACHE_TTL_MS = 15_000; // 15 seconds
+
+function getCachedRanking(key: string) {
+  const cached = rankingCache.get(key);
+  if (cached && Date.now() - cached.timestamp < RANKING_CACHE_TTL_MS) {
+    return cached.data;
+  }
+  return null;
+}
+
+function setCachedRanking(key: string, data: { scoringModel: ScoringModel; entries: LeaderboardEntry[] }) {
+  rankingCache.set(key, { data, timestamp: Date.now() });
+  // Prevent unbounded cache growth — O(n) linear scan for min timestamp
+  if (rankingCache.size > 50) {
+    let oldestKey: string | null = null;
+    let oldestTs = Infinity;
+    for (const [k, v] of rankingCache) {
+      if (v.timestamp < oldestTs) {
+        oldestTs = v.timestamp;
+        oldestKey = k;
+      }
+    }
+    if (oldestKey) rankingCache.delete(oldestKey);
+  }
+}
+
 type RawLeaderboardRow = {
   userId: string;
   username: string;
@@ -72,6 +99,10 @@ export function computeContestRanking(assignmentId: string, cutoffSec?: number):
   scoringModel: ScoringModel;
   entries: LeaderboardEntry[];
 } {
+  const cacheKey = `${assignmentId}:${cutoffSec ?? 'live'}`;
+  const cached = getCachedRanking(cacheKey);
+  if (cached) return cached;
+
   // Get assignment metadata
   const meta = sqlite
     .prepare<[string], AssignmentMetaRow>(
@@ -296,5 +327,7 @@ export function computeContestRanking(assignmentId: string, cutoffSec?: number):
     entries[i].rank = currentRank;
   }
 
-  return { scoringModel, entries };
+  const result = { scoringModel, entries };
+  setCachedRanking(cacheKey, result);
+  return result;
 }
