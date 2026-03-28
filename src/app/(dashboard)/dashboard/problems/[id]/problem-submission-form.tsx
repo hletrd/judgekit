@@ -49,7 +49,7 @@ export function ProblemSubmissionForm({
     userId,
     problemId,
     languages: availableLanguages,
-    initialLanguage: (preferredLanguage && availableLanguages.includes(preferredLanguage) ? preferredLanguage : null) ?? languages[0]?.language ?? "python",
+    initialLanguage: (preferredLanguage && availableLanguages.includes(preferredLanguage) ? preferredLanguage : null) ?? (availableLanguages.includes("c") ? "c" : languages[0]?.language ?? "c"),
   });
 
   const { allowNextNavigation } = useUnsavedChangesGuard({ isDirty });

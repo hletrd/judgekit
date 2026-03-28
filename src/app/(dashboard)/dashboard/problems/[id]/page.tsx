@@ -1,4 +1,4 @@
-import { getTranslations } from "next-intl/server";
+import { getLocale, getTranslations } from "next-intl/server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { db } from "@/lib/db";
 import { problems, languageConfigs } from "@/lib/db/schema";
@@ -55,6 +55,7 @@ export default async function ProblemDetailPage({
   const t = await getTranslations("problems");
   const tCommon = await getTranslations("common");
   const tRankings = await getTranslations("rankings");
+  const locale = await getLocale();
   
   const problem = await db.query.problems.findFirst({
     where: eq(problems.id, problemId),
@@ -229,12 +230,12 @@ export default async function ProblemDetailPage({
           {assignmentContext && <Badge>{assignmentContext.title}</Badge>}
           {assignmentContext?.deadline && (
             <Badge variant="secondary">
-              {t("assignmentDeadlineNotice")}: {formatRelativeTimeFromNow(assignmentContext.deadline)}
+              {t("assignmentDeadlineNotice")}: {formatRelativeTimeFromNow(assignmentContext.deadline, locale)}
             </Badge>
           )}
           {assignmentContext?.lateDeadline && (
             <Badge variant="outline">
-              {t("assignmentLateDeadlineNotice")}: {formatRelativeTimeFromNow(assignmentContext.lateDeadline)}
+              {t("assignmentLateDeadlineNotice")}: {formatRelativeTimeFromNow(assignmentContext.lateDeadline, locale)}
             </Badge>
           )}
           {assignmentContext?.examMode === "windowed" && assignmentContext?.personalDeadline && (

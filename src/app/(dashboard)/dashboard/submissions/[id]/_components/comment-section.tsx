@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { apiFetch } from "@/lib/api/client";
 import { toast } from "sonner";
 import { formatRelativeTimeFromNow } from "@/lib/datetime";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 
 type CommentView = {
   id: string;
@@ -29,6 +29,7 @@ type CommentSectionProps = {
 export function CommentSection({ submissionId, canComment }: CommentSectionProps) {
   const tCommon = useTranslations("common");
   const tComments = useTranslations("comments");
+  const locale = useLocale();
 
   const [comments, setComments] = useState<CommentView[]>([]);
   const [commentContent, setCommentContent] = useState("");
@@ -102,7 +103,7 @@ export function CommentSection({ submissionId, canComment }: CommentSectionProps
                 </Badge>
               )}
               <span className="text-muted-foreground text-xs">
-                {comment.createdAt != null ? formatRelativeTimeFromNow(comment.createdAt) : ""}
+                {comment.createdAt != null ? formatRelativeTimeFromNow(comment.createdAt, locale) : ""}
               </span>
             </div>
             {!comment.author ? (
