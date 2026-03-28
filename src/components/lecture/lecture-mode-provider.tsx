@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
+import { updatePreferences } from "@/lib/actions/update-preferences";
 
 type LectureColorScheme = "dark" | "light" | "solarized";
 type LectureFontScale = "1.25" | "1.5" | "1.75" | "2.0" | "2.5" | "3.0" | "3.5" | "4.0";
@@ -36,9 +37,7 @@ export function useLectureMode() {
 }
 
 function persistPreference(key: string, value: string | null) {
-  import("@/lib/actions/update-preferences").then(({ updatePreferences }) => {
-    updatePreferences({ [key]: value }).catch(() => {});
-  }).catch(() => {});
+  updatePreferences({ [key]: value }).catch(() => {});
 }
 
 export function LectureModeProvider({
