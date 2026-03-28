@@ -32,6 +32,8 @@ import { AntiCheatMonitor } from "@/components/exam/anti-cheat-monitor";
 import { AntiCheatDashboard } from "@/components/contest/anti-cheat-dashboard";
 import { AnalyticsCharts } from "@/components/contest/analytics-charts";
 import { ExportButton } from "@/components/contest/export-button";
+import AssignmentFormDialog, { type AssignmentEditorValue } from "../../groups/[id]/assignment-form-dialog";
+import { problems, submissions } from "@/lib/db/schema";
 
 const STATUS_FILTER_VALUES = [
   "all",
@@ -329,6 +331,40 @@ export default async function ContestDetailPage({
     notFound();
   }
 
+  // Fetch data for contest settings editor
+  const [availableProblemOptions, hasExistingSubmissions] = await Promise.all([
+    db
+      .select({ id: problems.id, title: problems.title })
+      .from(problems)
+      .then((rows) => rows.map((r) => ({ id: r.id, title: r.title }))),
+    db.query.submissions
+      .findFirst({
+        where: eq(submissions.problemId, sortedProblems[0]?.problem?.id ?? ""),
+        columns: { id: true },
+      })
+      .then(Boolean),
+  ]);
+
+  const contestEditorValue: AssignmentEditorValue = {
+    id: assignment.id,
+    title: assignment.title,
+    description: assignment.description ?? "",
+    startsAt: assignment.startsAt ? new Date(assignment.startsAt).valueOf() : null,
+    deadline: assignment.deadline ? new Date(assignment.deadline).valueOf() : null,
+    lateDeadline: assignment.lateDeadline ? new Date(assignment.lateDeadline).valueOf() : null,
+    latePenalty: assignment.latePenalty ?? 0,
+    hasSubmissions: hasExistingSubmissions,
+    problems: sortedProblems.map((p) => ({
+      problemId: p.problem?.id ?? p.problemId,
+      points: p.points ?? 100,
+    })),
+    examMode: assignment.examMode as "none" | "scheduled" | "windowed",
+    examDurationMinutes: assignment.examDurationMinutes ?? null,
+    scoringModel: assignment.scoringModel as "ioi" | "icpc",
+    freezeLeaderboardAt: assignment.freezeLeaderboardAt ? new Date(assignment.freezeLeaderboardAt).valueOf() : null,
+    enableAntiCheat: assignment.enableAntiCheat ?? false,
+  };
+
   const statusLabels = {
     not_submitted: tAssignment("notSubmitted"),
     pending: tSubmissions("status.pending"),
@@ -451,6 +487,16 @@ export default async function ContestDetailPage({
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <AccessCodeManager assignmentId={assignmentId} />
             <InviteParticipants assignmentId={assignmentId} />
+          </div>
+          <div className="flex gap-2">
+            <AssignmentFormDialog
+              groupId={groupId}
+              availableProblems={availableProblemOptions}
+              initialAssignment={contestEditorValue}
+              allowProblemOverride={
+                session.user.role === "admin" || session.user.role === "super_admin"
+              }
+            />
           </div>
         </TabsContent>
 
