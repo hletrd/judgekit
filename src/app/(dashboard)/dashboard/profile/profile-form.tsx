@@ -50,6 +50,9 @@ export default function ProfileForm({
   const [editorFontFamily, setEditorFontFamily] = useState(initialEditorFontFamily || DEFAULT_EDITOR_FONT_FAMILY);
   const [isLoading, setIsLoading] = useState(false);
 
+  const themeLabels: Record<string, string> = { light: t("themeLight"), dark: t("themeDark"), system: t("themeSystem") };
+  const fontFamilyLabel = EDITOR_FONT_FAMILIES.find((f) => f.id === editorFontFamily)?.name || t("editorFontDefault");
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setIsLoading(true);
@@ -106,7 +109,7 @@ export default function ProfileForm({
         <Label htmlFor="preferredLanguage">{t("preferredLanguage")}</Label>
         <Select value={preferredLanguage} onValueChange={(v) => setPreferredLanguage(v ?? "")}>
           <SelectTrigger id="preferredLanguage">
-            <SelectValue placeholder={t("preferredLanguagePlaceholder")} />
+            <SelectValue placeholder={t("preferredLanguagePlaceholder")}>{languageLabelMap[preferredLanguage] || preferredLanguage || t("preferredLanguagePlaceholder")}</SelectValue>
           </SelectTrigger>
           <SelectContent>
             {languages.map((lang) => (
@@ -121,7 +124,7 @@ export default function ProfileForm({
         <Label htmlFor="preferredTheme">{t("preferredTheme")}</Label>
         <Select value={preferredTheme} onValueChange={(v) => setPreferredTheme(v ?? "")}>
           <SelectTrigger id="preferredTheme">
-            <SelectValue placeholder={t("preferredThemePlaceholder")} />
+            <SelectValue placeholder={t("preferredThemePlaceholder")}>{themeLabels[preferredTheme] || preferredTheme}</SelectValue>
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="light" label={t("themeLight")}>{t("themeLight")}</SelectItem>
@@ -134,7 +137,7 @@ export default function ProfileForm({
         <Label htmlFor="editorFontSize">{t("editorFontSize")}</Label>
         <Select value={editorFontSize} onValueChange={(v) => setEditorFontSize(v ?? String(DEFAULT_EDITOR_FONT_SIZE))}>
           <SelectTrigger id="editorFontSize">
-            <SelectValue placeholder={t("editorFontSizePlaceholder")} />
+            <SelectValue placeholder={t("editorFontSizePlaceholder")}>{editorFontSize}</SelectValue>
           </SelectTrigger>
           <SelectContent>
             {EDITOR_FONT_SIZES.map((size) => (
@@ -149,7 +152,7 @@ export default function ProfileForm({
         <Label htmlFor="editorFontFamily">{t("editorFontFamily")}</Label>
         <Select value={editorFontFamily} onValueChange={(v) => setEditorFontFamily(v ?? DEFAULT_EDITOR_FONT_FAMILY)}>
           <SelectTrigger id="editorFontFamily">
-            <SelectValue placeholder={t("editorFontFamilyPlaceholder")} />
+            <SelectValue placeholder={t("editorFontFamilyPlaceholder")}>{fontFamilyLabel}</SelectValue>
           </SelectTrigger>
           <SelectContent>
             {EDITOR_FONT_FAMILIES.map((font) => (

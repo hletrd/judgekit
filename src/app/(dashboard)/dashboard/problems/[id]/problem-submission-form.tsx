@@ -179,7 +179,7 @@ export function ProblemSubmissionForm({
         </div>
         <Select value={language} onValueChange={(value) => value && setLanguage(value)}>
           <SelectTrigger id="language">
-            <SelectValue placeholder={t("selectLanguage")} />
+            <SelectValue placeholder={t("selectLanguage")}>{languageLabelMap[language] || language}</SelectValue>
           </SelectTrigger>
           <SelectContent>
             {languages.map((entry) => (

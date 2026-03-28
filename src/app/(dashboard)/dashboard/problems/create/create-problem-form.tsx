@@ -453,7 +453,7 @@ export default function CreateProblemForm({
         <div className="space-y-2">
           <Select value={comparisonMode} onValueChange={(v) => setComparisonMode(v as "exact" | "float")}>
             <SelectTrigger className="w-64">
-              <SelectValue />
+              <SelectValue>{comparisonMode === "exact" ? t("comparisonExact") : t("comparisonFloat")}</SelectValue>
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="exact" label={t("comparisonExact")}>{t("comparisonExact")}</SelectItem>

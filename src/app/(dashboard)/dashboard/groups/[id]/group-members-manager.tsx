@@ -259,15 +259,8 @@ export function GroupMembersManager({
             <Label htmlFor={`group-member-select-${groupId}`}>{t("availableStudentsLabel")}</Label>
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
               <Select value={selectedStudentId} onValueChange={(value) => setSelectedStudentId(value ?? "")}>
-                <SelectTrigger id={`group-member-select-${groupId}`} className="min-w-48 max-w-72 truncate sm:max-w-none h-8">
-                  {(() => {
-                    const sel = currentAvailableStudents.find((s) => s.id === selectedStudentId);
-                    return sel ? (
-                      <span className="truncate">{sel.name} (@{sel.username})</span>
-                    ) : (
-                      <span className="text-muted-foreground">{t("availableStudentsPlaceholder")}</span>
-                    );
-                  })()}
+                <SelectTrigger id={`group-member-select-${groupId}`} className="min-w-48 max-w-72 sm:max-w-none h-8">
+                  <SelectValue placeholder={t("availableStudentsPlaceholder")}>{(() => { const s = currentAvailableStudents.find((x) => x.id === selectedStudentId); return s ? s.name + " (@" + s.username + ")" : t("availableStudentsPlaceholder"); })()}</SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   {currentAvailableStudents.map((student) => (

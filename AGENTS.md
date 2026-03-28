@@ -464,6 +464,35 @@ The primary deploy script is `deploy-docker.sh`. Pass environment variables from
 
 Always test against the test server documented in `ENV.md`, never against production. Read `ENV.md` for all target hosts and domains.
 
+## Select / Dropdown Components (CRITICAL)
+
+This project uses `@base-ui/react/select` via `src/components/ui/select.tsx`. The `SelectValue` component has specific requirements:
+
+### SelectValue MUST display the selected label via static children
+
+`SelectValue` children must be a **simple expression** using the current **state variable** (not the value parameter). Turbopack cannot handle render functions or complex inline expressions as children. **Always** use this pattern:
+
+```tsx
+// Use the React state variable directly
+<SelectValue placeholder="Select...">{labelMap[stateVar] || stateVar}</SelectValue>
+```
+
+### NEVER do these:
+- `<SelectValue>{(value) => ...}</SelectValue>` — render functions crash Turbopack
+- `<SelectValue />` alone — shows raw value (nanoid, key) instead of label
+- Complex inline expressions with `??` or ternary chains — Turbopack parsing fails
+- Custom children in `<SelectTrigger>` — breaks select behavior
+
+### Every SelectItem MUST have a `label` prop:
+```tsx
+<SelectItem value="foo" label="Foo Label">Foo Label</SelectItem>
+```
+
+### Checklist when adding/modifying any Select:
+1. SelectValue has render function child `{(value) => displayLabel}`
+2. Every SelectItem has `label` prop matching its display text
+3. Test: selected value shows readable label, not a raw ID/key
+
 ## Conventions
 
 See `.context/development/conventions.md`.
