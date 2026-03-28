@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { CodeEditor } from "@/components/code/code-editor";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { LanguageSelector } from "@/components/language-selector";
 import { apiFetch } from "@/lib/api/client";
 import { useSourceDraft } from "@/hooks/use-source-draft";
 import { useUnsavedChangesGuard } from "@/hooks/use-unsaved-changes-guard";
@@ -43,9 +43,6 @@ export function ProblemSubmissionForm({
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const availableLanguages = useMemo(() => languages.map((entry) => entry.language), [languages]);
-  const languageLabelMap = useMemo(() => Object.fromEntries(
-    languages.map((entry) => [entry.language, `${entry.displayName}${entry.standard ? ` (${entry.standard})` : ""}`])
-  ), [languages]);
   const { language, setLanguage, sourceCode, setSourceCode, isDirty, clearAllDrafts } = useSourceDraft({
     userId,
     problemId,
@@ -175,18 +172,17 @@ export function ProblemSubmissionForm({
             {t("uploadSourceFile")}
           </Button>
         </div>
-        <Select value={language} onValueChange={(value) => value && setLanguage(value)}>
-          <SelectTrigger id="language">
-            <SelectValue placeholder={t("selectLanguage")}>{languageLabelMap[language] || language}</SelectValue>
-          </SelectTrigger>
-          <SelectContent>
-            {languages.map((entry) => (
-              <SelectItem key={entry.id} value={entry.language} label={`${entry.displayName}${entry.standard ? ` (${entry.standard})` : ""}`}>
-                {entry.displayName} {entry.standard ? `(${entry.standard})` : ""}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <LanguageSelector
+          id="language"
+          languages={languages}
+          value={language}
+          onValueChange={setLanguage}
+          preferredLanguage={preferredLanguage}
+          placeholder={t("selectLanguage")}
+          searchPlaceholder={t("searchLanguages")}
+          recentlyUsedLabel={t("recentlyUsed")}
+          otherLabel={t("otherLanguages")}
+        />
       </div>
       <div className="space-y-2">
         <Label id="sourceCode-label" htmlFor="sourceCode">
