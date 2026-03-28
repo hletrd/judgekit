@@ -139,19 +139,19 @@ export default async function ContestsPage({
         </div>
         <div className="flex gap-2">
           {caps.has("contests.create") && (
-            <Link href="/dashboard/contests/create">
+            <a href="/dashboard/contests/create">
               <Button size="sm" className="gap-1.5">
                 <Plus className="size-4" />
                 {t("createContest")}
               </Button>
-            </Link>
+            </a>
           )}
-          <Link href="/dashboard/contests/join">
+          <a href="/dashboard/contests/join">
             <Button variant="outline" size="sm" className="gap-1.5">
               <KeyRound className="size-4" />
               {t("joinWithCode")}
             </Button>
-          </Link>
+          </a>
         </div>
       </div>
 
@@ -164,7 +164,7 @@ export default async function ContestsPage({
           {pagedContests.map((contest) => {
             const status = statusMap.get(contest.id)!;
             return (
-              <Link key={contest.id} href={`/dashboard/contests/${contest.id}`} className="block">
+              <a key={contest.id} href={`/dashboard/contests/${contest.id}`} className="block">
                 <div className={`flex items-center gap-4 rounded-lg border p-4 transition-colors hover:bg-accent/50 ${getStatusBorderClass(status)}`}>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
@@ -218,7 +218,7 @@ export default async function ContestsPage({
                     </Badge>
                   </div>
                 </div>
-              </Link>
+              </a>
             );
           })}
         </div>
