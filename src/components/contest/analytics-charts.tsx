@@ -190,6 +190,7 @@ function SVGStackedBar({
   partialLabel: string;
   zeroLabel: string;
 }) {
+  const clipId = React.useId();
   const total = solved + partial + zero;
   if (total === 0) {
     return (
@@ -202,8 +203,6 @@ function SVGStackedBar({
   const svgW = 400;
   const svgH = 24;
   const r = 4;
-
-  const clipId = React.useId();
 
   const solvedW = (solved / total) * svgW;
   const partialW = (partial / total) * svgW;
