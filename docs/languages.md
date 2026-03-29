@@ -138,7 +138,7 @@
 | Failing | Status | Root Cause |
 |---------|--------|------------|
 | `roc` | compile_error | Same upstream compiler panic as amd64 |
-| `curry` | compile_error | pakcs-frontend under qemu exceeds 3.8GB server memory during compilation. Needs server with more RAM or native arm64 pakcs build. |
+| `curry` | compile_error | pakcs-frontend (amd64 binary under qemu) exceeds 3.8GB server memory during compilation. Tested with 8GB swap + 2GB container limit + 600s timeout — still OOM killed. Needs server with >=8GB RAM or native arm64 pakcs build. |
 
 ## Docker Image Presets
 
