@@ -28,5 +28,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     useradd --no-create-home --shell /usr/sbin/nologin judge && \
     mkdir -p /workspace && chown judge:judge /workspace
 
+ENV CARP_DIR=/opt/carp
 WORKDIR /workspace
 USER judge
