@@ -1361,7 +1361,7 @@ static PONY_CONFIG: LanguageConfig = LanguageConfig {
 };
 
 // MoonBit
-static MOONBIT_COMPILE: &[&str] = &["sh", "-c", "cp -r /opt/moonbit-project /tmp/moonbit-project && cp /workspace/solution.mbt /tmp/moonbit-project/main/main.mbt && cd /tmp/moonbit-project && moon build --target native 2>&1 && cp target/native/release/build/main/main /workspace/solution"];
+static MOONBIT_COMPILE: &[&str] = &["sh", "-c", "export HOME=/tmp && cp -r /opt/moonbit-project /tmp/moonbit-project && cp /workspace/solution.mbt /tmp/moonbit-project/main/main.mbt && cd /tmp/moonbit-project && moon build --target native 2>&1 && cp target/native/release/build/main/main /workspace/solution"];
 static MOONBIT_RUN: &[&str] = &["/workspace/solution"];
 
 static MOONBIT_CONFIG: LanguageConfig = LanguageConfig {
@@ -1385,7 +1385,7 @@ static CHAPEL_CONFIG: LanguageConfig = LanguageConfig {
 };
 
 // Idris 2
-static IDRIS2_COMPILE: &[&str] = &["sh", "-c", "HOME=/tmp IDRIS2_PREFIX=/usr/local cd /workspace && idris2 solution.idr -o solution 2>&1"];
+static IDRIS2_COMPILE: &[&str] = &["sh", "-c", "export HOME=/tmp IDRIS2_PREFIX=/usr/local && cd /workspace && idris2 solution.idr -o solution 2>&1"];
 static IDRIS2_RUN: &[&str] = &["/workspace/build/exec/solution"];
 
 static IDRIS2_CONFIG: LanguageConfig = LanguageConfig {
@@ -1398,7 +1398,7 @@ static IDRIS2_CONFIG: LanguageConfig = LanguageConfig {
 
 // ReScript
 static RESCRIPT_COMPILE: &[&str] = &["sh", "-c", "cp -r /opt/rescript-project /tmp/rescript-project && cp /workspace/solution.res /tmp/rescript-project/src/Solution.res && cd /tmp/rescript-project && npx rescript 2>&1 && cp /tmp/rescript-project/src/Solution.res.js /workspace/solution.js"];
-static RESCRIPT_RUN: &[&str] = &["node", "/workspace/solution.js"];
+static RESCRIPT_RUN: &[&str] = &["sh", "-c", "NODE_PATH=/opt/rescript-project/node_modules node /workspace/solution.js"];
 
 static RESCRIPT_CONFIG: LanguageConfig = LanguageConfig {
     extension: ".res",
@@ -1409,7 +1409,7 @@ static RESCRIPT_CONFIG: LanguageConfig = LanguageConfig {
 };
 
 // Elm
-static ELM_COMPILE: &[&str] = &["sh", "-c", "cp -r /opt/elm-project /tmp/elm-project && cp /workspace/solution.elm /tmp/elm-project/src/Main.elm && cd /tmp/elm-project && elm make src/Main.elm --optimize --output=/workspace/solution.js 2>&1 && cp /opt/elm-project/driver.js /workspace/driver.js"];
+static ELM_COMPILE: &[&str] = &["sh", "-c", "export HOME=/tmp && cp -r /opt/elm-project /tmp/elm-project && cp /workspace/solution.elm /tmp/elm-project/src/Main.elm && cd /tmp/elm-project && elm make src/Main.elm --optimize --output=/workspace/solution.js 2>&1 && cp /opt/elm-project/driver.js /workspace/driver.js"];
 static ELM_RUN: &[&str] = &["node", "/workspace/driver.js"];
 
 static ELM_CONFIG: LanguageConfig = LanguageConfig {
