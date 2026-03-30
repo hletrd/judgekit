@@ -7,12 +7,20 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Build Chez Scheme 10.1.0 from source (required for ARM64 support)
+# Find and symlink the actual binary name to 'chez' for Idris 2 bootstrap
 RUN git clone --depth 1 --branch v10.1.0 \
       https://github.com/cisco/ChezScheme.git /tmp/chez && \
     cd /tmp/chez && \
     ./configure --disable-x11 && \
     make && make install && \
-    ln -sf /usr/local/bin/scheme /usr/local/bin/chez && \
+    CHEZ_BIN=$(find /usr/local/bin -name 'scheme*' -o -name 'chez*' -o -name 'petite*' | head -1) && \
+    if [ -z "$CHEZ_BIN" ]; then \
+      echo "Chez Scheme binary names:" && ls /usr/local/bin/ && \
+      echo "FATAL: Cannot find Chez Scheme binary" && exit 1; \
+    fi && \
+    echo "Found Chez Scheme at: $CHEZ_BIN" && \
+    ln -sf "$CHEZ_BIN" /usr/local/bin/chez && \
+    chez --version && \
     rm -rf /tmp/chez
 
 # Build Idris 2 v0.8.0 from source
