@@ -1390,7 +1390,7 @@ export const JUDGE_LANGUAGE_CONFIGS: Record<Language, JudgeLanguageDefinition> =
     extension: ".mbt",
     dockerImage: "judge-moonbit:latest",
     compiler: `moon ${JUDGE_TOOLCHAIN_VERSIONS.moonbit}`,
-    compileCommand: ["sh", "-c", "cd /opt/moonbit-project && cp /workspace/solution.mbt main/main.mbt && moon build --target native 2>&1 && cp target/native/release/build/main/main /workspace/solution"],
+    compileCommand: ["sh", "-c", "cp -r /opt/moonbit-project /tmp/moonbit-project && cp /workspace/solution.mbt /tmp/moonbit-project/main/main.mbt && cd /tmp/moonbit-project && moon build --target native 2>&1 && cp target/native/release/build/main/main /workspace/solution"],
     runCommand: ["/workspace/solution"],
   },
   chapel: {
@@ -1410,7 +1410,7 @@ export const JUDGE_LANGUAGE_CONFIGS: Record<Language, JudgeLanguageDefinition> =
     extension: ".idr",
     dockerImage: "judge-idris2:latest",
     compiler: `Idris 2 ${JUDGE_TOOLCHAIN_VERSIONS.idris2} (Chez Scheme)`,
-    compileCommand: ["sh", "-c", "cd /workspace && HOME=/tmp idris2 solution.idr -o solution 2>&1"],
+    compileCommand: ["sh", "-c", "HOME=/tmp IDRIS2_PREFIX=/usr/local cd /workspace && idris2 solution.idr -o solution 2>&1"],
     runCommand: ["/workspace/build/exec/solution"],
   },
   rescript: {
@@ -1420,8 +1420,8 @@ export const JUDGE_LANGUAGE_CONFIGS: Record<Language, JudgeLanguageDefinition> =
     extension: ".res",
     dockerImage: "judge-rescript:latest",
     compiler: `ReScript ${JUDGE_TOOLCHAIN_VERSIONS.rescript}`,
-    compileCommand: ["sh", "-c", "cp /workspace/solution.res /opt/rescript-project/src/Solution.res && cd /opt/rescript-project && npx rescript 2>&1"],
-    runCommand: ["node", "/opt/rescript-project/src/Solution.res.js"],
+    compileCommand: ["sh", "-c", "cp -r /opt/rescript-project /tmp/rescript-project && cp /workspace/solution.res /tmp/rescript-project/src/Solution.res && cd /tmp/rescript-project && npx rescript 2>&1 && cp /tmp/rescript-project/src/Solution.res.js /workspace/solution.js"],
+    runCommand: ["node", "/workspace/solution.js"],
   },
   elm: {
     language: "elm",
@@ -1430,8 +1430,8 @@ export const JUDGE_LANGUAGE_CONFIGS: Record<Language, JudgeLanguageDefinition> =
     extension: ".elm",
     dockerImage: "judge-elm:latest",
     compiler: `Elm ${JUDGE_TOOLCHAIN_VERSIONS.elm}`,
-    compileCommand: ["sh", "-c", "cp /workspace/solution.elm /opt/elm-project/src/Main.elm && cd /opt/elm-project && elm make src/Main.elm --optimize --output=solution.js 2>&1"],
-    runCommand: ["node", "/opt/elm-project/driver.js"],
+    compileCommand: ["sh", "-c", "cp -r /opt/elm-project /tmp/elm-project && cp /workspace/solution.elm /tmp/elm-project/src/Main.elm && cd /tmp/elm-project && elm make src/Main.elm --optimize --output=/workspace/solution.js 2>&1 && cp /opt/elm-project/driver.js /workspace/driver.js"],
+    runCommand: ["node", "/workspace/driver.js"],
   },
 };
 
