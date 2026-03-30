@@ -25,6 +25,9 @@ export const CODE_SURFACE_LANGUAGE_MAP = {
   clean: "haskell",
   carp: "clojure",
   pony: "python",
+  idris2: "haskell",
+  rescript: "javascript",
+  elm: "haskell",
 } as const;
 
 export const CODE_SURFACE_PLAINTEXT_LANGUAGE = "plaintext" as const;

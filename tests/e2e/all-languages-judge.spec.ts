@@ -904,6 +904,80 @@ print(toString(na + nb))`,
           end
       end,
       512)`,
+  moonbit: `fn main {
+  let line = read_line()
+  let parts = line.split(" ").collect()
+  let a = @strconv.parse_int!(parts[0])
+  let b = @strconv.parse_int!(parts[1])
+  println(a + b)
+}`,
+  chapel: `use IO;
+
+var a, b: int;
+read(a, b);
+writeln(a + b);`,
+  idris2: `module Main
+
+import Data.String
+
+main : IO ()
+main = do
+  line <- getLine
+  let parts = words line
+  case parts of
+    [a, b] => do
+      let x : Int = cast a
+      let y : Int = cast b
+      printLn (x + y)
+    _ => printLn 0`,
+  rescript: `let input: string = %raw(\`
+  (() => {
+    const fs = require('fs');
+    return fs.readFileSync('/dev/stdin', 'utf8').trim();
+  })()
+\`)
+
+let parts = input->String.split(" ")
+let a = parts->Array.getUnsafe(0)->Int.fromString->Option.getOr(0)
+let b = parts->Array.getUnsafe(1)->Int.fromString->Option.getOr(0)
+
+Console.log(a + b)`,
+  elm: `port module Main exposing (main)
+
+import Platform
+
+
+port output : String -> Cmd msg
+
+
+main : Program String () Never
+main =
+    Platform.worker
+        { init =
+            \\flags ->
+                ( ()
+                , output (solve flags)
+                )
+        , update = \\_ model -> ( model, Cmd.none )
+        , subscriptions = \\_ -> Sub.none
+        }
+
+
+solve : String -> String
+solve input =
+    let
+        nums =
+            input
+                |> String.trim
+                |> String.split " "
+                |> List.filterMap String.toInt
+    in
+    case nums of
+        [ a, b ] ->
+            String.fromInt (a + b)
+
+        _ ->
+            "0"`,
 };
 
 // Keep inputs as positive single-digit numbers with single-digit sums (≤ 9)
@@ -1020,6 +1094,11 @@ const LANGUAGE_TIMEOUTS: Record<string, number> = {
   minizinc: 120_000,
   wat: 120_000,
   lolcode: 120_000,
+  moonbit: 120_000,
+  chapel: 180_000,
+  idris2: 300_000,
+  rescript: 120_000,
+  elm: 120_000,
 };
 
 let sharedContext: Awaited<ReturnType<typeof import("@playwright/test").chromium.launch>> extends { newContext: infer F } ? never : never;

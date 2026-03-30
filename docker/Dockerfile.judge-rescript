@@ -1,0 +1,29 @@
+FROM node:24-alpine
+
+# Create pre-configured ReScript project
+RUN mkdir -p /opt/rescript-project/src && \
+    cd /opt/rescript-project && \
+    printf '{"name":"solution","version":"1.0.0","dependencies":{"rescript":"^12.2.0"}}\n' \
+      > package.json && \
+    npm install && \
+    cat > rescript.json << 'RCEOF'
+{
+  "name": "solution",
+  "sources": [{ "dir": "src", "subdirs": false }],
+  "package-specs": { "module": "commonjs", "in-source": true },
+  "suffix": ".res.js"
+}
+RCEOF
+
+# Pre-build with dummy source to cache compiler artifacts
+RUN cd /opt/rescript-project && \
+    printf 'Console.log("hello")\n' > src/Solution.res && \
+    npx rescript && \
+    rm -f src/Solution.res src/Solution.res.js
+
+RUN adduser -D -s /bin/false judge && \
+    mkdir -p /workspace && chown judge:judge /workspace && \
+    chmod -R a+rwX /opt/rescript-project
+
+WORKDIR /workspace
+USER judge

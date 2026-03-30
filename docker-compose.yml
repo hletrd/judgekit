@@ -572,3 +572,33 @@ services:
       context: .
       dockerfile: docker/Dockerfile.judge-pony
     image: judge-pony:${GIT_SHA:-latest}
+
+  judge-moonbit:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.judge-moonbit
+    image: judge-moonbit:${GIT_SHA:-latest}
+
+  judge-chapel:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.judge-chapel
+    image: judge-chapel:${GIT_SHA:-latest}
+
+  judge-idris2:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.judge-idris2
+    image: judge-idris2:${GIT_SHA:-latest}
+
+  judge-rescript:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.judge-rescript
+    image: judge-rescript:${GIT_SHA:-latest}
+
+  judge-elm:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.judge-elm
+    image: judge-elm:${GIT_SHA:-latest}

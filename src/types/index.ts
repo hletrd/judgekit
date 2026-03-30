@@ -134,4 +134,9 @@ export type Language =
   | "clean"
   | "carp"
   | "grain"
-  | "pony";
+  | "pony"
+  | "moonbit"
+  | "chapel"
+  | "idris2"
+  | "rescript"
+  | "elm";

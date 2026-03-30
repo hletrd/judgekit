@@ -1,6 +1,6 @@
-# Supported Languages (113 variants)
+# Supported Languages (118 variants)
 
-95 Docker images covering 113 language variants. Deployed on both AMD64 (test) and ARM64 (production).
+100 Docker images covering 118 language variants. Deployed on both AMD64 (test) and ARM64 (production).
 
 | # | Language ID | Description | Docker Image | amd64 | arm64 | amd64 E2E | arm64 E2E |
 |---|-------------|-------------|--------------|-------|-------|-----------|-----------|
@@ -117,10 +117,15 @@
 | 111 | `carp` | Carp 0.5.5 | `judge-carp` | ✅ | ✅ | ✅ | ✅ |
 | 112 | `grain` | Grain 0.7.2 | `judge-grain` | ✅ | ✅ | ✅ | ✅ |
 | 113 | `pony` | Pony 0.61.1 | `judge-pony` | ✅ | ✅ | ✅ | ✅ |
+| 114 | `moonbit` | MoonBit 0.8 (native) | `judge-moonbit` | ✅ | ✅ | ❓ | ❓ |
+| 115 | `chapel` | Chapel 2.8 | `judge-chapel` | ✅ | ✅ | ❓ | ❓ |
+| 116 | `idris2` | Idris 2 0.8.0 (Chez Scheme) | `judge-idris2` | ✅ | ✅ | ❓ | ❓ |
+| 117 | `rescript` | ReScript 12.2 (Node.js) | `judge-rescript` | ✅ | ✅ | ❓ | ❓ |
+| 118 | `elm` | Elm 0.19.1 (Node.js) | `judge-elm` | ✅ | ✅ | ❓ | ❓ |
 
 ### ARM64 Build Summary
 
-**95 of 95 images build on ARM64** (production, Ampere Altra).
+**100 of 100 images build on ARM64** (production, Ampere Altra).
 
 ### amd64 E2E Summary (2026-03-29)
 
@@ -147,7 +152,7 @@
 | `core` | C/C++, Python, Java/Kotlin | ~0.8 GB |
 | `popular` | Core + Node.js, Rust, Go | ~2.5 GB |
 | `extended` | Popular + Ruby, Lua, Bash, C#, PHP, Perl, Swift, R, Haskell, Dart, Zig | ~8 GB |
-| `all` | All 95 images | ~35 GB |
+| `all` | All 100 images | ~35 GB |
 
 ## Admin Language Management
 
@@ -164,13 +169,6 @@ Languages under evaluation for future support. Criteria: stable/packaged binary 
 
 | Language | Status | Rationale | Notes |
 |----------|--------|-----------|-------|
-| **MoonBit** | Active development — v0.8.3 (Mar 2026), 1.0 roadmap H1 2026 | Compiles to Wasm/JS/native; growing community; AI-friendly syntax; official Docker toolchain available | Strong candidate once 1.0 lands and ARM64 binary is stable |
-| **Chapel** | Stable — v2.8 (Mar 2026), official Docker image `chapel/chapel` | HPC parallel language by HPE/Cray; unique parallelism primitives not covered by any current language; Docker image exists | Niche but distinctive; large image size expected |
-| **Idris 2** | Stable — v0.8.0 (Oct 2025); builds on Chez Scheme or Racket | Dependently-typed functional language; good for theorem-proving style problems; available in Fedora/Debian; bootstraps from Scheme sources | `judge-racket` image already has a Scheme runtime — could reuse it |
 | **Mojo** | Pre-1.0 — targeting 1.0 in H1 2026; compiler still closed-source | Python-superset with C/Rust-level performance; high community interest; targets AI/systems workloads | Compiler is closed-source; Linux ARM64 support in progress; revisit at 1.0 |
-| **ReasonML / Rescript** | Stable — ReScript 12 (2025); compiles to JS | OCaml-like syntax compiling to clean JS; already supported via `judge-node`; only needs a compile step | Low effort: add a `judge-rescript` image using Node.js + ReScript npm package |
-| **Elm** | Stable — 0.19.1 (long-term); compiles to JS | Pure functional language with strong type system; popular in frontend; used in some competitive programming circles | Compiles to JS — runnable via Node.js; small Docker image feasible |
 | **Carbon** | Experimental — targeting v0.1 in late 2026; nightly builds only on limited platforms | Google's C++ successor; significant industry interest | Not suitable yet — no stable release, limited platform support |
 | **Lobster** | Stable — active releases on GitHub; single-file binary | Statically typed scripting language with Rust-like ownership; small and self-contained | Very niche; low priority |
-| **Janet** | Already supported (`judge-janet` #94) | — | Already included |
-| **Gleam** | Already supported (`judge-gleam` #86) | — | Already included |

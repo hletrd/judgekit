@@ -1,0 +1,102 @@
+FROM ubuntu:24.04
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl ca-certificates gcc libc6-dev git && \
+    rm -rf /var/lib/apt/lists/*
+
+# Install Node.js 24 for Wasm toolchain on arm64
+RUN ARCH=$(uname -m) && \
+    if [ "$ARCH" = "aarch64" ]; then \
+      curl -fsSL https://deb.nodesource.com/setup_24.x | bash - && \
+      apt-get install -y --no-install-recommends nodejs && \
+      rm -rf /var/lib/apt/lists/*; \
+    fi
+
+# Install moon CLI (native on amd64, Wasm toolchain on arm64)
+RUN ARCH=$(uname -m) && \
+    if [ "$ARCH" = "x86_64" ]; then \
+      curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash; \
+    elif [ "$ARCH" = "aarch64" ]; then \
+      curl -fsSL https://raw.githubusercontent.com/moonbitlang/moonbit-compiler/refs/heads/main/install.ts | node; \
+    fi
+ENV PATH="/root/.moon/bin:$PATH"
+
+# Create project template with C FFI stub for stdin I/O
+RUN mkdir -p /opt/moonbit-project/main && \
+    printf '{"name":"solution","version":"0.1.0"}\n' \
+      > /opt/moonbit-project/moon.mod.json && \
+    printf '{"is-main":true,"supported-targets":["native"],"native-stub":["stub.c"]}\n' \
+      > /opt/moonbit-project/main/moon.pkg.json
+
+# C stub: provides read_line_ffi() and read_all_ffi() for stdin access
+RUN cat > /opt/moonbit-project/main/stub.c << 'STUBEOF'
+#include <stdio.h>
+#include <string.h>
+#include "moonbit.h"
+
+MOONBIT_FFI_EXPORT moonbit_bytes_t read_line_ffi(void) {
+    char buf[65536];
+    if (fgets(buf, sizeof(buf), stdin) == NULL) {
+        return moonbit_make_bytes(0, 0);
+    }
+    size_t len = strlen(buf);
+    if (len > 0 && buf[len - 1] == '\n') len--;
+    if (len > 0 && buf[len - 1] == '\r') len--;
+    moonbit_bytes_t result = moonbit_make_bytes((int)len, 0);
+    memcpy(result, buf, len);
+    return result;
+}
+
+MOONBIT_FFI_EXPORT moonbit_bytes_t read_all_ffi(void) {
+    char buf[1048576];
+    size_t total = 0;
+    size_t n;
+    while ((n = fread(buf + total, 1, sizeof(buf) - total, stdin)) > 0) {
+        total += n;
+    }
+    moonbit_bytes_t result = moonbit_make_bytes((int)total, 0);
+    memcpy(result, buf, total);
+    return result;
+}
+STUBEOF
+
+# MoonBit helper: provides read_line() -> String and read_all() -> String
+RUN cat > /opt/moonbit-project/main/io.mbt << 'MBTEOF'
+///|
+extern "C" fn read_line_ffi() -> Bytes = "read_line_ffi"
+
+///|
+extern "C" fn read_all_ffi() -> Bytes = "read_all_ffi"
+
+///|
+fn bytes_to_string(b : Bytes) -> String {
+  let buf = StringBuilder::new()
+  for i = 0; i < b.length(); i = i + 1 {
+    buf.write_char(Char::from_int(b[i].to_int()))
+  }
+  buf.to_string()
+}
+
+///|
+pub fn read_line() -> String {
+  bytes_to_string(read_line_ffi())
+}
+
+///|
+pub fn read_all() -> String {
+  bytes_to_string(read_all_ffi())
+}
+MBTEOF
+
+# Pre-build with dummy main to download/cache MoonBit core packages
+RUN printf 'fn main {\n  println("hello")\n}\n' \
+      > /opt/moonbit-project/main/main.mbt && \
+    cd /opt/moonbit-project && moon build --target native && \
+    rm -rf target/
+
+RUN useradd --no-create-home --shell /usr/sbin/nologin judge && \
+    mkdir -p /workspace && chown judge:judge /workspace && \
+    chmod -R a+rwX /opt/moonbit-project
+
+WORKDIR /workspace
+USER judge

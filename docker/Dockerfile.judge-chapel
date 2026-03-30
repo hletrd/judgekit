@@ -1,0 +1,7 @@
+FROM chapel/chapel:2.3.0
+
+RUN useradd --no-create-home --shell /usr/sbin/nologin judge && \
+    mkdir -p /workspace && chown judge:judge /workspace
+
+WORKDIR /workspace
+USER judge

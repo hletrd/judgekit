@@ -181,6 +181,12 @@ pub enum Language {
     Carp,
     Grain,
     Pony,
+    Moonbit,
+    Chapel,
+    #[serde(rename = "idris2")]
+    Idris2,
+    Rescript,
+    Elm,
     #[serde(other)]
     Unknown,
 }

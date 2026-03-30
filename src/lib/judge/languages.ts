@@ -71,6 +71,11 @@ export const JUDGE_TOOLCHAIN_VERSIONS = {
   carp: "0.5.5",
   grain: "0.7.2",
   pony: "0.61.1",
+  moonbit: "0.8",
+  chapel: "2.8",
+  idris2: "0.8.0",
+  rescript: "12.2",
+  elm: "0.19.1",
 } as const;
 
 export interface JudgeLanguageDefinition {
@@ -178,6 +183,11 @@ export const DOCKER_IMAGE_RUNTIME_INFO: Record<string, string> = {
   "judge-carp:latest": `Debian Bookworm / Carp ${JUDGE_TOOLCHAIN_VERSIONS.carp}`,
   "judge-grain:latest": `Debian Bookworm / Grain ${JUDGE_TOOLCHAIN_VERSIONS.grain}`,
   "judge-pony:latest": `Alpine 3.21 / Pony ${JUDGE_TOOLCHAIN_VERSIONS.pony}`,
+  "judge-moonbit:latest": `Ubuntu 24.04 / MoonBit ${JUDGE_TOOLCHAIN_VERSIONS.moonbit} (native)`,
+  "judge-chapel:latest": `Chapel ${JUDGE_TOOLCHAIN_VERSIONS.chapel} (official)`,
+  "judge-idris2:latest": `Debian Bookworm / Idris 2 ${JUDGE_TOOLCHAIN_VERSIONS.idris2} + Chez Scheme`,
+  "judge-rescript:latest": `Node.js 24 Alpine / ReScript ${JUDGE_TOOLCHAIN_VERSIONS.rescript}`,
+  "judge-elm:latest": `Node.js 24 Alpine / Elm ${JUDGE_TOOLCHAIN_VERSIONS.elm}`,
 };
 
 export function getDockerImageRuntimeInfo(dockerImage: string): string {
@@ -1372,6 +1382,56 @@ export const JUDGE_LANGUAGE_CONFIGS: Record<Language, JudgeLanguageDefinition> =
     compiler: `ponyc ${JUDGE_TOOLCHAIN_VERSIONS.pony}`,
     compileCommand: ["sh", "-c", "export HOME=/tmp && cd /workspace && mkdir -p build && cp solution.pony build/main.pony && cd build && ponyc -o /workspace --bin-name solution 2>&1"],
     runCommand: ["/workspace/solution"],
+  },
+  moonbit: {
+    language: "moonbit",
+    displayName: "MoonBit",
+    standard: `${JUDGE_TOOLCHAIN_VERSIONS.moonbit}`,
+    extension: ".mbt",
+    dockerImage: "judge-moonbit:latest",
+    compiler: `moon ${JUDGE_TOOLCHAIN_VERSIONS.moonbit}`,
+    compileCommand: ["sh", "-c", "cd /opt/moonbit-project && cp /workspace/solution.mbt main/main.mbt && moon build --target native 2>&1 && cp target/native/release/build/main/main /workspace/solution"],
+    runCommand: ["/workspace/solution"],
+  },
+  chapel: {
+    language: "chapel",
+    displayName: "Chapel",
+    standard: `${JUDGE_TOOLCHAIN_VERSIONS.chapel}`,
+    extension: ".chpl",
+    dockerImage: "judge-chapel:latest",
+    compiler: `chpl ${JUDGE_TOOLCHAIN_VERSIONS.chapel}`,
+    compileCommand: ["chpl", "-o", "/workspace/solution", "/workspace/solution.chpl"],
+    runCommand: ["/workspace/solution"],
+  },
+  idris2: {
+    language: "idris2",
+    displayName: "Idris 2",
+    standard: `${JUDGE_TOOLCHAIN_VERSIONS.idris2}`,
+    extension: ".idr",
+    dockerImage: "judge-idris2:latest",
+    compiler: `Idris 2 ${JUDGE_TOOLCHAIN_VERSIONS.idris2} (Chez Scheme)`,
+    compileCommand: ["sh", "-c", "cd /workspace && HOME=/tmp idris2 solution.idr -o solution 2>&1"],
+    runCommand: ["/workspace/build/exec/solution"],
+  },
+  rescript: {
+    language: "rescript",
+    displayName: "ReScript",
+    standard: `${JUDGE_TOOLCHAIN_VERSIONS.rescript}`,
+    extension: ".res",
+    dockerImage: "judge-rescript:latest",
+    compiler: `ReScript ${JUDGE_TOOLCHAIN_VERSIONS.rescript}`,
+    compileCommand: ["sh", "-c", "cp /workspace/solution.res /opt/rescript-project/src/Solution.res && cd /opt/rescript-project && npx rescript 2>&1"],
+    runCommand: ["node", "/opt/rescript-project/src/Solution.res.js"],
+  },
+  elm: {
+    language: "elm",
+    displayName: "Elm",
+    standard: `${JUDGE_TOOLCHAIN_VERSIONS.elm}`,
+    extension: ".elm",
+    dockerImage: "judge-elm:latest",
+    compiler: `Elm ${JUDGE_TOOLCHAIN_VERSIONS.elm}`,
+    compileCommand: ["sh", "-c", "cp /workspace/solution.elm /opt/elm-project/src/Main.elm && cd /opt/elm-project && elm make src/Main.elm --optimize --output=solution.js 2>&1"],
+    runCommand: ["node", "/opt/elm-project/driver.js"],
   },
 };
 

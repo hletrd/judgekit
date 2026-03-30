@@ -1360,6 +1360,66 @@ static PONY_CONFIG: LanguageConfig = LanguageConfig {
     needs_exec_tmp: false,
 };
 
+// MoonBit
+static MOONBIT_COMPILE: &[&str] = &["sh", "-c", "cd /opt/moonbit-project && cp /workspace/solution.mbt main/main.mbt && moon build --target native 2>&1 && cp target/native/release/build/main/main /workspace/solution"];
+static MOONBIT_RUN: &[&str] = &["/workspace/solution"];
+
+static MOONBIT_CONFIG: LanguageConfig = LanguageConfig {
+    extension: ".mbt",
+    docker_image: "judge-moonbit:latest",
+    compile_command: Some(MOONBIT_COMPILE),
+    run_command: MOONBIT_RUN,
+    needs_exec_tmp: false,
+};
+
+// Chapel
+static CHAPEL_COMPILE: &[&str] = &["chpl", "-o", "/workspace/solution", "/workspace/solution.chpl"];
+static CHAPEL_RUN: &[&str] = &["/workspace/solution"];
+
+static CHAPEL_CONFIG: LanguageConfig = LanguageConfig {
+    extension: ".chpl",
+    docker_image: "judge-chapel:latest",
+    compile_command: Some(CHAPEL_COMPILE),
+    run_command: CHAPEL_RUN,
+    needs_exec_tmp: false,
+};
+
+// Idris 2
+static IDRIS2_COMPILE: &[&str] = &["sh", "-c", "cd /workspace && HOME=/tmp idris2 solution.idr -o solution 2>&1"];
+static IDRIS2_RUN: &[&str] = &["/workspace/build/exec/solution"];
+
+static IDRIS2_CONFIG: LanguageConfig = LanguageConfig {
+    extension: ".idr",
+    docker_image: "judge-idris2:latest",
+    compile_command: Some(IDRIS2_COMPILE),
+    run_command: IDRIS2_RUN,
+    needs_exec_tmp: false,
+};
+
+// ReScript
+static RESCRIPT_COMPILE: &[&str] = &["sh", "-c", "cp /workspace/solution.res /opt/rescript-project/src/Solution.res && cd /opt/rescript-project && npx rescript 2>&1"];
+static RESCRIPT_RUN: &[&str] = &["node", "/opt/rescript-project/src/Solution.res.js"];
+
+static RESCRIPT_CONFIG: LanguageConfig = LanguageConfig {
+    extension: ".res",
+    docker_image: "judge-rescript:latest",
+    compile_command: Some(RESCRIPT_COMPILE),
+    run_command: RESCRIPT_RUN,
+    needs_exec_tmp: false,
+};
+
+// Elm
+static ELM_COMPILE: &[&str] = &["sh", "-c", "cp /workspace/solution.elm /opt/elm-project/src/Main.elm && cd /opt/elm-project && elm make src/Main.elm --optimize --output=solution.js 2>&1"];
+static ELM_RUN: &[&str] = &["node", "/opt/elm-project/driver.js"];
+
+static ELM_CONFIG: LanguageConfig = LanguageConfig {
+    extension: ".elm",
+    docker_image: "judge-elm:latest",
+    compile_command: Some(ELM_COMPILE),
+    run_command: ELM_RUN,
+    needs_exec_tmp: false,
+};
+
 pub fn get_config(language: &Language) -> Option<&'static LanguageConfig> {
     match language {
         Language::C17 => Some(&C17_CONFIG),
@@ -1477,6 +1537,11 @@ pub fn get_config(language: &Language) -> Option<&'static LanguageConfig> {
         Language::Carp => Some(&CARP_CONFIG),
         Language::Grain => Some(&GRAIN_CONFIG),
         Language::Pony => Some(&PONY_CONFIG),
+        Language::Moonbit => Some(&MOONBIT_CONFIG),
+        Language::Chapel => Some(&CHAPEL_CONFIG),
+        Language::Idris2 => Some(&IDRIS2_CONFIG),
+        Language::Rescript => Some(&RESCRIPT_CONFIG),
+        Language::Elm => Some(&ELM_CONFIG),
         Language::Unknown => None,
     }
 }
@@ -1604,6 +1669,11 @@ mod tests {
             Language::Carp,
             Language::Grain,
             Language::Pony,
+            Language::Moonbit,
+            Language::Chapel,
+            Language::Idris2,
+            Language::Rescript,
+            Language::Elm,
         ];
 
         for lang in &languages {

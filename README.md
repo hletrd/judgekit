@@ -15,15 +15,15 @@
 
 <p align="center">
   A secure, cross-platform code evaluation platform for programming assignments.<br/>
-  Docker-sandboxed execution for <a href="docs/languages.md">113 language variants</a> on both AMD64 and ARM64.
+  Docker-sandboxed execution for <a href="docs/languages.md">118 language variants</a> on both AMD64 and ARM64.
 </p>
 
 ---
 
 ## Features
 
-- **Cross-platform (AMD64 + ARM64)** — Full stack runs natively on both architectures: Next.js app, Rust judge worker, Rust sidecars, and all 95 Docker judge images. Deploy on x86-64 servers or ARM64 (AWS Graviton, Ampere Altra, Apple Silicon) with automatic architecture detection — no emulation, no cross-compilation
-- **113 languages** — C/C++, Java, Python, Rust, Go, Deno, Bun, Gleam, Lean 4, Hare, Koka, Picat, MiniZinc, and [100 more](docs/languages.md), all with multi-arch Docker images and admin-customizable compile/run settings
+- **Cross-platform (AMD64 + ARM64)** — Full stack runs natively on both architectures: Next.js app, Rust judge worker, Rust sidecars, and all 100 Docker judge images. Deploy on x86-64 servers or ARM64 (AWS Graviton, Ampere Altra, Apple Silicon) with automatic architecture detection — no emulation, no cross-compilation
+- **118 languages** — C/C++, Java, Python, Rust, Go, Deno, Bun, Gleam, Lean 4, Hare, Koka, Chapel, Elm, Idris 2, and [104 more](docs/languages.md), all with multi-arch Docker images and admin-customizable compile/run settings
 - **Scalable judging** — Dedicated judge workers with multi-worker support. Workers register, send heartbeats, and gracefully deregister. Admin dashboard for real-time monitoring. Deploy N workers across multiple machines with a single deploy script
 - **Secure execution** — Docker containers with no network, seccomp, memory/CPU limits
 - **Role-based access** — Super admin, admin, instructor, student
@@ -73,7 +73,7 @@ See [Language presets](docs/languages.md#docker-image-presets) for preset option
 
 ## Docker Judge Images
 
-95 language-specific Docker images for sandboxed code execution on both AMD64 and ARM64.
+100 language-specific Docker images for sandboxed code execution on both AMD64 and ARM64.
 
 | Image | amd64 | arm64 | Image | amd64 | arm64 |
 |-------|-------|-------|-------|-------|-------|
@@ -123,8 +123,11 @@ See [Language presets](docs/languages.md#docker-image-presets) for preset option
 | `judge-rexx` | 114 MB | 99 MB | `judge-roc` | 275 MB | 207 MB |
 | `judge-purescript` | 335 MB | 260 MB | `judge-wat` | 235 MB | 97 MB |
 | `judge-squirrel` | — | 100 MB | `judge-vala` | 619 MB | 452 MB |
+| `judge-moonbit` | — | — | `judge-chapel` | — | — |
+| `judge-idris2` | — | — | `judge-rescript` | — | — |
+| `judge-elm` | — | — | | | |
 
-All 95 images build on both amd64 and arm64.
+All 100 images build on both amd64 and arm64.
 
 ## Tech Stack
 
@@ -202,7 +205,7 @@ Monitor workers at `/dashboard/admin/workers`.
 
 - [Deployment Guide](docs/deployment.md) — provisioning, deploy scripts, nginx, post-deploy checks
 - [Authentication](docs/authentication.md) — sign-in flow, cookie architecture, API smoke test
-- [Languages](docs/languages.md) — all 113 variants, Docker image presets, admin management
+- [Languages](docs/languages.md) — all 118 variants, Docker image presets, admin management
 - [Judge Workers](docs/judge-workers.md) — multi-worker architecture, registration, deployment
 
 ## License

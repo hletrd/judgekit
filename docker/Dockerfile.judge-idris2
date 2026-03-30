@@ -1,0 +1,35 @@
+FROM debian:bookworm-slim
+
+# Install build dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc make curl ca-certificates git \
+    libgmp-dev uuid-dev libncurses-dev zlib1g-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Build Chez Scheme 10.1.0 from source (required for ARM64 support)
+RUN git clone --depth 1 --branch v10.1.0 \
+      https://github.com/cisco/ChezScheme.git /tmp/chez && \
+    cd /tmp/chez && \
+    ./configure && \
+    make && make install && \
+    rm -rf /tmp/chez
+
+# Build Idris 2 v0.8.0 from source
+ARG IDRIS2_VERSION=v0.8.0
+RUN git clone --depth 1 --branch ${IDRIS2_VERSION} \
+      https://github.com/idris-lang/Idris2.git /tmp/idris2 && \
+    cd /tmp/idris2 && \
+    make bootstrap SCHEME=chez && \
+    make install PREFIX=/usr/local && \
+    rm -rf /tmp/idris2
+
+# Clean up build-only dependencies to reduce image size
+RUN apt-get purge -y make curl ca-certificates git uuid-dev libncurses-dev zlib1g-dev && \
+    apt-get autoremove -y && \
+    rm -rf /var/lib/apt/lists/*
+
+RUN useradd --no-create-home --shell /usr/sbin/nologin judge && \
+    mkdir -p /workspace && chown judge:judge /workspace
+
+WORKDIR /workspace
+USER judge
