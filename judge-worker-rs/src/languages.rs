@@ -1385,7 +1385,7 @@ static CHAPEL_CONFIG: LanguageConfig = LanguageConfig {
 };
 
 // Idris 2
-static IDRIS2_COMPILE: &[&str] = &["sh", "-c", "export HOME=/tmp IDRIS2_PREFIX=/usr/local && cd /workspace && idris2 solution.idr -o solution 2>&1"];
+static IDRIS2_COMPILE: &[&str] = &["sh", "-c", "export HOME=/tmp && cd /workspace && idris2 solution.idr -o solution 2>&1"];
 static IDRIS2_RUN: &[&str] = &["/workspace/build/exec/solution"];
 
 static IDRIS2_CONFIG: LanguageConfig = LanguageConfig {
@@ -1409,7 +1409,7 @@ static RESCRIPT_CONFIG: LanguageConfig = LanguageConfig {
 };
 
 // Elm
-static ELM_COMPILE: &[&str] = &["sh", "-c", "export HOME=/tmp && cp -r /opt/elm-project /tmp/elm-project && cp /workspace/solution.elm /tmp/elm-project/src/Main.elm && cd /tmp/elm-project && elm make src/Main.elm --optimize --output=/workspace/solution.js 2>&1 && cp /opt/elm-project/driver.js /workspace/driver.js"];
+static ELM_COMPILE: &[&str] = &["sh", "-c", "export HOME=/tmp ELM_HOME=/root/.elm && cp -r /opt/elm-project /tmp/elm-project && cp /workspace/solution.elm /tmp/elm-project/src/Main.elm && cd /tmp/elm-project && elm make src/Main.elm --optimize --output=/workspace/solution.js 2>&1 && cp /opt/elm-project/driver.js /workspace/driver.js"];
 static ELM_RUN: &[&str] = &["node", "/workspace/driver.js"];
 
 static ELM_CONFIG: LanguageConfig = LanguageConfig {

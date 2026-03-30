@@ -1410,7 +1410,7 @@ export const JUDGE_LANGUAGE_CONFIGS: Record<Language, JudgeLanguageDefinition> =
     extension: ".idr",
     dockerImage: "judge-idris2:latest",
     compiler: `Idris 2 ${JUDGE_TOOLCHAIN_VERSIONS.idris2} (Chez Scheme)`,
-    compileCommand: ["sh", "-c", "export HOME=/tmp IDRIS2_PREFIX=/usr/local && cd /workspace && idris2 solution.idr -o solution 2>&1"],
+    compileCommand: ["sh", "-c", "export HOME=/tmp && cd /workspace && idris2 solution.idr -o solution 2>&1"],
     runCommand: ["/workspace/build/exec/solution"],
   },
   rescript: {
@@ -1430,7 +1430,7 @@ export const JUDGE_LANGUAGE_CONFIGS: Record<Language, JudgeLanguageDefinition> =
     extension: ".elm",
     dockerImage: "judge-elm:latest",
     compiler: `Elm ${JUDGE_TOOLCHAIN_VERSIONS.elm}`,
-    compileCommand: ["sh", "-c", "export HOME=/tmp && cp -r /opt/elm-project /tmp/elm-project && cp /workspace/solution.elm /tmp/elm-project/src/Main.elm && cd /tmp/elm-project && elm make src/Main.elm --optimize --output=/workspace/solution.js 2>&1 && cp /opt/elm-project/driver.js /workspace/driver.js"],
+    compileCommand: ["sh", "-c", "export HOME=/tmp ELM_HOME=/root/.elm && cp -r /opt/elm-project /tmp/elm-project && cp /workspace/solution.elm /tmp/elm-project/src/Main.elm && cd /tmp/elm-project && elm make src/Main.elm --optimize --output=/workspace/solution.js 2>&1 && cp /opt/elm-project/driver.js /workspace/driver.js"],
     runCommand: ["node", "/workspace/driver.js"],
   },
 };

@@ -94,7 +94,7 @@ RUN printf 'fn main {\n  println("hello")\n}\n' \
     cd /opt/moonbit-project && moon build --target native && \
     rm -rf target/
 
-RUN chmod -R a+rx /root/.moon && \
+RUN chmod a+rx /root && chmod -R a+rx /root/.moon && \
     useradd --no-create-home --shell /usr/sbin/nologin judge && \
     mkdir -p /workspace && chown judge:judge /workspace && \
     chmod -R a+rwX /opt/moonbit-project
