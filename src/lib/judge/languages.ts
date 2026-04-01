@@ -235,6 +235,16 @@ export const JUDGE_LANGUAGE_CONFIGS: Record<Language, JudgeLanguageDefinition> =
     compileCommand: ["g++", "-O2", "-std=c++23", "-o", "/workspace/solution", "/workspace/solution.cpp"],
     runCommand: ["/workspace/solution"],
   },
+  cpp26: {
+    language: "cpp26",
+    displayName: "C++",
+    standard: "C++26",
+    extension: ".cpp",
+    dockerImage: "judge-cpp:latest",
+    compiler: "GCC (g++)",
+    compileCommand: ["g++", "-O2", "-std=c++26", "-o", "/workspace/solution", "/workspace/solution.cpp"],
+    runCommand: ["/workspace/solution"],
+  },
   java: {
     language: "java",
     displayName: "Java",
@@ -589,6 +599,16 @@ export const JUDGE_LANGUAGE_CONFIGS: Record<Language, JudgeLanguageDefinition> =
     dockerImage: "judge-clang:latest",
     compiler: `Clang++ ${JUDGE_TOOLCHAIN_VERSIONS.clang}`,
     compileCommand: ["clang++", "-O2", "-std=c++23", "-o", "/workspace/solution", "/workspace/solution.cpp"],
+    runCommand: ["/workspace/solution"],
+  },
+  clang_cpp26: {
+    language: "clang_cpp26",
+    displayName: "C++ (Clang)",
+    standard: "C++26",
+    extension: ".cpp",
+    dockerImage: "judge-clang:latest",
+    compiler: `Clang++ ${JUDGE_TOOLCHAIN_VERSIONS.clang}`,
+    compileCommand: ["clang++", "-O2", "-std=c++26", "-o", "/workspace/solution", "/workspace/solution.cpp"],
     runCommand: ["/workspace/solution"],
   },
   scala: {

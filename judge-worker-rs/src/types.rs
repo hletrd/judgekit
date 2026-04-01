@@ -58,6 +58,7 @@ pub enum Language {
     C23,
     Cpp20,
     Cpp23,
+    Cpp26,
     Java,
     Python,
     Javascript,
@@ -92,6 +93,8 @@ pub enum Language {
     ClangC23,
     #[serde(rename = "clang_cpp23")]
     ClangCpp23,
+    #[serde(rename = "clang_cpp26")]
+    ClangCpp26,
     Scala,
     Erlang,
     Commonlisp,

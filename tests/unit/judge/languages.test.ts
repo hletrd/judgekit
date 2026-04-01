@@ -14,7 +14,7 @@ describe("judge language definitions", () => {
 
   it("recognizes all core supported languages and rejects unknown ones", () => {
     const supported = [
-      "c17", "c23", "cpp20", "cpp23",
+      "c17", "c23", "cpp20", "cpp23", "cpp26",
       "java", "kotlin",
       "python", "javascript", "typescript",
       "rust", "go", "swift", "csharp",
@@ -80,6 +80,32 @@ describe("judge language definitions", () => {
     const compile = serializeJudgeCommand(def?.compileCommand);
     expect(compile).toContain("g++");
     expect(compile).toContain("-std=c++23");
+    expect(compile).toContain("/workspace/solution.cpp");
+    expect(def?.runCommand).toEqual(["/workspace/solution"]);
+  });
+
+  it("cpp26: exists with correct metadata and compile/run commands", () => {
+    const def = getJudgeLanguageDefinition("cpp26");
+    expect(def).not.toBeNull();
+    expect(def?.displayName).toBe("C++");
+    expect(def?.extension).toBe(".cpp");
+    expect(def?.dockerImage).toBe("judge-cpp:latest");
+    const compile = serializeJudgeCommand(def?.compileCommand);
+    expect(compile).toContain("g++");
+    expect(compile).toContain("-std=c++26");
+    expect(compile).toContain("/workspace/solution.cpp");
+    expect(def?.runCommand).toEqual(["/workspace/solution"]);
+  });
+
+  it("clang_cpp26: exists with correct metadata and compile/run commands", () => {
+    const def = getJudgeLanguageDefinition("clang_cpp26");
+    expect(def).not.toBeNull();
+    expect(def?.displayName).toBe("C++ (Clang)");
+    expect(def?.extension).toBe(".cpp");
+    expect(def?.dockerImage).toBe("judge-clang:latest");
+    const compile = serializeJudgeCommand(def?.compileCommand);
+    expect(compile).toContain("clang++");
+    expect(compile).toContain("-std=c++26");
     expect(compile).toContain("/workspace/solution.cpp");
     expect(def?.runCommand).toEqual(["/workspace/solution"]);
   });

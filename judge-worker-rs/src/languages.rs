@@ -33,6 +33,12 @@ static CPP23_COMPILE: &[&str] = &[
 ];
 static CPP23_RUN: &[&str] = &["/workspace/solution"];
 
+static CPP26_COMPILE: &[&str] = &[
+    "g++", "-O2", "-std=c++26", "-o", "/workspace/solution",
+    "/workspace/solution.cpp",
+];
+static CPP26_RUN: &[&str] = &["/workspace/solution"];
+
 static JAVA_COMPILE: &[&str] = &[
     "sh", "-c",
     "export JAVA_TOOL_OPTIONS='-Djava.io.tmpdir=/workspace' && mkdir -p /workspace/out && cp /workspace/solution.java /workspace/Main.java && javac --release 25 -encoding UTF-8 -d /workspace/out /workspace/Main.java",
@@ -166,6 +172,10 @@ static CLANG_C23_RUN: &[&str] = &["/workspace/solution"];
 static CLANG_CPP23_COMPILE: &[&str] = &["clang++", "-O2", "-std=c++23", "-o", "/workspace/solution", "/workspace/solution.cpp"];
 static CLANG_CPP23_RUN: &[&str] = &["/workspace/solution"];
 
+// Clang C++26
+static CLANG_CPP26_COMPILE: &[&str] = &["clang++", "-O2", "-std=c++26", "-o", "/workspace/solution", "/workspace/solution.cpp"];
+static CLANG_CPP26_RUN: &[&str] = &["/workspace/solution"];
+
 // Scala
 static SCALA_COMPILE: &[&str] = &["sh", "-c", "export HOME=/tmp && mkdir -p /workspace/out && scalac -d /workspace/out /workspace/solution.scala"];
 static SCALA_RUN: &[&str] = &["sh", "-c", "export HOME=/tmp && java -classpath \"/workspace/out:/opt/scala3/lib/*\" Main"];
@@ -209,6 +219,14 @@ static CPP23_CONFIG: LanguageConfig = LanguageConfig {
     docker_image: "judge-cpp:latest",
     compile_command: Some(CPP23_COMPILE),
     run_command: CPP23_RUN,
+    needs_exec_tmp: false,
+};
+
+static CPP26_CONFIG: LanguageConfig = LanguageConfig {
+    extension: ".cpp",
+    docker_image: "judge-cpp:latest",
+    compile_command: Some(CPP26_COMPILE),
+    run_command: CPP26_RUN,
     needs_exec_tmp: false,
 };
 
@@ -465,6 +483,14 @@ static CLANG_CPP23_CONFIG: LanguageConfig = LanguageConfig {
     docker_image: "judge-clang:latest",
     compile_command: Some(CLANG_CPP23_COMPILE),
     run_command: CLANG_CPP23_RUN,
+    needs_exec_tmp: false,
+};
+
+static CLANG_CPP26_CONFIG: LanguageConfig = LanguageConfig {
+    extension: ".cpp",
+    docker_image: "judge-clang:latest",
+    compile_command: Some(CLANG_CPP26_COMPILE),
+    run_command: CLANG_CPP26_RUN,
     needs_exec_tmp: false,
 };
 
@@ -1426,6 +1452,7 @@ pub fn get_config(language: &Language) -> Option<&'static LanguageConfig> {
         Language::C23 => Some(&C23_CONFIG),
         Language::Cpp20 => Some(&CPP20_CONFIG),
         Language::Cpp23 => Some(&CPP23_CONFIG),
+        Language::Cpp26 => Some(&CPP26_CONFIG),
         Language::Java => Some(&JAVA_CONFIG),
         Language::Python => Some(&PYTHON_CONFIG),
         Language::Javascript => Some(&JAVASCRIPT_CONFIG),
@@ -1458,6 +1485,7 @@ pub fn get_config(language: &Language) -> Option<&'static LanguageConfig> {
         Language::Cobol => Some(&COBOL_CONFIG),
         Language::ClangC23 => Some(&CLANG_C23_CONFIG),
         Language::ClangCpp23 => Some(&CLANG_CPP23_CONFIG),
+        Language::ClangCpp26 => Some(&CLANG_CPP26_CONFIG),
         Language::Scala => Some(&SCALA_CONFIG),
         Language::Erlang => Some(&ERLANG_CONFIG),
         Language::Commonlisp => Some(&COMMONLISP_CONFIG),
@@ -1558,6 +1586,7 @@ mod tests {
             Language::C23,
             Language::Cpp20,
             Language::Cpp23,
+            Language::Cpp26,
             Language::Java,
             Language::Python,
             Language::Javascript,
@@ -1590,6 +1619,7 @@ mod tests {
             Language::Cobol,
             Language::ClangC23,
             Language::ClangCpp23,
+            Language::ClangCpp26,
             Language::Scala,
             Language::Erlang,
             Language::Commonlisp,
