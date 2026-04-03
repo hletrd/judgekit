@@ -17,7 +17,7 @@ import {
   SidebarFooter,
   SidebarHeader,
 } from "@/components/ui/sidebar";
-import { BookOpen, FileCode, Send, Users, User, LayoutDashboard, GraduationCap, Shield, LogOut, LogIn, History, FolderOpen, Blocks, Trophy, MessageCircle, Timer, KeyRound, Code, Settings, Server } from "lucide-react";
+import { BookOpen, FileCode, Send, Users, User, LayoutDashboard, GraduationCap, Shield, LogOut, LogIn, History, FolderOpen, Blocks, Trophy, MessageCircle, Timer, KeyRound, Code, Settings, Server, Play, Upload } from "lucide-react";
 
 interface AppSidebarProps {
   user: {
@@ -56,6 +56,7 @@ const navGroups: NavGroup[] = [
       { titleKey: "problems", href: "/dashboard/problems", icon: BookOpen },
       { titleKey: "submissions", href: "/dashboard/submissions", icon: Send },
       { titleKey: "contests", href: "/dashboard/contests", icon: Timer },
+      { titleKey: "compiler", href: "/dashboard/compiler", icon: Play },
       { titleKey: "rankings", href: "/dashboard/rankings", icon: Trophy },
     ],
   },
@@ -95,6 +96,8 @@ const adminGroups: NavGroup[] = [
   {
     labelKey: "adminSystem",
     items: [
+      { titleKey: "fileManagement", href: "/dashboard/admin/files", icon: Upload, capability: "files.manage" },
+      { titleKey: "apiKeys", href: "/dashboard/admin/api-keys", icon: KeyRound, capability: "system.settings" },
       { titleKey: "systemSettings", href: "/dashboard/admin/settings", icon: Settings, capability: "system.settings" },
       { titleKey: "languages", href: "/dashboard/admin/languages", icon: Code, capability: "system.settings" },
       { titleKey: "plugins", href: "/dashboard/admin/plugins", icon: Blocks, capability: "system.plugins" },

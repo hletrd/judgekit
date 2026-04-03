@@ -10,6 +10,7 @@ import { getValidatedAuthSecret } from "@/lib/security/env";
 import { validateCsrf } from "@/lib/security/csrf";
 import { ROLE_LEVEL } from "@/lib/security/constants";
 import { resolveCapabilities } from "@/lib/capabilities/cache";
+import { authenticateApiKey } from "@/lib/api/api-key-auth";
 import { eq } from "drizzle-orm";
 
 export function getTokenUserId(token: { id?: unknown; sub?: unknown } | null | undefined) {
@@ -58,13 +59,18 @@ export async function getActiveAuthUserById(
 }
 
 export async function getApiUser(request: NextRequest) {
+  // 1. Try session cookie (standard web auth)
   const token = await getToken({
     req: request,
     secret: getValidatedAuthSecret(),
     secureCookie: shouldUseSecureAuthCookie(),
   });
 
-  return getActiveAuthUserById(getTokenUserId(token), getTokenAuthenticatedAtSeconds(token));
+  const sessionUser = await getActiveAuthUserById(getTokenUserId(token), getTokenAuthenticatedAtSeconds(token));
+  if (sessionUser) return sessionUser;
+
+  // 2. Fallback: try API key (Bearer token)
+  return authenticateApiKey(request.headers.get("authorization"));
 }
 
 export function csrfForbidden(request: NextRequest): NextResponse | null {

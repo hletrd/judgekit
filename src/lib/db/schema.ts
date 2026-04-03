@@ -194,6 +194,7 @@ export const problems = sqliteTable("problems", {
   comparisonMode: text("comparison_mode").notNull().default("exact"),
   floatAbsoluteError: real("float_absolute_error"),
   floatRelativeError: real("float_relative_error"),
+  difficulty: real("difficulty"),
   authorId: text("author_id").references(() => users.id, {
     onDelete: "set null",
   }),
@@ -452,6 +453,12 @@ export const systemSettings = sqliteTable("system_settings", {
   maxSseConnectionsPerUser: integer("max_sse_connections_per_user"),
   ssePollIntervalMs: integer("sse_poll_interval_ms"),
   sseTimeoutMs: integer("sse_timeout_ms"),
+  // Compiler
+  compilerTimeLimitMs: integer("compiler_time_limit_ms"),
+  // File Uploads
+  uploadMaxImageSizeBytes: integer("upload_max_image_size_bytes"),
+  uploadMaxFileSizeBytes: integer("upload_max_file_size_bytes"),
+  uploadMaxImageDimension: integer("upload_max_image_dimension"),
   updatedAt: integer("updated_at", { mode: "timestamp" })
     .notNull()
     .$defaultFn(() => new Date(Date.now())),
@@ -765,5 +772,60 @@ export const antiCheatEvents = sqliteTable(
     index("ace_assignment_type_idx").on(table.assignmentId, table.eventType),
     index("ace_assignment_created_idx").on(table.assignmentId, table.createdAt),
     index("ace_user_idx").on(table.userId),
+  ]
+);
+
+export const apiKeys = sqliteTable(
+  "api_keys",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => nanoid()),
+    name: text("name").notNull(),
+    keyHash: text("key_hash").notNull(),
+    keyPrefix: text("key_prefix").notNull(),
+    createdById: text("created_by_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    role: text("role").notNull().default("admin"),
+    lastUsedAt: integer("last_used_at", { mode: "timestamp" }),
+    expiresAt: integer("expires_at", { mode: "timestamp" }),
+    isActive: integer("is_active", { mode: "boolean" }).notNull().default(true),
+    createdAt: integer("created_at", { mode: "timestamp" })
+      .notNull()
+      .$defaultFn(() => new Date(Date.now())),
+    updatedAt: integer("updated_at", { mode: "timestamp" })
+      .notNull()
+      .$defaultFn(() => new Date(Date.now())),
+  },
+  (table) => [
+    index("api_keys_prefix_idx").on(table.keyPrefix),
+    index("api_keys_created_by_idx").on(table.createdById),
+  ]
+);
+
+export const files = sqliteTable(
+  "files",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => nanoid()),
+    originalName: text("original_name").notNull(),
+    storedName: text("stored_name").notNull(),
+    mimeType: text("mime_type").notNull(),
+    sizeBytes: integer("size_bytes").notNull(),
+    category: text("category").notNull().default("attachment"),
+    width: integer("width"),
+    height: integer("height"),
+    uploadedBy: text("uploaded_by")
+      .references(() => users.id, { onDelete: "set null" }),
+    createdAt: integer("created_at", { mode: "timestamp" })
+      .notNull()
+      .$defaultFn(() => new Date(Date.now())),
+  },
+  (table) => [
+    index("files_uploaded_by_idx").on(table.uploadedBy),
+    index("files_category_idx").on(table.category),
+    index("files_created_at_idx").on(table.createdAt),
   ]
 );

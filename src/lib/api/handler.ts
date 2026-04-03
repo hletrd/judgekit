@@ -95,16 +95,6 @@ export function createApiHandler<T = unknown>(config: HandlerConfig<T>) {
     routeCtx?: { params: Promise<Record<string, string>> }
   ): Promise<NextResponse> {
     try {
-      // --- CSRF check ---
-      // Default: required for mutation methods unless explicitly disabled.
-      const shouldCheckCsrf =
-        csrf !== undefined ? csrf : MUTATION_METHODS.has(req.method);
-
-      if (shouldCheckCsrf) {
-        const csrfError = csrfForbidden(req);
-        if (csrfError) return csrfError;
-      }
-
       // --- Rate limiting ---
       if (rateLimit) {
         const rateLimitResponse = consumeApiRateLimit(req, rateLimit);
@@ -122,6 +112,18 @@ export function createApiHandler<T = unknown>(config: HandlerConfig<T>) {
         if (typeof auth === "object" && auth.roles && auth.roles.length > 0) {
           if (!isUserRole(user.role) || !auth.roles.includes(user.role)) return forbidden();
         }
+      }
+
+      // --- CSRF check ---
+      // Skip CSRF for API key-authenticated requests (no cookies involved).
+      // Default: required for mutation methods unless explicitly disabled.
+      const isApiKeyAuth = user && "_apiKeyAuth" in user;
+      const shouldCheckCsrf =
+        csrf !== undefined ? csrf : (!isApiKeyAuth && MUTATION_METHODS.has(req.method));
+
+      if (shouldCheckCsrf) {
+        const csrfError = csrfForbidden(req);
+        if (csrfError) return csrfError;
       }
 
       // --- Body parsing + Zod validation ---
