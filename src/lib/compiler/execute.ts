@@ -82,11 +82,14 @@ function validateDockerImage(image: string): boolean {
  * Validate shell command string. Since commands come from trusted DB configs,
  * we perform basic validation to detect obvious anomalies but don't enforce
  * strict character restrictions (needed for legitimate compiler flags).
+ * Allow && and ; since trusted admin-configured compile commands legitimately
+ * chain steps (e.g. "javac ... && jar ...").
  */
 function validateShellCommand(cmd: string): boolean {
   if (!cmd || cmd.length > 10_000) return false;
-  // Disallow backticks, command substitution, and obvious command injection patterns
-  const dangerous = /`|\$\(|&&|\|\||;/;
+  if (cmd.includes("\0")) return false;
+  // Block command/process substitution and eval
+  const dangerous = /`|\$\(|\$\{|[<>]\(|\beval\b/;
   return !dangerous.test(cmd);
 }
 
