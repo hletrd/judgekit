@@ -71,6 +71,13 @@
       "when": 1775174400000,
       "tag": "0009_add_files_and_upload_settings",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1775260800000,
+      "tag": "0010_api_keys_plaintext",
+      "breakpoints": true
     }
   ]
 }

@@ -1194,7 +1194,7 @@
       "createKey": "API 키 생성",
       "noKeys": "생성된 API 키가 없습니다.",
       "colName": "이름",
-      "colPrefix": "키 접두사",
+      "colKey": "API 키",
       "colRole": "역할",
       "colCreatedBy": "생성자",
       "colLastUsed": "마지막 사용",

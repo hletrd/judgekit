@@ -1194,7 +1194,7 @@
       "createKey": "Create API Key",
       "noKeys": "No API keys yet.",
       "colName": "Name",
-      "colPrefix": "Key Prefix",
+      "colKey": "API Key",
       "colRole": "Role",
       "colCreatedBy": "Created By",
       "colLastUsed": "Last Used",

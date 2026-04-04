@@ -782,7 +782,7 @@ export const apiKeys = sqliteTable(
       .primaryKey()
       .$defaultFn(() => nanoid()),
     name: text("name").notNull(),
-    keyHash: text("key_hash").notNull(),
+    keyPlain: text("key_plain").notNull(),
     keyPrefix: text("key_prefix").notNull(),
     createdById: text("created_by_id")
       .notNull()

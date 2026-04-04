@@ -22,6 +22,7 @@ export const GET = createApiHandler({
       .select({
         id: apiKeys.id,
         name: apiKeys.name,
+        keyPlain: apiKeys.keyPlain,
         keyPrefix: apiKeys.keyPrefix,
         role: apiKeys.role,
         createdById: apiKeys.createdById,
@@ -45,13 +46,13 @@ export const POST = createApiHandler({
   handler: async (req: NextRequest, { user, body }) => {
     if (!isAdmin(user.role)) return apiError("forbidden", 403);
 
-    const { rawKey, keyHash, keyPrefix } = await generateApiKey();
+    const { rawKey, keyPrefix } = generateApiKey();
 
     const [created] = await db
       .insert(apiKeys)
       .values({
         name: body.name,
-        keyHash,
+        keyPlain: rawKey,
         keyPrefix,
         createdById: user.id,
         role: body.role,
@@ -73,7 +74,7 @@ export const POST = createApiHandler({
 
     return apiSuccess(
       { id: created.id, name: created.name, keyPrefix: created.keyPrefix, key: rawKey },
-      { status: 201 }
+      { status: 201 },
     );
   },
 });

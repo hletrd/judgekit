@@ -54,6 +54,7 @@ import { Plus, Copy, Trash2, Check } from "lucide-react";
 interface ApiKey {
   id: string;
   name: string;
+  keyPlain: string;
   keyPrefix: string;
   role: string;
   createdById: string;
@@ -68,6 +69,7 @@ export function ApiKeysClient() {
   const t = useTranslations("admin.apiKeys");
   const [keys, setKeys] = useState<ApiKey[]>([]);
   const [loading, setLoading] = useState(true);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
 
   // Create dialog state
   const [createOpen, setCreateOpen] = useState(false);
@@ -75,10 +77,6 @@ export function ApiKeysClient() {
   const [createRole, setCreateRole] = useState("admin");
   const [createExpiry, setCreateExpiry] = useState("none");
   const [creating, setCreating] = useState(false);
-
-  // Key reveal dialog state
-  const [revealedKey, setRevealedKey] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
 
   const fetchKeys = useCallback(async () => {
     try {
@@ -118,8 +116,6 @@ export function ApiKeysClient() {
       });
 
       if (res.ok) {
-        const json = await res.json();
-        setRevealedKey(json.data.key);
         setCreateOpen(false);
         setCreateName("");
         setCreateRole("admin");
@@ -164,6 +160,13 @@ export function ApiKeysClient() {
     }
   }
 
+  async function copyKey(key: ApiKey) {
+    await navigator.clipboard.writeText(key.keyPlain);
+    setCopiedId(key.id);
+    toast.success(t("copied"));
+    setTimeout(() => setCopiedId(null), 2000);
+  }
+
   function getStatus(key: ApiKey) {
     if (key.expiresAt && new Date(key.expiresAt) < new Date()) {
       return { label: t("expired"), variant: "destructive" as const };
@@ -184,86 +187,86 @@ export function ApiKeysClient() {
   }
 
   return (
-    <>
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <div>
-            <CardTitle>{t("title")}</CardTitle>
-            <CardDescription>{t("description")}</CardDescription>
-          </div>
-          <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-            <DialogTrigger
-              render={
-                <Button size="sm">
-                  <Plus className="mr-2 h-4 w-4" />
-                  {t("createKey")}
-                </Button>
-              }
-            />
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>{t("createTitle")}</DialogTitle>
-                <DialogDescription>{t("createDescription")}</DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4 py-4">
-                <div className="space-y-2">
-                  <Label>{t("nameLabel")}</Label>
-                  <Input
-                    placeholder={t("namePlaceholder")}
-                    value={createName}
-                    onChange={(e) => setCreateName(e.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>{t("roleLabel")}</Label>
-                  <Select value={createRole} onValueChange={v => { if (v) setCreateRole(v); }}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="super_admin">Super Admin</SelectItem>
-                      <SelectItem value="admin">Admin</SelectItem>
-                      <SelectItem value="instructor">Instructor</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>{t("expiryLabel")}</Label>
-                  <Select value={createExpiry} onValueChange={v => { if (v) setCreateExpiry(v); }}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">{t("expiryNone")}</SelectItem>
-                      <SelectItem value="30d">{t("expiry30d")}</SelectItem>
-                      <SelectItem value="90d">{t("expiry90d")}</SelectItem>
-                      <SelectItem value="1y">{t("expiry1y")}</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between">
+        <div>
+          <CardTitle>{t("title")}</CardTitle>
+          <CardDescription>{t("description")}</CardDescription>
+        </div>
+        <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+          <DialogTrigger
+            render={
+              <Button size="sm">
+                <Plus className="mr-2 h-4 w-4" />
+                {t("createKey")}
+              </Button>
+            }
+          />
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>{t("createTitle")}</DialogTitle>
+              <DialogDescription>{t("createDescription")}</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label>{t("nameLabel")}</Label>
+                <Input
+                  placeholder={t("namePlaceholder")}
+                  value={createName}
+                  onChange={(e) => setCreateName(e.target.value)}
+                />
               </div>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setCreateOpen(false)}>
-                  {t("cancel")}
-                </Button>
-                <Button onClick={handleCreate} disabled={creating || !createName.trim()}>
-                  {t("create")}
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-        </CardHeader>
-        <CardContent>
-          {loading ? (
-            <p className="text-sm text-muted-foreground">Loading...</p>
-          ) : keys.length === 0 ? (
-            <p className="text-sm text-muted-foreground">{t("noKeys")}</p>
-          ) : (
+              <div className="space-y-2">
+                <Label>{t("roleLabel")}</Label>
+                <Select value={createRole} onValueChange={v => { if (v) setCreateRole(v); }}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="super_admin">Super Admin</SelectItem>
+                    <SelectItem value="admin">Admin</SelectItem>
+                    <SelectItem value="instructor">Instructor</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>{t("expiryLabel")}</Label>
+                <Select value={createExpiry} onValueChange={v => { if (v) setCreateExpiry(v); }}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">{t("expiryNone")}</SelectItem>
+                    <SelectItem value="30d">{t("expiry30d")}</SelectItem>
+                    <SelectItem value="90d">{t("expiry90d")}</SelectItem>
+                    <SelectItem value="1y">{t("expiry1y")}</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setCreateOpen(false)}>
+                {t("cancel")}
+              </Button>
+              <Button onClick={handleCreate} disabled={creating || !createName.trim()}>
+                {t("create")}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </CardHeader>
+      <CardContent>
+        {loading ? (
+          <p className="text-sm text-muted-foreground">Loading...</p>
+        ) : keys.length === 0 ? (
+          <p className="text-sm text-muted-foreground">{t("noKeys")}</p>
+        ) : (
+          <div className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>{t("colName")}</TableHead>
-                  <TableHead>{t("colPrefix")}</TableHead>
+                  <TableHead>{t("colKey")}</TableHead>
                   <TableHead>{t("colRole")}</TableHead>
                   <TableHead>{t("colCreatedBy")}</TableHead>
                   <TableHead>{t("colLastUsed")}</TableHead>
@@ -279,9 +282,23 @@ export function ApiKeysClient() {
                     <TableRow key={key.id}>
                       <TableCell className="font-medium">{key.name}</TableCell>
                       <TableCell>
-                        <code className="text-xs bg-muted px-1.5 py-0.5 rounded">
-                          {key.keyPrefix}...
-                        </code>
+                        <div className="flex items-center gap-1.5">
+                          <code className="text-xs bg-muted px-2 py-1 rounded break-all select-all max-w-[280px]">
+                            {key.keyPlain}
+                          </code>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 w-7 p-0 shrink-0"
+                            onClick={() => copyKey(key)}
+                          >
+                            {copiedId === key.id ? (
+                              <Check className="h-3.5 w-3.5" />
+                            ) : (
+                              <Copy className="h-3.5 w-3.5" />
+                            )}
+                          </Button>
+                        </div>
                       </TableCell>
                       <TableCell>
                         <Badge variant="outline">{key.role}</Badge>
@@ -333,55 +350,9 @@ export function ApiKeysClient() {
                 })}
               </TableBody>
             </Table>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Key reveal dialog */}
-      <Dialog
-        open={revealedKey !== null}
-        onOpenChange={(open) => {
-          if (!open) {
-            setRevealedKey(null);
-            setCopied(false);
-          }
-        }}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{t("keyCreatedTitle")}</DialogTitle>
-            <DialogDescription>{t("keyCreatedDescription")}</DialogDescription>
-          </DialogHeader>
-          <div className="flex items-center gap-2 py-4">
-            <code className="flex-1 text-sm bg-muted p-3 rounded break-all select-all">
-              {revealedKey}
-            </code>
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() => {
-                if (revealedKey) {
-                  navigator.clipboard.writeText(revealedKey);
-                  setCopied(true);
-                  setTimeout(() => setCopied(false), 2000);
-                }
-              }}
-            >
-              {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-            </Button>
           </div>
-          <DialogFooter>
-            <Button
-              onClick={() => {
-                setRevealedKey(null);
-                setCopied(false);
-              }}
-            >
-              {t("done")}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </>
+        )}
+      </CardContent>
+    </Card>
   );
 }
