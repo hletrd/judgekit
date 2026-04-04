@@ -1,5 +1,3 @@
-"use server";
-
 import { NextRequest, NextResponse } from "next/server";
 import { getRateLimitKey, isRateLimited } from "./rate-limit";
 import { db } from "@/lib/db";

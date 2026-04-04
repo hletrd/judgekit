@@ -69,7 +69,7 @@ export async function POST(
     const csrfError = csrfForbidden(request);
     if (csrfError) return csrfError;
 
-    const rateLimitResponse = consumeApiRateLimit(request, "overrides:upsert");
+    const rateLimitResponse = await consumeApiRateLimit(request, "overrides:upsert");
     if (rateLimitResponse) return rateLimitResponse;
 
     const result = await resolveAssignmentAndAuthorize(request, params);
@@ -194,7 +194,7 @@ export async function DELETE(
     const csrfError = csrfForbidden(request);
     if (csrfError) return csrfError;
 
-    const rateLimitResponse = consumeApiRateLimit(request, "overrides:delete");
+    const rateLimitResponse = await consumeApiRateLimit(request, "overrides:delete");
     if (rateLimitResponse) return rateLimitResponse;
 
     const result = await resolveAssignmentAndAuthorize(request, params);

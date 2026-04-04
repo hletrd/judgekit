@@ -1,9 +1,40 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import { stat } from "fs/promises";
+import { join } from "path";
 import { createApiHandler } from "@/lib/api/handler";
 import { apiSuccess } from "@/lib/api/responses";
-import { listDockerImages, pullDockerImage, removeDockerImage, getDiskUsage } from "@/lib/docker/client";
+import { listDockerImages, inspectDockerImage, pullDockerImage, removeDockerImage, getDiskUsage } from "@/lib/docker/client";
 import { recordAuditEvent } from "@/lib/audit/events";
+
+/** Check if Docker images are stale (Dockerfile modified after image was built) */
+async function getStaleImages(images: { repository: string; tag: string }[]): Promise<Set<string>> {
+  const stale = new Set<string>();
+
+  await Promise.all(images.map(async (img) => {
+    const tag = `${img.repository}:${img.tag}`;
+    const dockerfilePath = join("docker", `Dockerfile.${img.repository}`);
+
+    try {
+      const [fileStat, info] = await Promise.all([
+        stat(dockerfilePath),
+        inspectDockerImage(tag),
+      ]);
+      if (!info) return;
+
+      const imageCreated = new Date(info.Created as string).getTime();
+      const dockerfileMtime = fileStat.mtimeMs;
+
+      if (dockerfileMtime > imageCreated) {
+        stale.add(tag);
+      }
+    } catch {
+      // Dockerfile doesn't exist or inspect failed - not stale
+    }
+  }));
+
+  return stale;
+}
 
 export const GET = createApiHandler({
   auth: { roles: ["admin", "super_admin"] },
@@ -17,7 +48,14 @@ export const GET = createApiHandler({
       listDockerImages(filter),
       getDiskUsage(),
     ]);
-    return apiSuccess({ images, disk });
+
+    const staleSet = await getStaleImages(images);
+
+    return apiSuccess({
+      images,
+      disk,
+      staleImages: [...staleSet],
+    });
   },
 });
 

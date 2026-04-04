@@ -44,7 +44,7 @@ export async function GET(
     const user = await getApiUser(request);
     if (!user) return unauthorized();
 
-    const rateLimitResponse = consumeApiRateLimit(request, "submissions:events");
+    const rateLimitResponse = await consumeApiRateLimit(request, "submissions:events");
     if (rateLimitResponse) return rateLimitResponse;
 
     if (globalConnectionCount >= MAX_GLOBAL_SSE_CONNECTIONS) {

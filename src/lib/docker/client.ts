@@ -139,47 +139,6 @@ export async function getDiskUsage(): Promise<{ total: string; used: string; ava
   }
 }
 
-/** Prune stale Docker images older than maxAgeDays, skipping in-use images */
-export async function pruneStaleDockerImages(
-  maxAgeDays: number,
-  inUseImages: Set<string>,
-): Promise<{ removed: string[]; errors: string[] }> {
-  const removed: string[] = [];
-  const errors: string[] = [];
-
-  const images = await listDockerImages();
-  const cutoffMs = maxAgeDays * 24 * 60 * 60 * 1000;
-  const now = Date.now();
-
-  for (const img of images) {
-    const fullName = img.tag && img.tag !== "<none>" ? `${img.repository}:${img.tag}` : img.repository;
-
-    // Skip in-use images
-    if (inUseImages.has(fullName) || inUseImages.has(img.repository)) continue;
-    // Skip images without proper tags (dangling handled by docker prune)
-    if (img.repository === "<none>") continue;
-
-    // Check age via inspect
-    const info = await inspectDockerImage(fullName);
-    if (!info) continue;
-
-    const createdStr = info.Created as string | undefined;
-    if (!createdStr) continue;
-
-    const createdAt = new Date(createdStr).getTime();
-    if (now - createdAt < cutoffMs) continue;
-
-    const result = await removeDockerImage(fullName);
-    if (result.success) {
-      removed.push(fullName);
-    } else {
-      errors.push(`${fullName}: ${result.error}`);
-    }
-  }
-
-  return { removed, errors };
-}
-
 /** Remove a Docker image */
 export async function removeDockerImage(imageTag: string): Promise<{ success: boolean; error?: string }> {
   if (!/^[a-zA-Z0-9][a-zA-Z0-9._\-/:]+$/.test(imageTag)) {
@@ -193,4 +152,23 @@ export async function removeDockerImage(imageTag: string): Promise<{ success: bo
     const msg = error instanceof Error ? error.message : String(error);
     return { success: false, error: msg };
   }
+}
+
+/** Remove a list of Docker images by tag */
+export async function removeDockerImages(
+  tags: string[],
+): Promise<{ removed: string[]; errors: string[] }> {
+  const removed: string[] = [];
+  const errors: string[] = [];
+
+  for (const tag of tags) {
+    const result = await removeDockerImage(tag);
+    if (result.success) {
+      removed.push(tag);
+    } else {
+      errors.push(`${tag}: ${result.error}`);
+    }
+  }
+
+  return { removed, errors };
 }

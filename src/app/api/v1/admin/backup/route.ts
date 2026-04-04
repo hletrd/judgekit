@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
     if (!user) return unauthorized();
     if (user.role !== "super_admin") return forbidden();
 
-    const rateLimitResponse = consumeApiRateLimit(request, "admin:backup");
+    const rateLimitResponse = await consumeApiRateLimit(request, "admin:backup");
     if (rateLimitResponse) return rateLimitResponse;
 
     // Require password re-confirmation

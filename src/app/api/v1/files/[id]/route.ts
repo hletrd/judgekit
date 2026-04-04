@@ -75,7 +75,7 @@ export async function DELETE(
     const csrfError = csrfForbidden(request);
     if (csrfError) return csrfError;
 
-    const rateLimitError = consumeApiRateLimit(request, "files:delete");
+    const rateLimitError = await consumeApiRateLimit(request, "files:delete");
     if (rateLimitError) return rateLimitError;
 
     const user = await getApiUser(request);

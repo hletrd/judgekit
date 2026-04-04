@@ -481,7 +481,11 @@ export async function executeCompilerRun(
 
     // Run phase
     const runCmd = ["sh", "-c", options.language.runCommand];
-    const stdinBuffer = options.stdin ? Buffer.from(options.stdin, "utf8") : null;
+    // Ensure stdin ends with a newline for convenience (many programs expect it)
+    const stdinText = options.stdin
+      ? (options.stdin.endsWith("\n") ? options.stdin : options.stdin + "\n")
+      : "";
+    const stdinBuffer = stdinText ? Buffer.from(stdinText, "utf8") : null;
     const runResult = await runDocker({
       image: options.language.dockerImage,
       workspaceDir,

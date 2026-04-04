@@ -18,7 +18,7 @@ import { logger } from "@/lib/logger";
 
 export async function POST(request: NextRequest) {
   try {
-    const rateLimitError = consumeApiRateLimit(request, "files:upload");
+    const rateLimitError = await consumeApiRateLimit(request, "files:upload");
     if (rateLimitError) return rateLimitError;
 
     const user = await getApiUser(request);

@@ -5,7 +5,7 @@ import { db } from "@/lib/db";
 import { languageConfigs } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
-import { isJudgeLanguage } from "@/lib/judge/languages";
+import { isJudgeLanguage, getJudgeLanguageDefinition, serializeJudgeCommand } from "@/lib/judge/languages";
 import { executeCompilerRun } from "@/lib/compiler/execute";
 import { resolveCapabilities } from "@/lib/capabilities";
 
@@ -54,8 +54,14 @@ export const POST = createApiHandler({
       return apiError("languageDisabled", 400, "language");
     }
 
-    // Validate required fields are present (defensive check)
-    if (!langConfig.extension || !langConfig.dockerImage || !langConfig.runCommand) {
+    // Fall back to built-in language definitions when DB fields are empty
+    const langDef = getJudgeLanguageDefinition(body.language);
+    const extension = langConfig.extension || langDef?.extension;
+    const dockerImage = langConfig.dockerImage || langDef?.dockerImage;
+    const runCommand = langConfig.runCommand || (langDef ? langDef.runCommand.join(" ") : null);
+    const compileCommand = langConfig.compileCommand || serializeJudgeCommand(langDef?.compileCommand);
+
+    if (!extension || !dockerImage || !runCommand) {
       return apiError("internalServerError", 500);
     }
 
@@ -63,10 +69,10 @@ export const POST = createApiHandler({
       sourceCode: body.sourceCode,
       stdin: body.stdin,
       language: {
-        extension: langConfig.extension,
-        dockerImage: langConfig.dockerImage.trim(),
-        compileCommand: langConfig.compileCommand?.trim() || null,
-        runCommand: langConfig.runCommand.trim(),
+        extension,
+        dockerImage: dockerImage.trim(),
+        compileCommand: compileCommand?.trim() || null,
+        runCommand: runCommand.trim(),
       },
     });
 

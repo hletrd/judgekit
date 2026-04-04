@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
     if (!user) return unauthorized();
     if (user.role !== "super_admin") return forbidden();
 
-    const rateLimitError = consumeApiRateLimit(request, "admin:migrate-import");
+    const rateLimitError = await consumeApiRateLimit(request, "admin:migrate-import");
     if (rateLimitError) return rateLimitError;
 
     const contentType = request.headers.get("content-type");

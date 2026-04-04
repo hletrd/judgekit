@@ -1,25 +1,41 @@
 import { NextRequest } from "next/server";
-import { z } from "zod";
+import { stat } from "fs/promises";
+import { join } from "path";
 import { createApiHandler } from "@/lib/api/handler";
 import { apiSuccess } from "@/lib/api/responses";
-import { pruneStaleDockerImages } from "@/lib/docker/client";
+import { listDockerImages, inspectDockerImage, removeDockerImages } from "@/lib/docker/client";
 import { recordAuditEvent } from "@/lib/audit/events";
-import { db } from "@/lib/db";
-import { languageConfigs } from "@/lib/db/schema";
-
-const pruneSchema = z.object({
-  maxAgeDays: z.number().int().min(1).max(365).default(30),
-});
 
 export const POST = createApiHandler({
   auth: { roles: ["super_admin"] },
-  schema: pruneSchema,
-  handler: async (req: NextRequest, { body, user }) => {
-    // Get in-use images from DB
-    const configs = await db.select({ dockerImage: languageConfigs.dockerImage }).from(languageConfigs);
-    const inUseSet = new Set(configs.map((c) => c.dockerImage));
+  handler: async (req: NextRequest, { user }) => {
+    const images = await listDockerImages("judge-*");
 
-    const result = await pruneStaleDockerImages(body.maxAgeDays, inUseSet);
+    // Find stale images: Dockerfile mtime > image creation time
+    const staleTags: string[] = [];
+
+    await Promise.all(images.map(async (img) => {
+      if (img.repository === "<none>") return;
+      const tag = `${img.repository}:${img.tag}`;
+      const dockerfilePath = join("docker", `Dockerfile.${img.repository}`);
+
+      try {
+        const [fileStat, info] = await Promise.all([
+          stat(dockerfilePath),
+          inspectDockerImage(tag),
+        ]);
+        if (!info) return;
+
+        const imageCreated = new Date(info.Created as string).getTime();
+        if (fileStat.mtimeMs > imageCreated) {
+          staleTags.push(tag);
+        }
+      } catch {
+        // Dockerfile doesn't exist or inspect failed - skip
+      }
+    }));
+
+    const result = await removeDockerImages(staleTags);
 
     if (result.removed.length > 0) {
       recordAuditEvent({
@@ -28,7 +44,7 @@ export const POST = createApiHandler({
         action: "docker_image.pruned",
         resourceType: "docker_image",
         resourceId: "bulk_prune",
-        summary: `Pruned ${result.removed.length} stale Docker images (>${body.maxAgeDays} days): ${result.removed.join(", ")}`,
+        summary: `Pruned ${result.removed.length} stale Docker images: ${result.removed.join(", ")}`,
         request: req,
       });
     }

@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
     if (!user) return unauthorized();
     if (user.role !== "super_admin") return forbidden();
 
-    const rateLimitError = consumeApiRateLimit(request, "admin:restore");
+    const rateLimitError = await consumeApiRateLimit(request, "admin:restore");
     if (rateLimitError) return rateLimitError;
 
     const formData = await request.formData();
