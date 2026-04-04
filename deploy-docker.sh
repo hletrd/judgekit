@@ -27,7 +27,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 # Source deployment env vars from proxmox-ops .env or .env.deploy
-for _envfile in "${SCRIPT_DIR}/../proxmox-ops/.env" "${SCRIPT_DIR}/.env.deploy"; do
+for _envfile in "${SCRIPT_DIR}/.env.deploy" "${SCRIPT_DIR}/../proxmox-ops/.env"; do
     if [[ -f "$_envfile" ]]; then
         set -a
         # shellcheck disable=SC1091
