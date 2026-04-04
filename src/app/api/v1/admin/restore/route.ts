@@ -3,7 +3,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { getApiUser, unauthorized, forbidden, csrfForbidden } from "@/lib/api/auth";
 import { consumeApiRateLimit } from "@/lib/security/api-rate-limit";
 import { recordAuditEvent } from "@/lib/audit/events";
+import { verifyPassword } from "@/lib/security/password-hash";
 import { logger } from "@/lib/logger";
+import { db } from "@/lib/db";
+import { users } from "@/lib/db/schema";
+import { eq } from "drizzle-orm";
 import { importDatabase } from "@/lib/db/import";
 import { validateExport, type JudgeKitExport } from "@/lib/db/export";
 
@@ -21,6 +25,27 @@ export async function POST(request: NextRequest) {
 
     const formData = await request.formData();
     const file = formData.get("file") as File | null;
+    const password = formData.get("password") as string | null;
+
+    if (!password || typeof password !== "string") {
+      return NextResponse.json({ error: "passwordRequired" }, { status: 400 });
+    }
+
+    // Verify password against stored hash
+    const [dbUser] = await db
+      .select({ passwordHash: users.passwordHash })
+      .from(users)
+      .where(eq(users.id, user.id))
+      .limit(1);
+
+    if (!dbUser?.passwordHash) {
+      return NextResponse.json({ error: "authenticationFailed" }, { status: 403 });
+    }
+
+    const { valid } = await verifyPassword(password, dbUser.passwordHash);
+    if (!valid) {
+      return NextResponse.json({ error: "invalidPassword" }, { status: 403 });
+    }
 
     if (!file) {
       return NextResponse.json({ error: "noFileProvided" }, { status: 400 });
