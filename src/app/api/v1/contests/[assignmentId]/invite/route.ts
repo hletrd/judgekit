@@ -4,9 +4,9 @@ import { z } from "zod";
 import { createApiHandler } from "@/lib/api/handler";
 import { apiSuccess, apiError } from "@/lib/api/responses";
 import { getContestAssignment, canManageContest } from "@/lib/assignments/contests";
-import { db, execTransaction } from "@/lib/db";
+import { db } from "@/lib/db";
 import { users, enrollments, contestAccessTokens } from "@/lib/db/schema";
-import { and, eq, inArray, like, or, sql } from "drizzle-orm";
+import { and, eq, inArray, or, sql } from "drizzle-orm";
 
 
 const inviteSchema = z.object({
@@ -92,54 +92,48 @@ export const POST = createApiHandler({
 
     if (!targetUser) return apiError("userNotFound", 404);
 
-    execTransaction(() => {
-      // Create contest access token if not exists
-      const existingToken = db
-        .select({ id: contestAccessTokens.id })
-        .from(contestAccessTokens)
-        .where(
-          and(
-            eq(contestAccessTokens.assignmentId, assignmentId),
-            eq(contestAccessTokens.userId, targetUser.id)
-          )
+    // Create contest access token if not exists
+    const [existingToken] = await db
+      .select({ id: contestAccessTokens.id })
+      .from(contestAccessTokens)
+      .where(
+        and(
+          eq(contestAccessTokens.assignmentId, assignmentId),
+          eq(contestAccessTokens.userId, targetUser.id)
         )
-        .get();
+      );
 
-      if (!existingToken) {
-        db.insert(contestAccessTokens)
-          .values({
-            id: nanoid(),
-            assignmentId,
-            userId: targetUser.id,
-            redeemedAt: new Date(),
-            ipAddress: null, // Instructor-initiated invite; invitee IP not available
-          })
-          .run();
-      }
+    if (!existingToken) {
+      await db.insert(contestAccessTokens)
+        .values({
+          id: nanoid(),
+          assignmentId,
+          userId: targetUser.id,
+          redeemedAt: new Date(),
+          ipAddress: null, // Instructor-initiated invite; invitee IP not available
+        });
+    }
 
-      // Auto-enroll in group if not already
-      const existingEnrollment = db
-        .select({ id: enrollments.id })
-        .from(enrollments)
-        .where(
-          and(
-            eq(enrollments.groupId, assignment.groupId),
-            eq(enrollments.userId, targetUser.id)
-          )
+    // Auto-enroll in group if not already
+    const [existingEnrollment] = await db
+      .select({ id: enrollments.id })
+      .from(enrollments)
+      .where(
+        and(
+          eq(enrollments.groupId, assignment.groupId),
+          eq(enrollments.userId, targetUser.id)
         )
-        .get();
+      );
 
-      if (!existingEnrollment) {
-        db.insert(enrollments)
-          .values({
-            id: nanoid(),
-            userId: targetUser.id,
-            groupId: assignment.groupId,
-            enrolledAt: new Date(),
-          })
-          .run();
-      }
-    });
+    if (!existingEnrollment) {
+      await db.insert(enrollments)
+        .values({
+          id: nanoid(),
+          userId: targetUser.id,
+          groupId: assignment.groupId,
+          enrolledAt: new Date(),
+        });
+    }
     return apiSuccess({
       userId: targetUser.id,
       username: targetUser.username,

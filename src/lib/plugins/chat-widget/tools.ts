@@ -1,4 +1,4 @@
-import { eq, desc, and } from "drizzle-orm";
+import { eq, desc } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { problems, submissions, submissionResults, assignments } from "@/lib/db/schema";
 import { canAccessProblem } from "@/lib/auth/permissions";

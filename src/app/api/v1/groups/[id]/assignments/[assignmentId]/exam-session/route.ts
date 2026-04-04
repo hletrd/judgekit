@@ -8,7 +8,6 @@ import { startExamSession, getExamSession } from "@/lib/assignments/exam-session
 import { createApiHandler, isAdmin, forbidden, notFound } from "@/lib/api/handler";
 import { canAccessGroup } from "@/lib/auth/permissions";
 import { isUserRole } from "@/lib/security/constants";
-import { logger } from "@/lib/logger";
 
 export const POST = createApiHandler({
   rateLimit: "exam-session:start",

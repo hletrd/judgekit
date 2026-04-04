@@ -25,7 +25,7 @@ async function createRuntimeStudent(runtimeSuffix: string) {
   const email = `${username}@example.com`;
   const passwordHash = await hash(RUNTIME_STUDENT_PASSWORD, 12);
 
-  db.insert(users)
+  await db.insert(users)
     .values({
       id,
       email,
@@ -37,7 +37,7 @@ async function createRuntimeStudent(runtimeSuffix: string) {
       updatedAt: new Date(),
       username,
     })
-    .run();
+    ;
 
   return { id, username };
 }
@@ -50,7 +50,7 @@ async function seedProblemDeleteFixtures(authorId: string, submissionUserId: str
   const blockedProblemTitle = `Task 12 Blocked Problem ${runtimeSuffix}`;
   const safeProblemTitle = `Task 12 Safe Problem ${runtimeSuffix}`;
 
-  db.insert(problems)
+  await db.insert(problems)
     .values([
       {
         id: blockedProblemId,
@@ -73,9 +73,9 @@ async function seedProblemDeleteFixtures(authorId: string, submissionUserId: str
         visibility: "private",
       },
     ])
-    .run();
+    ;
 
-  db.insert(groups)
+  await db.insert(groups)
     .values({
       id: groupId,
       description: "Task 12 delete guard group",
@@ -83,9 +83,9 @@ async function seedProblemDeleteFixtures(authorId: string, submissionUserId: str
       name: `Task 12 Group ${runtimeSuffix}`,
       updatedAt: new Date(),
     })
-    .run();
+    ;
 
-  db.insert(assignments)
+  await db.insert(assignments)
     .values({
       id: assignmentId,
       description: "Task 12 delete guard assignment",
@@ -93,18 +93,18 @@ async function seedProblemDeleteFixtures(authorId: string, submissionUserId: str
       title: `Task 12 Assignment ${runtimeSuffix}`,
       updatedAt: new Date(),
     })
-    .run();
+    ;
 
-  db.insert(assignmentProblems)
+  await db.insert(assignmentProblems)
     .values({
       assignmentId,
       problemId: blockedProblemId,
       points: 100,
       sortOrder: 0,
     })
-    .run();
+    ;
 
-  db.insert(submissions)
+  await db.insert(submissions)
     .values({
       assignmentId,
       id: nanoid(),
@@ -115,7 +115,7 @@ async function seedProblemDeleteFixtures(authorId: string, submissionUserId: str
       status: "accepted",
       userId: submissionUserId,
     })
-    .run();
+    ;
 
   return { blockedProblemId, blockedProblemTitle, safeProblemId, safeProblemTitle };
 }

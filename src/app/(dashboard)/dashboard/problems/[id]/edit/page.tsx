@@ -8,6 +8,7 @@ import { eq } from "drizzle-orm";
 import CreateProblemForm from "@/app/(dashboard)/dashboard/problems/create/create-problem-form";
 import { ProblemDeleteButton } from "../problem-delete-button";
 import { resolveCapabilities } from "@/lib/capabilities/cache";
+import { getResolvedPlatformMode, getPlatformModePolicy } from "@/lib/system-settings";
 
 export default async function EditProblemPage({ params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
@@ -37,6 +38,8 @@ export default async function EditProblemPage({ params }: { params: Promise<{ id
   }
 
   const t = await getTranslations("problems");
+  const platformMode = await getResolvedPlatformMode();
+  const forceDisableAiAssistant = getPlatformModePolicy(platformMode).restrictAiByDefault;
   const hasSubmissions = Boolean(
     await db.query.submissions.findFirst({
       where: eq(submissions.problemId, problem.id),
@@ -98,6 +101,7 @@ export default async function EditProblemPage({ params }: { params: Promise<{ id
             }}
             testCasesLocked={hasSubmissions}
             allowTestCaseOverride={hasSubmissions && canOverrideTestCases}
+            forceDisableAiAssistant={forceDisableAiAssistant}
           />
         </CardContent>
       </Card>

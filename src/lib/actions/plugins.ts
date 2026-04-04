@@ -9,6 +9,8 @@ import { getPluginDefinition } from "@/lib/plugins/registry";
 import { isTrustedServerActionOrigin } from "@/lib/security/server-actions";
 import { checkServerActionRateLimit } from "@/lib/security/api-rate-limit";
 import { logger } from "@/lib/logger";
+import { preparePluginConfigForStorage, redactPluginConfigForAudit } from "@/lib/plugins/secrets";
+import { eq } from "drizzle-orm";
 
 type PluginActionResult =
   | { success: true }
@@ -24,7 +26,7 @@ export async function togglePlugin(pluginId: string, enabled: boolean): Promise<
     return { success: false, error: "unauthorized" };
   }
 
-  const rateLimit = checkServerActionRateLimit(session.user.id, "togglePlugin", 20, 60);
+  const rateLimit = await checkServerActionRateLimit(session.user.id, "togglePlugin", 20, 60);
   if (rateLimit) return { success: false, error: "rateLimited" };
 
   const definition = getPluginDefinition(pluginId);
@@ -75,7 +77,7 @@ export async function updatePluginConfig(pluginId: string, rawConfig: unknown): 
     return { success: false, error: "unauthorized" };
   }
 
-  const rateLimit = checkServerActionRateLimit(session.user.id, "updatePluginConfig", 20, 60);
+  const rateLimit = await checkServerActionRateLimit(session.user.id, "updatePluginConfig", 20, 60);
   if (rateLimit) return { success: false, error: "rateLimited" };
 
   const definition = getPluginDefinition(pluginId);
@@ -88,29 +90,32 @@ export async function updatePluginConfig(pluginId: string, rawConfig: unknown): 
     return { success: false, error: "invalidConfig" };
   }
 
-  const validatedConfig = parsed.data as Record<string, unknown>;
+    const validatedConfig = parsed.data as Record<string, unknown>;
 
   try {
+    const [existingRow] = await db
+      .select({ config: plugins.config, enabled: plugins.enabled })
+      .from(plugins)
+      .where(eq(plugins.id, pluginId))
+      .limit(1);
+    const storedConfig = preparePluginConfigForStorage(
+      pluginId,
+      validatedConfig,
+      (existingRow?.config as Record<string, unknown>) ?? null
+    );
+
     await db.insert(plugins).values({
       id: pluginId,
-      enabled: false,
-      config: validatedConfig,
+      enabled: existingRow?.enabled ?? false,
+      config: storedConfig,
       updatedAt: new Date(),
     }).onConflictDoUpdate({
       target: plugins.id,
-      set: withUpdatedAt({ config: validatedConfig }),
+      set: withUpdatedAt({
+        config: storedConfig,
+        ...(existingRow?.enabled !== undefined ? { enabled: existingRow.enabled } : {}),
+      }),
     });
-
-    // Redact sensitive keys for audit log
-    const SENSITIVE_KEY_PATTERN = /key|secret|token|password|credential/i;
-    const redactedConfig: Record<string, unknown> = {};
-    for (const [key, value] of Object.entries(validatedConfig)) {
-      if (SENSITIVE_KEY_PATTERN.test(key)) {
-        redactedConfig[key] = "[REDACTED]";
-      } else {
-        redactedConfig[key] = value;
-      }
-    }
 
     const auditContext = await buildServerActionAuditContext("/dashboard/admin/plugins");
     recordAuditEvent({
@@ -123,7 +128,7 @@ export async function updatePluginConfig(pluginId: string, rawConfig: unknown): 
       summary: `Updated config for plugin ${pluginId}`,
       details: {
         pluginId,
-        config: redactedConfig as Record<string, string>,
+        config: redactPluginConfigForAudit(pluginId, validatedConfig) as Record<string, string>,
       },
       context: auditContext,
     });

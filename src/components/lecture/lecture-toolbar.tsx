@@ -9,6 +9,8 @@ import { cn } from "@/lib/utils";
 const FONT_SCALES = ["1.25", "1.5", "1.75", "2.0", "2.5", "3.0", "3.5", "4.0"] as const;
 const COLOR_SCHEMES = ["dark", "light", "solarized"] as const;
 const AUTO_HIDE_MS = 4000;
+type FontScale = (typeof FONT_SCALES)[number];
+type ColorScheme = (typeof COLOR_SCHEMES)[number];
 
 export function LectureToolbar({ onToggleStats }: { onToggleStats?: () => void }) {
   const { active, toggle, fontScale, setFontScale, colorScheme, setColorScheme, panelLayout, setPanelLayout } = useLectureMode();
@@ -39,6 +41,15 @@ export function LectureToolbar({ onToggleStats }: { onToggleStats?: () => void }
     };
   }, [active, resetHideTimer]);
 
+  // Fullscreen
+  const toggleFullscreen = useCallback(() => {
+    if (document.fullscreenElement) {
+      document.exitFullscreen().then(() => setIsFullscreen(false)).catch(() => {});
+    } else {
+      document.documentElement.requestFullscreen().then(() => setIsFullscreen(true)).catch(() => {});
+    }
+  }, []);
+
   // Keyboard shortcuts
   useEffect(() => {
     if (!active) return;
@@ -53,12 +64,12 @@ export function LectureToolbar({ onToggleStats }: { onToggleStats?: () => void }
           break;
         case "+":
         case "=": {
-          const idx = FONT_SCALES.indexOf(fontScale as any);
+          const idx = FONT_SCALES.indexOf(fontScale as FontScale);
           if (idx < FONT_SCALES.length - 1) setFontScale(FONT_SCALES[idx + 1]);
           break;
         }
         case "-": {
-          const idx = FONT_SCALES.indexOf(fontScale as any);
+          const idx = FONT_SCALES.indexOf(fontScale as FontScale);
           if (idx > 0) setFontScale(FONT_SCALES[idx - 1]);
           break;
         }
@@ -84,16 +95,7 @@ export function LectureToolbar({ onToggleStats }: { onToggleStats?: () => void }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [active, fontScale, setFontScale, toggle, setPanelLayout, onToggleStats, resetHideTimer]);
-
-  // Fullscreen
-  const toggleFullscreen = useCallback(() => {
-    if (document.fullscreenElement) {
-      document.exitFullscreen().then(() => setIsFullscreen(false)).catch(() => {});
-    } else {
-      document.documentElement.requestFullscreen().then(() => setIsFullscreen(true)).catch(() => {});
-    }
-  }, []);
+  }, [active, fontScale, setFontScale, toggle, setPanelLayout, onToggleStats, resetHideTimer, toggleFullscreen]);
 
   useEffect(() => {
     const handler = () => setIsFullscreen(!!document.fullscreenElement);
@@ -103,8 +105,8 @@ export function LectureToolbar({ onToggleStats }: { onToggleStats?: () => void }
 
   if (!active) return null;
 
-  const fontIdx = FONT_SCALES.indexOf(fontScale as any);
-  const colorIdx = COLOR_SCHEMES.indexOf(colorScheme as any);
+  const fontIdx = FONT_SCALES.indexOf(fontScale as FontScale);
+  const colorIdx = COLOR_SCHEMES.indexOf(colorScheme as ColorScheme);
 
   return (
     <div

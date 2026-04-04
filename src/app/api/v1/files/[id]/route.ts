@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { eq } from "drizzle-orm";
+import { eq, like } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { files } from "@/lib/db/schema";
-import { getApiUser, unauthorized, csrfForbidden } from "@/lib/api/auth";
+import { files, problems } from "@/lib/db/schema";
+import { getApiUser, unauthorized, csrfForbidden, forbidden } from "@/lib/api/auth";
 import { consumeApiRateLimit } from "@/lib/security/api-rate-limit";
 import { apiSuccess, apiError } from "@/lib/api/responses";
 import { resolveCapabilities } from "@/lib/capabilities/cache";
@@ -10,6 +10,47 @@ import { recordAuditEvent } from "@/lib/audit/events";
 import { readUploadedFile, deleteUploadedFile } from "@/lib/files/storage";
 import { isImageMimeType } from "@/lib/files/image-processing";
 import { logger } from "@/lib/logger";
+import { getAccessibleProblemIds } from "@/lib/auth/permissions";
+
+async function canAccessFile(
+  fileId: string,
+  uploadedBy: string | null,
+  userId: string,
+  role: string
+) {
+  const caps = await resolveCapabilities(role);
+
+  if (caps.has("files.manage")) {
+    return true;
+  }
+
+  if (caps.has("files.upload") && uploadedBy === userId) {
+    return true;
+  }
+
+  const problemRows = await db
+    .select({
+      id: problems.id,
+      visibility: problems.visibility,
+      authorId: problems.authorId,
+    })
+    .from(problems)
+    .where(like(problems.description, `%/api/v1/files/${fileId}%`));
+
+  if (problemRows.length === 0) {
+    return false;
+  }
+
+  const accessibleProblemIds = await getAccessibleProblemIds(
+    userId,
+    role,
+    problemRows.map((problem) => ({
+      ...problem,
+      visibility: problem.visibility ?? "private",
+    }))
+  );
+  return accessibleProblemIds.size > 0;
+}
 
 export async function GET(
   request: NextRequest,
@@ -29,6 +70,11 @@ export async function GET(
 
     if (!file) {
       return apiError("notFound", 404);
+    }
+
+    const allowed = await canAccessFile(file.id, file.uploadedBy ?? null, user.id, user.role);
+    if (!allowed) {
+      return forbidden();
     }
 
     // Check ETag for conditional request
@@ -55,8 +101,9 @@ export async function GET(
         "Content-Type": file.mimeType,
         "Content-Length": String(buffer.length),
         "Content-Disposition": disposition,
-        "Cache-Control": "public, max-age=31536000, immutable",
+        "Cache-Control": "private, no-store, max-age=0",
         ETag: `"${file.id}"`,
+        Vary: "Cookie, Authorization",
         "X-Content-Type-Options": "nosniff",
         "Content-Security-Policy": "default-src 'none'",
       },

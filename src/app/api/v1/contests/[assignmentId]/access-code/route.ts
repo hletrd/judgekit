@@ -13,7 +13,7 @@ export const GET = createApiHandler({
     if (!assignment || assignment.examMode === "none") return apiError("notFound", 404);
     if (!canManageContest(user, assignment)) return apiError("forbidden", 403);
 
-    const code = getAccessCode(assignmentId);
+    const code = await getAccessCode(assignmentId);
     return apiSuccess({ accessCode: code });
   },
 });
@@ -26,7 +26,7 @@ export const POST = createApiHandler({
     if (!assignment || assignment.examMode === "none") return apiError("notFound", 404);
     if (!canManageContest(user, assignment)) return apiError("forbidden", 403);
 
-    const code = setAccessCode(assignmentId);
+    const code = await setAccessCode(assignmentId);
     return apiSuccess({ accessCode: code }, { status: 201 });
   },
 });
@@ -39,7 +39,7 @@ export const DELETE = createApiHandler({
     if (!assignment || assignment.examMode === "none") return apiError("notFound", 404);
     if (!canManageContest(user, assignment)) return apiError("forbidden", 403);
 
-    revokeAccessCode(assignmentId);
+    await revokeAccessCode(assignmentId);
     return apiSuccess({ accessCode: null });
   },
 });

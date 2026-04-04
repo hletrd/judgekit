@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { apiSuccess, apiError } from "@/lib/api/responses";
+import { apiSuccess } from "@/lib/api/responses";
 import { db } from "@/lib/db";
 import { judgeWorkers, submissions } from "@/lib/db/schema";
 import { eq, sql, inArray } from "drizzle-orm";

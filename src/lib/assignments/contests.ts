@@ -1,4 +1,3 @@
-import { db } from "@/lib/db";
 import { isAdmin, isInstructor } from "@/lib/api/auth";
 import { rawQueryOne, rawQueryAll } from "@/lib/db/queries";
 import type { UserRole, ExamMode, ScoringModel } from "@/types";

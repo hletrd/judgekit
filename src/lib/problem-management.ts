@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import { nanoid } from "nanoid";
-import { db, execTransaction } from "@/lib/db";
+import { db, execTransaction, type TransactionClient } from "@/lib/db";
 import { problems, testCases, tags, problemTags } from "@/lib/db/schema";
 import type { ProblemMutationInput } from "@/lib/validators/problem-management";
 import { sanitizeHtml } from "@/lib/security/sanitize-html";
@@ -16,48 +16,52 @@ function mapTestCases(problemId: string, values: ProblemMutationInput["testCases
   }));
 }
 
-/**
- * Resolve tag names to tag IDs, creating any that don't exist yet.
- * Returns an array of tag IDs.
- */
-function resolveTagIds(tagNames: string[], createdBy: string): string[] {
+type DatabaseExecutor = Pick<typeof db, "select" | "insert" | "update" | "delete">;
+
+async function resolveTagIdsWithExecutor(
+  tagNames: string[],
+  createdBy: string,
+  executor: DatabaseExecutor | TransactionClient
+): Promise<string[]> {
   const tagIds: string[] = [];
   for (const name of tagNames) {
     const trimmed = name.trim();
     if (!trimmed) continue;
-    const existing = db
+    const [existing] = await executor
       .select({ id: tags.id })
       .from(tags)
       .where(eq(tags.name, trimmed))
-      .get();
+      .limit(1);
     if (existing) {
       tagIds.push(existing.id);
     } else {
       const newId = nanoid();
-      db.insert(tags)
-        .values({ id: newId, name: trimmed, createdBy, createdAt: new Date() })
-        .run();
+      await executor.insert(tags)
+        .values({ id: newId, name: trimmed, createdBy, createdAt: new Date() });
       tagIds.push(newId);
     }
   }
   return tagIds;
 }
 
-function syncProblemTags(problemId: string, tagIds: string[]) {
-  db.delete(problemTags).where(eq(problemTags.problemId, problemId)).run();
+async function syncProblemTags(
+  problemId: string,
+  tagIds: string[],
+  executor: DatabaseExecutor | TransactionClient = db
+) {
+  await executor.delete(problemTags).where(eq(problemTags.problemId, problemId));
   for (const tagId of tagIds) {
-    db.insert(problemTags)
-      .values({ id: nanoid(), problemId, tagId })
-      .run();
+    await executor.insert(problemTags)
+      .values({ id: nanoid(), problemId, tagId });
   }
 }
 
-export function createProblemWithTestCases(input: ProblemMutationInput, authorId: string) {
+export async function createProblemWithTestCases(input: ProblemMutationInput, authorId: string) {
   const id = nanoid();
   const now = new Date();
 
-  execTransaction(() => {
-    db.insert(problems)
+  await execTransaction(async (tx) => {
+    await tx.insert(problems)
       .values({
         id,
         sequenceNumber: input.sequenceNumber ?? null,
@@ -77,17 +81,16 @@ export function createProblemWithTestCases(input: ProblemMutationInput, authorId
         authorId,
         createdAt: now,
         updatedAt: now,
-      })
-      .run();
+      });
 
     const mappedTestCases = mapTestCases(id, input.testCases);
     if (mappedTestCases.length > 0) {
-      db.insert(testCases).values(mappedTestCases).run();
+      await tx.insert(testCases).values(mappedTestCases);
     }
 
     if (input.tags.length > 0) {
-      const tagIds = resolveTagIds(input.tags, authorId);
-      syncProblemTags(id, tagIds);
+      const tagIds = await resolveTagIdsWithExecutor(input.tags, authorId, tx);
+      await syncProblemTags(id, tagIds, tx);
     }
 
   });
@@ -95,11 +98,11 @@ export function createProblemWithTestCases(input: ProblemMutationInput, authorId
   return id;
 }
 
-export function updateProblemWithTestCases(problemId: string, input: ProblemMutationInput, actorId?: string) {
+export async function updateProblemWithTestCases(problemId: string, input: ProblemMutationInput, actorId?: string) {
   const now = new Date();
 
-  execTransaction(() => {
-    db.update(problems)
+  await execTransaction(async (tx) => {
+    await tx.update(problems)
       .set({
         sequenceNumber: input.sequenceNumber ?? null,
         title: input.title,
@@ -117,18 +120,17 @@ export function updateProblemWithTestCases(problemId: string, input: ProblemMuta
         difficulty: input.difficulty ?? null,
         updatedAt: now,
       })
-      .where(eq(problems.id, problemId))
-      .run();
+      .where(eq(problems.id, problemId));
 
-    db.delete(testCases).where(eq(testCases.problemId, problemId)).run();
+    await tx.delete(testCases).where(eq(testCases.problemId, problemId));
 
     const mappedTestCases = mapTestCases(problemId, input.testCases);
     if (mappedTestCases.length > 0) {
-      db.insert(testCases).values(mappedTestCases).run();
+      await tx.insert(testCases).values(mappedTestCases);
     }
 
-    const tagIds = resolveTagIds(input.tags, actorId ?? "");
-    syncProblemTags(problemId, tagIds);
+    const tagIds = await resolveTagIdsWithExecutor(input.tags, actorId ?? "", tx);
+    await syncProblemTags(problemId, tagIds, tx);
 
   });
 }

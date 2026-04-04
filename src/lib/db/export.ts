@@ -88,7 +88,7 @@ export function getReversedTableOrder(): string[] {
  * - JSON string → parsed object
  * - null → null
  */
-function normalizeValue(val: unknown, _colName: string): unknown {
+function normalizeValue(val: unknown): unknown {
   if (val === null || val === undefined) return null;
   if (val instanceof Date) return val.toISOString();
   // SQLite stores booleans as 0/1 integers — leave numbers as-is
@@ -117,7 +117,6 @@ export async function exportDatabase(): Promise<JudgeKitExport> {
     const allExportedRows: unknown[][] = [];
     let offset = 0;
 
-    // eslint-disable-next-line no-constant-condition
     while (true) {
       const chunk = await db
         .select()
@@ -133,7 +132,7 @@ export async function exportDatabase(): Promise<JudgeKitExport> {
 
       for (const row of chunk) {
         allExportedRows.push(
-          columns.map((col) => normalizeValue((row as any)[col], col))
+          columns.map((col) => normalizeValue((row as any)[col]))
         );
       }
 

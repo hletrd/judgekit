@@ -10,7 +10,7 @@ import { getContestsForUser, getContestStatus } from "@/lib/assignments/contests
 import type { ContestStatus } from "@/lib/assignments/contests";
 import { formatDateTimeInTimeZone } from "@/lib/datetime";
 import { CountdownTimer } from "@/components/exam/countdown-timer";
-import { getResolvedSystemTimeZone } from "@/lib/system-settings";
+import { getResolvedPlatformMode, getResolvedSystemTimeZone } from "@/lib/system-settings";
 import { KeyRound, Plus } from "lucide-react";
 import { PaginationControls } from "@/components/pagination-controls";
 
@@ -82,6 +82,10 @@ export default async function ContestsPage({
 
   const role = assertUserRole(session.user.role as string);
   const caps = await resolveCapabilities(session.user.role);
+  const platformMode = await getResolvedPlatformMode();
+  if (platformMode === "recruiting" && !caps.has("system.settings") && !caps.has("submissions.view_all")) {
+    redirect("/dashboard");
+  }
   const contests = await getContestsForUser(session.user.id, role);
   const now = new Date();
   const filter = normalizeFilter(resolvedSearchParams?.filter);

@@ -543,12 +543,13 @@ describe("createApiHandler", () => {
   // Middleware ordering
   // -------------------------------------------------------
   describe("middleware ordering", () => {
-    it("checks CSRF before auth", async () => {
+    it("checks auth before CSRF by default", async () => {
       const csrfResponse = NextResponse.json(
         { error: "csrfForbidden" },
         { status: 403 }
       );
       csrfForbiddenMock.mockReturnValue(csrfResponse);
+      getApiUserMock.mockResolvedValue(null);
 
       const handler = createApiHandler({
         handler: async () => NextResponse.json({ ok: true }),
@@ -556,9 +557,8 @@ describe("createApiHandler", () => {
 
       await handler(makeRequest("POST", {}));
 
-      expect(csrfForbiddenMock).toHaveBeenCalledOnce();
-      // Auth should not have been called since CSRF failed first
-      expect(getApiUserMock).not.toHaveBeenCalled();
+      expect(getApiUserMock).toHaveBeenCalledOnce();
+      expect(csrfForbiddenMock).not.toHaveBeenCalled();
     });
 
     it("checks rate limit before auth", async () => {

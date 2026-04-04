@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { auth } from "@/lib/auth";
 import { buildServerActionAuditContext, recordAuditEvent } from "@/lib/audit/events";
-import { db, execTransaction } from "@/lib/db";
+import { db } from "@/lib/db";
 import { languageConfigs } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { isTrustedServerActionOrigin } from "@/lib/security/server-actions";
@@ -36,7 +36,7 @@ export async function toggleLanguage(
     return { success: false, error: "unauthorized" };
   }
 
-  const rateLimit = checkServerActionRateLimit(session.user.id, "languageConfig", 30, 60);
+  const rateLimit = await checkServerActionRateLimit(session.user.id, "languageConfig", 30, 60);
   if (rateLimit) return { success: false, error: "rateLimited" };
 
   try {
@@ -81,7 +81,7 @@ export async function updateLanguageConfig(
     return { success: false, error: "unauthorized" };
   }
 
-  const rateLimit = checkServerActionRateLimit(session.user.id, "languageConfig", 30, 60);
+  const rateLimit = await checkServerActionRateLimit(session.user.id, "languageConfig", 30, 60);
   if (rateLimit) return { success: false, error: "rateLimited" };
 
   try {
@@ -145,7 +145,7 @@ export async function addLanguageConfig(input: {
     return { success: false, error: "unauthorized" };
   }
 
-  const rateLimit = checkServerActionRateLimit(session.user.id, "languageConfig", 30, 60);
+  const rateLimit = await checkServerActionRateLimit(session.user.id, "languageConfig", 30, 60);
   if (rateLimit) return { success: false, error: "rateLimited" };
 
   // Validate language key: alphanumeric + underscore only, no spaces
@@ -223,7 +223,7 @@ export async function resetLanguageToDefaults(
     return { success: false, error: "unauthorized" };
   }
 
-  const rateLimit = checkServerActionRateLimit(session.user.id, "languageConfig", 30, 60);
+  const rateLimit = await checkServerActionRateLimit(session.user.id, "languageConfig", 30, 60);
   if (rateLimit) return { success: false, error: "rateLimited" };
 
   const definition = JUDGE_LANGUAGE_CONFIGS[language as keyof typeof JUDGE_LANGUAGE_CONFIGS];
@@ -276,13 +276,13 @@ export async function resetAllLanguagesToDefaults(): Promise<LanguageConfigActio
     return { success: false, error: "unauthorized" };
   }
 
-  const rateLimit = checkServerActionRateLimit(session.user.id, "languageConfig", 30, 60);
+  const rateLimit = await checkServerActionRateLimit(session.user.id, "languageConfig", 30, 60);
   if (rateLimit) return { success: false, error: "rateLimited" };
 
   try {
-    execTransaction(() => {
+    await db.transaction(async (tx) => {
       for (const [lang, definition] of Object.entries(JUDGE_LANGUAGE_CONFIGS)) {
-        db
+        await tx
           .update(languageConfigs)
           .set({
             dockerImage: definition.dockerImage,
@@ -291,8 +291,7 @@ export async function resetAllLanguagesToDefaults(): Promise<LanguageConfigActio
             runCommand: definition.runCommand.join(" "),
             updatedAt: new Date(),
           })
-          .where(eq(languageConfigs.language, lang))
-          .run();
+          .where(eq(languageConfigs.language, lang));
       }
     });
 

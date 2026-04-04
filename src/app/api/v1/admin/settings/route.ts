@@ -3,8 +3,7 @@ import { createApiHandler, isAdmin } from "@/lib/api/handler";
 import { apiSuccess, apiError } from "@/lib/api/responses";
 import { db } from "@/lib/db";
 import { systemSettings } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
-import { getSystemSettings, GLOBAL_SETTINGS_ID } from "@/lib/system-settings";
+import { DEFAULT_PLATFORM_MODE, getSystemSettings, GLOBAL_SETTINGS_ID } from "@/lib/system-settings";
 import { invalidateSettingsCache } from "@/lib/system-settings-config";
 import { systemSettingsSchema } from "@/lib/validators/system-settings";
 import { recordAuditEvent } from "@/lib/audit/events";
@@ -23,12 +22,13 @@ export const PUT = createApiHandler({
   handler: async (req: NextRequest, { user, body }) => {
     if (!isAdmin(user.role)) return apiError("forbidden", 403);
 
-    const { siteTitle, siteDescription, timeZone, aiAssistantEnabled, allowedHosts, ...configValues } = body;
+    const { siteTitle, siteDescription, timeZone, platformMode, aiAssistantEnabled, allowedHosts, ...configValues } = body;
 
     const baseValues: Record<string, unknown> = {
       siteTitle: siteTitle ?? null,
       siteDescription: siteDescription ?? null,
       timeZone: timeZone ?? null,
+      platformMode: platformMode ?? DEFAULT_PLATFORM_MODE,
       aiAssistantEnabled: aiAssistantEnabled ?? true,
       updatedAt: new Date(),
     };
@@ -66,6 +66,7 @@ export const PUT = createApiHandler({
         siteTitle: siteTitle ?? null,
         siteDescription: siteDescription ?? null,
         timeZone: timeZone ?? null,
+        platformMode: platformMode ?? DEFAULT_PLATFORM_MODE,
         aiAssistantEnabled: aiAssistantEnabled ?? true,
       },
       request: req,

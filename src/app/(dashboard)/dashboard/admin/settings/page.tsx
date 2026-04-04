@@ -113,6 +113,8 @@ export default async function AdminSettingsPage() {
   });
   const storedSettings = await getSystemSettings();
   const stored = storedSettings as Record<string, unknown> | undefined;
+  const initialAiAssistantEnabled =
+    typeof stored?.aiAssistantEnabled === "boolean" ? stored.aiAssistantEnabled : true;
   const dbInfo = await getDbInfo();
 
   const authUrlObj = getAuthUrlObject();
@@ -145,13 +147,15 @@ export default async function AdminSettingsPage() {
                 initialSiteTitle={storedSettings?.siteTitle ?? ""}
                 initialSiteDescription={storedSettings?.siteDescription ?? ""}
                 initialTimeZone={storedSettings?.timeZone ?? ""}
+                initialPlatformMode={storedSettings?.platformMode ?? "homework"}
                 defaultSiteTitle={tCommon("appName")}
                 defaultSiteDescription={tCommon("appDescription")}
                 defaultTimeZone={DEFAULT_SYSTEM_TIME_ZONE}
                 currentSiteTitle={resolvedSettings.siteTitle}
                 currentSiteDescription={resolvedSettings.siteDescription}
                 currentTimeZone={resolvedSettings.timeZone}
-                initialAiAssistantEnabled={'aiAssistantEnabled' in (storedSettings ?? {}) ? (storedSettings as any).aiAssistantEnabled ?? true : true}
+                currentPlatformMode={resolvedSettings.platformMode}
+                initialAiAssistantEnabled={initialAiAssistantEnabled}
               />
             </CardContent>
           </Card>

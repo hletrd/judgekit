@@ -50,7 +50,7 @@ function savePendingEvents(assignmentId: string, events: PendingEvent[]) {
 export function AntiCheatMonitor({
   assignmentId,
   enabled,
-  warningMessage = "Tab switch detected. This event has been recorded.",
+  warningMessage = "Tab switch detected. An integrity signal has been recorded for review.",
 }: AntiCheatMonitorProps) {
   const lastEventRef = useRef<number>(0);
   const MIN_INTERVAL_MS = 1000; // Rate limit client-side events
@@ -156,7 +156,7 @@ export function AntiCheatMonitor({
       });
     }
 
-    function handleContextMenu(_e: MouseEvent) {
+    function handleContextMenu() {
       // Log the event but do not prevent default — preserves accessibility
       reportEvent("contextmenu");
     }

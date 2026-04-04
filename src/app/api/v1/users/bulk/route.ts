@@ -114,9 +114,9 @@ export const POST = createApiHandler({
 
     // Insert all valid users in a single transaction
     if (toInsert.length > 0) {
-      execTransaction(() => {
+      await execTransaction(async (tx) => {
         for (const entry of toInsert) {
-          db.insert(users).values({
+          await tx.insert(users).values({
             id: entry.id,
             username: entry.username,
             email: entry.email,
@@ -128,7 +128,7 @@ export const POST = createApiHandler({
             mustChangePassword: true,
             createdAt: new Date(),
             updatedAt: new Date(),
-          }).run();
+          });
         }
       });
 

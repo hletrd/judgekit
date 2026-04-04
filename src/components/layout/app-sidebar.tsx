@@ -17,7 +17,10 @@ import {
   SidebarFooter,
   SidebarHeader,
 } from "@/components/ui/sidebar";
+import { Badge } from "@/components/ui/badge";
 import { BookOpen, FileCode, Send, Users, User, LayoutDashboard, GraduationCap, Shield, LogOut, LogIn, History, FolderOpen, Blocks, Trophy, MessageCircle, Timer, KeyRound, Code, Settings, Server, Play, Upload, Tags, Loader2 } from "lucide-react";
+import type { PlatformMode } from "@/types";
+import { getPlatformModePolicy } from "@/lib/platform-mode";
 
 interface AppSidebarProps {
   user: {
@@ -28,6 +31,7 @@ interface AppSidebarProps {
     role: string;
   };
   siteTitle: string;
+  platformMode: PlatformMode;
   capabilities?: string[];
 }
 
@@ -36,6 +40,8 @@ type NavItem = {
   href: string;
   icon: typeof LayoutDashboard;
   capability?: string;
+  hiddenInModes?: PlatformMode[];
+  titleKeyByMode?: Partial<Record<PlatformMode, string>>;
 };
 
 type NavGroup = {
@@ -53,18 +59,49 @@ const navGroups: NavGroup[] = [
   {
     labelKey: "learning",
     items: [
-      { titleKey: "problems", href: "/dashboard/problems", icon: BookOpen },
-      { titleKey: "submissions", href: "/dashboard/submissions", icon: Send },
-      { titleKey: "contests", href: "/dashboard/contests", icon: Timer },
+      {
+        titleKey: "problems",
+        href: "/dashboard/problems",
+        icon: BookOpen,
+        titleKeyByMode: { recruiting: "challenges" },
+      },
+      {
+        titleKey: "submissions",
+        href: "/dashboard/submissions",
+        icon: Send,
+        titleKeyByMode: { recruiting: "attempts" },
+      },
+      {
+        titleKey: "contests",
+        href: "/dashboard/contests",
+        icon: Timer,
+        hiddenInModes: ["recruiting"],
+      },
       { titleKey: "compiler", href: "/dashboard/compiler", icon: Play },
-      { titleKey: "rankings", href: "/dashboard/rankings", icon: Trophy },
+      {
+        titleKey: "rankings",
+        href: "/dashboard/rankings",
+        icon: Trophy,
+        hiddenInModes: ["recruiting"],
+      },
     ],
   },
   {
     labelKey: "manage",
     items: [
-      { titleKey: "groups", href: "/dashboard/groups", icon: Users },
-      { titleKey: "problemSets", href: "/dashboard/problem-sets", icon: FolderOpen, capability: "problem_sets.create" },
+      {
+        titleKey: "groups",
+        href: "/dashboard/groups",
+        icon: Users,
+        hiddenInModes: ["recruiting"],
+      },
+      {
+        titleKey: "problemSets",
+        href: "/dashboard/problem-sets",
+        icon: FolderOpen,
+        capability: "problem_sets.create",
+        hiddenInModes: ["recruiting"],
+      },
     ],
   },
   {
@@ -106,11 +143,22 @@ const adminGroups: NavGroup[] = [
   },
 ];
 
-function NavItems({ items, pathname, t }: { items: NavItem[]; pathname: string; t: (key: string) => string }) {
+function NavItems({
+  items,
+  pathname,
+  t,
+  platformMode,
+}: {
+  items: NavItem[];
+  pathname: string;
+  t: (key: string) => string;
+  platformMode: PlatformMode;
+}) {
   return (
     <>
       {items.map((item) => {
         const isActive = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href + "/"));
+        const titleKey = item.titleKeyByMode?.[platformMode] ?? item.titleKey;
         return (
           <SidebarMenuItem key={item.href}>
             <SidebarMenuButton
@@ -119,7 +167,7 @@ function NavItems({ items, pathname, t }: { items: NavItem[]; pathname: string; 
               render={<Link href={item.href} />}
             >
               <item.icon className="size-4" aria-hidden="true" />
-              <span>{t(item.titleKey)}</span>
+              <span>{t(titleKey)}</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
         );
@@ -128,7 +176,7 @@ function NavItems({ items, pathname, t }: { items: NavItem[]; pathname: string; 
   );
 }
 
-export function AppSidebar({ user, siteTitle, capabilities = [] }: AppSidebarProps) {
+export function AppSidebar({ user, siteTitle, platformMode, capabilities = [] }: AppSidebarProps) {
   const pathname = usePathname();
   const t = useTranslations("nav");
   const tAuth = useTranslations("auth");
@@ -142,9 +190,18 @@ export function AppSidebar({ user, siteTitle, capabilities = [] }: AppSidebarPro
   };
 
   const capsSet = new Set(capabilities);
+  const hideStandaloneCompiler = getPlatformModePolicy(platformMode).restrictStandaloneCompiler;
 
   function filterItems(items: NavItem[]) {
-    return items.filter(item => !item.capability || capsSet.has(item.capability));
+    return items.filter((item) => {
+      if (item.hiddenInModes?.includes(platformMode)) {
+        return false;
+      }
+      if (hideStandaloneCompiler && item.href === "/dashboard/compiler") {
+        return false;
+      }
+      return !item.capability || capsSet.has(item.capability);
+    });
   }
 
   async function handleSignOut() {
@@ -161,7 +218,12 @@ export function AppSidebar({ user, siteTitle, capabilities = [] }: AppSidebarPro
       <SidebarHeader className="border-b p-4">
         <div className="flex items-center gap-2">
           <GraduationCap className="h-6 w-6" aria-hidden="true" />
-          <span className="text-lg font-bold">{siteTitle}</span>
+          <div className="min-w-0">
+            <span className="block truncate text-lg font-bold">{siteTitle}</span>
+            <Badge variant="outline" className="mt-1 text-[10px] uppercase tracking-wide">
+              {tCommon(`platformModes.${platformMode}`)}
+            </Badge>
+          </div>
         </div>
       </SidebarHeader>
       <SidebarContent>
@@ -173,7 +235,7 @@ export function AppSidebar({ user, siteTitle, capabilities = [] }: AppSidebarPro
               <SidebarGroupLabel>{t(group.labelKey)}</SidebarGroupLabel>
               <SidebarGroupContent>
                 <SidebarMenu>
-                  <NavItems items={filtered} pathname={pathname} t={t} />
+                  <NavItems items={filtered} pathname={pathname} t={t} platformMode={platformMode} />
                 </SidebarMenu>
               </SidebarGroupContent>
             </SidebarGroup>
@@ -195,7 +257,7 @@ export function AppSidebar({ user, siteTitle, capabilities = [] }: AppSidebarPro
                   <SidebarGroupLabel>{t(group.labelKey)}</SidebarGroupLabel>
                   <SidebarGroupContent>
                     <SidebarMenu>
-                      <NavItems items={filtered} pathname={pathname} t={t} />
+                      <NavItems items={filtered} pathname={pathname} t={t} platformMode={platformMode} />
                     </SidebarMenu>
                   </SidebarGroupContent>
                 </SidebarGroup>

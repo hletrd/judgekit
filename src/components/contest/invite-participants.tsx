@@ -24,7 +24,6 @@ type UserResult = {
 
 export function InviteParticipants({ assignmentId }: InviteParticipantsProps) {
   const t = useTranslations("contests.invite");
-  const tCommon = useTranslations("common");
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<UserResult[]>([]);
   const [invitedIds, setInvitedIds] = useState<Set<string>>(new Set());

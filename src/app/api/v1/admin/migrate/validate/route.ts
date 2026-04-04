@@ -35,7 +35,10 @@ export async function POST(request: NextRequest) {
     const tableSummary: Record<string, number> = {};
     if (exp.tables && typeof exp.tables === "object") {
       for (const [name, tableData] of Object.entries(exp.tables)) {
-        tableSummary[name] = (tableData as any).rowCount ?? 0;
+        const rowCount = typeof tableData === "object" && tableData !== null && "rowCount" in tableData
+          ? tableData.rowCount
+          : undefined;
+        tableSummary[name] = typeof rowCount === "number" ? rowCount : 0;
       }
     }
 

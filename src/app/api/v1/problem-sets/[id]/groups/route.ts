@@ -37,7 +37,7 @@ export const POST = createApiHandler({
       return apiError(parsed.error.issues[0]?.message ?? "problemSetAssignFailed", 400);
     }
 
-    assignProblemSetToGroups(id, parsed.data.groupIds);
+    await assignProblemSetToGroups(id, parsed.data.groupIds);
 
     const updated = await db.query.problemSets.findFirst({
       where: eq(problemSets.id, id),
@@ -95,7 +95,7 @@ export const DELETE = createApiHandler({
       return apiError("problemSetGroupRequired", 400);
     }
 
-    removeProblemSetFromGroup(id, groupId);
+    await removeProblemSetFromGroup(id, groupId);
 
     recordAuditEvent({
       actorId: user.id,

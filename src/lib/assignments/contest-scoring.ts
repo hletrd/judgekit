@@ -47,7 +47,11 @@ export type LeaderboardEntry = {
 const CACHE_TTL_MS = 30_000;
 const STALE_AFTER_MS = 15_000;
 
-type CacheEntry = { data: any; createdAt: number };
+type ContestRankingResult = {
+  scoringModel: ScoringModel;
+  entries: LeaderboardEntry[];
+};
+type CacheEntry = { data: ContestRankingResult; createdAt: number };
 const rankingCache = new LRUCache<string, CacheEntry>({ max: 50, ttl: CACHE_TTL_MS });
 
 /** Tracks which cache keys currently have a background refresh in progress. */

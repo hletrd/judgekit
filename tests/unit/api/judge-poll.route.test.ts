@@ -1,12 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
 
-const { prepareGetMock, prepareMock, problemsFindFirstMock, selectMock, recordAuditEventMock } =
+const { rawQueryOneMock, problemsFindFirstMock, dbSelectMock, recordAuditEventMock } =
   vi.hoisted(() => ({
-    prepareGetMock: vi.fn(),
-    prepareMock: vi.fn(),
+    rawQueryOneMock: vi.fn(),
     problemsFindFirstMock: vi.fn(),
-    selectMock: vi.fn(),
+    dbSelectMock: vi.fn(),
     recordAuditEventMock: vi.fn(),
   }));
 
@@ -18,65 +17,74 @@ vi.mock("@/lib/audit/events", () => ({
   recordAuditEvent: recordAuditEventMock,
 }));
 
+vi.mock("@/lib/db/queries", () => ({
+  rawQueryOne: rawQueryOneMock,
+}));
+
+vi.mock("@/lib/system-settings-config", () => ({
+  getConfiguredSettings: () => ({ staleClaimTimeoutMs: 300_000 }),
+}));
+
 vi.mock("@/lib/db", () => ({
-  sqlite: {
-    prepare: prepareMock,
-  },
   db: {
     query: {
       problems: {
         findFirst: problemsFindFirstMock,
       },
-      languageConfigs: {
-        findFirst: vi.fn().mockResolvedValue(null),
-      },
     },
-    select: selectMock,
+    select: dbSelectMock,
   },
 }));
 
 import { POST } from "@/app/api/v1/judge/claim/route";
 
+function makeSelectChain(rows: unknown[]) {
+  const chain = {
+    from: vi.fn(),
+    where: vi.fn(),
+    orderBy: vi.fn(),
+    limit: vi.fn(),
+  };
+  chain.from.mockReturnValue(chain);
+  chain.where.mockReturnValue(chain);
+  chain.orderBy.mockReturnValue(rows);
+  chain.limit.mockReturnValue(rows);
+  return chain;
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
 
-  prepareMock.mockReturnValue({
-    get: prepareGetMock,
+  rawQueryOneMock.mockResolvedValue({
+    id: "submission-1",
+    userId: "user-1",
+    problemId: "problem-1",
+    assignmentId: null,
+    claimToken: "claim-token",
+    language: "python",
+    sourceCode: "print(1)",
+    status: "queued",
+    compileOutput: null,
+    executionTimeMs: null,
+    memoryUsedKb: null,
+    score: null,
+    judgedAt: null,
+    submittedAt: Date.now(),
   });
 
   problemsFindFirstMock.mockResolvedValue({
     timeLimitMs: 1000,
     memoryLimitMb: 128,
+    comparisonMode: "exact",
+    floatAbsoluteError: null,
+    floatRelativeError: null,
   });
 
-  selectMock.mockReturnValue({
-    from: vi.fn(() => ({
-      where: vi.fn(() => ({
-        orderBy: vi.fn(() => []),
-      })),
-    })),
-  });
+  dbSelectMock.mockReturnValue(makeSelectChain([]));
 });
 
 describe("POST /api/v1/judge/claim", () => {
   it("binds a primitive timestamp when claiming submissions", async () => {
-    prepareGetMock.mockReturnValue({
-      id: "submission-1",
-      userId: "user-1",
-      problemId: "problem-1",
-      assignmentId: null,
-      claimToken: "claim-token",
-      language: "python",
-      sourceCode: "print(1)",
-      status: "queued",
-      compileOutput: null,
-      executionTimeMs: null,
-      memoryUsedKb: null,
-      score: null,
-      judgedAt: null,
-      submittedAt: Date.now(),
-    });
-
     const response = await POST(
       new NextRequest("http://localhost:3000/api/v1/judge/claim", {
         method: "POST",
@@ -88,9 +96,8 @@ describe("POST /api/v1/judge/claim", () => {
       })
     );
 
-    expect(prepareMock).toHaveBeenCalledOnce();
-    expect(prepareGetMock).toHaveBeenCalledOnce();
-    expect(prepareGetMock.mock.calls[0]?.[0]).toEqual(
+    expect(rawQueryOneMock).toHaveBeenCalledOnce();
+    expect(rawQueryOneMock.mock.calls[0]?.[1]).toEqual(
       expect.objectContaining({
         claimToken: expect.any(String),
         claimCreatedAt: expect.any(Number),

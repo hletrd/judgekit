@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { apiSuccess, apiError } from "@/lib/api/responses";
 import { eq, desc } from "drizzle-orm";
 import { db } from "@/lib/db";
@@ -12,7 +12,6 @@ import {
 import { assignmentMutationSchema } from "@/lib/validators/assignments";
 import { getApiUser, forbidden, notFound, unauthorized, csrfForbidden } from "@/lib/api/auth";
 import { canAccessGroup } from "@/lib/auth/permissions";
-import { assertUserRole } from "@/lib/security/constants";
 import { consumeApiRateLimit } from "@/lib/security/api-rate-limit";
 import { logger } from "@/lib/logger";
 
@@ -117,7 +116,7 @@ export async function POST(
       return apiError("assignmentProblemForbidden", 403);
     }
 
-    const assignmentId = createAssignmentWithProblems(id, parsedInput.data);
+    const assignmentId = await createAssignmentWithProblems(id, parsedInput.data);
     const createdAssignment = await db.query.assignments.findFirst({
       where: eq(assignments.id, assignmentId),
       with: {

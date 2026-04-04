@@ -12,7 +12,6 @@ import {
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { eq, sql } from "drizzle-orm";
-import type { UserRole } from "@/types";
 import {
   clearRateLimitMulti,
   getRateLimitKey,

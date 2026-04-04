@@ -8,7 +8,6 @@ import { enrollments, users } from "@/lib/db/schema";
 import { canManageGroupResources } from "@/lib/assignments/management";
 import { groupMembershipSchema } from "@/lib/validators/groups";
 import { canAccessGroup } from "@/lib/auth/permissions";
-import { assertUserRole } from "@/lib/security/constants";
 import { createApiHandler, forbidden, notFound } from "@/lib/api/handler";
 
 export const GET = createApiHandler({

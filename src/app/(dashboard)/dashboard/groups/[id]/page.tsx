@@ -12,7 +12,6 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { canManageGroupResources, getManageableProblemsForGroup } from "@/lib/assignments/management";
-import type { UserRole } from "@/types";
 import { assertUserRole } from "@/lib/security/constants";
 import AssignmentFormDialog, { type AssignmentEditorValue } from "./assignment-form-dialog";
 import { AssignmentDeleteButton } from "./assignment-delete-button";

@@ -5,7 +5,7 @@
 // directory would break production without a coordinated redeploy.
 import { NextRequest } from "next/server";
 import { apiSuccess, apiError } from "@/lib/api/responses";
-import { db, execTransaction } from "@/lib/db";
+import { db } from "@/lib/db";
 import { submissions, submissionResults } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 import { recordAuditEvent } from "@/lib/audit/events";
@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (IN_PROGRESS_JUDGE_STATUSES.has(status)) {
-      const inProgressResult = db
+      const inProgressResult = await db
         .update(submissions)
         .set({
           status,
@@ -62,10 +62,9 @@ export async function POST(request: NextRequest) {
         })
         .where(
           and(eq(submissions.id, submissionId), eq(submissions.judgeClaimToken, claimToken))
-        )
-        .run();
+        );
 
-      if (inProgressResult.changes === 0) {
+      if ((inProgressResult.rowCount ?? 0) === 0) {
         return apiError("invalidJudgeClaim", 403);
       }
 
@@ -96,37 +95,28 @@ export async function POST(request: NextRequest) {
 
     const { score, maxExecutionTimeMs, maxMemoryUsedKb } = computeFinalJudgeMetrics(results);
 
-    try {
-      execTransaction(() => {
-        const finalResult = db.update(submissions).set({
-          status,
-          judgeClaimToken: null,
-          judgeClaimedAt: null,
-          compileOutput: compileOutput ?? null,
-          score,
-          executionTimeMs: maxExecutionTimeMs,
-          memoryUsedKb: maxMemoryUsedKb,
-          judgedAt: new Date(),
-        }).where(
-          and(eq(submissions.id, submissionId), eq(submissions.judgeClaimToken, claimToken))
-        ).run();
+    const finalResult = await db.update(submissions).set({
+      status,
+      judgeClaimToken: null,
+      judgeClaimedAt: null,
+      compileOutput: compileOutput ?? null,
+      score,
+      executionTimeMs: maxExecutionTimeMs,
+      memoryUsedKb: maxMemoryUsedKb,
+      judgedAt: new Date(),
+    }).where(
+      and(eq(submissions.id, submissionId), eq(submissions.judgeClaimToken, claimToken))
+    );
 
-        if (finalResult.changes === 0) {
-          throw new Error("claim_mismatch");
-        }
+    if ((finalResult.rowCount ?? 0) === 0) {
+      return apiError("invalidJudgeClaim", 403);
+    }
 
-        db.delete(submissionResults).where(eq(submissionResults.submissionId, submissionId)).run();
+    await db.delete(submissionResults).where(eq(submissionResults.submissionId, submissionId));
 
-        const rows = buildSubmissionResultRows(submissionId, results);
-        if (rows.length > 0) {
-          db.insert(submissionResults).values(rows).run();
-        }
-      });
-    } catch (txError) {
-      if (txError instanceof Error && txError.message === "claim_mismatch") {
-        return apiError("invalidJudgeClaim", 403);
-      }
-      throw txError;
+    const rows = buildSubmissionResultRows(submissionId, results);
+    if (rows.length > 0) {
+      await db.insert(submissionResults).values(rows);
     }
 
     const updated = await db.query.submissions.findFirst({

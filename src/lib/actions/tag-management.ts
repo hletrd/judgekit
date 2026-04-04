@@ -30,7 +30,7 @@ export async function createTag(name: string, color: string | null): Promise<Tag
     return { success: false, error: "unauthorized" };
   }
 
-  const rateLimit = checkServerActionRateLimit(session.user.id, "tagManagement", 30, 60);
+  const rateLimit = await checkServerActionRateLimit(session.user.id, "tagManagement", 30, 60);
   if (rateLimit) return { success: false, error: "rateLimited" };
 
   const trimmedName = name.trim();
@@ -76,7 +76,7 @@ export async function updateTag(id: string, name: string, color: string | null):
     return { success: false, error: "unauthorized" };
   }
 
-  const rateLimit = checkServerActionRateLimit(session.user.id, "tagManagement", 30, 60);
+  const rateLimit = await checkServerActionRateLimit(session.user.id, "tagManagement", 30, 60);
   if (rateLimit) return { success: false, error: "rateLimited" };
 
   const trimmedName = name.trim();
@@ -121,7 +121,7 @@ export async function deleteTag(id: string): Promise<TagActionResult> {
     return { success: false, error: "unauthorized" };
   }
 
-  const rateLimit = checkServerActionRateLimit(session.user.id, "tagManagement", 30, 60);
+  const rateLimit = await checkServerActionRateLimit(session.user.id, "tagManagement", 30, 60);
   if (rateLimit) return { success: false, error: "rateLimited" };
 
   try {

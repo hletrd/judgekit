@@ -25,10 +25,9 @@ import {
 import { canManageGroupResources } from "@/lib/assignments/management";
 import { assertUserRole } from "@/lib/security/constants";
 import { db } from "@/lib/db";
-import { assignments, enrollments, problems, submissions, users } from "@/lib/db/schema";
+import { assignments, enrollments, problems, submissions } from "@/lib/db/schema";
 import { getResolvedSystemTimeZone } from "@/lib/system-settings";
 import { formatDateTimeInTimeZone } from "@/lib/datetime";
-import { formatSubmissionIdPrefix } from "@/lib/submissions/id";
 import { buildStatusLabels } from "@/lib/judge/status-labels";
 import { notFound, redirect } from "next/navigation";
 import { getExamSession, getExamSessionsForAssignment } from "@/lib/assignments/exam-sessions";

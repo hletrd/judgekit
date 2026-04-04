@@ -38,6 +38,7 @@ vi.mock("@/lib/audit/events", () => ({
 
 vi.mock("@/lib/system-settings", () => ({
   GLOBAL_SETTINGS_ID: "global",
+  DEFAULT_PLATFORM_MODE: "homework",
 }));
 
 vi.mock("@/lib/system-settings-config", () => ({
@@ -95,6 +96,7 @@ const validInput = {
   siteTitle: "JudgeKit",
   siteDescription: "A competitive programming judge",
   timeZone: "UTC",
+  platformMode: "contest" as const,
   aiAssistantEnabled: true,
 };
 
@@ -182,6 +184,7 @@ describe("updateSystemSettings", () => {
         siteTitle: "JudgeKit",
         siteDescription: "A competitive programming judge",
         timeZone: "UTC",
+        platformMode: "contest",
         aiAssistantEnabled: true,
       })
     );
@@ -239,6 +242,7 @@ describe("updateSystemSettings", () => {
         siteTitle: null,
         siteDescription: null,
         timeZone: null,
+        platformMode: "homework",
       })
     );
   });

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const VALID_TABS = ["general", "security", "submissions", "judge", "session", "advanced", "uploads", "database"];
@@ -10,14 +10,11 @@ interface SettingsTabsProps {
 }
 
 export function SettingsTabs({ tabs }: SettingsTabsProps) {
-  const [activeTab, setActiveTab] = useState("general");
-
-  useEffect(() => {
+  const [activeTab, setActiveTab] = useState(() => {
+    if (typeof window === "undefined") return "general";
     const hash = window.location.hash.replace("#", "");
-    if (hash && VALID_TABS.includes(hash)) {
-      setActiveTab(hash);
-    }
-  }, []);
+    return hash && VALID_TABS.includes(hash) ? hash : "general";
+  });
 
   function handleTabChange(value: string) {
     setActiveTab(value);

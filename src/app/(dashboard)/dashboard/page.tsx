@@ -7,6 +7,8 @@ import { resolveCapabilities } from "@/lib/capabilities/cache";
 import { StudentDashboard } from "./_components/student-dashboard";
 import { InstructorDashboard } from "./_components/instructor-dashboard";
 import { AdminDashboard } from "./_components/admin-dashboard";
+import { CandidateDashboard } from "./_components/candidate-dashboard";
+import { getResolvedPlatformMode } from "@/lib/system-settings";
 
 export default async function DashboardPage() {
   const session = await auth();
@@ -14,15 +16,17 @@ export default async function DashboardPage() {
 
   const t = await getTranslations("dashboard");
   const caps = await resolveCapabilities(session.user.role);
+  const platformMode = await getResolvedPlatformMode();
 
   const isAdminView = caps.has("system.settings");
   const isInstructorView = caps.has("submissions.view_all") && !caps.has("system.settings");
+  const isCandidateView = platformMode === "recruiting" && !caps.has("submissions.view_all");
 
   return (
     <div className="space-y-6">
       <h2 className="text-2xl font-bold">{t("title")}</h2>
 
-      {!caps.has("submissions.view_all") && (
+      {!caps.has("submissions.view_all") && !isCandidateView && (
         <Suspense
           fallback={
             <div className="space-y-6">
@@ -39,6 +43,23 @@ export default async function DashboardPage() {
           }
         >
           <StudentDashboard userId={session.user.id} />
+        </Suspense>
+      )}
+
+      {isCandidateView && (
+        <Suspense
+          fallback={
+            <div className="space-y-6">
+              <div className="grid gap-4 md:grid-cols-3">
+                <Skeleton className="h-28 w-full" />
+                <Skeleton className="h-28 w-full" />
+                <Skeleton className="h-28 w-full" />
+              </div>
+              <Skeleton className="h-64 w-full" />
+            </div>
+          }
+        >
+          <CandidateDashboard userId={session.user.id} role={session.user.role} />
         </Suspense>
       )}
 

@@ -71,7 +71,7 @@ export async function toggleUserActive(userId: string, isActive: boolean): Promi
     return { success: false, error: "unauthorized" };
   }
 
-  const rateLimit = checkServerActionRateLimit(session.user.id, "toggleUserActive", 20, 60);
+  const rateLimit = await checkServerActionRateLimit(session.user.id, "toggleUserActive", 20, 60);
   if (rateLimit) return { success: false, error: "rateLimited" };
 
   // Prevent deactivating yourself
@@ -140,7 +140,7 @@ export async function deleteUserPermanently(userId: string, confirmUsername: str
     return { success: false, error: "unauthorized" };
   }
 
-  const rateLimit = checkServerActionRateLimit(session.user.id, "deleteUserPermanently", 5, 60);
+  const rateLimit = await checkServerActionRateLimit(session.user.id, "deleteUserPermanently", 5, 60);
   if (rateLimit) return { success: false, error: "rateLimited" };
 
   if (userId === session.user.id) {
@@ -207,7 +207,7 @@ export async function editUser(userId: string, data: ManagedUserInput): Promise<
     return { success: false, error: "unauthorized" };
   }
 
-  const rateLimit = checkServerActionRateLimit(session.user.id, "editUser", 20, 60);
+  const rateLimit = await checkServerActionRateLimit(session.user.id, "editUser", 20, 60);
   if (rateLimit) return { success: false, error: "rateLimited" };
 
   const editParsed = adminUpdateUserSchema.safeParse(data);
@@ -332,7 +332,7 @@ export async function createUser(data: ManagedUserInput): Promise<UserManagement
     return { success: false, error: "unauthorized" };
   }
 
-  const rateLimit = checkServerActionRateLimit(session.user.id, "createUser", 20, 60);
+  const rateLimit = await checkServerActionRateLimit(session.user.id, "createUser", 20, 60);
   if (rateLimit) return { success: false, error: "rateLimited" };
 
   const createParsed = userCreateSchema.safeParse(data);

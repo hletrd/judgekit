@@ -3,7 +3,7 @@ import { db } from "@/lib/db";
 import { submissions, submissionComments, users } from "@/lib/db/schema";
 import { isPluginEnabled, getPluginState } from "@/lib/plugins/data";
 import { getProvider } from "@/lib/plugins/chat-widget/providers";
-import { isAiAssistantEnabled } from "@/lib/system-settings";
+import { getResolvedPlatformMode, getPlatformModePolicy, isAiAssistantEnabled } from "@/lib/system-settings";
 import { logger } from "@/lib/logger";
 
 /**
@@ -12,6 +12,9 @@ import { logger } from "@/lib/logger";
  */
 export async function triggerAutoCodeReview(submissionId: string): Promise<void> {
   try {
+    const platformMode = await getResolvedPlatformMode();
+    if (getPlatformModePolicy(platformMode).restrictAiByDefault) return;
+
     // Check if AI is globally enabled
     const globalEnabled = await isAiAssistantEnabled();
     if (!globalEnabled) return;
@@ -20,7 +23,7 @@ export async function triggerAutoCodeReview(submissionId: string): Promise<void>
     const pluginEnabled = await isPluginEnabled("chat-widget");
     if (!pluginEnabled) return;
 
-    const pluginState = await getPluginState("chat-widget");
+    const pluginState = await getPluginState("chat-widget", { includeSecrets: true });
     if (!pluginState) return;
 
     const config = pluginState.config as {

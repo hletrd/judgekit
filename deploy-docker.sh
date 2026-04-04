@@ -299,33 +299,74 @@ remote "cp -f ${REMOTE_DIR}/docker-compose.production.yml ${REMOTE_DIR}/docker-c
 success "Config ready"
 
 # ---------------------------------------------------------------------------
-# Step 5: Stop old containers and start new ones
+# Step 5: Stop old containers, start DB first, migrate, then start all
 # ---------------------------------------------------------------------------
 info "Stopping existing containers (if any)..."
 remote "cd ${REMOTE_DIR} && cp -f .env.production .env && (docker compose -f docker-compose.production.yml down --remove-orphans 2>/dev/null || docker-compose -f docker-compose.production.yml down --remove-orphans 2>/dev/null || true)"
 
-info "Starting containers..."
-remote "cd ${REMOTE_DIR} && (docker compose -f docker-compose.production.yml --env-file .env.production up -d 2>/dev/null || docker-compose -f docker-compose.production.yml --env-file .env.production up -d)"
-success "Containers started"
+# 5a. Start only the database container
+info "Starting database container..."
+remote "cd ${REMOTE_DIR} && (docker compose -f docker-compose.production.yml --env-file .env.production up -d db 2>/dev/null || docker-compose -f docker-compose.production.yml --env-file .env.production up -d db)"
 
-# ---------------------------------------------------------------------------
-# Step 6: Run database migrations
-# ---------------------------------------------------------------------------
-info "Waiting for app container to be healthy..."
+info "Waiting for database to be healthy..."
 for i in $(seq 1 30); do
-    if remote "docker inspect --format='{{.State.Health.Status}}' judgekit-app 2>/dev/null" | grep -q "healthy"; then
+    if remote "docker inspect --format='{{.State.Health.Status}}' judgekit-db 2>/dev/null" | grep -q "healthy"; then
         break
     fi
     if [[ $i -eq 30 ]]; then
-        warn "App container did not become healthy in 30s — attempting migration anyway"
+        warn "Database did not become healthy in 30s — attempting migration anyway"
     fi
     sleep 1
 done
+success "Database is ready"
 
+# ---------------------------------------------------------------------------
+# Step 6: Run database migrations before starting the app
+# ---------------------------------------------------------------------------
 info "Running database migrations (drizzle-kit push)..."
-remote "docker exec judgekit-app npx drizzle-kit push --force" 2>&1 || \
+
+# Extract POSTGRES_PASSWORD from .env.production on the remote
+PG_PASS=$(remote "grep '^POSTGRES_PASSWORD=' ${REMOTE_DIR}/.env.production | cut -d= -f2-")
+
+# Determine the Docker network name (compose project name + _default)
+NETWORK_NAME=$(remote "docker network ls --format '{{.Name}}' | grep judgekit | head -1" 2>/dev/null)
+NETWORK_NAME="${NETWORK_NAME:-judgekit_default}"
+
+# Run drizzle-kit push via a temporary Node container connected to the DB network.
+# This uses the source code already synced to the remote host (has drizzle.config.ts + schema).
+remote "docker run --rm \
+    --network ${NETWORK_NAME} \
+    -v ${REMOTE_DIR}:/app -w /app \
+    -e DATABASE_URL='postgres://judgekit:${PG_PASS}@db:5432/judgekit' \
+    node:24-alpine \
+    sh -c 'npx drizzle-kit push --force'" 2>&1 || \
   warn "drizzle-kit push failed — may need manual intervention"
 success "Database migrated"
+
+# Run ANALYZE to ensure query planner has fresh statistics
+info "Running ANALYZE on database..."
+remote "docker run --rm \
+    --network ${NETWORK_NAME} \
+    -e PGPASSWORD='${PG_PASS}' \
+    postgres:18-alpine \
+    psql -h db -U judgekit -d judgekit -c 'ANALYZE;'" 2>&1 || true
+success "Database statistics updated"
+
+# 6b. Now start all remaining containers
+info "Starting all containers..."
+remote "cd ${REMOTE_DIR} && (docker compose -f docker-compose.production.yml --env-file .env.production up -d 2>/dev/null || docker-compose -f docker-compose.production.yml --env-file .env.production up -d)"
+
+info "Waiting for app container to be healthy..."
+for i in $(seq 1 60); do
+    if remote "docker inspect --format='{{.State.Health.Status}}' judgekit-app 2>/dev/null" | grep -q "healthy"; then
+        break
+    fi
+    if [[ $i -eq 60 ]]; then
+        warn "App container did not become healthy in 60s — check logs"
+    fi
+    sleep 1
+done
+success "All containers started"
 
 # ---------------------------------------------------------------------------
 # Step 7: Set up nginx reverse proxy

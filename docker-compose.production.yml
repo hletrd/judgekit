@@ -18,6 +18,24 @@ services:
     image: postgres:18-alpine
     container_name: judgekit-db
     restart: unless-stopped
+    command:
+      - "postgres"
+      - "-c"
+      - "shared_buffers=512MB"
+      - "-c"
+      - "effective_cache_size=2GB"
+      - "-c"
+      - "work_mem=8MB"
+      - "-c"
+      - "maintenance_work_mem=128MB"
+      - "-c"
+      - "random_page_cost=2"
+      - "-c"
+      - "effective_io_concurrency=2"
+      - "-c"
+      - "wal_buffers=16MB"
+      - "-c"
+      - "default_statistics_target=200"
     volumes:
       - judgekit-pgdata:/var/lib/postgresql/data
     environment:
@@ -32,8 +50,9 @@ services:
       start_period: 10s
 
   # Restricted Docker socket proxy — exposes image/build/container APIs.
-  # The app container needs CONTAINERS to run compiler sandbox containers
-  # via docker run (used by /api/v1/compiler/run).
+  # Both the app container (standalone compiler + admin image management)
+  # and the judge worker use this proxy instead of mounting the Docker socket
+  # directly, reducing the blast radius of a container compromise.
   docker-proxy:
     image: tecnativa/docker-socket-proxy:latest
     container_name: judgekit-docker-proxy
@@ -91,7 +110,6 @@ services:
     security_opt:
       - apparmor:unconfined
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
       - /judge-workspaces:/judge-workspaces  # Identity-mapped so sibling containers see the same path
       - judgekit-dead-letter:/app/dead-letter
     env_file:
@@ -101,7 +119,10 @@ services:
       - JUDGE_SECCOMP_PROFILE=/etc/judge/seccomp-profile.json
       - DEAD_LETTER_DIR=/app/dead-letter
       - TMPDIR=/judge-workspaces
+      - DOCKER_HOST=tcp://docker-proxy:2375
     depends_on:
+      docker-proxy:
+        condition: service_started
       app:
         condition: service_healthy
 

@@ -5,7 +5,6 @@ import { useTranslations } from "next-intl";
 import { usePathname, useSearchParams } from "next/navigation";
 import { MessageCircle, X, Minus, Send } from "lucide-react";
 import { AssistantMarkdown } from "@/components/assistant-markdown";
-import type { PluginWidgetProps } from "@/lib/plugins/types";
 import { useEditorContent } from "@/contexts/editor-content-context";
 
 interface Message {
@@ -14,7 +13,7 @@ interface Message {
   displayContent?: string; // shown in UI instead of content (for auto-prompts)
 }
 
-export default function ChatWidget(_props: PluginWidgetProps) {
+export default function ChatWidget() {
   const t = useTranslations("plugins.chatWidget");
   const { content: editorContent } = useEditorContent();
   const [isOpen, setIsOpen] = useState(false);
@@ -26,7 +25,6 @@ export default function ChatWidget(_props: PluginWidgetProps) {
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
-  const [aiDisabled, setAiDisabled] = useState<string | null>(null);
   const [sessionId, setSessionId] = useState<string | null>(null);
 
   const pathname = usePathname();
@@ -53,7 +51,6 @@ export default function ChatWidget(_props: PluginWidgetProps) {
     pathname.includes("/contests/") ||
     searchParams?.get("assignmentId")
   );
-  if (isInContestContext) return null;
 
   // Reset chat when navigating to a different page
   const prevPathRef = useRef(pathname);
@@ -134,7 +131,7 @@ export default function ChatWidget(_props: PluginWidgetProps) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pendingAutoAnalysis, isStreaming, problemContext]);
 
-  async function sendMessage(text: string, displayText?: string, skipLog?: boolean) {
+  const sendMessage = useCallback(async (text: string, displayText?: string, skipLog?: boolean) => {
     if (!text || isStreaming) return;
 
     setError(null);
@@ -215,11 +212,11 @@ export default function ChatWidget(_props: PluginWidgetProps) {
       setIsStreaming(false);
       abortControllerRef.current = null;
     }
-  }
+  }, [editorContent?.code, editorContent?.language, isStreaming, messages, problemContext, sessionId, t]);
 
   const handleSend = useCallback(async () => {
     void sendMessage(input.trim());
-  }, [input, isStreaming, messages, problemContext, sessionId, t]);
+  }, [input, sendMessage]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
@@ -230,6 +227,8 @@ export default function ChatWidget(_props: PluginWidgetProps) {
     },
     [handleSend]
   );
+
+  if (isInContestContext) return null;
 
   if (!isOpen) {
     return (

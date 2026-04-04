@@ -21,7 +21,7 @@ export const PATCH = createApiHandler({
     if (!isAdmin(user.role)) return apiError("forbidden", 403);
 
     const { id } = params;
-    const existing = await db.query.apiKeys.findFirst({ where: eq(apiKeys.id, id) });
+    const [existing] = await db.select().from(apiKeys).where(eq(apiKeys.id, id)).limit(1);
     if (!existing) return apiError("notFound", 404, "ApiKey");
 
     const updates: Record<string, unknown> = { updatedAt: new Date() };
@@ -72,7 +72,7 @@ export const DELETE = createApiHandler({
     if (!isAdmin(user.role)) return apiError("forbidden", 403);
 
     const { id } = params;
-    const existing = await db.query.apiKeys.findFirst({ where: eq(apiKeys.id, id) });
+    const [existing] = await db.select().from(apiKeys).where(eq(apiKeys.id, id)).limit(1);
     if (!existing) return apiError("notFound", 404, "ApiKey");
 
     await db.delete(apiKeys).where(eq(apiKeys.id, id));

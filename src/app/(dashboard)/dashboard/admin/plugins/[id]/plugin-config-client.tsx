@@ -1,27 +1,34 @@
 "use client";
+/* eslint-disable react-hooks/static-components -- plugin admin components are lazily prebuilt at module scope */
 
-import { lazy, Suspense, useMemo, useCallback } from "react";
+import { lazy, Suspense, useCallback, type ComponentType } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { updatePluginConfig } from "@/lib/actions/plugins";
-import { getPluginDefinition } from "@/lib/plugins/registry";
+import { getAllPluginDefinitions } from "@/lib/plugins/registry";
+import type { PluginAdminProps } from "@/lib/plugins/types";
 
 interface PluginConfigClientProps {
   pluginId: string;
   config: Record<string, unknown>;
 }
 
+const ADMIN_COMPONENTS = new Map<
+  string,
+  ReturnType<typeof lazy<ComponentType<PluginAdminProps>>>
+>(
+  getAllPluginDefinitions().map((definition) => [
+    definition.id,
+    lazy(definition.getAdminComponent),
+  ])
+);
+
 export function PluginConfigClient({ pluginId, config }: PluginConfigClientProps) {
   const router = useRouter();
   const t = useTranslations("plugins");
 
-  const definition = useMemo(() => getPluginDefinition(pluginId), [pluginId]);
-
-  const AdminComponent = useMemo(() => {
-    if (!definition) return null;
-    return lazy(definition.getAdminComponent);
-  }, [definition]);
+  const AdminComponent = ADMIN_COMPONENTS.get(pluginId) ?? null;
 
   const handleSave = useCallback(async (newConfig: Record<string, unknown>) => {
     const result = await updatePluginConfig(pluginId, newConfig);

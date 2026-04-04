@@ -1,36 +1,21 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-// ── Hoisted mocks ────────────────────────────────────────────────────────────
-
-const mocks = vi.hoisted(() => {
-  return {
-    // db chain helpers
-    dbInsertValuesRun: vi.fn(),
-
-    // @/lib/security/request-context
-    normalizeText: vi.fn((text: unknown, _max: number) => (text == null ? null : String(text))),
-    getClientIp: vi.fn(() => "127.0.0.1"),
-    getRequestPath: vi.fn(() => "/login"),
-    MAX_PATH_LENGTH: 256,
-
-    // @/lib/logger
-    loggerWarn: vi.fn(),
-    loggerError: vi.fn(),
-    loggerInfo: vi.fn(),
-    loggerDebug: vi.fn(),
-  };
-});
-
-// ── Module mocks ─────────────────────────────────────────────────────────────
+const mocks = vi.hoisted(() => ({
+  dbInsertValues: vi.fn<(...args: unknown[]) => Promise<void>>(),
+  normalizeText: vi.fn((text: unknown, _max: number) => (text == null ? null : String(text))),
+  getClientIp: vi.fn(() => "127.0.0.1"),
+  getRequestPath: vi.fn(() => "/login"),
+  MAX_PATH_LENGTH: 256,
+  loggerWarn: vi.fn(),
+  loggerError: vi.fn(),
+  loggerInfo: vi.fn(),
+  loggerDebug: vi.fn(),
+}));
 
 vi.mock("@/lib/db", () => ({
   db: {
     insert: vi.fn(() => ({
-      values: vi.fn(() => ({
-        run: vi.fn((...args: unknown[]) => {
-          mocks.dbInsertValuesRun(...args);
-        }),
-      })),
+      values: mocks.dbInsertValues,
     })),
   },
 }));
@@ -55,10 +40,10 @@ vi.mock("@/lib/logger", () => ({
   },
 }));
 
-// ── Tests ────────────────────────────────────────────────────────────────────
-
 beforeEach(() => {
+  vi.resetModules();
   vi.clearAllMocks();
+  mocks.dbInsertValues.mockResolvedValue(undefined);
   mocks.normalizeText.mockImplementation((text: unknown, _max: number) =>
     text == null ? null : String(text)
   );
@@ -69,10 +54,6 @@ beforeEach(() => {
 afterEach(() => {
   vi.restoreAllMocks();
 });
-
-// ─────────────────────────────────────────────────────────────────────────────
-// sanitizeLoginEventContext
-// ─────────────────────────────────────────────────────────────────────────────
 
 describe("sanitizeLoginEventContext", () => {
   it("normalizes attemptedIdentifier to max length", async () => {
@@ -106,10 +87,6 @@ describe("sanitizeLoginEventContext", () => {
 
   it("uppercases requestMethod", async () => {
     const { sanitizeLoginEventContext } = await import("@/lib/auth/login-events");
-    // normalizeText returns input unchanged; toUpperCase is applied in source
-    mocks.normalizeText.mockImplementation((text: unknown, _max: number) =>
-      text == null ? null : String(text)
-    );
 
     const result = sanitizeLoginEventContext({
       requestMethod: "post",
@@ -120,9 +97,6 @@ describe("sanitizeLoginEventContext", () => {
 
   it("returns null for undefined fields", async () => {
     const { sanitizeLoginEventContext } = await import("@/lib/auth/login-events");
-    mocks.normalizeText.mockImplementation((text: unknown, _max: number) =>
-      text == null ? null : String(text)
-    );
 
     const result = sanitizeLoginEventContext({});
 
@@ -133,10 +107,6 @@ describe("sanitizeLoginEventContext", () => {
     expect(result.requestPath).toBeNull();
   });
 });
-
-// ─────────────────────────────────────────────────────────────────────────────
-// buildLoginEventContext
-// ─────────────────────────────────────────────────────────────────────────────
 
 describe("buildLoginEventContext", () => {
   it("builds context from request headers", async () => {
@@ -169,10 +139,6 @@ describe("buildLoginEventContext", () => {
     expect(result.attemptedIdentifier).toBe("alice@example.com");
   });
 });
-
-// ─────────────────────────────────────────────────────────────────────────────
-// getLoginEventContextFromUser
-// ─────────────────────────────────────────────────────────────────────────────
 
 describe("getLoginEventContextFromUser", () => {
   it("returns loginEventContext when present on user object", async () => {
@@ -207,10 +173,6 @@ describe("getLoginEventContextFromUser", () => {
   });
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
-// recordLoginEvent
-// ─────────────────────────────────────────────────────────────────────────────
-
 describe("recordLoginEvent", () => {
   it("calls recordLoginEventWithContext with built context", async () => {
     const { recordLoginEvent } = await import("@/lib/auth/login-events");
@@ -226,22 +188,24 @@ describe("recordLoginEvent", () => {
       userId: "user-42",
       request: { headers: hdrs, method: "POST", url: "http://localhost/api/login" },
     });
+    await Promise.resolve();
 
     expect(db.insert).toHaveBeenCalled();
-    expect(mocks.dbInsertValuesRun).toHaveBeenCalled();
+    expect(mocks.dbInsertValues).toHaveBeenCalledWith({
+      outcome: "success",
+      attemptedIdentifier: "bob@example.com",
+      userId: "user-42",
+      ipAddress: "5.6.7.8",
+      userAgent: "BrowserX",
+      requestMethod: "POST",
+      requestPath: "/api/login",
+    });
   });
 
   it("handles DB write failure gracefully without throwing", async () => {
     const { recordLoginEvent } = await import("@/lib/auth/login-events");
-    const { db } = await import("@/lib/db");
 
-    (db.insert as ReturnType<typeof vi.fn>).mockImplementationOnce(() => ({
-      values: vi.fn(() => ({
-        run: vi.fn(() => {
-          throw new Error("db error");
-        }),
-      })),
-    }));
+    mocks.dbInsertValues.mockRejectedValueOnce(new Error("db error"));
 
     const hdrs = new Headers();
     expect(() =>
@@ -251,13 +215,10 @@ describe("recordLoginEvent", () => {
       })
     ).not.toThrow();
 
+    await Promise.resolve();
     expect(mocks.loggerWarn).toHaveBeenCalled();
   });
 });
-
-// ─────────────────────────────────────────────────────────────────────────────
-// recordLoginEventWithContext
-// ─────────────────────────────────────────────────────────────────────────────
 
 describe("recordLoginEventWithContext", () => {
   it("inserts login event with all fields", async () => {
@@ -277,22 +238,24 @@ describe("recordLoginEventWithContext", () => {
       userId: "user-99",
       context,
     });
+    await Promise.resolve();
 
     expect(db.insert).toHaveBeenCalled();
-    expect(mocks.dbInsertValuesRun).toHaveBeenCalled();
+    expect(mocks.dbInsertValues).toHaveBeenCalledWith({
+      outcome: "success",
+      attemptedIdentifier: "charlie@example.com",
+      userId: "user-99",
+      ipAddress: "9.9.9.9",
+      userAgent: "TestAgent/3.0",
+      requestMethod: "POST",
+      requestPath: "/auth/login",
+    });
   });
 
   it("handles DB errors without throwing", async () => {
     const { recordLoginEventWithContext } = await import("@/lib/auth/login-events");
-    const { db } = await import("@/lib/db");
 
-    (db.insert as ReturnType<typeof vi.fn>).mockImplementationOnce(() => ({
-      values: vi.fn(() => ({
-        run: vi.fn(() => {
-          throw new Error("insert failed");
-        }),
-      })),
-    }));
+    mocks.dbInsertValues.mockRejectedValueOnce(new Error("insert failed"));
 
     const context = {
       attemptedIdentifier: null,
@@ -310,6 +273,7 @@ describe("recordLoginEventWithContext", () => {
       })
     ).not.toThrow();
 
+    await Promise.resolve();
     expect(mocks.loggerWarn).toHaveBeenCalled();
   });
 });

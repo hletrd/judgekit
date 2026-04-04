@@ -12,13 +12,12 @@ const AUDIT_LOGS_PATH = "/dashboard/admin/audit-logs";
 const GLOBAL_SETTINGS_ID = "global";
 
 async function deleteAuditLogFixtures(prefix: string) {
-  db.delete(auditEvents)
+  await db.delete(auditEvents)
     .where(sql`
       lower(coalesce(${auditEvents.resourceLabel}, '')) like ${`%${prefix.toLowerCase()}%`}
       or lower(coalesce(${auditEvents.summary}, '')) like ${`%${prefix.toLowerCase()}%`}
       or lower(coalesce(${auditEvents.details}, '')) like ${`%${prefix.toLowerCase()}%`}
-    `)
-    .run();
+    `);
 }
 
 test("admin audit logs render server-action and route mutation events", async ({
@@ -145,7 +144,7 @@ test("admin audit logs render server-action and route mutation events", async ({
     });
 
     if (createdGroup) {
-      db.delete(groups).where(eq(groups.id, createdGroup.id)).run();
+      await db.delete(groups).where(eq(groups.id, createdGroup.id));
     }
 
     await db
@@ -173,7 +172,6 @@ test("admin audit logs render server-action and route mutation events", async ({
         ${auditEvents.actorId} = ${runtimeAdmin.id}
         and ${auditEvents.action} in ('user.profile_updated', 'user.password_changed')
         and ${auditEvents.createdAt} > ${verificationStart.valueOf()}
-      `)
-      .run();
+      `);
   }
 });

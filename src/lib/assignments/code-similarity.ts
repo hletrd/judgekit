@@ -1,7 +1,7 @@
 import { nanoid } from "nanoid";
 import { db } from "@/lib/db";
 import { rawQueryAll } from "@/lib/db/queries";
-import { antiCheatEvents, submissions } from "@/lib/db/schema";
+import { antiCheatEvents } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 import { computeSimilarityRust } from "./code-similarity-client";
 
@@ -68,6 +68,19 @@ type SubmissionRow = {
 
 /** Maximum elapsed ms before yielding the event loop during O(n^2) comparison. */
 const YIELD_INTERVAL_MS = 8;
+export const MAX_SUBMISSIONS_FOR_SIMILARITY = 500;
+
+export type SimilarityRunStatus = "completed" | "not_run" | "timed_out";
+export type SimilarityRunReason = "no_submissions" | "too_many_submissions" | "timeout" | null;
+
+export type SimilarityRunResult = {
+  status: SimilarityRunStatus;
+  reason: SimilarityRunReason;
+  pairs: SimilarityPair[];
+  flaggedPairs: number;
+  submissionCount: number | null;
+  maxSupportedSubmissions: number;
+};
 
 /**
  * Run code similarity check using the TypeScript implementation.
@@ -127,7 +140,7 @@ export async function runSimilarityCheck(
   assignmentId: string,
   threshold = 0.85,
   ngramSize = 3
-): Promise<SimilarityPair[]> {
+): Promise<SimilarityRunResult> {
   // Get best submission per (user, problem) — the one with highest score
   const rows = await rawQueryAll<SubmissionRow>(
     `WITH best AS (
@@ -140,23 +153,58 @@ export async function runSimilarityCheck(
     { assignmentId }
   );
 
-  // Guard against excessively large contests (O(n^2) comparison)
-  const MAX_SUBMISSIONS_FOR_SIMILARITY = 500;
-  if (rows.length > MAX_SUBMISSIONS_FOR_SIMILARITY) {
-    return [];
+  if (rows.length === 0) {
+    return {
+      status: "not_run",
+      reason: "no_submissions",
+      pairs: [],
+      flaggedPairs: 0,
+      submissionCount: 0,
+      maxSupportedSubmissions: MAX_SUBMISSIONS_FOR_SIMILARITY,
+    };
   }
+
+  // Guard against excessively large contests (O(n^2) comparison)
+  if (rows.length > MAX_SUBMISSIONS_FOR_SIMILARITY) {
+    return {
+      status: "not_run",
+      reason: "too_many_submissions",
+      pairs: [],
+      flaggedPairs: 0,
+      submissionCount: rows.length,
+      maxSupportedSubmissions: MAX_SUBMISSIONS_FOR_SIMILARITY,
+    };
+  }
+
+  let pairs: SimilarityPair[];
 
   // Try Rust sidecar first
   try {
     const rustResult = await computeSimilarityRust(rows, threshold, ngramSize);
     if (rustResult !== null) {
-      return rustResult;
+      pairs = rustResult;
+      return {
+        status: "completed",
+        reason: null,
+        pairs,
+        flaggedPairs: pairs.length,
+        submissionCount: rows.length,
+        maxSupportedSubmissions: MAX_SUBMISSIONS_FOR_SIMILARITY,
+      };
     }
   } catch {
     // Rust sidecar unavailable — fall through to TS
   }
 
-  return await runSimilarityCheckTS(rows, threshold, ngramSize);
+  pairs = await runSimilarityCheckTS(rows, threshold, ngramSize);
+  return {
+    status: "completed",
+    reason: null,
+    pairs,
+    flaggedPairs: pairs.length,
+    submissionCount: rows.length,
+    maxSupportedSubmissions: MAX_SUBMISSIONS_FOR_SIMILARITY,
+  };
 }
 
 /**
@@ -165,18 +213,23 @@ export async function runSimilarityCheck(
 export async function runAndStoreSimilarityCheck(
   assignmentId: string,
   threshold = 0.85
-): Promise<number> {
-  const pairs = await runSimilarityCheck(assignmentId, threshold);
+): Promise<SimilarityRunResult> {
+  const result = await runSimilarityCheck(assignmentId, threshold);
+
+  if (result.status !== "completed") {
+    return result;
+  }
+
+  const { pairs } = result;
 
   // Delete previous code_similarity events for this assignment to avoid duplicates
-  db.delete(antiCheatEvents)
+  await db.delete(antiCheatEvents)
     .where(
       and(
         eq(antiCheatEvents.assignmentId, assignmentId),
         eq(antiCheatEvents.eventType, "code_similarity")
       )
-    )
-    .run();
+    );
 
   for (const pair of pairs) {
     const now = new Date();
@@ -184,22 +237,21 @@ export async function runAndStoreSimilarityCheck(
     for (const userId of [pair.userId1, pair.userId2]) {
       const otherUserId =
         userId === pair.userId1 ? pair.userId2 : pair.userId1;
-      db.insert(antiCheatEvents)
+      await db.insert(antiCheatEvents)
         .values({
           id: nanoid(),
           assignmentId,
           userId,
           eventType: "code_similarity",
-          details: {
+          details: JSON.stringify({
             pairedWith: otherUserId,
             problemId: pair.problemId,
             similarity: pair.similarity,
-          },
+          }),
           createdAt: now,
-        })
-        .run();
+        });
     }
   }
 
-  return pairs.length;
+  return result;
 }

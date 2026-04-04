@@ -1,5 +1,5 @@
 import { Pool } from "pg";
-import { drizzle } from "drizzle-orm/node-postgres";
+import { drizzle, type NodePgDatabase } from "drizzle-orm/node-postgres";
 import * as schema from "./schema.pg";
 import * as relations from "./relations.pg";
 
@@ -13,20 +13,22 @@ export const activeDialect = "postgresql" as const;
 // --- PostgreSQL connection ---
 
 let _pool: Pool | null = null;
-let db: ReturnType<typeof drizzle>;
+const schemaWithRelations = { ...schema, ...relations } as const;
+type AppSchema = typeof schemaWithRelations;
+let db: NodePgDatabase<AppSchema>;
 
 if (isBuildPhase) {
   // During build phase, create a dummy drizzle instance for type-checking.
   // No actual DB connection is made.
   db = drizzle("postgres://build:build@localhost:5432/build", {
-    schema: { ...schema, ...relations },
+    schema: schemaWithRelations,
   });
 } else {
   const url = process.env.DATABASE_URL;
   if (!url) throw new Error("DATABASE_URL is required");
 
   _pool = new Pool({ connectionString: url });
-  db = drizzle(_pool, { schema: { ...schema, ...relations } });
+  db = drizzle(_pool, { schema: schemaWithRelations });
 }
 
 /**
@@ -35,16 +37,29 @@ if (isBuildPhase) {
 export const pool: Pool | null = _pool;
 
 /** @deprecated SQLite support removed. Always null. */
-export const sqlite: any = null;
+export const sqlite: null = null;
 
 /**
- * Run a function. For PostgreSQL, individual SQL statements are already
- * atomic, so this is a simple passthrough. Use db.transaction() for
- * multi-statement transactions.
+ * Transaction client type inferred from Drizzle's transaction callback.
  */
-export function execTransaction<T>(fn: () => T): T {
-  return fn();
+export type TransactionClient = Parameters<Parameters<DbType["transaction"]>[0]>[0];
+
+/**
+ * Run a function inside a real PostgreSQL transaction.
+ *
+ * During build/type-check phases there is no live database connection, so the
+ * callback runs against the build-phase drizzle instance without opening a
+ * transaction.
+ */
+export function execTransaction<T>(
+  fn: (tx: TransactionClient) => Promise<T> | T
+): Promise<T> {
+  if (isBuildPhase) {
+    return Promise.resolve(fn(db as unknown as TransactionClient));
+  }
+
+  return db.transaction(async (tx) => fn(tx as TransactionClient));
 }
 
 export { db };
-export type DbType = typeof db;
+export type DbType = NodePgDatabase<AppSchema>;

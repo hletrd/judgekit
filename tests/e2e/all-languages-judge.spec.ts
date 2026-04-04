@@ -1128,7 +1128,7 @@ const LANGUAGE_TIMEOUTS: Record<string, number> = {
 let sharedContext: Awaited<ReturnType<typeof import("@playwright/test").chromium.launch>> extends { newContext: infer F } ? never : never;
 let problemId: string;
 let ctx: import("@playwright/test").BrowserContext;
-let submissionIds: Map<string, string> = new Map();
+const submissionIds: Map<string, string> = new Map();
 
 test.describe("Judge all supported languages", () => {
   test.beforeAll(async ({ browser }) => {

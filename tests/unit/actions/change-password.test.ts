@@ -1,7 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-// ── Hoisted mocks ────────────────────────────────────────────────────────────
-
 const mocks = vi.hoisted(() => {
   return {
     isTrustedServerActionOrigin: vi.fn<() => Promise<boolean>>(),
@@ -18,11 +16,9 @@ const mocks = vi.hoisted(() => {
     hashPassword: vi.fn<() => Promise<string>>(),
     loggerError: vi.fn(),
 
-    dbUpdateSetWhereRun: vi.fn(),
+    dbUpdateWhere: vi.fn(),
   };
 });
-
-// ── Module mocks ─────────────────────────────────────────────────────────────
 
 vi.mock("@/lib/security/server-actions", () => ({
   isTrustedServerActionOrigin: mocks.isTrustedServerActionOrigin,
@@ -78,11 +74,7 @@ vi.mock("@/lib/db", () => ({
   db: {
     update: vi.fn(() => ({
       set: vi.fn(() => ({
-        where: vi.fn(() => ({
-          run: vi.fn((...args: unknown[]) => {
-            mocks.dbUpdateSetWhereRun(...args);
-          }),
-        })),
+        where: mocks.dbUpdateWhere,
       })),
     })),
   },
@@ -95,8 +87,6 @@ vi.mock("@/lib/db/schema", () => ({
 vi.mock("next/headers", () => ({
   headers: vi.fn(async () => new Headers()),
 }));
-
-// ── Helpers ──────────────────────────────────────────────────────────────────
 
 const testUser = {
   id: "user-1",
@@ -113,16 +103,15 @@ function setupAuthenticatedUser() {
   });
   mocks.hasSessionIdentity.mockReturnValue(true);
   mocks.findSessionUserWithPassword.mockResolvedValue({ ...testUser });
-  mocks.isRateLimited.mockReturnValue(false);
+  mocks.isRateLimited.mockResolvedValue(false);
   mocks.buildServerActionAuditContext.mockResolvedValue({
     ipAddress: "127.0.0.1",
     userAgent: "test",
     requestMethod: "SERVER_ACTION",
     requestPath: "/change-password",
   });
+  mocks.dbUpdateWhere.mockResolvedValue(undefined);
 }
-
-// ── Tests ────────────────────────────────────────────────────────────────────
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -175,7 +164,7 @@ describe("changePassword", () => {
     });
     mocks.hasSessionIdentity.mockReturnValue(true);
     mocks.findSessionUserWithPassword.mockResolvedValue({ ...testUser });
-    mocks.isRateLimited.mockReturnValue(true);
+    mocks.isRateLimited.mockResolvedValue(true);
 
     const result = await changePassword("oldpass", "NewPass123");
     expect(result).toEqual({ success: false, error: "changePasswordRateLimited" });
@@ -210,14 +199,8 @@ describe("changePassword", () => {
 
     const result = await changePassword("correctpass", "StrongNewPass1");
     expect(result).toEqual({ success: true });
-
-    // Verify argon2 hash was called with new password
     expect(mocks.hashPassword).toHaveBeenCalledWith("StrongNewPass1");
-
-    // Verify rate limit was cleared on success
     expect(mocks.clearRateLimit).toHaveBeenCalledWith("change-password:user:user-1");
-
-    // Verify audit event was recorded
     expect(mocks.recordAuditEvent).toHaveBeenCalledWith(
       expect.objectContaining({
         actorId: "user-1",
@@ -238,26 +221,12 @@ describe("changePassword", () => {
     mocks.verifyPassword.mockResolvedValue({ valid: true, needsRehash: false });
     mocks.getPasswordValidationError.mockReturnValue(null);
     mocks.hashPassword.mockResolvedValue("new-hashed-password");
-
-    // Make db.update chain throw
-    const { db } = await import("@/lib/db");
-    (db.update as ReturnType<typeof vi.fn>).mockImplementationOnce(() => ({
-      set: vi.fn(() => ({
-        where: vi.fn(() => ({
-          run: vi.fn(() => {
-            throw new Error("db error");
-          }),
-        })),
-      })),
-    }));
+    mocks.dbUpdateWhere.mockRejectedValue(new Error("db error"));
 
     const result = await changePassword("correctpass", "StrongNewPass1");
     expect(result).toEqual({ success: false, error: "error" });
     expect(mocks.loggerError).toHaveBeenCalled();
-
-    // Rate limit should NOT be cleared on failure
     expect(mocks.clearRateLimit).not.toHaveBeenCalled();
-    // Audit event should NOT be recorded on failure
     expect(mocks.recordAuditEvent).not.toHaveBeenCalled();
   });
 
@@ -270,13 +239,10 @@ describe("changePassword", () => {
 
     await changePassword("correctpass", "StrongNewPass1");
 
-    expect(mocks.getPasswordValidationError).toHaveBeenCalledWith(
-      "StrongNewPass1",
-      {
-        username: "testuser",
-        email: "test@example.com",
-      }
-    );
+    expect(mocks.getPasswordValidationError).toHaveBeenCalledWith("StrongNewPass1", {
+      username: "testuser",
+      email: "test@example.com",
+    });
   });
 
   it("returns sessionExpired when findSessionUserWithPassword returns null", async () => {

@@ -12,7 +12,7 @@ import {
 } from "drizzle-orm/pg-core";
 import { nanoid } from "nanoid";
 import { generateSubmissionId } from "@/lib/submissions/id";
-import type { ExamMode, ScoringModel } from "@/types";
+import type { ExamMode, PlatformMode, ScoringModel } from "@/types";
 
 export const users = pgTable(
   "users",
@@ -133,27 +133,34 @@ export const auditEvents = pgTable(
   ]
 );
 
-export const apiKeys = pgTable("api_keys", {
-  id: text("id")
-    .primaryKey()
-    .$defaultFn(() => nanoid()),
-  name: text("name").notNull(),
-  keyPlain: text("key_plain").notNull(),
-  keyPrefix: text("key_prefix").notNull(),
-  createdById: text("created_by_id")
-    .notNull()
-    .references(() => users.id, { onDelete: "cascade" }),
-  role: text("role").notNull().default("admin"),
-  lastUsedAt: timestamp("last_used_at", { withTimezone: true }),
-  expiresAt: timestamp("expires_at", { withTimezone: true }),
-  isActive: boolean("is_active").notNull().default(true),
-  createdAt: timestamp("created_at", { withTimezone: true })
-    .notNull()
-    .$defaultFn(() => new Date(Date.now())),
-  updatedAt: timestamp("updated_at", { withTimezone: true })
-    .notNull()
-    .$defaultFn(() => new Date(Date.now())),
-});
+export const apiKeys = pgTable(
+  "api_keys",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => nanoid()),
+    name: text("name").notNull(),
+    keyHash: text("key_hash").notNull(),
+    keyPrefix: text("key_prefix").notNull(),
+    createdById: text("created_by_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    role: text("role").notNull().default("admin"),
+    lastUsedAt: timestamp("last_used_at", { withTimezone: true }),
+    expiresAt: timestamp("expires_at", { withTimezone: true }),
+    isActive: boolean("is_active").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .$defaultFn(() => new Date(Date.now())),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .$defaultFn(() => new Date(Date.now())),
+  },
+  (table) => [
+    uniqueIndex("api_keys_key_hash_unique").on(table.keyHash),
+    index("api_keys_key_prefix_idx").on(table.keyPrefix),
+  ]
+);
 
 export const groups = pgTable(
   "groups",
@@ -454,6 +461,7 @@ export const systemSettings = pgTable("system_settings", {
   siteTitle: text("site_title"),
   siteDescription: text("site_description"),
   timeZone: text("time_zone"),
+  platformMode: text("platform_mode").$type<PlatformMode>().notNull().default("homework"),
   aiAssistantEnabled: boolean("ai_assistant_enabled").notNull().default(true),
   // Rate Limiting (Login)
   loginRateLimitMaxAttempts: integer("login_rate_limit_max_attempts"),

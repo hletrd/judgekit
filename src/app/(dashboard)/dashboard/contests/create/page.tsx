@@ -5,7 +5,6 @@ import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { resolveCapabilities } from "@/lib/capabilities/cache";
 import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { db } from "@/lib/db";
 import { groups } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";

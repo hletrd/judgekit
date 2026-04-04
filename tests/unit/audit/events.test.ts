@@ -1,51 +1,27 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-// ── Hoisted mocks ────────────────────────────────────────────────────────────
-
-const mocks = vi.hoisted(() => {
-  return {
-    // db chain helpers
-    dbInsertValuesRun: vi.fn(),
-    dbDeleteWhereReturning: vi.fn(),
-
-    // @/lib/security/request-context
-    normalizeText: vi.fn((text: unknown, _max: number) => (text == null ? null : String(text))),
-    getClientIp: vi.fn(() => "127.0.0.1"),
-    getRequestPath: vi.fn(() => "/test"),
-    MAX_TEXT_LENGTH: 512,
-    MAX_PATH_LENGTH: 256,
-
-    // @/lib/logger
-    loggerError: vi.fn(),
-    loggerWarn: vi.fn(),
-    loggerDebug: vi.fn(),
-
-    // next/headers
-    headers: vi.fn(async () => new Headers()),
-
-    // drizzle-orm
-    lt: vi.fn((_field: unknown, value: unknown) => ({ _lt: value })),
-  };
-});
-
-// ── Module mocks ─────────────────────────────────────────────────────────────
+const mocks = vi.hoisted(() => ({
+  dbInsertValues: vi.fn<(...args: unknown[]) => Promise<void>>(),
+  dbDeleteWhere: vi.fn<(...args: unknown[]) => Promise<void>>(),
+  normalizeText: vi.fn((text: unknown, _max: number) => (text == null ? null : String(text))),
+  getClientIp: vi.fn(() => "127.0.0.1"),
+  getRequestPath: vi.fn(() => "/test"),
+  MAX_TEXT_LENGTH: 512,
+  MAX_PATH_LENGTH: 256,
+  loggerError: vi.fn(),
+  loggerWarn: vi.fn(),
+  loggerDebug: vi.fn(),
+  headers: vi.fn(async () => new Headers()),
+  lt: vi.fn((_field: unknown, value: unknown) => ({ _lt: value })),
+}));
 
 vi.mock("@/lib/db", () => ({
   db: {
     insert: vi.fn(() => ({
-      values: vi.fn(() => ({
-        run: vi.fn((...args: unknown[]) => {
-          mocks.dbInsertValuesRun(...args);
-        }),
-      })),
+      values: mocks.dbInsertValues,
     })),
     delete: vi.fn(() => ({
-      where: vi.fn(() => ({
-        returning: vi.fn((...args: unknown[]) => {
-          mocks.dbDeleteWhereReturning(...args);
-          return Promise.resolve([]);
-        }),
-      })),
+      where: mocks.dbDeleteWhere,
     })),
   },
 }));
@@ -83,11 +59,13 @@ vi.mock("drizzle-orm", async () => {
   };
 });
 
-// ── Tests ────────────────────────────────────────────────────────────────────
-
 beforeEach(() => {
+  vi.resetModules();
   vi.clearAllMocks();
-  // Reset normalizeText to passthrough by default
+  vi.useFakeTimers();
+
+  mocks.dbInsertValues.mockResolvedValue(undefined);
+  mocks.dbDeleteWhere.mockResolvedValue(undefined);
   mocks.normalizeText.mockImplementation((text: unknown, _max: number) =>
     text == null ? null : String(text)
   );
@@ -96,12 +74,11 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  delete (globalThis as { __auditPruneTimer?: unknown }).__auditPruneTimer;
+  vi.clearAllTimers();
+  vi.useRealTimers();
   vi.restoreAllMocks();
 });
-
-// ─────────────────────────────────────────────────────────────────────────────
-// buildAuditRequestContext
-// ─────────────────────────────────────────────────────────────────────────────
 
 describe("buildAuditRequestContext", () => {
   it("extracts IP address from headers via getClientIp", async () => {
@@ -129,11 +106,6 @@ describe("buildAuditRequestContext", () => {
 
   it("uppercases request method", async () => {
     const { buildAuditRequestContext } = await import("@/lib/audit/events");
-    // normalizeText returns input as-is, then toUpperCase is applied in source
-    mocks.normalizeText.mockImplementation((text: unknown, _max: number) =>
-      text == null ? null : String(text)
-    );
-
     const hdrs = new Headers();
     const result = buildAuditRequestContext({ headers: hdrs, method: "post", url: "http://localhost/" });
 
@@ -152,13 +124,9 @@ describe("buildAuditRequestContext", () => {
   });
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
-// recordAuditEvent
-// ─────────────────────────────────────────────────────────────────────────────
-
 describe("recordAuditEvent", () => {
-  it("successfully inserts audit event with all fields", async () => {
-    const { recordAuditEvent } = await import("@/lib/audit/events");
+  it("buffers and flushes audit events with all fields", async () => {
+    const { recordAuditEvent, flushAuditBuffer } = await import("@/lib/audit/events");
     const { db } = await import("@/lib/db");
 
     recordAuditEvent({
@@ -172,11 +140,26 @@ describe("recordAuditEvent", () => {
       details: { foo: "bar" },
     });
 
+    expect(db.insert).not.toHaveBeenCalled();
+    await flushAuditBuffer();
+
     expect(db.insert).toHaveBeenCalled();
+    const batch = mocks.dbInsertValues.mock.calls.at(-1)?.[0] as Array<Record<string, unknown>>;
+    expect(batch).toHaveLength(1);
+    expect(batch[0]).toMatchObject({
+      actorId: "user-1",
+      actorRole: "admin",
+      action: "user.created",
+      resourceType: "user",
+      resourceId: "user-2",
+      resourceLabel: "newuser",
+      summary: "Created user newuser",
+      details: JSON.stringify({ foo: "bar" }),
+    });
   });
 
   it("uses buildAuditRequestContext when request is provided", async () => {
-    const { recordAuditEvent } = await import("@/lib/audit/events");
+    const { recordAuditEvent, flushAuditBuffer } = await import("@/lib/audit/events");
 
     mocks.getClientIp.mockReturnValue("192.168.1.1");
     mocks.getRequestPath.mockReturnValue("/api/users");
@@ -189,13 +172,21 @@ describe("recordAuditEvent", () => {
       request: { headers: hdrs, method: "POST", url: "http://localhost/api/users" },
     });
 
+    await flushAuditBuffer();
+
     expect(mocks.getClientIp).toHaveBeenCalledWith(hdrs);
     expect(mocks.getRequestPath).toHaveBeenCalledWith("http://localhost/api/users");
+    const batch = mocks.dbInsertValues.mock.calls.at(-1)?.[0] as Array<Record<string, unknown>>;
+    expect(batch[0]).toMatchObject({
+      ipAddress: "192.168.1.1",
+      userAgent: "TestBrowser",
+      requestMethod: "POST",
+      requestPath: "/api/users",
+    });
   });
 
   it("uses context directly when context is provided instead of request", async () => {
-    const { recordAuditEvent } = await import("@/lib/audit/events");
-    const { db } = await import("@/lib/db");
+    const { recordAuditEvent, flushAuditBuffer } = await import("@/lib/audit/events");
 
     const context = {
       ipAddress: "10.10.10.10",
@@ -210,139 +201,89 @@ describe("recordAuditEvent", () => {
       summary: "Dashboard viewed",
       context,
     });
+    await flushAuditBuffer();
 
-    expect(db.insert).toHaveBeenCalled();
-    // getClientIp should NOT be called — context was used directly
+    const batch = mocks.dbInsertValues.mock.calls.at(-1)?.[0] as Array<Record<string, unknown>>;
+    expect(batch[0]).toMatchObject(context);
     expect(mocks.getClientIp).not.toHaveBeenCalled();
   });
 
   it("handles DB write failure gracefully and logs warning", async () => {
-    const { recordAuditEvent } = await import("@/lib/audit/events");
-    const { db } = await import("@/lib/db");
+    const { recordAuditEvent, flushAuditBuffer } = await import("@/lib/audit/events");
 
-    (db.insert as ReturnType<typeof vi.fn>).mockImplementationOnce(() => ({
-      values: vi.fn(() => ({
-        run: vi.fn(() => {
-          throw new Error("db write failed");
-        }),
-      })),
-    }));
+    mocks.dbInsertValues.mockRejectedValueOnce(new Error("db write failed"));
 
-    expect(() =>
-      recordAuditEvent({
-        action: "user.login",
-        resourceType: "session",
-        summary: "Test",
-      })
-    ).not.toThrow();
+    recordAuditEvent({
+      action: "user.login",
+      resourceType: "session",
+      summary: "Test",
+    });
 
+    await expect(flushAuditBuffer()).resolves.toBeUndefined();
     expect(mocks.loggerWarn).toHaveBeenCalled();
   });
 
   it("tracks consecutive failures and logs critical after MAX_SILENT_FAILURES (3)", async () => {
-    const { recordAuditEvent, stopAuditEventPruning } = await import("@/lib/audit/events");
-    stopAuditEventPruning();
-    const { db } = await import("@/lib/db");
+    const { recordAuditEvent, flushAuditBuffer } = await import("@/lib/audit/events");
 
-    const makeThrowingInsert = () => ({
-      values: vi.fn(() => ({
-        run: vi.fn(() => {
-          throw new Error("db error");
-        }),
-      })),
-    });
+    mocks.dbInsertValues
+      .mockRejectedValueOnce(new Error("db error 1"))
+      .mockRejectedValueOnce(new Error("db error 2"))
+      .mockRejectedValueOnce(new Error("db error 3"));
 
-    // Trigger 3 consecutive failures (MAX_SILENT_FAILURES = 3)
-    (db.insert as ReturnType<typeof vi.fn>)
-      .mockImplementationOnce(makeThrowingInsert)
-      .mockImplementationOnce(makeThrowingInsert)
-      .mockImplementationOnce(makeThrowingInsert);
-
-    recordAuditEvent({ action: "a", resourceType: "r", summary: "s" });
-    recordAuditEvent({ action: "a", resourceType: "r", summary: "s" });
-    recordAuditEvent({ action: "a", resourceType: "r", summary: "s" });
+    for (let i = 0; i < 3; i += 1) {
+      recordAuditEvent({ action: "a", resourceType: "r", summary: "s" });
+      await flushAuditBuffer();
+    }
 
     expect(mocks.loggerError).toHaveBeenCalled();
   });
 
   it("resets consecutiveAuditFailures on success", async () => {
-    const { recordAuditEvent, stopAuditEventPruning } = await import("@/lib/audit/events");
-    stopAuditEventPruning();
-    const { db } = await import("@/lib/db");
+    const { recordAuditEvent, flushAuditBuffer } = await import("@/lib/audit/events");
 
-    // First two calls fail
-    const makeThrowingInsert = () => ({
-      values: vi.fn(() => ({
-        run: vi.fn(() => {
-          throw new Error("db error");
-        }),
-      })),
-    });
-
-    (db.insert as ReturnType<typeof vi.fn>)
-      .mockImplementationOnce(makeThrowingInsert)
-      .mockImplementationOnce(makeThrowingInsert);
+    mocks.dbInsertValues
+      .mockRejectedValueOnce(new Error("db error 1"))
+      .mockRejectedValueOnce(new Error("db error 2"))
+      .mockResolvedValueOnce(undefined)
+      .mockRejectedValueOnce(new Error("db error 4"));
 
     recordAuditEvent({ action: "a", resourceType: "r", summary: "s" });
+    await flushAuditBuffer();
     recordAuditEvent({ action: "a", resourceType: "r", summary: "s" });
-
-    // Third call succeeds — resets consecutiveAuditFailures
+    await flushAuditBuffer();
     recordAuditEvent({ action: "a", resourceType: "r", summary: "s" });
+    await flushAuditBuffer();
 
-    // After the success, a further failure should only warn (not critical),
-    // because consecutiveAuditFailures was reset to 0
     mocks.loggerWarn.mockClear();
     mocks.loggerError.mockClear();
 
-    (db.insert as ReturnType<typeof vi.fn>).mockImplementationOnce(makeThrowingInsert);
     recordAuditEvent({ action: "a", resourceType: "r", summary: "s" });
+    await flushAuditBuffer();
 
     expect(mocks.loggerWarn).toHaveBeenCalled();
     expect(mocks.loggerError).not.toHaveBeenCalled();
   });
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
-// getAuditEventHealthSnapshot
-// ─────────────────────────────────────────────────────────────────────────────
-
 describe("getAuditEventHealthSnapshot", () => {
   it("returns ok status when no failures have occurred", async () => {
     const { getAuditEventHealthSnapshot } = await import("@/lib/audit/events");
-    const { db } = await import("@/lib/db");
 
-    // Ensure a successful insert so failedWrites counter stays 0 in this fresh module
-    // (module state is shared within a test file run; rely on a clean call)
-    (db.insert as ReturnType<typeof vi.fn>).mockImplementationOnce(() => ({
-      values: vi.fn(() => ({
-        run: vi.fn(() => undefined),
-      })),
-    }));
-
-    const { recordAuditEvent } = await import("@/lib/audit/events");
-    recordAuditEvent({ action: "ok", resourceType: "r", summary: "s" });
-
-    const snapshot = getAuditEventHealthSnapshot();
-    // status is "ok" only when failedWrites === 0; it may be > 0 from previous tests
-    expect(snapshot).toHaveProperty("failedWrites");
-    expect(snapshot).toHaveProperty("lastFailureAt");
-    expect(snapshot).toHaveProperty("status");
-    expect(["ok", "degraded"]).toContain(snapshot.status);
+    expect(getAuditEventHealthSnapshot()).toEqual({
+      failedWrites: 0,
+      lastFailureAt: null,
+      status: "ok",
+    });
   });
 
   it("returns degraded status after a failure", async () => {
-    const { recordAuditEvent, getAuditEventHealthSnapshot } = await import("@/lib/audit/events");
-    const { db } = await import("@/lib/db");
+    const { recordAuditEvent, flushAuditBuffer, getAuditEventHealthSnapshot } = await import("@/lib/audit/events");
 
-    (db.insert as ReturnType<typeof vi.fn>).mockImplementationOnce(() => ({
-      values: vi.fn(() => ({
-        run: vi.fn(() => {
-          throw new Error("forced failure");
-        }),
-      })),
-    }));
+    mocks.dbInsertValues.mockRejectedValueOnce(new Error("forced failure"));
 
     recordAuditEvent({ action: "fail", resourceType: "r", summary: "s" });
+    await flushAuditBuffer();
 
     const snapshot = getAuditEventHealthSnapshot();
     expect(snapshot.status).toBe("degraded");
@@ -351,55 +292,41 @@ describe("getAuditEventHealthSnapshot", () => {
   });
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
-// startAuditEventPruning / stopAuditEventPruning
-// ─────────────────────────────────────────────────────────────────────────────
-
 describe("startAuditEventPruning / stopAuditEventPruning", () => {
-  it("startAuditEventPruning sets up an interval", async () => {
-    vi.useFakeTimers();
+  it("startAuditEventPruning sets up an interval and runs an initial prune", async () => {
     const { startAuditEventPruning, stopAuditEventPruning } = await import("@/lib/audit/events");
 
-    stopAuditEventPruning(); // ensure clean state
+    stopAuditEventPruning();
     startAuditEventPruning();
+    await Promise.resolve();
 
-    // Verify there is an active interval by confirming stop clears it without error
+    expect(mocks.dbDeleteWhere).toHaveBeenCalledTimes(1);
     expect(() => stopAuditEventPruning()).not.toThrow();
-    vi.useRealTimers();
   });
 
   it("stopAuditEventPruning clears interval", async () => {
-    vi.useFakeTimers();
     const { startAuditEventPruning, stopAuditEventPruning } = await import("@/lib/audit/events");
 
     startAuditEventPruning();
     stopAuditEventPruning();
 
-    // Calling stop again is a no-op and should not throw
     expect(() => stopAuditEventPruning()).not.toThrow();
-    vi.useRealTimers();
   });
 
   it("calling startAuditEventPruning twice does not create duplicate intervals", async () => {
-    vi.useFakeTimers();
-    const { db } = await import("@/lib/db");
     const { startAuditEventPruning, stopAuditEventPruning } = await import("@/lib/audit/events");
 
-    // Set up a delete chain for pruning
-    (db.delete as ReturnType<typeof vi.fn>).mockImplementation(() => ({
-      where: vi.fn(() => Promise.resolve()),
-    }));
-
-    stopAuditEventPruning(); // clean state
+    stopAuditEventPruning();
     startAuditEventPruning();
-    startAuditEventPruning(); // second call should be ignored
+    startAuditEventPruning();
+    await Promise.resolve();
 
-    // Advance one full day — pruning should fire exactly once (not twice)
+    const initialPruneCalls = mocks.dbDeleteWhere.mock.calls.length;
+    expect(initialPruneCalls).toBe(2);
+
     await vi.advanceTimersByTimeAsync(24 * 60 * 60 * 1000);
 
-    expect(db.delete).toHaveBeenCalledTimes(1);
-
+    expect(mocks.dbDeleteWhere).toHaveBeenCalledTimes(initialPruneCalls + 1);
     stopAuditEventPruning();
-    vi.useRealTimers();
   });
 });

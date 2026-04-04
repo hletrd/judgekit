@@ -42,6 +42,14 @@ interface AntiCheatDashboardProps {
   assignmentId: string;
 }
 
+type SimilarityCheckResponse = {
+  status: "completed" | "not_run" | "timed_out";
+  reason: "no_submissions" | "too_many_submissions" | "timeout" | null;
+  flaggedPairs: number;
+  submissionCount: number | null;
+  maxSupportedSubmissions: number | null;
+};
+
 const EVENT_TYPE_COLORS: Record<string, string> = {
   tab_switch: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400",
   copy: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400",
@@ -73,6 +81,7 @@ export function AntiCheatDashboard({ assignmentId }: AntiCheatDashboardProps) {
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
   const [offset, setOffset] = useState(0);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [similarityStatusMessage, setSimilarityStatusMessage] = useState<string | null>(null);
   const PAGE_SIZE = 100;
 
   const fetchEvents = useCallback(async () => {
@@ -182,10 +191,29 @@ export function AntiCheatDashboard({ assignmentId }: AntiCheatDashboardProps) {
       );
       if (res.ok) {
         const json = await res.json();
-        toast.success(
-          t("similarityComplete", { count: json.data.flaggedPairs })
-        );
-        fetchEvents();
+        const data = json.data as SimilarityCheckResponse;
+
+        if (data.status === "completed") {
+          const message = t("similarityComplete", { count: data.flaggedPairs });
+          setSimilarityStatusMessage(message);
+          toast.success(message);
+          fetchEvents();
+        } else if (data.reason === "no_submissions") {
+          const message = t("similarityNoSubmissions");
+          setSimilarityStatusMessage(message);
+          toast(message);
+        } else if (data.reason === "too_many_submissions") {
+          const message = t("similaritySkippedTooManySubmissions", {
+            count: data.submissionCount ?? 0,
+            limit: data.maxSupportedSubmissions ?? 0,
+          });
+          setSimilarityStatusMessage(message);
+          toast.warning(message);
+        } else {
+          const message = t("similarityTimedOut");
+          setSimilarityStatusMessage(message);
+          toast.warning(message);
+        }
       }
     } catch {
       toast.error(tCommon("error"));
@@ -230,8 +258,15 @@ export function AntiCheatDashboard({ assignmentId }: AntiCheatDashboardProps) {
             {runningCheck ? t("similarityRunning") : t("similarityCheck")}
           </Button>
         </div>
+        {similarityStatusMessage ? (
+          <p className="text-xs text-muted-foreground">{similarityStatusMessage}</p>
+        ) : null}
       </CardHeader>
       <CardContent className="space-y-4">
+        <div className="rounded-lg border border-dashed px-3 py-2 text-xs text-muted-foreground">
+          {t("signalsDisclaimer")}
+        </div>
+
         {/* Summary stat cards */}
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <div className="flex items-center gap-3 rounded-lg border bg-card p-3">

@@ -1,9 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { Trash2, Upload, Copy, Check, ImageIcon, FileIcon } from "lucide-react";
+import { Trash2, Upload, Copy, Check, FileIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -151,11 +152,14 @@ export function FileManagementClient({ files, rangeStart, rangeEnd, totalCount }
                     </TableCell>
                     <TableCell>
                       {file.category === "image" ? (
-                        <img
+                        <Image
                           src={`/api/v1/files/${file.id}`}
                           alt={file.originalName}
                           className="size-10 rounded object-cover"
+                          width={40}
+                          height={40}
                           loading="lazy"
+                          unoptimized
                         />
                       ) : (
                         <div className="flex size-10 items-center justify-center rounded bg-muted">

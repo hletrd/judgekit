@@ -1,25 +1,24 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
-// ---------------------------------------------------------------------------
-// Hoisted mocks
-// ---------------------------------------------------------------------------
 const {
   getApiUserMock,
+  csrfForbiddenMock,
   resolveCapabilitiesMock,
   selectMock,
   findFirstMock,
-  updateRunMock,
-  deleteRunMock,
+  updateWhereMock,
+  deleteWhereMock,
   recordAuditEventMock,
   loggerMock,
 } = vi.hoisted(() => ({
   getApiUserMock: vi.fn(),
+  csrfForbiddenMock: vi.fn<() => NextResponse | null>(() => null),
   resolveCapabilitiesMock: vi.fn(),
   selectMock: vi.fn(),
   findFirstMock: vi.fn(),
-  updateRunMock: vi.fn(),
-  deleteRunMock: vi.fn(),
+  updateWhereMock: vi.fn(),
+  deleteWhereMock: vi.fn(),
   recordAuditEventMock: vi.fn(),
   loggerMock: { info: vi.fn(), error: vi.fn(), warn: vi.fn(), debug: vi.fn() },
 }));
@@ -28,6 +27,7 @@ vi.mock("@/lib/api/auth", async () => {
   const { NextResponse } = await import("next/server");
   return {
     getApiUser: getApiUserMock,
+    csrfForbidden: csrfForbiddenMock,
     unauthorized: () => NextResponse.json({ error: "unauthorized" }, { status: 401 }),
     forbidden: () => NextResponse.json({ error: "forbidden" }, { status: 403 }),
   };
@@ -48,9 +48,17 @@ vi.mock("@/lib/logger", () => ({
 vi.mock("@/lib/db/schema", () => ({
   judgeWorkers: {
     id: "id",
+    hostname: "hostname",
+    alias: "alias",
+    ipAddress: "ipAddress",
+    concurrency: "concurrency",
+    activeTasks: "activeTasks",
+    version: "version",
+    labels: "labels",
     status: "status",
     registeredAt: "registeredAt",
-    concurrency: "concurrency",
+    lastHeartbeatAt: "lastHeartbeatAt",
+    deregisteredAt: "deregisteredAt",
   },
   submissions: {
     status: "status",
@@ -85,31 +93,39 @@ vi.mock("@/lib/db", () => ({
     },
     update: vi.fn(() => ({
       set: vi.fn(() => ({
-        where: vi.fn(() => ({
-          run: updateRunMock,
-        })),
+        where: updateWhereMock,
       })),
     })),
     delete: vi.fn(() => ({
-      where: vi.fn(() => ({
-        run: deleteRunMock,
-      })),
+      where: deleteWhereMock,
     })),
   },
+}));
+
+vi.mock("@/lib/security/constants", () => ({
+  isUserRole: vi.fn(() => true),
 }));
 
 import { GET } from "@/app/api/v1/admin/workers/route";
 import { GET as GET_STATS } from "@/app/api/v1/admin/workers/stats/route";
 import { PATCH, DELETE } from "@/app/api/v1/admin/workers/[id]/route";
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-const ADMIN_USER = { id: "admin-1", role: "admin", username: "admin" };
+const ADMIN_USER = {
+  id: "admin-1",
+  role: "admin",
+  username: "admin",
+  email: "admin@example.com",
+  name: "Admin",
+  className: null,
+  mustChangePassword: false,
+};
 
 function makeRequest(url: string, options?: ConstructorParameters<typeof NextRequest>[1]) {
   return new NextRequest(url, {
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      "X-Requested-With": "XMLHttpRequest",
+    },
     ...options,
   });
 }
@@ -118,240 +134,187 @@ function makeParams(id: string) {
   return { params: Promise.resolve({ id }) };
 }
 
-// ---------------------------------------------------------------------------
-// Setup
-// ---------------------------------------------------------------------------
-beforeEach(() => {
-  vi.clearAllMocks();
-
-  getApiUserMock.mockResolvedValue(ADMIN_USER);
-  resolveCapabilitiesMock.mockResolvedValue(new Set(["system.settings"]));
-});
-
-// ---------------------------------------------------------------------------
-// GET /admin/workers
-// ---------------------------------------------------------------------------
-describe("GET /api/v1/admin/workers", () => {
-  it("returns workers list", async () => {
-    const workers = [
-      { id: "w1", hostname: "worker-01", status: "online" },
-      { id: "w2", hostname: "worker-02", status: "offline" },
-    ];
-    selectMock.mockReturnValue({
-      from: vi.fn(() => ({
-        orderBy: vi.fn().mockResolvedValue(workers),
+function makeSelectChain(result: unknown) {
+  return {
+    from: vi.fn(() => ({
+      orderBy: vi.fn(() => Promise.resolve(result)),
+      groupBy: vi.fn(() => Promise.resolve(result)),
+      where: vi.fn(() => ({
+        then: (cb: (rows: any[]) => unknown) => Promise.resolve(cb(result as any[])),
       })),
+    })),
+  };
+}
+
+describe("admin workers routes", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    getApiUserMock.mockResolvedValue(ADMIN_USER);
+    csrfForbiddenMock.mockReturnValue(null);
+    resolveCapabilitiesMock.mockResolvedValue(new Set(["system.settings"]));
+    updateWhereMock.mockResolvedValue(undefined);
+    deleteWhereMock.mockResolvedValue(undefined);
+  });
+
+  describe("GET /api/v1/admin/workers", () => {
+    it("returns workers list", async () => {
+      const workers = [
+        { id: "w1", hostname: "worker-01", status: "online" },
+        { id: "w2", hostname: "worker-02", status: "offline" },
+      ];
+      selectMock.mockReturnValueOnce(makeSelectChain(workers));
+
+      const response = await GET(makeRequest("http://localhost/api/v1/admin/workers"));
+      const payload = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(payload.data).toEqual(workers);
     });
 
-    const response = await GET(makeRequest("http://localhost/api/v1/admin/workers"));
-    const payload = await response.json();
-
-    expect(response.status).toBe(200);
-    expect(payload.data).toEqual(workers);
-  });
-
-  it("returns 401 when not authenticated", async () => {
-    getApiUserMock.mockResolvedValue(null);
-
-    const response = await GET(makeRequest("http://localhost/api/v1/admin/workers"));
-
-    expect(response.status).toBe(401);
-  });
-
-  it("returns 403 when lacking system.settings capability", async () => {
-    resolveCapabilitiesMock.mockResolvedValue(new Set());
-
-    const response = await GET(makeRequest("http://localhost/api/v1/admin/workers"));
-
-    expect(response.status).toBe(403);
-  });
-
-  it("returns empty array on error", async () => {
-    selectMock.mockImplementation(() => {
-      throw new Error("DB error");
+    it("returns 401 when not authenticated", async () => {
+      getApiUserMock.mockResolvedValue(null);
+      const response = await GET(makeRequest("http://localhost/api/v1/admin/workers"));
+      expect(response.status).toBe(401);
     });
 
-    const response = await GET(makeRequest("http://localhost/api/v1/admin/workers"));
-    const payload = await response.json();
+    it("returns 403 when lacking system.settings capability", async () => {
+      resolveCapabilitiesMock.mockResolvedValue(new Set());
+      const response = await GET(makeRequest("http://localhost/api/v1/admin/workers"));
+      expect(response.status).toBe(403);
+    });
 
-    expect(response.status).toBe(200);
-    expect(payload.data).toEqual([]);
-  });
-});
-
-// ---------------------------------------------------------------------------
-// GET /admin/workers/stats
-// ---------------------------------------------------------------------------
-describe("GET /api/v1/admin/workers/stats", () => {
-  it("returns aggregated stats", async () => {
-    selectMock
-      .mockReturnValueOnce({
-        from: vi.fn(() => ({
-          groupBy: vi.fn().mockResolvedValue([
-            { status: "online", count: 3 },
-            { status: "offline", count: 1 },
-          ]),
-        })),
-      })
-      .mockReturnValueOnce({
-        from: vi.fn(() => ({
-          where: vi.fn().mockReturnValue({
-            then: vi.fn((cb: Function) => cb([{ count: 5 }])),
-          }),
-        })),
-      })
-      .mockReturnValueOnce({
-        from: vi.fn(() => ({
-          where: vi.fn().mockReturnValue({
-            then: vi.fn((cb: Function) => cb([{ count: 2 }])),
-          }),
-        })),
-      })
-      .mockReturnValueOnce({
-        from: vi.fn(() => ({
-          where: vi.fn().mockReturnValue({
-            then: vi.fn((cb: Function) => cb([{ total: 12 }])),
-          }),
-        })),
+    it("returns 500 on error", async () => {
+      selectMock.mockImplementation(() => {
+        throw new Error("DB error");
       });
-
-    const response = await GET_STATS(
-      makeRequest("http://localhost/api/v1/admin/workers/stats")
-    );
-    const payload = await response.json();
-
-    expect(response.status).toBe(200);
-    expect(payload.data.workersOnline).toBe(3);
-    expect(payload.data.workersOffline).toBe(1);
-    expect(payload.data.queueDepth).toBe(5);
+      const response = await GET(makeRequest("http://localhost/api/v1/admin/workers"));
+      expect(response.status).toBe(500);
+    });
   });
 
-  it("returns 401 when not authenticated", async () => {
-    getApiUserMock.mockResolvedValue(null);
+  describe("GET /api/v1/admin/workers/stats", () => {
+    it("returns aggregated stats", async () => {
+      selectMock
+        .mockReturnValueOnce(makeSelectChain([
+          { status: "online", count: 3 },
+          { status: "offline", count: 1 },
+        ]))
+        .mockReturnValueOnce(makeSelectChain([{ count: 5 }]))
+        .mockReturnValueOnce(makeSelectChain([{ count: 2 }]))
+        .mockReturnValueOnce(makeSelectChain([{ total: 12 }]));
 
-    const response = await GET_STATS(
-      makeRequest("http://localhost/api/v1/admin/workers/stats")
-    );
+      const response = await GET_STATS(makeRequest("http://localhost/api/v1/admin/workers/stats"));
+      const payload = await response.json();
 
-    expect(response.status).toBe(401);
-  });
-
-  it("returns zeroed stats on error", async () => {
-    selectMock.mockImplementation(() => {
-      throw new Error("DB error");
+      expect(response.status).toBe(200);
+      expect(payload.data.workersOnline).toBe(3);
+      expect(payload.data.workersOffline).toBe(1);
+      expect(payload.data.queueDepth).toBe(5);
+      expect(payload.data.activeJudging).toBe(2);
+      expect(payload.data.totalConcurrency).toBe(12);
     });
 
-    const response = await GET_STATS(
-      makeRequest("http://localhost/api/v1/admin/workers/stats")
-    );
-    const payload = await response.json();
+    it("returns 401 when not authenticated", async () => {
+      getApiUserMock.mockResolvedValue(null);
+      const response = await GET_STATS(makeRequest("http://localhost/api/v1/admin/workers/stats"));
+      expect(response.status).toBe(401);
+    });
 
-    expect(response.status).toBe(200);
-    expect(payload.data.workersOnline).toBe(0);
-    expect(payload.data.queueDepth).toBe(0);
-  });
-});
-
-// ---------------------------------------------------------------------------
-// PATCH /admin/workers/[id]
-// ---------------------------------------------------------------------------
-describe("PATCH /api/v1/admin/workers/[id]", () => {
-  it("updates worker alias", async () => {
-    findFirstMock
-      .mockResolvedValueOnce({ id: "w1", hostname: "worker-01" })
-      .mockResolvedValueOnce({ id: "w1", hostname: "worker-01", alias: "My Worker" });
-
-    const response = await PATCH(
-      makeRequest("http://localhost/api/v1/admin/workers/w1", {
-        method: "PATCH",
-        body: JSON.stringify({ alias: "My Worker" }),
-      }),
-      makeParams("w1")
-    );
-    const payload = await response.json();
-
-    expect(response.status).toBe(200);
-    expect(payload.data.alias).toBe("My Worker");
+    it("returns 500 on error", async () => {
+      selectMock.mockImplementation(() => {
+        throw new Error("DB error");
+      });
+      const response = await GET_STATS(makeRequest("http://localhost/api/v1/admin/workers/stats"));
+      expect(response.status).toBe(500);
+    });
   });
 
-  it("returns 404 when worker not found", async () => {
-    findFirstMock.mockResolvedValue(null);
+  describe("PATCH /api/v1/admin/workers/[id]", () => {
+    it("updates worker alias", async () => {
+      findFirstMock.mockResolvedValueOnce({ id: "w1", hostname: "worker-01" });
+      selectMock.mockReturnValueOnce(makeSelectChain([
+        { id: "w1", hostname: "worker-01", alias: "My Worker" },
+      ]));
 
-    const response = await PATCH(
-      makeRequest("http://localhost/api/v1/admin/workers/nonexistent", {
-        method: "PATCH",
-        body: JSON.stringify({ alias: "test" }),
-      }),
-      makeParams("nonexistent")
-    );
+      const response = await PATCH(
+        makeRequest("http://localhost/api/v1/admin/workers/w1", {
+          method: "PATCH",
+          body: JSON.stringify({ alias: "My Worker" }),
+        }),
+        makeParams("w1")
+      );
+      const payload = await response.json();
 
-    expect(response.status).toBe(404);
+      expect(response.status).toBe(200);
+      expect(payload.data.alias).toBe("My Worker");
+    });
+
+    it("returns 404 when worker not found", async () => {
+      findFirstMock.mockResolvedValue(null);
+      const response = await PATCH(
+        makeRequest("http://localhost/api/v1/admin/workers/nonexistent", {
+          method: "PATCH",
+          body: JSON.stringify({ alias: "test" }),
+        }),
+        makeParams("nonexistent")
+      );
+      expect(response.status).toBe(404);
+    });
+
+    it("returns 401 when not authenticated", async () => {
+      getApiUserMock.mockResolvedValue(null);
+      const response = await PATCH(
+        makeRequest("http://localhost/api/v1/admin/workers/w1", {
+          method: "PATCH",
+          body: JSON.stringify({ alias: "test" }),
+        }),
+        makeParams("w1")
+      );
+      expect(response.status).toBe(401);
+    });
   });
 
-  it("returns 401 when not authenticated", async () => {
-    getApiUserMock.mockResolvedValue(null);
+  describe("DELETE /api/v1/admin/workers/[id]", () => {
+    it("removes worker and reclaims submissions", async () => {
+      findFirstMock.mockResolvedValue({ id: "w1", hostname: "worker-01" });
 
-    const response = await PATCH(
-      makeRequest("http://localhost/api/v1/admin/workers/w1", {
-        method: "PATCH",
-        body: JSON.stringify({ alias: "test" }),
-      }),
-      makeParams("w1")
-    );
+      const response = await DELETE(
+        makeRequest("http://localhost/api/v1/admin/workers/w1", { method: "DELETE" }),
+        makeParams("w1")
+      );
+      const payload = await response.json();
 
-    expect(response.status).toBe(401);
-  });
-});
+      expect(response.status).toBe(200);
+      expect(payload.data.ok).toBe(true);
+      expect(recordAuditEventMock).toHaveBeenCalledOnce();
+      expect(loggerMock.info).toHaveBeenCalledOnce();
+    });
 
-// ---------------------------------------------------------------------------
-// DELETE /admin/workers/[id]
-// ---------------------------------------------------------------------------
-describe("DELETE /api/v1/admin/workers/[id]", () => {
-  it("removes worker and reclaims submissions", async () => {
-    findFirstMock.mockResolvedValue({ id: "w1", hostname: "worker-01" });
+    it("returns 404 when worker not found", async () => {
+      findFirstMock.mockResolvedValue(null);
+      const response = await DELETE(
+        makeRequest("http://localhost/api/v1/admin/workers/nonexistent", { method: "DELETE" }),
+        makeParams("nonexistent")
+      );
+      expect(response.status).toBe(404);
+    });
 
-    const response = await DELETE(
-      makeRequest("http://localhost/api/v1/admin/workers/w1", { method: "DELETE" }),
-      makeParams("w1")
-    );
-    const payload = await response.json();
+    it("returns 401 when not authenticated", async () => {
+      getApiUserMock.mockResolvedValue(null);
+      const response = await DELETE(
+        makeRequest("http://localhost/api/v1/admin/workers/w1", { method: "DELETE" }),
+        makeParams("w1")
+      );
+      expect(response.status).toBe(401);
+    });
 
-    expect(response.status).toBe(200);
-    expect(payload.data.ok).toBe(true);
-    expect(recordAuditEventMock).toHaveBeenCalledOnce();
-    expect(loggerMock.info).toHaveBeenCalledOnce();
-  });
-
-  it("returns 404 when worker not found", async () => {
-    findFirstMock.mockResolvedValue(null);
-
-    const response = await DELETE(
-      makeRequest("http://localhost/api/v1/admin/workers/nonexistent", { method: "DELETE" }),
-      makeParams("nonexistent")
-    );
-
-    expect(response.status).toBe(404);
-  });
-
-  it("returns 401 when not authenticated", async () => {
-    getApiUserMock.mockResolvedValue(null);
-
-    const response = await DELETE(
-      makeRequest("http://localhost/api/v1/admin/workers/w1", { method: "DELETE" }),
-      makeParams("w1")
-    );
-
-    expect(response.status).toBe(401);
-  });
-
-  it("returns 403 when lacking capability", async () => {
-    resolveCapabilitiesMock.mockResolvedValue(new Set());
-
-    const response = await DELETE(
-      makeRequest("http://localhost/api/v1/admin/workers/w1", { method: "DELETE" }),
-      makeParams("w1")
-    );
-
-    expect(response.status).toBe(403);
+    it("returns 403 when lacking capability", async () => {
+      resolveCapabilitiesMock.mockResolvedValue(new Set());
+      const response = await DELETE(
+        makeRequest("http://localhost/api/v1/admin/workers/w1", { method: "DELETE" }),
+        makeParams("w1")
+      );
+      expect(response.status).toBe(403);
+    });
   });
 });

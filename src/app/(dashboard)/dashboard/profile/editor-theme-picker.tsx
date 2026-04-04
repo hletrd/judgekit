@@ -12,7 +12,6 @@ import {
   SAMPLE_CODE,
   loadEditorTheme,
   DEFAULT_LIGHT_THEME,
-  type EditorThemeDefinition,
 } from "@/lib/code/editor-themes";
 import { updatePreferences } from "@/lib/actions/update-preferences";
 import { toast } from "sonner";

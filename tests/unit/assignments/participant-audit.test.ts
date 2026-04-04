@@ -26,29 +26,29 @@ function makeEntry(overrides: Partial<LeaderboardEntry> = {}): LeaderboardEntry 
 }
 
 describe("getParticipantAuditData", () => {
-  it("returns null for an unknown user", () => {
-    mockedComputeContestRanking.mockReturnValue({
+  it("returns null for an unknown user", async () => {
+    mockedComputeContestRanking.mockResolvedValue({
       scoringModel: "ioi",
       entries: [makeEntry({ userId: "user-1" })],
     });
 
-    const result = getParticipantAuditData("assignment-1", "user-unknown");
+    const result = await getParticipantAuditData("assignment-1", "user-unknown");
     expect(result).toBeNull();
   });
 
-  it("returns correct entry and scoringModel for a known user (IOI)", () => {
+  it("returns correct entry and scoringModel for a known user (IOI)", async () => {
     const entry = makeEntry({
       userId: "user-1",
       rank: 1,
       totalScore: 250,
     });
 
-    mockedComputeContestRanking.mockReturnValue({
+    mockedComputeContestRanking.mockResolvedValue({
       scoringModel: "ioi",
       entries: [entry, makeEntry({ userId: "user-2", rank: 2, totalScore: 100 })],
     });
 
-    const result = getParticipantAuditData("assignment-1", "user-1");
+    const result = await getParticipantAuditData("assignment-1", "user-1");
     expect(result).not.toBeNull();
     expect(result!.scoringModel).toBe("ioi");
     expect(result!.entry.userId).toBe("user-1");
@@ -56,7 +56,7 @@ describe("getParticipantAuditData", () => {
     expect(result!.entry.totalScore).toBe(250);
   });
 
-  it("returns correct entry for ICPC scoring model", () => {
+  it("returns correct entry for ICPC scoring model", async () => {
     const entry = makeEntry({
       userId: "user-2",
       rank: 3,
@@ -64,7 +64,7 @@ describe("getParticipantAuditData", () => {
       totalPenalty: 120,
     });
 
-    mockedComputeContestRanking.mockReturnValue({
+    mockedComputeContestRanking.mockResolvedValue({
       scoringModel: "icpc",
       entries: [
         makeEntry({ userId: "user-1", rank: 1, totalScore: 4, totalPenalty: 80 }),
@@ -73,7 +73,7 @@ describe("getParticipantAuditData", () => {
       ],
     });
 
-    const result = getParticipantAuditData("assignment-1", "user-2");
+    const result = await getParticipantAuditData("assignment-1", "user-2");
     expect(result).not.toBeNull();
     expect(result!.scoringModel).toBe("icpc");
     expect(result!.entry.rank).toBe(3);
@@ -81,13 +81,13 @@ describe("getParticipantAuditData", () => {
     expect(result!.entry.totalPenalty).toBe(120);
   });
 
-  it("returns null when contest has no entries", () => {
-    mockedComputeContestRanking.mockReturnValue({
+  it("returns null when contest has no entries", async () => {
+    mockedComputeContestRanking.mockResolvedValue({
       scoringModel: "ioi",
       entries: [],
     });
 
-    const result = getParticipantAuditData("assignment-1", "user-1");
+    const result = await getParticipantAuditData("assignment-1", "user-1");
     expect(result).toBeNull();
   });
 });

@@ -17,6 +17,7 @@ export interface PluginDefinition {
   descriptionKey: string;
   configSchema: z.ZodSchema;
   defaultConfig: Record<string, unknown>;
+  secretConfigKeys?: string[];
   getAdminComponent: () => Promise<{ default: ComponentType<PluginAdminProps> }>;
   getWidgetComponent?: () => Promise<{ default: ComponentType<PluginWidgetProps> }>;
 }

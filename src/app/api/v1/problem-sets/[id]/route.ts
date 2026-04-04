@@ -69,7 +69,7 @@ export const PATCH = createApiHandler({
       return apiError(parsed.error.issues[0]?.message ?? "problemSetUpdateFailed", 400);
     }
 
-    updateProblemSet(id, parsed.data);
+    await updateProblemSet(id, parsed.data);
 
     const updated = await db.query.problemSets.findFirst({
       where: eq(problemSets.id, id),
@@ -129,7 +129,7 @@ export const DELETE = createApiHandler({
       return forbidden();
     }
 
-    deleteProblemSet(id);
+    await deleteProblemSet(id);
 
     recordAuditEvent({
       actorId: user.id,

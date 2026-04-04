@@ -8,7 +8,6 @@
 import { db, pool } from "./index";
 import * as schema from "./schema";
 import { validateExport, getReversedTableOrder, type JudgeKitExport } from "./export";
-import { rawQueryOne } from "./queries";
 import { logger } from "@/lib/logger";
 
 /** Map of logical table names to Drizzle table references */

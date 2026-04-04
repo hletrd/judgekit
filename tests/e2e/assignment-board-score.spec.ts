@@ -34,7 +34,7 @@ async function seedAssignmentBoardScoreFixtures(runtimeSuffix: string) {
   const secondLatestSubmissionId = nanoid();
   const now = Date.now();
 
-  db.insert(users)
+  await db.insert(users)
     .values({
       id: studentId,
       className: `Board ${runtimeSuffix}`,
@@ -46,9 +46,9 @@ async function seedAssignmentBoardScoreFixtures(runtimeSuffix: string) {
       updatedAt: new Date(now),
       username: `assignment_board_${runtimeSuffix}`,
     })
-    .run();
+    ;
 
-  db.insert(groups)
+  await db.insert(groups)
     .values({
       id: groupId,
       description: "Assignment board score verification group",
@@ -56,16 +56,16 @@ async function seedAssignmentBoardScoreFixtures(runtimeSuffix: string) {
       name: `Assignment Board Group ${runtimeSuffix}`,
       updatedAt: new Date(now),
     })
-    .run();
+    ;
 
-  db.insert(enrollments)
+  await db.insert(enrollments)
     .values({
       groupId,
       userId: studentId,
     })
-    .run();
+    ;
 
-  db.insert(assignments)
+  await db.insert(assignments)
     .values({
       id: assignmentId,
       description: "Verify assignment board score math for non-100-point problems.",
@@ -73,9 +73,9 @@ async function seedAssignmentBoardScoreFixtures(runtimeSuffix: string) {
       title: `Assignment Board Score ${runtimeSuffix}`,
       updatedAt: new Date(now),
     })
-    .run();
+    ;
 
-  db.insert(problems)
+  await db.insert(problems)
     .values([
       {
         id: firstProblemId,
@@ -98,9 +98,9 @@ async function seedAssignmentBoardScoreFixtures(runtimeSuffix: string) {
         visibility: "private",
       },
     ])
-    .run();
+    ;
 
-  db.insert(assignmentProblems)
+  await db.insert(assignmentProblems)
     .values([
       {
         assignmentId,
@@ -115,9 +115,9 @@ async function seedAssignmentBoardScoreFixtures(runtimeSuffix: string) {
         sortOrder: 1,
       },
     ])
-    .run();
+    ;
 
-  db.insert(submissions)
+  await db.insert(submissions)
     .values([
       {
         assignmentId,
@@ -156,7 +156,7 @@ async function seedAssignmentBoardScoreFixtures(runtimeSuffix: string) {
         userId: studentId,
       },
     ])
-    .run();
+    ;
 
   return {
     assignmentId,
@@ -213,13 +213,13 @@ test("assignment board renders earned points for non-100-point problems", async 
 
     await captureEvidence(page, testInfo, "assignment-board-score");
   } finally {
-    db.delete(submissions).where(eq(submissions.userId, fixtures.studentId)).run();
-    db.delete(assignmentProblems).where(eq(assignmentProblems.assignmentId, fixtures.assignmentId)).run();
-    db.delete(assignments).where(eq(assignments.id, fixtures.assignmentId)).run();
-    db.delete(problems).where(eq(problems.id, fixtures.firstProblemId)).run();
-    db.delete(problems).where(eq(problems.id, fixtures.secondProblemId)).run();
-    db.delete(enrollments).where(eq(enrollments.groupId, fixtures.groupId)).run();
-    db.delete(groups).where(eq(groups.id, fixtures.groupId)).run();
-    db.delete(users).where(eq(users.id, fixtures.studentId)).run();
+    await db.delete(submissions).where(eq(submissions.userId, fixtures.studentId));
+    await db.delete(assignmentProblems).where(eq(assignmentProblems.assignmentId, fixtures.assignmentId));
+    await db.delete(assignments).where(eq(assignments.id, fixtures.assignmentId));
+    await db.delete(problems).where(eq(problems.id, fixtures.firstProblemId));
+    await db.delete(problems).where(eq(problems.id, fixtures.secondProblemId));
+    await db.delete(enrollments).where(eq(enrollments.groupId, fixtures.groupId));
+    await db.delete(groups).where(eq(groups.id, fixtures.groupId));
+    await db.delete(users).where(eq(users.id, fixtures.studentId));
   }
 });

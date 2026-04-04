@@ -7,7 +7,7 @@
  * super_admin always has ALL capabilities regardless of DB state (hardcoded safety).
  */
 
-import { ALL_CAPABILITIES, type Capability, type RoleRecord, isBuiltinRole } from "./types";
+import { ALL_CAPABILITIES, isBuiltinRole } from "./types";
 import { DEFAULT_ROLE_CAPABILITIES, DEFAULT_ROLE_LEVELS } from "./defaults";
 
 /** Cached role data: name → { capabilities Set, level } */

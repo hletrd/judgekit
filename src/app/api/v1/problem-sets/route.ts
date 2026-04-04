@@ -56,7 +56,7 @@ export const POST = createApiHandler({
       return apiError(parsed.error.issues[0]?.message ?? "problemSetCreateFailed", 400);
     }
 
-    const id = createProblemSet(parsed.data, user.id);
+    const id = await createProblemSet(parsed.data, user.id);
 
     const created = await db.query.problemSets.findFirst({
       where: (ps, { eq }) => eq(ps.id, id),

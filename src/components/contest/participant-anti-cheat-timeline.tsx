@@ -164,6 +164,10 @@ export function ParticipantAntiCheatTimeline({
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
+        <div className="rounded-lg border border-dashed px-3 py-2 text-xs text-muted-foreground">
+          {t("signalsDisclaimer")}
+        </div>
+
         {/* Filter chips */}
         {!loading && events.length > 0 && (
           <div className="flex flex-wrap items-center gap-1.5">

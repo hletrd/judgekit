@@ -1,4 +1,23 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+
+vi.mock("@/lib/db/queries", () => ({
+  rawQueryOne: vi.fn(),
+  rawQueryAll: vi.fn(),
+}));
+
+vi.mock("@/lib/db", () => ({
+  db: {},
+}));
+
+vi.mock("@/lib/db/schema", () => ({
+  assignments: {},
+  contestAccessTokens: {},
+  enrollments: {},
+}));
+
+vi.mock("@/lib/logger", () => ({
+  logger: { warn: vi.fn(), error: vi.fn(), info: vi.fn(), debug: vi.fn() },
+}));
 import { computeIcpcPenalty } from "@/lib/assignments/contest-scoring";
 import { generateAccessCode } from "@/lib/assignments/access-codes";
 import {

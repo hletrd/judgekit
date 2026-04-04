@@ -17,7 +17,6 @@ import { db } from "@/lib/db";
 import { assignments } from "@/lib/db/schema";
 import { getResolvedSystemTimeZone } from "@/lib/system-settings";
 import { notFound, redirect } from "next/navigation";
-import type { UserRole } from "@/types";
 import { getExamSession, getExamSessionsForAssignment } from "@/lib/assignments/exam-sessions";
 import { CountdownTimer } from "@/components/exam/countdown-timer";
 import { StartExamButton } from "@/components/exam/start-exam-button";

@@ -1,4 +1,4 @@
-import { db, execTransaction } from "@/lib/db";
+import { db, execTransaction, type TransactionClient } from "@/lib/db";
 import { rateLimits } from "@/lib/db/schema";
 import { extractClientIp } from "@/lib/security/ip";
 import { getConfiguredSettings } from "@/lib/system-settings-config";
@@ -59,9 +59,12 @@ export function stopRateLimitEviction() {
   }
 }
 
-function getEntry(key: string, queryDb: Pick<typeof db, "select"> = db) {
+async function getEntry(
+  key: string,
+  queryDb: Pick<typeof db, "select"> | Pick<TransactionClient, "select"> = db
+) {
   const now = Date.now();
-  const [existing] = queryDb.select().from(rateLimits).where(eq(rateLimits.key, key)).limit(1).all();
+  const [existing] = await queryDb.select().from(rateLimits).where(eq(rateLimits.key, key)).limit(1);
 
   if (!existing) {
     return {
@@ -111,9 +114,9 @@ export async function isAnyKeyRateLimited(...keys: string[]) {
   return results.some(Boolean);
 }
 
-export function recordRateLimitFailure(key: string) {
-  execTransaction(() => {
-    const { now, entry, exists } = getEntry(key);
+export async function recordRateLimitFailure(key: string) {
+  await execTransaction(async (tx) => {
+    const { now, entry, exists } = await getEntry(key, tx);
     const attempts = entry.attempts + 1;
 
     let blockedUntil = entry.blockedUntil;
@@ -128,7 +131,7 @@ export function recordRateLimitFailure(key: string) {
     }
 
     if (exists) {
-      db.update(rateLimits)
+      await tx.update(rateLimits)
         .set({
           attempts,
           windowStartedAt: entry.windowStartedAt,
@@ -136,10 +139,9 @@ export function recordRateLimitFailure(key: string) {
           consecutiveBlocks,
           lastAttempt: now,
         })
-        .where(eq(rateLimits.key, key))
-        .run();
+        .where(eq(rateLimits.key, key));
     } else {
-      db.insert(rateLimits)
+      await tx.insert(rateLimits)
         .values({
           id: nanoid(),
           key,
@@ -148,8 +150,7 @@ export function recordRateLimitFailure(key: string) {
           blockedUntil: blockedUntil || null,
           consecutiveBlocks,
           lastAttempt: now,
-        })
-        .run();
+        });
     }
   });
 }

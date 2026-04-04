@@ -1,6 +1,6 @@
 import { randomBytes } from "crypto";
 import { nanoid } from "nanoid";
-import { db, execTransaction } from "@/lib/db";
+import { db } from "@/lib/db";
 import { assignments, contestAccessTokens, enrollments } from "@/lib/db/schema";
 import { and, eq } from "drizzle-orm";
 
@@ -25,34 +25,32 @@ export function generateAccessCode(): string {
 /**
  * Set or regenerate an access code for an assignment.
  */
-export function setAccessCode(assignmentId: string, code?: string): string {
+export async function setAccessCode(assignmentId: string, code?: string): Promise<string> {
   const accessCode = code ?? generateAccessCode();
-  db.update(assignments)
+  await db.update(assignments)
     .set({ accessCode })
-    .where(eq(assignments.id, assignmentId))
-    .run();
+    .where(eq(assignments.id, assignmentId));
   return accessCode;
 }
 
 /**
  * Revoke (clear) the access code for an assignment.
  */
-export function revokeAccessCode(assignmentId: string): void {
-  db.update(assignments)
+export async function revokeAccessCode(assignmentId: string): Promise<void> {
+  await db.update(assignments)
     .set({ accessCode: null })
-    .where(eq(assignments.id, assignmentId))
-    .run();
+    .where(eq(assignments.id, assignmentId));
 }
 
 /**
  * Get the current access code for an assignment.
  */
-export function getAccessCode(assignmentId: string): string | null {
-  const row = db
+export async function getAccessCode(assignmentId: string): Promise<string | null> {
+  const [row] = await db
     .select({ accessCode: assignments.accessCode })
     .from(assignments)
     .where(eq(assignments.id, assignmentId))
-    .get();
+    .limit(1);
   return row?.accessCode ?? null;
 }
 
@@ -63,18 +61,18 @@ type RedeemResult =
 /**
  * Redeem an access code: verify it, create access token, auto-enroll in group.
  */
-export function redeemAccessCode(
+export async function redeemAccessCode(
   code: string,
   userId: string,
   ipAddress?: string
-): RedeemResult {
+): Promise<RedeemResult> {
   const normalizedCode = code.trim().toUpperCase();
 
   if (!normalizedCode || normalizedCode.length < 4) {
     return { ok: false, error: "invalidAccessCode" };
   }
 
-  const assignment = db
+  const [assignment] = await db
     .select({
       id: assignments.id,
       groupId: assignments.groupId,
@@ -85,7 +83,7 @@ export function redeemAccessCode(
     })
     .from(assignments)
     .where(eq(assignments.accessCode, normalizedCode))
-    .get();
+    .limit(1);
 
   if (!assignment) {
     return { ok: false, error: "invalidAccessCode" };
@@ -103,9 +101,11 @@ export function redeemAccessCode(
   }
 
   // Transaction: check + create token + auto-enroll (atomic to prevent TOCTOU race)
-  execTransaction(() => {
+  let alreadyRedeemed = false;
+
+  await db.transaction(async (tx) => {
     // Check if already redeemed (inside transaction to prevent race condition)
-    const existing = db
+    const [existing] = await tx
       .select({ id: contestAccessTokens.id })
       .from(contestAccessTokens)
       .where(
@@ -114,25 +114,25 @@ export function redeemAccessCode(
           eq(contestAccessTokens.userId, userId)
         )
       )
-      .get();
+      .limit(1);
 
     if (existing) {
-      return { alreadyRedeemed: true as const };
+      alreadyRedeemed = true;
+      return;
     }
 
     // Create access token
-    db.insert(contestAccessTokens)
+    await tx.insert(contestAccessTokens)
       .values({
         id: nanoid(),
         assignmentId: assignment.id,
         userId,
         redeemedAt: new Date(),
         ipAddress: ipAddress ?? null,
-      })
-      .run();
+      });
 
     // Auto-enroll in group if not already enrolled
-    const enrollment = db
+    const [enrollment] = await tx
       .select({ id: enrollments.id })
       .from(enrollments)
       .where(
@@ -141,25 +141,20 @@ export function redeemAccessCode(
           eq(enrollments.userId, userId)
         )
       )
-      .get();
+      .limit(1);
 
     if (!enrollment) {
-      db.insert(enrollments)
+      await tx.insert(enrollments)
         .values({
           id: nanoid(),
           userId,
           groupId: assignment.groupId,
           enrolledAt: new Date(),
-        })
-        .run();
+        });
     }
-
-    return { alreadyRedeemed: false as const };
   });
 
-  const result = execute();
-
-  if (result.alreadyRedeemed) {
+  if (alreadyRedeemed) {
     return { ok: true, alreadyEnrolled: true, assignmentId: assignment.id, groupId: assignment.groupId };
   }
 

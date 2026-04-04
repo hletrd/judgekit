@@ -13,7 +13,7 @@ import {
 } from "drizzle-orm/mysql-core";
 import { nanoid } from "nanoid";
 import { generateSubmissionId } from "@/lib/submissions/id";
-import type { ExamMode, ScoringModel } from "@/types";
+import type { ExamMode, PlatformMode, ScoringModel } from "@/types";
 
 export const users = mysqlTable("users", {
   id: varchar("id", { length: 36 })
@@ -128,27 +128,34 @@ export const auditEvents = mysqlTable(
   ]
 );
 
-export const apiKeys = mysqlTable("api_keys", {
-  id: varchar("id", { length: 36 })
-    .primaryKey()
-    .$defaultFn(() => nanoid()),
-  name: varchar("name", { length: 255 }).notNull(),
-  keyPlain: text("key_plain").notNull(),
-  keyPrefix: varchar("key_prefix", { length: 255 }).notNull(),
-  createdById: varchar("created_by_id", { length: 36 })
-    .notNull()
-    .references(() => users.id, { onDelete: "cascade" }),
-  role: varchar("role", { length: 255 }).notNull().default("admin"),
-  lastUsedAt: timestamp("last_used_at"),
-  expiresAt: timestamp("expires_at"),
-  isActive: boolean("is_active").notNull().default(true),
-  createdAt: timestamp("created_at")
-    .notNull()
-    .$defaultFn(() => new Date(Date.now())),
-  updatedAt: timestamp("updated_at")
-    .notNull()
-    .$defaultFn(() => new Date(Date.now())),
-});
+export const apiKeys = mysqlTable(
+  "api_keys",
+  {
+    id: varchar("id", { length: 36 })
+      .primaryKey()
+      .$defaultFn(() => nanoid()),
+    name: varchar("name", { length: 255 }).notNull(),
+    keyHash: varchar("key_hash", { length: 64 }).notNull(),
+    keyPrefix: varchar("key_prefix", { length: 255 }).notNull(),
+    createdById: varchar("created_by_id", { length: 36 })
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    role: varchar("role", { length: 255 }).notNull().default("admin"),
+    lastUsedAt: timestamp("last_used_at"),
+    expiresAt: timestamp("expires_at"),
+    isActive: boolean("is_active").notNull().default(true),
+    createdAt: timestamp("created_at")
+      .notNull()
+      .$defaultFn(() => new Date(Date.now())),
+    updatedAt: timestamp("updated_at")
+      .notNull()
+      .$defaultFn(() => new Date(Date.now())),
+  },
+  (table) => [
+    uniqueIndex("api_keys_key_hash_unique").on(table.keyHash),
+    index("api_keys_key_prefix_idx").on(table.keyPrefix),
+  ]
+);
 
 export const groups = mysqlTable("groups", {
   id: varchar("id", { length: 36 })
@@ -436,6 +443,7 @@ export const systemSettings = mysqlTable("system_settings", {
   siteTitle: varchar("site_title", { length: 255 }),
   siteDescription: text("site_description"),
   timeZone: varchar("time_zone", { length: 255 }),
+  platformMode: varchar("platform_mode", { length: 255 }).$type<PlatformMode>().notNull().default("homework"),
   aiAssistantEnabled: boolean("ai_assistant_enabled").notNull().default(true),
   // Rate Limiting (Login)
   loginRateLimitMaxAttempts: int("login_rate_limit_max_attempts"),

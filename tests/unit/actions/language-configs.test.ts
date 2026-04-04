@@ -78,47 +78,55 @@ vi.mock("@/lib/db/schema", () => ({
   },
 }));
 
-vi.mock("@/lib/db", () => ({
-  db: {
-    update: vi.fn(() => ({
-      set: vi.fn((...setArgs: unknown[]) => {
-        mocks.dbUpdateSet(...setArgs);
-        return {
-          where: vi.fn((...whereArgs: unknown[]) => {
-            mocks.dbUpdateWhere(...whereArgs);
-            return Promise.resolve();
-          }),
-        };
-      }),
-    })),
-    select: vi.fn(() => ({
-      from: vi.fn((...fromArgs: unknown[]) => {
-        mocks.dbSelectFrom(...fromArgs);
-        return {
-          where: vi.fn((...whereArgs: unknown[]) => {
-            mocks.dbSelectFromWhere(...whereArgs);
-            return Promise.resolve(mocks.dbSelectFromWhere.mock.results.length > 0
-              ? mocks.dbSelectFromWhere.mock.results[mocks.dbSelectFromWhere.mock.results.length - 1].value
-              : []);
-          }),
-          limit: vi.fn(() =>
-            Promise.resolve(
-              mocks.dbSelectFromWhere.mock.results.length > 0
+vi.mock("@/lib/db", () => {
+  const updateChainFactory = () => ({
+    set: vi.fn((...setArgs: unknown[]) => {
+      mocks.dbUpdateSet(...setArgs);
+      return {
+        where: vi.fn((...whereArgs: unknown[]) => {
+          mocks.dbUpdateWhere(...whereArgs);
+          return Promise.resolve();
+        }),
+      };
+    }),
+  });
+
+  return {
+    db: {
+      update: vi.fn(() => updateChainFactory()),
+      select: vi.fn(() => ({
+        from: vi.fn((...fromArgs: unknown[]) => {
+          mocks.dbSelectFrom(...fromArgs);
+          return {
+            where: vi.fn((...whereArgs: unknown[]) => {
+              mocks.dbSelectFromWhere(...whereArgs);
+              return Promise.resolve(mocks.dbSelectFromWhere.mock.results.length > 0
                 ? mocks.dbSelectFromWhere.mock.results[mocks.dbSelectFromWhere.mock.results.length - 1].value
-                : []
-            )
-          ),
-        };
-      }),
-    })),
-    insert: vi.fn(() => ({
-      values: vi.fn((...args: unknown[]) => {
-        mocks.dbInsertValues(...args);
-        return Promise.resolve();
-      }),
-    })),
-  },
-}));
+                : []);
+            }),
+            limit: vi.fn(() =>
+              Promise.resolve(
+                mocks.dbSelectFromWhere.mock.results.length > 0
+                  ? mocks.dbSelectFromWhere.mock.results[mocks.dbSelectFromWhere.mock.results.length - 1].value
+                  : []
+              )
+            ),
+          };
+        }),
+      })),
+      insert: vi.fn(() => ({
+        values: vi.fn((...args: unknown[]) => {
+          mocks.dbInsertValues(...args);
+          return Promise.resolve();
+        }),
+      })),
+      transaction: vi.fn(async (callback: (tx: { update: () => ReturnType<typeof updateChainFactory> }) => Promise<unknown>) =>
+        callback({
+          update: vi.fn(() => updateChainFactory()),
+        })),
+    },
+  };
+});
 
 vi.mock("@/lib/judge/languages", () => ({
   JUDGE_LANGUAGE_CONFIGS: mocks.JUDGE_LANGUAGE_CONFIGS,
@@ -640,11 +648,9 @@ describe("resetAllLanguagesToDefaults", () => {
     };
 
     const { db } = await import("@/lib/db");
-    (db.update as ReturnType<typeof vi.fn>).mockImplementationOnce(() => ({
-      set: vi.fn(() => ({
-        where: vi.fn(() => Promise.reject(new Error("db error"))),
-      })),
-    }));
+    (db.transaction as ReturnType<typeof vi.fn>).mockImplementationOnce(async () => {
+      throw new Error("db error");
+    });
 
     const result = await resetAllLanguagesToDefaults();
     expect(result).toEqual({ success: false, error: "resetAllFailed" });

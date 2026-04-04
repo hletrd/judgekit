@@ -1,4 +1,10 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+
+vi.mock("@/lib/system-settings-config", () => ({
+  getConfiguredSettings: () => ({
+    minPasswordLength: 8,
+  }),
+}));
 import {
   getPasswordValidationError,
   isStrongPassword,
@@ -57,10 +63,10 @@ describe("getPasswordValidationError", () => {
     expect(getPasswordValidationError("password")).toBeNull();
   });
 
-  it("accepts password containing username (no contextual check)", () => {
+  it("rejects password containing username when context is provided", () => {
     expect(
       getPasswordValidationError("Alice123", { username: "alice" })
-    ).toBeNull();
+    ).toBe("passwordTooSimilar");
   });
 });
 

@@ -192,7 +192,7 @@ test("task 7 guards browser back navigation while dirty and stays clean after su
       });
     });
   } finally {
-    db.delete(submissions).where(eq(submissions.problemId, problemId)).run();
-    db.delete(problems).where(eq(problems.id, problemId)).run();
+    await db.delete(submissions).where(eq(submissions.problemId, problemId));
+    await db.delete(problems).where(eq(problems.id, problemId));
   }
 });

@@ -1,6 +1,8 @@
 import { z } from "zod";
 import { normalizeOptionalString } from "@/lib/validators/preprocess";
 
+export const platformModeValues = ["homework", "exam", "contest", "recruiting"] as const;
+
 function isValidTimeZone(value: string) {
   try {
     new Intl.DateTimeFormat("en-US", { timeZone: value });
@@ -38,6 +40,7 @@ export const systemSettingsSchema = z.object({
       .refine(isValidTimeZone, "invalidTimeZone")
       .optional()
   ),
+  platformMode: z.enum(platformModeValues).optional(),
   aiAssistantEnabled: z.boolean().optional(),
   // Rate Limiting (Login)
   loginRateLimitMaxAttempts: optionalInt(1, 100),

@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { apiSuccess, apiError } from "@/lib/api/responses";
+import { apiSuccess } from "@/lib/api/responses";
 import { db } from "@/lib/db";
 import { submissions } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
@@ -54,7 +54,8 @@ export const GET = createApiHandler({
     const canViewSource = caps.has("submissions.view_source");
 
     if (!isOwner && !canViewSource) {
-      const { sourceCode: _, ...rest } = submission;
+      const { sourceCode: _sourceCode, ...rest } = submission;
+      void _sourceCode;
       return apiSuccess(rest);
     }
 

@@ -51,9 +51,12 @@ function removeConnection(connId: string): void {
 
 // Periodic cleanup of stale connection tracking entries
 const CLEANUP_INTERVAL_MS = 60_000;
-const CLEANUP_KEY = '__sseCleanupTimer' as const;
-if ((globalThis as any)[CLEANUP_KEY]) clearInterval((globalThis as any)[CLEANUP_KEY]);
-(globalThis as any)[CLEANUP_KEY] = setInterval(() => {
+declare global {
+  var __sseCleanupTimer: ReturnType<typeof setInterval> | undefined;
+}
+
+if (globalThis.__sseCleanupTimer) clearInterval(globalThis.__sseCleanupTimer);
+globalThis.__sseCleanupTimer = setInterval(() => {
   const now = Date.now();
   const staleThreshold = getConfiguredSettings().sseTimeoutMs + 30_000;
   for (const [connId, info] of connectionInfoMap) {
@@ -322,7 +325,8 @@ function sseHeaders(): HeadersInit {
 }
 
 function stripSourceCode<T extends Record<string, unknown>>(obj: T): Omit<T, "sourceCode"> {
-  const { sourceCode: _, ...rest } = obj;
+  const { sourceCode: _sourceCode, ...rest } = obj;
+  void _sourceCode;
   return rest as Omit<T, "sourceCode">;
 }
 

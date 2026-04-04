@@ -21,6 +21,7 @@ const mocks = vi.hoisted(() => {
 
     // db chain helpers
     dbQueryUsersFindFirst: vi.fn(),
+    dbQueryGroupsFindMany: vi.fn(),
     dbUpdateSet: vi.fn(),
     dbUpdateWhere: vi.fn(),
     dbDeleteWhere: vi.fn(),
@@ -103,6 +104,9 @@ vi.mock("@/lib/db", () => ({
       users: {
         findFirst: (...args: unknown[]) => mocks.dbQueryUsersFindFirst(...args),
       },
+      groups: {
+        findMany: (...args: unknown[]) => mocks.dbQueryGroupsFindMany(...args),
+      },
     },
     update: vi.fn(() => ({
       set: vi.fn((...args: unknown[]) => {
@@ -174,6 +178,7 @@ const defaultUserInput = {
 
 beforeEach(async () => {
   vi.clearAllMocks();
+  mocks.dbQueryGroupsFindMany.mockResolvedValue([]);
   mocks.resolveCapabilitiesMock.mockImplementation(async (role: string) => {
     const { DEFAULT_ROLE_CAPABILITIES } = await import("@/lib/capabilities/defaults");
     const caps = DEFAULT_ROLE_CAPABILITIES[role as keyof typeof DEFAULT_ROLE_CAPABILITIES];

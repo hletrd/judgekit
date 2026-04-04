@@ -27,7 +27,7 @@ async function createRuntimeStudent(runtimeSuffix: string) {
   const email = `${username}@example.com`;
   const passwordHash = await hash(RUNTIME_STUDENT_PASSWORD, 12);
 
-  db.insert(users)
+  await db.insert(users)
     .values({
       id,
       email,
@@ -39,7 +39,7 @@ async function createRuntimeStudent(runtimeSuffix: string) {
       updatedAt: new Date(),
       username,
     })
-    .run();
+    ;
 
   return {
     id,
@@ -54,7 +54,7 @@ async function seedGroupAssignmentFixtures(authorId: string, runtimeSuffix: stri
   const secondaryProblemId = nanoid();
   const now = Date.now();
 
-  db.insert(groups)
+  await db.insert(groups)
     .values({
       id: groupId,
       description: "Group assignment management verification group",
@@ -62,9 +62,9 @@ async function seedGroupAssignmentFixtures(authorId: string, runtimeSuffix: stri
       name: `Group Assignment ${runtimeSuffix}`,
       updatedAt: new Date(now),
     })
-    .run();
+    ;
 
-  db.insert(problems)
+  await db.insert(problems)
     .values([
       {
         id: problemId,
@@ -87,7 +87,7 @@ async function seedGroupAssignmentFixtures(authorId: string, runtimeSuffix: stri
         visibility: "private",
       },
     ])
-    .run();
+    ;
 
   return {
     groupId,

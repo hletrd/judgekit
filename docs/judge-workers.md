@@ -83,6 +83,8 @@ JUDGE_CONCURRENCY=4 \
 docker compose -f docker-compose.worker.yml up -d
 ```
 
+The dedicated worker compose file includes a local `docker-proxy` sidecar. The judge worker reaches Docker through `DOCKER_HOST=tcp://docker-proxy:2375` instead of mounting `/var/run/docker.sock` directly, which narrows direct daemon exposure.
+
 ### Deploy script
 
 Automates image transfer and setup for remote machines:

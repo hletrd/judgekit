@@ -8,6 +8,8 @@ import { z } from "zod";
 import { isJudgeLanguage, getJudgeLanguageDefinition, serializeJudgeCommand } from "@/lib/judge/languages";
 import { executeCompilerRun } from "@/lib/compiler/execute";
 import { resolveCapabilities } from "@/lib/capabilities";
+import { getResolvedPlatformMode } from "@/lib/system-settings";
+import { getPlatformModePolicy } from "@/lib/platform-mode";
 
 const MAX_SOURCE_CODE_LENGTH = 64 * 1024; // 64KB
 const MAX_STDIN_LENGTH = 64 * 1024; // 64KB
@@ -23,6 +25,11 @@ export const POST = createApiHandler({
   rateLimit: "compiler:run",
   schema: compilerRunSchema,
   handler: async (_req, { user, body }) => {
+    const platformMode = await getResolvedPlatformMode();
+    if (getPlatformModePolicy(platformMode).restrictStandaloneCompiler) {
+      return apiError("compilerDisabledInCurrentMode", 403);
+    }
+
     const caps = await resolveCapabilities(user.role);
     if (!caps.has("content.submit_solutions")) {
       return forbidden();

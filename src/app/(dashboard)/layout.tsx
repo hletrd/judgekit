@@ -55,11 +55,21 @@ export default async function DashboardLayout({ children }: { children: React.Re
         >
           {t("skipToContent")}
         </a>
-        <AppSidebar user={session.user} siteTitle={settings.siteTitle} capabilities={capabilities} />
+        <AppSidebar
+          user={session.user}
+          siteTitle={settings.siteTitle}
+          platformMode={settings.platformMode}
+          capabilities={capabilities}
+        />
         <SidebarInset>
           <header className="flex h-14 items-center gap-2 px-4">
             <SidebarTrigger />
-            <span className="min-w-0 flex-1 truncate text-sm font-semibold">{settings.siteTitle}</span>
+            <div className="min-w-0 flex-1">
+              <span className="block truncate text-sm font-semibold">{settings.siteTitle}</span>
+              <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                {t(`platformModes.${settings.platformMode}`)}
+              </span>
+            </div>
             <div className="ml-auto flex items-center gap-1">
               {canUseLectureMode && <LectureModeToggle />}
               <ThemeToggle dbTheme={session.user.preferredTheme} />

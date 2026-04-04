@@ -5,7 +5,8 @@ import { apiSuccess, apiError } from "@/lib/api/responses";
 import { computeContestAnalytics } from "@/lib/assignments/contest-analytics";
 import { rawQueryOne } from "@/lib/db/queries";
 
-const analyticsCache = new LRUCache<string, any>({ max: 100, ttl: 60_000 });
+type ContestAnalytics = Awaited<ReturnType<typeof computeContestAnalytics>>;
+const analyticsCache = new LRUCache<string, ContestAnalytics>({ max: 100, ttl: 60_000 });
 
 type AssignmentRow = {
   groupId: string;

@@ -1,6 +1,7 @@
 import { and, eq, or, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
-import { db, execTransaction } from "@/lib/db";
+import { db } from "@/lib/db";
+
 import {
   assignmentProblems,
   assignments,
@@ -94,15 +95,15 @@ function mapAssignmentProblems(
   }));
 }
 
-export function createAssignmentWithProblems(
+export async function createAssignmentWithProblems(
   groupId: string,
   input: AssignmentMutationInput
 ) {
   const id = nanoid();
   const now = new Date();
 
-  execTransaction(() => {
-    db.insert(assignments)
+  await db.transaction(async (tx) => {
+    await tx.insert(assignments)
       .values({
         id,
         groupId,
@@ -119,23 +120,22 @@ export function createAssignmentWithProblems(
         enableAntiCheat: input.enableAntiCheat ?? false,
         createdAt: now,
         updatedAt: now,
-      })
-      .run();
+      });
 
-    db.insert(assignmentProblems).values(mapAssignmentProblems(id, input.problems)).run();
-    syncGroupAccessRows(groupId);
+    await tx.insert(assignmentProblems).values(mapAssignmentProblems(id, input.problems));
+    await syncGroupAccessRows(groupId);
   });
   return id;
 }
 
-export function updateAssignmentWithProblems(
+export async function updateAssignmentWithProblems(
   assignmentId: string,
   input: AssignmentMutationInput
 ) {
   const now = new Date();
 
-  execTransaction(() => {
-    const assignment = db
+  await db.transaction(async (tx) => {
+    const [assignment] = await tx
       .select({
         groupId: assignments.groupId,
         examMode: assignments.examMode,
@@ -145,19 +145,18 @@ export function updateAssignmentWithProblems(
       })
       .from(assignments)
       .where(eq(assignments.id, assignmentId))
-      .get();
+      .limit(1);
 
     if (!assignment) {
       throw new Error("Assignment not found");
     }
 
     if (assignment.examMode === "windowed") {
-      const existingSession = db
+      const [existingSession] = await tx
         .select({ id: examSessions.id })
         .from(examSessions)
         .where(eq(examSessions.assignmentId, assignmentId))
-        .limit(1)
-        .get();
+        .limit(1);
 
       if (existingSession) {
         if (input.examMode !== "windowed") {
@@ -178,7 +177,7 @@ export function updateAssignmentWithProblems(
       }
     }
 
-    db.update(assignments)
+    await tx.update(assignments)
       .set({
         title: input.title,
         description: input.description ?? null,
@@ -193,42 +192,41 @@ export function updateAssignmentWithProblems(
         enableAntiCheat: input.enableAntiCheat ?? false,
         updatedAt: now,
       })
-      .where(eq(assignments.id, assignmentId))
-      .run();
+      .where(eq(assignments.id, assignmentId));
 
-    db.delete(assignmentProblems).where(eq(assignmentProblems.assignmentId, assignmentId)).run();
-    db.insert(assignmentProblems)
-      .values(mapAssignmentProblems(assignmentId, input.problems))
-      .run();
+    await tx.delete(assignmentProblems).where(eq(assignmentProblems.assignmentId, assignmentId));
+    await tx.insert(assignmentProblems)
+      .values(mapAssignmentProblems(assignmentId, input.problems));
 
-    syncGroupAccessRows(assignment.groupId);
+    await syncGroupAccessRows(assignment.groupId);
   });
 }
 
-export function deleteAssignmentWithProblems(assignmentId: string) {
-  execTransaction(() => {
-    const assignment = db
+export async function deleteAssignmentWithProblems(assignmentId: string) {
+  await db.transaction(async (tx) => {
+    const [assignment] = await tx
       .select({ groupId: assignments.groupId })
       .from(assignments)
       .where(eq(assignments.id, assignmentId))
-      .get();
+      .limit(1);
 
     if (!assignment) {
       return;
     }
 
-    const submissionCountRow = db
+    const [submissionCountRow] = await tx
       .select({ total: sql<number>`count(${submissions.id})` })
       .from(submissions)
-      .where(eq(submissions.assignmentId, assignmentId))
-      .get() ?? { total: 0 };
+      .where(eq(submissions.assignmentId, assignmentId));
 
-    if (Number(submissionCountRow.total) > 0) {
+    const submissionCount = submissionCountRow ?? { total: 0 };
+
+    if (Number(submissionCount.total) > 0) {
       throw new Error("assignmentDeleteBlocked");
     }
 
-    db.delete(assignmentProblems).where(eq(assignmentProblems.assignmentId, assignmentId)).run();
-    db.delete(assignments).where(eq(assignments.id, assignmentId)).run();
-    syncGroupAccessRows(assignment.groupId);
+    await tx.delete(assignmentProblems).where(eq(assignmentProblems.assignmentId, assignmentId));
+    await tx.delete(assignments).where(eq(assignments.id, assignmentId));
+    await syncGroupAccessRows(assignment.groupId);
   });
 }

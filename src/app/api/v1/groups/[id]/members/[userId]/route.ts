@@ -6,7 +6,6 @@ import { db } from "@/lib/db";
 import { assignments, enrollments, submissions } from "@/lib/db/schema";
 import { canManageGroupResources } from "@/lib/assignments/management";
 import { forbidden, notFound, createApiHandler } from "@/lib/api/handler";
-import { assertUserRole } from "@/lib/security/constants";
 
 export const DELETE = createApiHandler({
   rateLimit: "members:remove",

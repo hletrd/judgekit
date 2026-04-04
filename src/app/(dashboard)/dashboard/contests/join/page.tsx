@@ -55,7 +55,7 @@ export default function ContestJoinPage() {
       }
       await new Promise((resolve) => setTimeout(resolve, 1000));
       router.push(`/dashboard/contests/${payload.data.assignmentId}`);
-    } catch (error) {
+    } catch {
       setShaking(true);
       setTimeout(() => setShaking(false), 600);
       toast.error(t("joinFailed"));

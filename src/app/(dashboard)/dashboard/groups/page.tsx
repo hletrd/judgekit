@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -20,6 +20,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import CreateGroupDialog from "./create-group-dialog";
 import { PaginationControls } from "@/components/pagination-controls";
+import { getResolvedPlatformMode } from "@/lib/system-settings";
+import { resolveCapabilities } from "@/lib/capabilities/cache";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("groups");
@@ -40,6 +42,12 @@ export default async function GroupsPage({
 
   const t = await getTranslations("groups");
   const tCommon = await getTranslations("common");
+  const platformMode = await getResolvedPlatformMode();
+  const caps = await resolveCapabilities(session.user.role);
+
+  if (platformMode === "recruiting" && !caps.has("system.settings") && !caps.has("submissions.view_all")) {
+    redirect("/dashboard");
+  }
   
   let myGroups;
 

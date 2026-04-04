@@ -23,7 +23,6 @@ export const GET = createApiHandler({
       .select({
         id: apiKeys.id,
         name: apiKeys.name,
-        keyPlain: apiKeys.keyPlain,
         keyPrefix: apiKeys.keyPrefix,
         role: apiKeys.role,
         createdById: apiKeys.createdById,
@@ -65,13 +64,13 @@ export const POST = createApiHandler({
       return apiError("cannotAssignHigherRole", 403);
     }
 
-    const { rawKey, keyPrefix } = generateApiKey();
+    const { rawKey, keyPrefix, keyHash } = generateApiKey();
 
     const [created] = await db
       .insert(apiKeys)
       .values({
         name: body.name,
-        keyPlain: rawKey,
+        keyHash,
         keyPrefix,
         createdById: user.id,
         role: body.role,

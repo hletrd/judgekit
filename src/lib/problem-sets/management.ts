@@ -1,6 +1,6 @@
 import { eq, inArray, and } from "drizzle-orm";
 import { nanoid } from "nanoid";
-import { db, execTransaction } from "@/lib/db";
+import { db, execTransaction, type TransactionClient } from "@/lib/db";
 import {
   problemSets,
   problemSetProblems,
@@ -10,6 +10,8 @@ import {
   assignments,
 } from "@/lib/db/schema";
 import type { ProblemSetMutationInput } from "@/lib/validators/problem-sets";
+
+type DatabaseExecutor = Pick<typeof db, "select" | "insert" | "update" | "delete">;
 
 function mapProblemSetProblems(problemSetId: string, problemIds: string[]) {
   return problemIds.map((problemId, index) => ({
@@ -24,36 +26,36 @@ function mapProblemSetProblems(problemSetId: string, problemIds: string[]) {
  * Recompute problemGroupAccess rows for a group, considering both
  * assignment problems AND problem set problems.
  */
-export function syncGroupAccessRows(groupId: string) {
+export async function syncGroupAccessRows(
+  groupId: string,
+  executor: DatabaseExecutor | TransactionClient = db
+) {
   // 1. Collect problem IDs from assignments
-  const assignmentRows = db
+  const assignmentRows = await executor
     .select({ problemId: assignmentProblems.problemId })
     .from(assignmentProblems)
     .innerJoin(assignments, eq(assignments.id, assignmentProblems.assignmentId))
-    .where(eq(assignments.groupId, groupId))
-    .all();
+    .where(eq(assignments.groupId, groupId));
 
   // 2. Collect problem IDs from problem sets assigned to this group
-  const problemSetRows = db
+  const problemSetRows = await executor
     .select({ problemId: problemSetProblems.problemId })
     .from(problemSetProblems)
     .innerJoin(
       problemSetGroupAccess,
       eq(problemSetGroupAccess.problemSetId, problemSetProblems.problemSetId)
     )
-    .where(eq(problemSetGroupAccess.groupId, groupId))
-    .all();
+    .where(eq(problemSetGroupAccess.groupId, groupId));
 
   const requiredProblemIds = new Set([
     ...assignmentRows.map((row) => row.problemId),
     ...problemSetRows.map((row) => row.problemId),
   ]);
 
-  const existingRows = db
+  const existingRows = await executor
     .select({ id: problemGroupAccess.id, problemId: problemGroupAccess.problemId })
     .from(problemGroupAccess)
-    .where(eq(problemGroupAccess.groupId, groupId))
-    .all();
+    .where(eq(problemGroupAccess.groupId, groupId));
 
   const existingProblemIds = new Set(existingRows.map((row) => row.problemId));
 
@@ -70,20 +72,20 @@ export function syncGroupAccessRows(groupId: string) {
     .map((row) => row.id);
 
   if (idsToDelete.length > 0) {
-    db.delete(problemGroupAccess).where(inArray(problemGroupAccess.id, idsToDelete)).run();
+    await executor.delete(problemGroupAccess).where(inArray(problemGroupAccess.id, idsToDelete));
   }
 
   if (rowsToInsert.length > 0) {
-    db.insert(problemGroupAccess).values(rowsToInsert).run();
+    await executor.insert(problemGroupAccess).values(rowsToInsert);
   }
 }
 
-export function createProblemSet(input: ProblemSetMutationInput, createdBy: string) {
+export async function createProblemSet(input: ProblemSetMutationInput, createdBy: string) {
   const id = nanoid();
   const now = new Date();
 
-  execTransaction(() => {
-    db.insert(problemSets)
+  await execTransaction(async (tx) => {
+    await tx.insert(problemSets)
       .values({
         id,
         name: input.name,
@@ -91,97 +93,86 @@ export function createProblemSet(input: ProblemSetMutationInput, createdBy: stri
         createdBy,
         createdAt: now,
         updatedAt: now,
-      })
-      .run();
+      });
 
     if (input.problemIds.length > 0) {
-      db.insert(problemSetProblems)
-        .values(mapProblemSetProblems(id, input.problemIds))
-        .run();
+      await tx.insert(problemSetProblems)
+        .values(mapProblemSetProblems(id, input.problemIds));
     }
   });
   return id;
 }
 
-export function updateProblemSet(problemSetId: string, input: ProblemSetMutationInput) {
+export async function updateProblemSet(problemSetId: string, input: ProblemSetMutationInput) {
   const now = new Date();
 
-  execTransaction(() => {
-    db.update(problemSets)
+  await execTransaction(async (tx) => {
+    await tx.update(problemSets)
       .set({
         name: input.name,
         description: input.description ?? null,
         updatedAt: now,
       })
-      .where(eq(problemSets.id, problemSetId))
-      .run();
+      .where(eq(problemSets.id, problemSetId));
 
     // Replace all problems
-    db.delete(problemSetProblems)
-      .where(eq(problemSetProblems.problemSetId, problemSetId))
-      .run();
+    await tx.delete(problemSetProblems)
+      .where(eq(problemSetProblems.problemSetId, problemSetId));
 
     if (input.problemIds.length > 0) {
-      db.insert(problemSetProblems)
-        .values(mapProblemSetProblems(problemSetId, input.problemIds))
-        .run();
+      await tx.insert(problemSetProblems)
+        .values(mapProblemSetProblems(problemSetId, input.problemIds));
     }
 
     // Re-sync group access for all groups that have this problem set
-    const affectedGroups = db
+    const affectedGroups = await tx
       .select({ groupId: problemSetGroupAccess.groupId })
       .from(problemSetGroupAccess)
-      .where(eq(problemSetGroupAccess.problemSetId, problemSetId))
-      .all();
+      .where(eq(problemSetGroupAccess.problemSetId, problemSetId));
 
     for (const { groupId } of affectedGroups) {
-      syncGroupAccessRows(groupId);
+      await syncGroupAccessRows(groupId, tx);
     }
   });
 }
 
-export function deleteProblemSet(problemSetId: string) {
-  execTransaction(() => {
+export async function deleteProblemSet(problemSetId: string) {
+  await execTransaction(async (tx) => {
     // Find affected groups before deleting
-    const affectedGroups = db
+    const affectedGroups = await tx
       .select({ groupId: problemSetGroupAccess.groupId })
       .from(problemSetGroupAccess)
-      .where(eq(problemSetGroupAccess.problemSetId, problemSetId))
-      .all();
+      .where(eq(problemSetGroupAccess.problemSetId, problemSetId));
 
-    db.delete(problemSetProblems)
-      .where(eq(problemSetProblems.problemSetId, problemSetId))
-      .run();
-    db.delete(problemSetGroupAccess)
-      .where(eq(problemSetGroupAccess.problemSetId, problemSetId))
-      .run();
-    db.delete(problemSets)
-      .where(eq(problemSets.id, problemSetId))
-      .run();
+    await tx.delete(problemSetProblems)
+      .where(eq(problemSetProblems.problemSetId, problemSetId));
+    await tx.delete(problemSetGroupAccess)
+      .where(eq(problemSetGroupAccess.problemSetId, problemSetId));
+    await tx.delete(problemSets)
+      .where(eq(problemSets.id, problemSetId));
 
     // Re-sync access for affected groups
     for (const { groupId } of affectedGroups) {
-      syncGroupAccessRows(groupId);
+      await syncGroupAccessRows(groupId, tx);
     }
   });
 }
 
-export function assignProblemSetToGroups(problemSetId: string, groupIds: string[]) {
+export async function assignProblemSetToGroups(problemSetId: string, groupIds: string[]) {
   const now = new Date();
 
-  execTransaction(() => {
+  await execTransaction(async (tx) => {
     // Get existing assignments to avoid duplicates
-    const existing = db
+    const existing = await tx
       .select({ groupId: problemSetGroupAccess.groupId })
       .from(problemSetGroupAccess)
-      .where(eq(problemSetGroupAccess.problemSetId, problemSetId))
-      .all();
+      .where(eq(problemSetGroupAccess.problemSetId, problemSetId));
 
     const existingGroupIds = new Set(existing.map((row) => row.groupId));
     const newGroupIds = groupIds.filter((id) => !existingGroupIds.has(id));
 
     if (newGroupIds.length > 0) {
-      db.insert(problemSetGroupAccess)
+      await tx.insert(problemSetGroupAccess)
         .values(
           newGroupIds.map((groupId) => ({
             id: nanoid(),
@@ -189,28 +180,26 @@ export function assignProblemSetToGroups(problemSetId: string, groupIds: string[
             groupId,
             assignedAt: now,
           }))
-        )
-        .run();
+        );
 
       // Sync access for newly assigned groups
       for (const groupId of newGroupIds) {
-        syncGroupAccessRows(groupId);
+        await syncGroupAccessRows(groupId, tx);
       }
     }
   });
 }
 
-export function removeProblemSetFromGroup(problemSetId: string, groupId: string) {
-  execTransaction(() => {
-    db.delete(problemSetGroupAccess)
+export async function removeProblemSetFromGroup(problemSetId: string, groupId: string) {
+  await execTransaction(async (tx) => {
+    await tx.delete(problemSetGroupAccess)
       .where(
         and(
           eq(problemSetGroupAccess.problemSetId, problemSetId),
           eq(problemSetGroupAccess.groupId, groupId)
         )
-      )
-      .run();
+      );
 
-    syncGroupAccessRows(groupId);
+    await syncGroupAccessRows(groupId, tx);
   });
 }

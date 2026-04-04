@@ -38,6 +38,7 @@ vi.mock("@/lib/db/schema", () => ({
     siteTitle: "systemSettings.siteTitle",
     siteDescription: "systemSettings.siteDescription",
     timeZone: "systemSettings.timeZone",
+    platformMode: "systemSettings.platformMode",
     updatedAt: "systemSettings.updatedAt",
   },
 }));
@@ -100,6 +101,7 @@ describe("getSystemSettings", () => {
       siteTitle: "My Site",
       siteDescription: "A site",
       timeZone: "UTC",
+      platformMode: "contest",
       updatedAt: new Date("2025-01-01"),
     };
     mocks.dbQuerySystemSettingsFindFirst.mockResolvedValue(fakeSettings);
@@ -116,6 +118,7 @@ describe("getSystemSettings", () => {
       siteTitle: "Fallback Site",
       siteDescription: "Fallback desc",
       timeZone: "America/New_York",
+      platformMode: "exam",
       updatedAt: new Date("2025-06-01"),
     };
     mocks.dbQuerySystemSettingsFindFirst.mockRejectedValue(new Error("column not found"));
@@ -154,6 +157,7 @@ describe("getResolvedSystemSettings", () => {
       siteTitle: "DB Title",
       siteDescription: "DB Description",
       timeZone: "Asia/Tokyo",
+      platformMode: "contest",
       aiAssistantEnabled: false,
     });
 
@@ -162,6 +166,7 @@ describe("getResolvedSystemSettings", () => {
       siteTitle: "DB Title",
       siteDescription: "DB Description",
       timeZone: "Asia/Tokyo",
+      platformMode: "contest",
       aiAssistantEnabled: false,
     });
   });
@@ -175,6 +180,7 @@ describe("getResolvedSystemSettings", () => {
       siteTitle: "Default Title",
       siteDescription: "Default Description",
       timeZone: "Europe/London",
+      platformMode: "homework",
       aiAssistantEnabled: true,
     });
   });
@@ -197,10 +203,12 @@ describe("getResolvedSystemSettings", () => {
       timeZone: "UTC",
       updatedAt: new Date(),
       // aiAssistantEnabled absent
+      platformMode: "recruiting",
     });
 
     const result = await getResolvedSystemSettings(defaults);
     expect(result.aiAssistantEnabled).toBe(true);
+    expect(result.platformMode).toBe("recruiting");
   });
 });
 
@@ -253,14 +261,30 @@ describe("isAiAssistantEnabled", () => {
     expect(result).toBe(true);
   });
 
-  it("returns true on error (getSystemSettings throws)", async () => {
+  it("returns true on error in homework mode (getSystemSettings throws)", async () => {
     const { isAiAssistantEnabled } = await import("@/lib/system-settings");
-    // Both findFirst and fallback select throw so getSystemSettings throws too
+    // In the direct aiAssistantEnabled code path, a failing findFirst should
+    // fall back to the homework-mode default (enabled).
     mocks.dbQuerySystemSettingsFindFirst.mockRejectedValue(new Error("db down"));
-    mocks.dbSelectFromWhereLimit.mockRejectedValue(new Error("db down"));
 
     const result = await isAiAssistantEnabled();
     expect(result).toBe(true);
+  });
+
+  it("returns false by default in recruiting mode even when aiAssistantEnabled is true", async () => {
+    const { isAiAssistantEnabled } = await import("@/lib/system-settings");
+    mocks.dbQuerySystemSettingsFindFirst.mockResolvedValue({
+      id: "global",
+      siteTitle: "T",
+      siteDescription: "D",
+      timeZone: "UTC",
+      platformMode: "recruiting",
+      aiAssistantEnabled: true,
+      updatedAt: new Date(),
+    });
+
+    const result = await isAiAssistantEnabled();
+    expect(result).toBe(false);
   });
 });
 

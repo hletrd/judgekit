@@ -31,7 +31,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import type { UserRole } from "@/types";
 
 export default async function StudentSubmissionsPage({
   params,

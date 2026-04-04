@@ -5,7 +5,7 @@ import { auth } from "@/lib/auth";
 import { buildServerActionAuditContext, recordAuditEvent } from "@/lib/audit/events";
 import { db } from "@/lib/db";
 import { systemSettings } from "@/lib/db/schema";
-import { GLOBAL_SETTINGS_ID } from "@/lib/system-settings";
+import { DEFAULT_PLATFORM_MODE, GLOBAL_SETTINGS_ID } from "@/lib/system-settings";
 import { invalidateSettingsCache } from "@/lib/system-settings-config";
 import { isTrustedServerActionOrigin } from "@/lib/security/server-actions";
 import { checkServerActionRateLimit } from "@/lib/security/api-rate-limit";
@@ -58,7 +58,7 @@ export async function updateSystemSettings(
     return { success: false, error: "unauthorized" };
   }
 
-  const rateLimit = checkServerActionRateLimit(session.user.id, "updateSystemSettings", 20, 60);
+  const rateLimit = await checkServerActionRateLimit(session.user.id, "updateSystemSettings", 20, 60);
   if (rateLimit) return { success: false, error: "rateLimited" };
 
   const parsedInput = systemSettingsSchema.safeParse(input);
@@ -69,7 +69,7 @@ export async function updateSystemSettings(
     };
   }
 
-  const { siteTitle, siteDescription, timeZone, aiAssistantEnabled, allowedHosts } = parsedInput.data;
+  const { siteTitle, siteDescription, timeZone, platformMode, aiAssistantEnabled, allowedHosts } = parsedInput.data;
 
   // Build config fields — undefined means "not provided", null means "clear to default"
   const configValues: Record<string, number | null> = {};
@@ -85,6 +85,7 @@ export async function updateSystemSettings(
     siteTitle: siteTitle ?? null,
     siteDescription: siteDescription ?? null,
     timeZone: timeZone ?? null,
+    platformMode: platformMode ?? DEFAULT_PLATFORM_MODE,
     aiAssistantEnabled: aiAssistantEnabled ?? true,
     ...configValues,
     updatedAt: new Date(),
@@ -120,6 +121,7 @@ export async function updateSystemSettings(
       siteTitle: siteTitle ?? null,
       siteDescription: siteDescription ?? null,
       timeZone: timeZone ?? null,
+      platformMode: platformMode ?? DEFAULT_PLATFORM_MODE,
       aiAssistantEnabled: aiAssistantEnabled ?? true,
       ...configValues,
     },

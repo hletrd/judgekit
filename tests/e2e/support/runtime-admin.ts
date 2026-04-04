@@ -40,9 +40,9 @@ async function ensureRuntimeAdminUserViaDb(): Promise<string> {
   });
 
   if (existingUser) {
-    db.delete(submissions).where(eq(submissions.userId, existingUser.id)).run();
+    await db.delete(submissions).where(eq(submissions.userId, existingUser.id));
 
-    db.update(users)
+    await db.update(users)
       .set({
         email: RUNTIME_ADMIN_EMAIL,
         isActive: true,
@@ -52,15 +52,14 @@ async function ensureRuntimeAdminUserViaDb(): Promise<string> {
         role: "admin",
         updatedAt: new Date(),
       })
-      .where(eq(users.id, existingUser.id))
-      .run();
+      .where(eq(users.id, existingUser.id));
 
     return existingUser.id;
   }
 
   const id = nanoid();
 
-  db.insert(users)
+  await db.insert(users)
     .values({
       id,
       email: RUNTIME_ADMIN_EMAIL,
@@ -72,7 +71,7 @@ async function ensureRuntimeAdminUserViaDb(): Promise<string> {
       updatedAt: new Date(),
       username: RUNTIME_ADMIN_USERNAME,
     })
-    .run();
+    ;
 
   return id;
 }

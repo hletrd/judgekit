@@ -52,6 +52,7 @@ type CreateProblemFormProps = {
   testCasesLocked?: boolean;
   allowTestCaseOverride?: boolean;
   canUploadFiles?: boolean;
+  forceDisableAiAssistant?: boolean;
 };
 
 function createEmptyTestCase(): ProblemTestCaseDraft {
@@ -69,6 +70,7 @@ export default function CreateProblemForm({
   testCasesLocked = false,
   allowTestCaseOverride = false,
   canUploadFiles = false,
+  forceDisableAiAssistant = false,
 }: CreateProblemFormProps) {
   const t = useTranslations("problems");
   const tCommon = useTranslations("common");
@@ -92,7 +94,9 @@ export default function CreateProblemForm({
   const [showCompileOutput, setShowCompileOutput] = useState(initialProblem?.showCompileOutput ?? true);
   const [showDetailedResults, setShowDetailedResults] = useState(initialProblem?.showDetailedResults ?? true);
   const [showRuntimeErrors, setShowRuntimeErrors] = useState(initialProblem?.showRuntimeErrors ?? true);
-  const [allowAiAssistant, setAllowAiAssistant] = useState(initialProblem?.allowAiAssistant ?? true);
+  const [allowAiAssistant, setAllowAiAssistant] = useState(
+    forceDisableAiAssistant ? false : (initialProblem?.allowAiAssistant ?? true)
+  );
   const [comparisonMode, setComparisonMode] = useState<"exact" | "float">(initialProblem?.comparisonMode ?? "exact");
   const [floatAbsoluteError, setFloatAbsoluteError] = useState<string>(initialProblem?.floatAbsoluteError?.toString() ?? "1e-6");
   const [floatRelativeError, setFloatRelativeError] = useState<string>(initialProblem?.floatRelativeError?.toString() ?? "1e-6");
@@ -104,6 +108,12 @@ export default function CreateProblemForm({
       : []
   );
   const areTestCasesEditable = !testCasesLocked || testCaseOverrideEnabled;
+
+  useEffect(() => {
+    if (forceDisableAiAssistant) {
+      setAllowAiAssistant(false);
+    }
+  }, [forceDisableAiAssistant]);
 
   // Tags state
   const [currentTags, setCurrentTags] = useState<string[]>(initialProblem?.tags ?? []);
@@ -317,7 +327,7 @@ export default function CreateProblemForm({
           difficulty: difficulty !== "" && Number.isFinite(parseFloat(difficulty)) ? parseFloat(difficulty) : null,
           tags: currentTags,
           ...(areTestCasesEditable
-            ? { testCases: testCases.map(({ _key: _, ...rest }) => rest) }
+            ? { testCases: testCases.map(({ _key, ...rest }) => { void _key; return rest; }) }
             : {}),
           ...(testCaseOverrideEnabled ? { allowLockedTestCases: true } : {}),
         }),
@@ -633,10 +643,13 @@ export default function CreateProblemForm({
           <Checkbox
             checked={allowAiAssistant}
             onCheckedChange={(checked) => setAllowAiAssistant(checked === true)}
-            disabled={isLoading}
+            disabled={isLoading || forceDisableAiAssistant}
           />
           <span>{t("allowAiAssistant")}</span>
         </label>
+        {forceDisableAiAssistant && (
+          <p className="text-xs text-muted-foreground">{t("allowAiAssistantRestricted")}</p>
+        )}
       </div>
 
       <div className="space-y-4 rounded-lg border p-4">

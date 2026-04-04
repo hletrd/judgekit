@@ -22,7 +22,7 @@ async function ensureRuntimeInstructorUser() {
   });
 
   if (existingUser) {
-    db.update(users)
+    await db.update(users)
       .set({
         email: RUNTIME_INSTRUCTOR_EMAIL,
         isActive: true,
@@ -32,15 +32,14 @@ async function ensureRuntimeInstructorUser() {
         role: "instructor",
         updatedAt: new Date(),
       })
-      .where(eq(users.id, existingUser.id))
-      .run();
+      .where(eq(users.id, existingUser.id));
 
     return existingUser.id;
   }
 
   const id = nanoid();
 
-  db.insert(users)
+  await db.insert(users)
     .values({
       id,
       email: RUNTIME_INSTRUCTOR_EMAIL,
@@ -51,17 +50,15 @@ async function ensureRuntimeInstructorUser() {
       role: "instructor",
       updatedAt: new Date(),
       username: RUNTIME_INSTRUCTOR_USERNAME,
-    })
-    .run();
+    });
 
   return id;
 }
 
 
 async function deleteLoginLogFixtures(prefix: string) {
-  db.delete(loginEvents)
-    .where(sql`${loginEvents.attemptedIdentifier} like ${`${prefix}%`}`)
-    .run();
+  await db.delete(loginEvents)
+    .where(sql`${loginEvents.attemptedIdentifier} like ${`${prefix}%`}`);
 }
 
 test("admin can navigate, filter, and paginate login logs safely", async ({
@@ -135,9 +132,8 @@ test("admin can navigate, filter, and paginate login logs safely", async ({
   ] as const;
 
   try {
-    db.insert(loginEvents)
-      .values([...paginationEvents, ...focusedEvents])
-      .run();
+    await db.insert(loginEvents)
+      .values([...paginationEvents, ...focusedEvents]);
 
     await test.step("show the admin sidebar entry and first filtered page", async () => {
       const loginLogsLink = page.getByRole("link", { name: "Login Logs" });

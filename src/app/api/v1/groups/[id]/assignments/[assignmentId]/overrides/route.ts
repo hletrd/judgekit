@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import { apiSuccess, apiError } from "@/lib/api/responses";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
-import { db, execTransaction } from "@/lib/db";
+import { db } from "@/lib/db";
 import { assignmentProblems, assignments, enrollments, scoreOverrides } from "@/lib/db/schema";
 import { recordAuditEvent } from "@/lib/audit/events";
 import { canManageGroupResourcesAsync } from "@/lib/assignments/management";
@@ -113,30 +113,26 @@ export async function POST(
       return apiError("userNotEnrolled", 400);
     }
 
-    // Upsert: delete existing then insert (atomic transaction)
-    execTransaction(() => {
-      db.delete(scoreOverrides)
-        .where(
-          and(
-            eq(scoreOverrides.assignmentId, assignment.id),
-            eq(scoreOverrides.problemId, problemId),
-            eq(scoreOverrides.userId, userId)
-          )
+    // Upsert: delete existing then insert
+    await db.delete(scoreOverrides)
+      .where(
+        and(
+          eq(scoreOverrides.assignmentId, assignment.id),
+          eq(scoreOverrides.problemId, problemId),
+          eq(scoreOverrides.userId, userId)
         )
-        .run();
+      );
 
-      db.insert(scoreOverrides)
-        .values({
-          assignmentId: assignment.id,
-          problemId,
-          userId,
-          overrideScore,
-          reason: reason ?? null,
-          createdBy: user.id,
-          createdAt: new Date(),
-        })
-        .run();
-    });
+    await db.insert(scoreOverrides)
+      .values({
+        assignmentId: assignment.id,
+        problemId,
+        userId,
+        overrideScore,
+        reason: reason ?? null,
+        createdBy: user.id,
+        createdAt: new Date(),
+      });
 
     recordAuditEvent({
       actorId: user.id,
@@ -173,11 +169,10 @@ export async function GET(
 
     const { assignment } = result;
 
-    const overrides = db
+    const overrides = await db
       .select()
       .from(scoreOverrides)
-      .where(eq(scoreOverrides.assignmentId, assignment.id))
-      .all();
+      .where(eq(scoreOverrides.assignmentId, assignment.id));
 
     return apiSuccess(overrides);
   } catch (error) {
@@ -214,7 +209,22 @@ export async function DELETE(
 
     const { problemId, userId } = queryParsed.data;
 
-    const deleted = db
+    const [existing] = await db
+      .select({ assignmentId: scoreOverrides.assignmentId })
+      .from(scoreOverrides)
+      .where(
+        and(
+          eq(scoreOverrides.assignmentId, assignment.id),
+          eq(scoreOverrides.problemId, problemId),
+          eq(scoreOverrides.userId, userId)
+        )
+      );
+
+    if (!existing) {
+      return notFound("ScoreOverride");
+    }
+
+    await db
       .delete(scoreOverrides)
       .where(
         and(
@@ -222,12 +232,7 @@ export async function DELETE(
           eq(scoreOverrides.problemId, problemId),
           eq(scoreOverrides.userId, userId)
         )
-      )
-      .run();
-
-    if (deleted.changes === 0) {
-      return notFound("ScoreOverride");
-    }
+      );
 
     recordAuditEvent({
       actorId: user.id,

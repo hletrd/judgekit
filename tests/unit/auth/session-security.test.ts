@@ -1,4 +1,8 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+
+vi.mock("@/lib/system-settings-config", () => ({
+  getConfiguredSettings: () => ({ sessionMaxAgeSeconds: 14 * 24 * 60 * 60 }),
+}));
 
 import {
   AUTH_SESSION_MAX_AGE_SECONDS,
@@ -73,28 +77,19 @@ describe("getTokenAuthenticatedAtSeconds", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// isTokenInvalidated
-// ---------------------------------------------------------------------------
-
 describe("isTokenInvalidated", () => {
-  // Baseline: invalidation boundary at 2024-01-01T00:00:00.000Z → 1_704_067_200_000 ms
   const invalidatedAt = new Date("2024-01-01T00:00:00.000Z");
-  // Epoch second that resolves to exactly the same ms value
-  const boundarySeconds = Math.trunc(invalidatedAt.getTime() / 1000); // 1_704_067_200
+  const boundarySeconds = Math.trunc(invalidatedAt.getTime() / 1000);
 
   it("returns true when token was authenticated before the invalidation timestamp", () => {
-    const beforeBoundary = boundarySeconds - 1; // one second earlier
-    expect(isTokenInvalidated(beforeBoundary, invalidatedAt)).toBe(true);
+    expect(isTokenInvalidated(boundarySeconds - 1, invalidatedAt)).toBe(true);
   });
 
   it("returns false when token was authenticated after the invalidation timestamp", () => {
-    const afterBoundary = boundarySeconds + 1; // one second later
-    expect(isTokenInvalidated(afterBoundary, invalidatedAt)).toBe(false);
+    expect(isTokenInvalidated(boundarySeconds + 1, invalidatedAt)).toBe(false);
   });
 
   it("returns false when token was authenticated at exactly the invalidation boundary", () => {
-    // authenticatedAtSeconds * 1000 === invalidatedAt.getTime() → NOT strictly less-than → false
     expect(isTokenInvalidated(boundarySeconds, invalidatedAt)).toBe(false);
   });
 
@@ -111,7 +106,6 @@ describe("isTokenInvalidated", () => {
   });
 
   it("returns false when authenticatedAtSeconds is zero (falsy)", () => {
-    // The implementation uses !authenticatedAtSeconds which treats 0 as falsy
     expect(isTokenInvalidated(0, invalidatedAt)).toBe(false);
   });
 
@@ -132,10 +126,6 @@ describe("isTokenInvalidated", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// clearAuthToken
-// ---------------------------------------------------------------------------
-
 describe("clearAuthToken", () => {
   it("removes all identity fields from the token", () => {
     const token = {
@@ -148,7 +138,6 @@ describe("clearAuthToken", () => {
       className: "CS101",
       mustChangePassword: false,
       authenticatedAt: 1_700_000_000,
-      // extra field that must survive
       jti: "some-jti",
     } as Record<string, unknown>;
 
@@ -191,10 +180,6 @@ describe("clearAuthToken", () => {
     expect(second).toEqual({});
   });
 });
-
-// ---------------------------------------------------------------------------
-// AUTH_SESSION_MAX_AGE_SECONDS constant
-// ---------------------------------------------------------------------------
 
 describe("AUTH_SESSION_MAX_AGE_SECONDS", () => {
   it("equals 14 days in seconds", () => {

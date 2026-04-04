@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { nanoid } from "nanoid";
 import { recordAuditEvent } from "@/lib/audit/events";
-import { db, execTransaction } from "@/lib/db";
+import { db } from "@/lib/db";
 import { enrollments } from "@/lib/db/schema";
 import { canManageGroupResources } from "@/lib/assignments/management";
 import { bulkEnrollmentSchema } from "@/lib/validators/groups";
@@ -81,9 +81,7 @@ export const POST = createApiHandler({
         enrolledAt: now,
       }));
 
-      execTransaction(() => {
-        db.insert(enrollments).values(rows).onConflictDoNothing().run();
-      });
+      await db.insert(enrollments).values(rows).onConflictDoNothing();
 
       enrolled = toEnroll.length;
     }

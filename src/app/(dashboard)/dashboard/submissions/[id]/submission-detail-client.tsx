@@ -55,10 +55,10 @@ export function SubmissionDetailClient(props: SubmissionDetailClientProps) {
         }
       }));
     }
-  }, [submission?.status, submission?.problem?.id, submission?.assignmentId, submission?.id]);
+  }, [submission]);
 
-  const canComment = props.userRole === "instructor" || props.userRole === "admin" || props.userRole === "super_admin";
-  const canRejudge = props.userRole === "instructor" || props.userRole === "admin" || props.userRole === "super_admin";
+  const canComment = props.capabilities.includes("submissions.comment");
+  const canRejudge = props.capabilities.includes("submissions.rejudge");
   const isLive = ACTIVE_SUBMISSION_STATUSES.has(submission.status);
   const problemHref =
     submission.problem === null

@@ -6,7 +6,6 @@ import { assignments } from "@/lib/db/schema";
 import { getExamSessionsForAssignment } from "@/lib/assignments/exam-sessions";
 import { canManageGroupResources } from "@/lib/assignments/management";
 import { createApiHandler, forbidden, notFound } from "@/lib/api/handler";
-import { assertUserRole } from "@/lib/security/constants";
 
 export const GET = createApiHandler({
   handler: async (_req: NextRequest, { user, params }) => {

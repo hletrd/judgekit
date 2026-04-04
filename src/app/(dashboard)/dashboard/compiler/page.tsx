@@ -6,10 +6,17 @@ import { eq } from "drizzle-orm";
 import { getJudgeLanguageDefinition } from "@/lib/judge/languages";
 import { auth } from "@/lib/auth";
 import { CompilerClient } from "./compiler-client";
+import { getResolvedPlatformMode } from "@/lib/system-settings";
+import { getPlatformModePolicy } from "@/lib/platform-mode";
 
 export default async function CompilerPage() {
   const session = await auth();
   const t = await getTranslations("compiler");
+  const platformMode = await getResolvedPlatformMode();
+
+  if (getPlatformModePolicy(platformMode).restrictStandaloneCompiler) {
+    redirect("/dashboard");
+  }
 
   const languages = (await db
     .select({

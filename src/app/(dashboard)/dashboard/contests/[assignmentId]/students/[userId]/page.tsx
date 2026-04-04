@@ -6,7 +6,7 @@ import { eq, and, desc } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import { resolveCapabilities } from "@/lib/capabilities/cache";
 import { db } from "@/lib/db";
-import { assignments, submissions, users, assignmentProblems } from "@/lib/db/schema";
+import { assignments, submissions, users } from "@/lib/db/schema";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";

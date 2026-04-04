@@ -37,9 +37,18 @@ export default function ChatWidgetAdminConfig({ config, onSave }: PluginAdminPro
   const [isLoading, setIsLoading] = useState(false);
   const [isTesting, setIsTesting] = useState(false);
   const [testResult, setTestResult] = useState<{ success: boolean; error?: string } | null>(null);
+  const openaiApiKeyConfigured = config.openaiApiKeyConfigured === true;
+  const claudeApiKeyConfigured = config.claudeApiKeyConfigured === true;
+  const geminiApiKeyConfigured = config.geminiApiKeyConfigured === true;
 
   const currentApiKey = provider === "claude" ? claudeApiKey : provider === "gemini" ? geminiApiKey : openaiApiKey;
   const currentModel = provider === "claude" ? claudeModel : provider === "gemini" ? geminiModel : openaiModel;
+  const currentApiKeyConfigured =
+    provider === "claude"
+      ? claudeApiKeyConfigured
+      : provider === "gemini"
+        ? geminiApiKeyConfigured
+        : openaiApiKeyConfigured;
 
   const providerLabels: Record<string, string> = {
     openai: t("providerOptions.openai"),
@@ -165,9 +174,18 @@ export default function ChatWidgetAdminConfig({ config, onSave }: PluginAdminPro
               placeholder={t("apiKeyPlaceholder")}
             />
             <p className="text-xs text-muted-foreground">{t("apiKeyHint")}</p>
-            {currentApiKey && (
+            {currentApiKey ? (
               <p className="text-xs font-mono text-muted-foreground">
                 {t("currentKey")}: {maskApiKey(currentApiKey)}
+              </p>
+            ) : currentApiKeyConfigured ? (
+              <p className="text-xs text-muted-foreground">
+                {t("currentKey")}: {t("storedKeyConfigured")}
+              </p>
+            ) : null}
+            {currentApiKeyConfigured && !currentApiKey && (
+              <p className="text-xs text-muted-foreground">
+                {t("configuredKeyPreserved")}
               </p>
             )}
           </div>

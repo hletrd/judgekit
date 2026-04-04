@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { resolveCapabilities } from "@/lib/capabilities/cache";
 import CreateProblemForm from "./create-problem-form";
+import { getResolvedPlatformMode, getPlatformModePolicy } from "@/lib/system-settings";
 
 export default async function CreateProblemPage() {
   const session = await auth();
@@ -15,6 +16,8 @@ export default async function CreateProblemPage() {
   }
 
   const t = await getTranslations("problems");
+  const platformMode = await getResolvedPlatformMode();
+  const forceDisableAiAssistant = getPlatformModePolicy(platformMode).restrictAiByDefault;
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
@@ -25,7 +28,10 @@ export default async function CreateProblemPage() {
           <CardTitle>{t("createDescription")}</CardTitle>
         </CardHeader>
         <CardContent>
-          <CreateProblemForm canUploadFiles={caps.has("files.upload")} />
+          <CreateProblemForm
+            canUploadFiles={caps.has("files.upload")}
+            forceDisableAiAssistant={forceDisableAiAssistant}
+          />
         </CardContent>
       </Card>
     </div>

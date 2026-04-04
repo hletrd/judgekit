@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -19,6 +19,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { PaginationControls } from "@/components/pagination-controls";
+import { getResolvedPlatformMode } from "@/lib/system-settings";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("problemSets");
@@ -33,6 +34,8 @@ export default async function ProblemSetsPage({
   const session = await auth();
   if (!session?.user) redirect("/login");
   if (!isInstructorOrAbove(session.user.role)) redirect("/dashboard");
+  const platformMode = await getResolvedPlatformMode();
+  if (platformMode === "recruiting") redirect("/dashboard");
 
   const resolvedSearchParams = searchParams ? await searchParams : undefined;
   const PAGE_SIZE = 25;

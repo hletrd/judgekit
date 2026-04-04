@@ -37,13 +37,11 @@ vi.mock("drizzle-orm", async () => {
   };
 });
 
-const sqliteMock = {
-  transaction: vi.fn((fn: () => void) => fn),
-};
+const execTransactionMock = vi.fn(async (fn: (tx: typeof dbMock) => unknown) => fn(dbMock));
 
 vi.mock("@/lib/db", () => ({
   db: dbMock,
-  sqlite: sqliteMock,
+  execTransaction: execTransactionMock,
 }));
 
 function readRow(predicate: Predicate) {
@@ -56,16 +54,19 @@ function readRow(predicate: Predicate) {
 
 beforeEach(() => {
   rows.clear();
+  execTransactionMock.mockClear();
   dbMock.select.mockImplementation(() => ({
     from: vi.fn(() => ({
       where: vi.fn((predicate: Predicate) => ({
-        get: vi.fn(() => readRow(predicate)),
+        limit: vi.fn(() => {
+          const row = readRow(predicate);
+          return row ? [row] : [];
+        }),
       })),
     })),
   }));
   dbMock.delete.mockImplementation(() => ({
-    where: vi.fn((predicate: Predicate) => ({
-      run: vi.fn(() => {
+    where: vi.fn(async (predicate: Predicate) => {
         if (predicate.op === "eq") {
           rows.delete(predicate.value);
           return;
@@ -77,12 +78,10 @@ beforeEach(() => {
           }
         }
       }),
-    })),
   }));
   dbMock.update.mockImplementation(() => ({
     set: vi.fn((values: Partial<RateLimitRow>) => ({
-      where: vi.fn((predicate: Predicate) => ({
-        run: vi.fn(() => {
+      where: vi.fn(async (predicate: Predicate) => {
           if (predicate.op !== "eq") {
             return;
           }
@@ -94,15 +93,12 @@ beforeEach(() => {
 
           rows.set(predicate.value, { ...existing, ...values });
         }),
-      })),
     })),
   }));
   dbMock.insert.mockImplementation(() => ({
-    values: vi.fn((values: RateLimitRow) => ({
-      run: vi.fn(() => {
+    values: vi.fn(async (values: RateLimitRow) => {
         rows.set(values.key, values);
       }),
-    })),
   }));
 });
 
@@ -133,22 +129,22 @@ describe("rate-limit helpers", () => {
     } = await importRateLimitModule();
 
     nowSpy.mockReturnValue(1000);
-    recordRateLimitFailure("login:198.51.100.8");
+    await recordRateLimitFailure("login:198.51.100.8");
     expect(rows.get("login:198.51.100.8")?.attempts).toBe(1);
-    expect(isRateLimited("login:198.51.100.8")).toBe(false);
+    await expect(isRateLimited("login:198.51.100.8")).resolves.toBe(false);
 
     nowSpy.mockReturnValue(1050);
-    recordRateLimitFailure("login:198.51.100.8");
+    await recordRateLimitFailure("login:198.51.100.8");
     expect(rows.get("login:198.51.100.8")?.blockedUntil).toBe(2050);
     expect(rows.get("login:198.51.100.8")?.consecutiveBlocks).toBe(1);
-    expect(isAnyKeyRateLimited("login:other", "login:198.51.100.8")).toBe(true);
+    await expect(isAnyKeyRateLimited("login:other", "login:198.51.100.8")).resolves.toBe(true);
 
     nowSpy.mockReturnValue(2200);
-    recordRateLimitFailureMulti("login:198.51.100.8");
+    await recordRateLimitFailureMulti("login:198.51.100.8");
     expect(rows.get("login:198.51.100.8")?.attempts).toBe(1);
 
     nowSpy.mockReturnValue(2250);
-    recordRateLimitFailure("login:198.51.100.8");
+    await recordRateLimitFailure("login:198.51.100.8");
     expect(rows.get("login:198.51.100.8")?.blockedUntil).toBe(4250);
     expect(rows.get("login:198.51.100.8")?.consecutiveBlocks).toBe(2);
   });
@@ -158,10 +154,10 @@ describe("rate-limit helpers", () => {
       await importRateLimitModule();
 
     vi.spyOn(Date, "now").mockReturnValue(3000);
-    recordRateLimitFailureMulti("login:a", "login:b", "login:c");
+    await recordRateLimitFailureMulti("login:a", "login:b", "login:c");
 
-    clearRateLimit("login:a");
-    clearRateLimitMulti("login:b", "login:c");
+    await clearRateLimit("login:a");
+    await clearRateLimitMulti("login:b", "login:c");
 
     expect(rows.size).toBe(0);
   });
@@ -183,14 +179,14 @@ describe("rate-limit helpers", () => {
     });
 
     vi.spyOn(Date, "now").mockReturnValue(24 * 60 * 60 * 1000 + 1000);
-    recordRateLimitFailure("login:fresh");
+    await recordRateLimitFailure("login:fresh");
 
     // Fresh entry is recorded
     expect(rows.has("login:fresh")).toBe(true);
 
     // Stale entry is not evicted inline (eviction is now periodic via setInterval)
     // Clear the stale entry manually to verify clearRateLimit works
-    clearRateLimit("login:stale");
+    await clearRateLimit("login:stale");
     expect(rows.has("login:stale")).toBe(false);
   });
 });

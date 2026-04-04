@@ -358,7 +358,7 @@ describe("POST /api/v1/problems", () => {
     const res = await POST(makePostRequest(VALID_POST_BODY));
     expect(res.status).toBe(500);
     const body = await res.json();
-    expect(body.error).toBe("createError");
+    expect(body.error).toBe("internalServerError");
     expect(loggerErrorMock).toHaveBeenCalledOnce();
   });
 });

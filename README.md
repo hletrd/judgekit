@@ -198,7 +198,7 @@ Monitor workers at `/dashboard/admin/workers`.
 
 ### Prerequisites
 
-- **Docker socket**: Both the `app` and `judge-worker` containers require `/var/run/docker.sock` mounted. The app container uses it for admin image management (build/remove language images via `/dashboard/admin/languages`). The judge worker uses it for sandboxed code execution.
+- **Docker socket proxy**: The deployment uses a dedicated `docker-proxy` service (`tecnativa/docker-socket-proxy`) as the only container with direct `/var/run/docker.sock` access. The `app` and `judge-worker` containers talk to Docker through `DOCKER_HOST=tcp://docker-proxy:2375`, reducing direct socket exposure while still allowing sandbox execution and admin image management.
 - **`/judge-workspaces`**: Must exist on the host before starting the stack — used as the shared workspace volume between the judge worker and sibling judge containers.
 - The `deploy-docker.sh` script handles setup automatically (server-side builds, architecture detection, nginx config). See [Deployment Guide](docs/deployment.md).
 

@@ -63,7 +63,13 @@
     "errorId": "Error ID: {digest}",
     "signingOut": "Signing out...",
     "retry": "Retry",
-    "viewAll": "View all"
+    "viewAll": "View all",
+    "platformModes": {
+      "homework": "Homework",
+      "exam": "Exam",
+      "contest": "Contest",
+      "recruiting": "Recruiting"
+    }
   },
   "auth": {
     "signIn": "Sign in",
@@ -109,7 +115,9 @@
     "tagManagement": "Tag Management",
     "judgeWorkers": "Judge Workers",
     "compiler": "Compiler",
-    "apiKeys": "API Keys"
+    "apiKeys": "API Keys",
+    "challenges": "Challenges",
+    "attempts": "Attempts"
   },
   "dashboard": {
     "title": "Dashboard",
@@ -137,7 +145,19 @@
     "studentLabel": "User",
     "groupLabel": "Group",
     "assignmentLabel": "Assignment",
-    "statusLabel": "Status"
+    "statusLabel": "Status",
+    "candidateOverviewTitle": "Candidate overview",
+    "candidateOverviewDescription": "Focus on the active coding challenges and your latest attempts.",
+    "availableChallenges": "Available challenges",
+    "totalAttempts": "Total attempts",
+    "supportedLanguages": "Supported languages",
+    "supportedLanguagesDescription": "Languages currently enabled for this deployment.",
+    "recentAttempts": "Recent attempts",
+    "noRecentAttempts": "No recent attempts yet.",
+    "viewChallenges": "View challenges",
+    "viewAttempts": "View attempts",
+    "viewAttempt": "View attempt",
+    "scoreLabel": "Score: {score}"
   },
   "dashboardState": {
     "loadingDescription": "Loading dashboard...",
@@ -328,7 +348,8 @@
     "noTags": "No tags",
     "searchLanguages": "Search languages...",
     "recentlyUsed": "Recently Used",
-    "otherLanguages": "Other"
+    "otherLanguages": "Other",
+    "allowAiAssistantRestricted": "AI assistance is forced off in the current platform mode."
   },
   "problemSets": {
     "title": "Problem Sets",
@@ -1001,7 +1022,21 @@
       "mustBeInteger": "Value must be a whole number",
       "valueTooSmall": "Value is below the minimum allowed",
       "valueTooLarge": "Value exceeds the maximum allowed",
-      "clearToDefault": "Clear to use default"
+      "clearToDefault": "Clear to use default",
+      "platformMode": "Platform Mode",
+      "platformModeHint": "Choose the primary operating mode for this deployment. Current mode: {current}",
+      "platformModeOptions": {
+        "homework": "Homework",
+        "exam": "Exam",
+        "contest": "Contest",
+        "recruiting": "Recruiting"
+      },
+      "platformModeDescriptions": {
+        "homework": "Optimized for regular coursework, practice, and lower-stakes assignments.",
+        "exam": "Optimized for controlled assessments where fairness and tighter restrictions matter most.",
+        "contest": "Optimized for competitive programming workflows, leaderboard visibility, and contest operations.",
+        "recruiting": "Optimized for candidate evaluation with hiring-focused language and controlled assistance."
+      }
     },
     "files": {
       "title": "File Management",
@@ -1446,6 +1481,8 @@
       "apiKeyPlaceholder": "Enter API key",
       "apiKeyHint": "Enter the API key for the selected provider.",
       "currentKey": "Current key",
+      "storedKeyConfigured": "Stored securely (not shown)",
+      "configuredKeyPreserved": "Leave this field blank to keep the currently stored key.",
       "model": "Model",
       "assistantName": "Assistant Name",
       "assistantNamePlaceholder": "e.g. JudgeKit AI Assistant",
@@ -1585,10 +1622,10 @@
       "noResults": "No users found"
     },
     "antiCheat": {
-      "title": "Anti-Cheat Monitor",
-      "dashboard": "Anti-Cheat Dashboard",
+      "title": "Anti-Cheat Signals",
+      "dashboard": "Anti-Cheat Signals Dashboard",
       "events": "Events",
-      "noEvents": "No anti-cheat events recorded.",
+      "noEvents": "No anti-cheat signals recorded.",
       "eventTypes": {
         "tab_switch": "Tab Switch",
         "copy": "Copy",
@@ -1597,11 +1634,11 @@
         "ip_change": "IP Change",
         "code_similarity": "Code Similarity"
       },
-      "warningTabSwitch": "Tab switch detected. This event has been recorded.",
-      "similarityCheck": "Run Similarity Check",
-      "similarityRunning": "Running similarity check...",
-      "similarityComplete": "Similarity check complete. {count} pairs flagged.",
-      "flagged": "Flagged",
+      "warningTabSwitch": "Tab switch detected. An integrity signal has been recorded for review.",
+      "similarityCheck": "Run Similarity Scan",
+      "similarityRunning": "Running similarity scan...",
+      "similarityComplete": "Similarity scan complete. {count} pairs flagged for review.",
+      "flagged": "Review",
       "eventCount": "{count} events",
       "ipAddress": "IP Address",
       "student": "Student",
@@ -1609,19 +1646,23 @@
       "details": "Details",
       "time": "Time",
       "totalEvents": "Total Events",
-      "uniqueStudents": "Flagged Students",
-      "topEventType": "Top Event Type",
+      "uniqueStudents": "Students with signals",
+      "topEventType": "Most common signal type",
       "filterByType": "Filter by type",
       "filterByStudent": "Filter by student",
       "allTypes": "All Types",
       "allStudents": "All Students",
       "expandDetails": "Show details",
       "collapseDetails": "Hide details",
-      "noEventsForFilter": "No events match the current filters.",
+      "noEventsForFilter": "No anti-cheat signals match the current filters.",
       "fetchError": "Failed to load data.",
       "retry": "Retry",
       "showingEvents": "Showing {shown} of {total} events",
-      "loadMore": "Load more"
+      "loadMore": "Load more",
+      "signalsDisclaimer": "These signals are review aids, not proof of misconduct on their own.",
+      "similarityNoSubmissions": "Similarity scan not run because there are no submissions to compare yet.",
+      "similaritySkippedTooManySubmissions": "Similarity scan not run because {count} submissions exceed the current review limit of {limit}.",
+      "similarityTimedOut": "Similarity scan did not finish in time. No results were recorded."
     },
     "analytics": {
       "title": "Analytics",
@@ -1630,7 +1671,7 @@
       "solveTimeline": "Solve Timeline",
       "scoreProgression": "Score Progression",
       "solveTime": "Solve Time",
-      "cheatSummary": "Anti-Cheat Summary",
+      "cheatSummary": "Signal Summary",
       "export": "Export",
       "exportCsv": "Export CSV",
       "exportJson": "Export JSON",
@@ -1697,8 +1738,8 @@
         "noSubmissions": "No submissions for this problem."
       },
       "antiCheatTimeline": {
-        "title": "Anti-Cheat Timeline",
-        "noEvents": "No anti-cheat events for this participant."
+        "title": "Anti-Cheat Signals Timeline",
+        "noEvents": "No anti-cheat signals for this participant."
       }
     }
   },

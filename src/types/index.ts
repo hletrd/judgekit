@@ -8,6 +8,7 @@ export type BuiltinUserRole = "super_admin" | "admin" | "instructor" | "student"
  */
 export type UserRole = BuiltinUserRole;
 export type ProblemVisibility = "public" | "private" | "hidden";
+export type PlatformMode = "homework" | "exam" | "contest" | "recruiting";
 export type SubmissionStatus =
   | "pending"
   | "queued"

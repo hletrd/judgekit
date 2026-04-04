@@ -100,11 +100,10 @@ export const POST = createApiHandler({
       return apiError(parsedInput.error.issues[0]?.message ?? "createError", 400);
     }
 
-    const id = createProblemWithTestCases(parsedInput.data, user.id);
+    const id = await createProblemWithTestCases(parsedInput.data, user.id);
 
-    // Cannot use .returning() here: createProblemWithTestCases uses a raw
-    // sqlite transaction with .run() (not async Drizzle), and the response
-    // needs the testCases relation via a join that .returning() cannot provide.
+    // Cannot use .returning() here because the response needs the testCases
+    // relation via a join that .returning() cannot provide.
     const problem = await db.query.problems.findFirst({
       where: eq(problems.id, id),
       with: {

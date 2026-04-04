@@ -1,8 +1,12 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+
+vi.mock("@/lib/security/constants", () => ({
+  getMaxSourceCodeSizeBytes: () => 256 * 1024,
+  MAX_SOURCE_CODE_SIZE_BYTES: 256 * 1024,
+}));
+
 import { submissionCreateSchema, judgeStatusReportSchema } from "@/lib/validators/api";
 import { MAX_SOURCE_CODE_SIZE_BYTES } from "@/lib/security/constants";
-
-// ------- submissionCreateSchema -------
 
 describe("submissionCreateSchema", () => {
   const validPayload = {
@@ -83,7 +87,6 @@ describe("submissionCreateSchema", () => {
   });
 
   it("rejects assignmentId that trims to empty but is non-blank-normalized as invalid", () => {
-    // A non-blank string that trims to non-empty passes
     const result = submissionCreateSchema.safeParse({ ...validPayload, assignmentId: "ok" });
     expect(result.success).toBe(true);
   });
@@ -93,8 +96,6 @@ describe("submissionCreateSchema", () => {
     expect(submissionCreateSchema.safeParse({ problemId: "p", language: "cpp" }).success).toBe(false);
   });
 });
-
-// ------- judgeStatusReportSchema -------
 
 describe("judgeStatusReportSchema", () => {
   const validPayload = {

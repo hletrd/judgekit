@@ -23,10 +23,10 @@ export const POST = createApiHandler({
       return apiError("forbidden", 403);
     }
 
-    let flaggedCount: number;
+    let result;
     try {
-      flaggedCount = await Promise.race([
-        new Promise<number>((resolve) => {
+      result = await Promise.race([
+        new Promise<Awaited<ReturnType<typeof runAndStoreSimilarityCheck>>>((resolve) => {
           resolve(runAndStoreSimilarityCheck(assignmentId));
         }),
         new Promise<never>((_, reject) =>
@@ -35,11 +35,17 @@ export const POST = createApiHandler({
       ]);
     } catch (error) {
       if (error instanceof Error && error.message.includes("timed out")) {
-        return apiError("similarityCheckTimeout", 504);
+        return apiSuccess({
+          status: "timed_out",
+          reason: "timeout",
+          flaggedPairs: 0,
+          submissionCount: null,
+          maxSupportedSubmissions: null,
+        });
       }
       throw error;
     }
 
-    return apiSuccess({ flaggedPairs: flaggedCount });
+    return apiSuccess(result);
   },
 });

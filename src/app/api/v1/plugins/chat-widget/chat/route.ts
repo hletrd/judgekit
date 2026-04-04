@@ -113,7 +113,7 @@ export const POST = createApiHandler({
       return NextResponse.json({ error: "notConfigured" }, { status: 404 });
     }
 
-    const pluginState = await getPluginState("chat-widget");
+    const pluginState = await getPluginState("chat-widget", { includeSecrets: true });
     if (!pluginState) {
       return NextResponse.json({ error: "notConfigured" }, { status: 404 });
     }
@@ -134,7 +134,7 @@ export const POST = createApiHandler({
     };
 
     // Rate limit check
-    const rateLimitResult = checkServerActionRateLimit(
+    const rateLimitResult = await checkServerActionRateLimit(
       session.user.id,
       "chat-widget",
       config.rateLimitPerMinute,
@@ -293,7 +293,7 @@ export const POST = createApiHandler({
     }
 
     // Tool-calling agent loop
-    const fullMessages: any[] = [
+    const fullMessages: Array<ChatMessage | Record<string, unknown>> = [
       { role: "system", content: systemContent },
       ...parsed.data.messages,
     ];
@@ -327,7 +327,7 @@ export const POST = createApiHandler({
       }
 
       // Tool calls — execute and continue loop
-      fullMessages.push(response.rawAssistantMessage);
+      fullMessages.push(response.rawAssistantMessage as Record<string, unknown>);
 
       for (const call of response.toolCalls ?? []) {
         const toolResult = await executeTool(call.name, call.arguments, agentContext);

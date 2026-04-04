@@ -10,7 +10,7 @@ type LectureProblemViewProps = {
 };
 
 export function LectureProblemView({ problemPanel, codePanel, problemTitle }: LectureProblemViewProps) {
-  const { panelLayout, fontScale } = useLectureMode();
+  const { panelLayout } = useLectureMode();
 
   return (
     <div className="flex h-[calc(100vh-4.5rem)] gap-0 overflow-hidden rounded-lg border">

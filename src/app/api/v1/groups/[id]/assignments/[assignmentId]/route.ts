@@ -160,7 +160,7 @@ export const PATCH = createApiHandler({
     }
 
     try {
-      updateAssignmentWithProblems(assignmentId, parsedInput.data);
+      await updateAssignmentWithProblems(assignmentId, parsedInput.data);
     } catch (error) {
       if (error instanceof Error && (error.message === "examModeChangeBlocked" || error.message === "examTimingChangeBlocked")) {
         return apiError(error.message, 409);
@@ -234,7 +234,7 @@ export const DELETE = createApiHandler({
     }
 
     try {
-      deleteAssignmentWithProblems(assignmentId);
+      await deleteAssignmentWithProblems(assignmentId);
     } catch (error) {
       if (error instanceof Error && error.message === "assignmentDeleteBlocked") {
         return apiError("assignmentDeleteBlocked", 409);

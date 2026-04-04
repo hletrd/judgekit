@@ -1,6 +1,6 @@
 "use client";
 
-import { Presentation, Minus, Plus, Palette } from "lucide-react";
+import { Presentation, Palette } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useLectureMode } from "@/components/lecture/lecture-mode-provider";
 import {
@@ -31,6 +31,9 @@ const fontScaleOptions = [
   { value: "3.5", label: "3.5x" },
   { value: "4.0", label: "4.0x" },
 ] as const;
+
+type LectureColorScheme = (typeof colorSchemeOptions)[number]["value"];
+type LectureFontScale = (typeof fontScaleOptions)[number]["value"];
 
 export function LectureModeToggle({ className }: { className?: string }) {
   const t = useTranslations("common");
@@ -75,7 +78,7 @@ export function LectureModeToggle({ className }: { className?: string }) {
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
               <DropdownMenuLabel className="text-xs text-muted-foreground">{t("lectureColorScheme")}</DropdownMenuLabel>
-              <DropdownMenuRadioGroup value={colorScheme} onValueChange={(v) => setColorScheme(v as any)}>
+              <DropdownMenuRadioGroup value={colorScheme} onValueChange={(v) => setColorScheme(v as LectureColorScheme)}>
                 {colorSchemeOptions.map(({ value, labelKey }) => (
                   <DropdownMenuRadioItem key={value} value={value} className="gap-2">
                     <Palette className="size-3.5 text-muted-foreground" />
@@ -88,7 +91,7 @@ export function LectureModeToggle({ className }: { className?: string }) {
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
               <DropdownMenuLabel className="text-xs text-muted-foreground">{t("lectureFontScale")}</DropdownMenuLabel>
-              <DropdownMenuRadioGroup value={fontScale} onValueChange={(v) => setFontScale(v as any)}>
+              <DropdownMenuRadioGroup value={fontScale} onValueChange={(v) => setFontScale(v as LectureFontScale)}>
                 {fontScaleOptions.map(({ value, label }) => (
                   <DropdownMenuRadioItem key={value} value={value}>
                     {label}

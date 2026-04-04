@@ -180,12 +180,14 @@ async function pruneOldAuditEvents() {
 
 // Run retention cleanup once per day
 let pruneTimer: ReturnType<typeof setInterval> | null = null;
+declare global {
+  var __auditPruneTimer: ReturnType<typeof setInterval> | undefined;
+}
 
 export function startAuditEventPruning() {
-  const PRUNE_KEY = '__auditPruneTimer' as const;
-  if ((globalThis as any)[PRUNE_KEY]) clearInterval((globalThis as any)[PRUNE_KEY]);
-  (globalThis as any)[PRUNE_KEY] = setInterval(pruneOldAuditEvents, 24 * 60 * 60 * 1000);
-  pruneTimer = (globalThis as any)[PRUNE_KEY];
+  if (globalThis.__auditPruneTimer) clearInterval(globalThis.__auditPruneTimer);
+  globalThis.__auditPruneTimer = setInterval(pruneOldAuditEvents, 24 * 60 * 60 * 1000);
+  pruneTimer = globalThis.__auditPruneTimer;
 
   // Run an initial prune on startup so retention is enforced even if the app restarts frequently
   pruneOldAuditEvents().catch(() => {

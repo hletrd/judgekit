@@ -5,7 +5,7 @@ import { eq } from "drizzle-orm";
 import { forbidden, notFound, isInstructor } from "@/lib/api/auth";
 import { canAccessSubmission } from "@/lib/auth/permissions";
 import { recordAuditEvent } from "@/lib/audit/events";
-import { apiSuccess, apiError } from "@/lib/api/responses";
+import { apiSuccess } from "@/lib/api/responses";
 import { createApiHandler } from "@/lib/api/handler";
 
 export const POST = createApiHandler({
@@ -34,10 +34,10 @@ export const POST = createApiHandler({
     if (!hasAccess) return forbidden();
 
     // Delete existing test case results and reset submission (atomic transaction)
-    execTransaction(() => {
-      db.delete(submissionResults).where(eq(submissionResults.submissionId, id)).run();
+    await execTransaction(async (tx) => {
+      await tx.delete(submissionResults).where(eq(submissionResults.submissionId, id));
 
-      db.update(submissions)
+      await tx.update(submissions)
         .set({
           status: "pending",
           score: null,
@@ -48,8 +48,7 @@ export const POST = createApiHandler({
           judgeClaimedAt: null,
           judgedAt: null,
         })
-        .where(eq(submissions.id, id))
-        .run();
+        .where(eq(submissions.id, id));
     });
 
     const updated = await db.query.submissions.findFirst({

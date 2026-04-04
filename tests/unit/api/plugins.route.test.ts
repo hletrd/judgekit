@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
 // ---------------------------------------------------------------------------
 // Hoisted mocks — must be declared before any module imports
@@ -100,10 +100,11 @@ import { POST as testConnectionPOST } from "@/app/api/v1/plugins/chat-widget/tes
 // ---------------------------------------------------------------------------
 
 function makeChatRequest(body: unknown, headers: Record<string, string> = {}) {
-  return new Request("http://localhost:3000/api/v1/plugins/chat-widget/chat", {
+  return new NextRequest("http://localhost:3000/api/v1/plugins/chat-widget/chat", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
+      "X-Requested-With": "XMLHttpRequest",
       ...headers,
     },
     body: JSON.stringify(body),
@@ -111,11 +112,14 @@ function makeChatRequest(body: unknown, headers: Record<string, string> = {}) {
 }
 
 function makeTestConnectionRequest(body: unknown) {
-  return new Request(
+  return new NextRequest(
     "http://localhost:3000/api/v1/plugins/chat-widget/test-connection",
     {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "X-Requested-With": "XMLHttpRequest",
+      },
       body: JSON.stringify(body),
     }
   );
@@ -380,7 +384,7 @@ describe("POST /api/v1/plugins/chat-widget/chat", () => {
     const res = await chatPOST(makeChatRequest(VALID_CHAT_BODY));
     expect(res.status).toBe(500);
     const body = await res.json();
-    expect(body.error).toBe("internalError");
+    expect(body.error).toBe("internalServerError");
     expect(loggerErrorMock).toHaveBeenCalledOnce();
   });
 });
@@ -520,10 +524,9 @@ describe("POST /api/v1/plugins/chat-widget/test-connection", () => {
     const res = await testConnectionPOST(
       makeTestConnectionRequest({ provider: "openai", apiKey: "sk-test", model: "gpt-4o" })
     );
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(500);
     const body = await res.json();
-    expect(body.success).toBe(false);
-    expect(body.error).toContain("Error: Network error");
+    expect(body.error).toBe("internalServerError");
     expect(loggerErrorMock).toHaveBeenCalledOnce();
   });
 

@@ -54,7 +54,6 @@ import { Plus, Copy, Trash2, Check } from "lucide-react";
 interface ApiKey {
   id: string;
   name: string;
-  keyPlain: string;
   keyPrefix: string;
   role: string;
   createdById: string;
@@ -65,11 +64,23 @@ interface ApiKey {
   createdAt: string;
 }
 
+type CreatedKey = {
+  id: string;
+  key: string;
+  keyPrefix: string;
+  name: string;
+};
+
+function buildMaskedApiKeyPreview(keyPrefix: string) {
+  return `${keyPrefix}••••••••••••`;
+}
+
 export function ApiKeysClient() {
   const t = useTranslations("admin.apiKeys");
   const [keys, setKeys] = useState<ApiKey[]>([]);
   const [loading, setLoading] = useState(true);
-  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [createdKey, setCreatedKey] = useState<CreatedKey | null>(null);
+  const [createdKeyCopied, setCreatedKeyCopied] = useState(false);
 
   // Create dialog state
   const [createOpen, setCreateOpen] = useState(false);
@@ -77,6 +88,17 @@ export function ApiKeysClient() {
   const [createRole, setCreateRole] = useState("admin");
   const [createExpiry, setCreateExpiry] = useState("none");
   const [creating, setCreating] = useState(false);
+  const roleLabels: Record<string, string> = {
+    super_admin: "Super Admin",
+    admin: "Admin",
+    instructor: "Instructor",
+  };
+  const expiryLabels: Record<string, string> = {
+    none: t("expiryNone"),
+    "30d": t("expiry30d"),
+    "90d": t("expiry90d"),
+    "1y": t("expiry1y"),
+  };
 
   const fetchKeys = useCallback(async () => {
     try {
@@ -116,10 +138,13 @@ export function ApiKeysClient() {
       });
 
       if (res.ok) {
+        const json = await res.json();
         setCreateOpen(false);
         setCreateName("");
         setCreateRole("admin");
         setCreateExpiry("none");
+        setCreatedKey(json.data ?? null);
+        setCreatedKeyCopied(false);
         toast.success(t("createSuccess"));
         fetchKeys();
       } else {
@@ -128,6 +153,14 @@ export function ApiKeysClient() {
     } finally {
       setCreating(false);
     }
+  }
+
+  async function copyCreatedKey() {
+    if (!createdKey) return;
+    await navigator.clipboard.writeText(createdKey.key);
+    setCreatedKeyCopied(true);
+    toast.success(t("copied"));
+    setTimeout(() => setCreatedKeyCopied(false), 2000);
   }
 
   async function handleToggle(key: ApiKey) {
@@ -160,13 +193,6 @@ export function ApiKeysClient() {
     }
   }
 
-  async function copyKey(key: ApiKey) {
-    await navigator.clipboard.writeText(key.keyPlain);
-    setCopiedId(key.id);
-    toast.success(t("copied"));
-    setTimeout(() => setCopiedId(null), 2000);
-  }
-
   function getStatus(key: ApiKey) {
     if (key.expiresAt && new Date(key.expiresAt) < new Date()) {
       return { label: t("expired"), variant: "destructive" as const };
@@ -193,6 +219,48 @@ export function ApiKeysClient() {
           <CardTitle>{t("title")}</CardTitle>
           <CardDescription>{t("description")}</CardDescription>
         </div>
+        <Dialog
+          open={createdKey !== null}
+          onOpenChange={(open) => {
+            if (!open) {
+              setCreatedKey(null);
+              setCreatedKeyCopied(false);
+            }
+          }}
+        >
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>{t("keyCreatedTitle")}</DialogTitle>
+              <DialogDescription>{t("keyCreatedDescription")}</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-3 py-2">
+              <div className="rounded-md border bg-muted/40 p-3">
+                <code className="block break-all text-sm">{createdKey?.key ?? ""}</code>
+              </div>
+              <div className="text-xs text-muted-foreground">
+                {createdKey ? buildMaskedApiKeyPreview(createdKey.keyPrefix) : ""}
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={copyCreatedKey}>
+                {createdKeyCopied ? (
+                  <Check className="mr-2 h-4 w-4" />
+                ) : (
+                  <Copy className="mr-2 h-4 w-4" />
+                )}
+                {t("copyKey")}
+              </Button>
+              <Button
+                onClick={() => {
+                  setCreatedKey(null);
+                  setCreatedKeyCopied(false);
+                }}
+              >
+                {t("done")}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
         <Dialog open={createOpen} onOpenChange={setCreateOpen}>
           <DialogTrigger
             render={
@@ -220,12 +288,12 @@ export function ApiKeysClient() {
                 <Label>{t("roleLabel")}</Label>
                 <Select value={createRole} onValueChange={v => { if (v) setCreateRole(v); }}>
                   <SelectTrigger>
-                    <SelectValue />
+                    <SelectValue>{roleLabels[createRole] || createRole}</SelectValue>
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="super_admin">Super Admin</SelectItem>
-                    <SelectItem value="admin">Admin</SelectItem>
-                    <SelectItem value="instructor">Instructor</SelectItem>
+                    <SelectItem value="super_admin" label="Super Admin">Super Admin</SelectItem>
+                    <SelectItem value="admin" label="Admin">Admin</SelectItem>
+                    <SelectItem value="instructor" label="Instructor">Instructor</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -233,13 +301,13 @@ export function ApiKeysClient() {
                 <Label>{t("expiryLabel")}</Label>
                 <Select value={createExpiry} onValueChange={v => { if (v) setCreateExpiry(v); }}>
                   <SelectTrigger>
-                    <SelectValue />
+                    <SelectValue>{expiryLabels[createExpiry] || createExpiry}</SelectValue>
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="none">{t("expiryNone")}</SelectItem>
-                    <SelectItem value="30d">{t("expiry30d")}</SelectItem>
-                    <SelectItem value="90d">{t("expiry90d")}</SelectItem>
-                    <SelectItem value="1y">{t("expiry1y")}</SelectItem>
+                    <SelectItem value="none" label={t("expiryNone")}>{t("expiryNone")}</SelectItem>
+                    <SelectItem value="30d" label={t("expiry30d")}>{t("expiry30d")}</SelectItem>
+                    <SelectItem value="90d" label={t("expiry90d")}>{t("expiry90d")}</SelectItem>
+                    <SelectItem value="1y" label={t("expiry1y")}>{t("expiry1y")}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -282,23 +350,9 @@ export function ApiKeysClient() {
                     <TableRow key={key.id}>
                       <TableCell className="font-medium">{key.name}</TableCell>
                       <TableCell>
-                        <div className="flex items-center gap-1.5 min-w-0">
-                          <code className="text-xs bg-muted px-2 py-1 rounded truncate select-all max-w-[280px] block">
-                            {key.keyPlain}
-                          </code>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-7 w-7 p-0 shrink-0"
-                            onClick={() => copyKey(key)}
-                          >
-                            {copiedId === key.id ? (
-                              <Check className="h-3.5 w-3.5" />
-                            ) : (
-                              <Copy className="h-3.5 w-3.5" />
-                            )}
-                          </Button>
-                        </div>
+                        <code className="text-xs bg-muted px-2 py-1 rounded truncate select-all max-w-[280px] block">
+                          {buildMaskedApiKeyPreview(key.keyPrefix)}
+                        </code>
                       </TableCell>
                       <TableCell>
                         <Badge variant="outline">{key.role}</Badge>

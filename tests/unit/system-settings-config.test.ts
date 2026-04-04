@@ -1,8 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { selectMock, getMock } = vi.hoisted(() => ({
+const { selectMock } = vi.hoisted(() => ({
   selectMock: vi.fn(),
-  getMock: vi.fn(),
 }));
 
 vi.mock("@/lib/db", () => ({
@@ -19,37 +18,30 @@ vi.mock("drizzle-orm", () => ({
   eq: vi.fn(),
 }));
 
-import {
-  getConfiguredSettings,
-  invalidateSettingsCache,
-  SETTING_DEFAULTS,
-} from "@/lib/system-settings-config";
-
-function mockDbRow(overrides: Record<string, unknown> = {}) {
-  getMock.mockReturnValue(overrides);
+function mockDbRow(row?: Record<string, unknown>) {
   selectMock.mockReturnValue({
     from: vi.fn(() => ({
       where: vi.fn(() => ({
-        get: getMock,
+        limit: vi.fn(() => Promise.resolve(row ? [row] : [])),
       })),
     })),
   });
 }
 
 beforeEach(() => {
+  vi.resetModules();
   vi.clearAllMocks();
-  invalidateSettingsCache();
-  // Clear any env overrides
   delete process.env.RATE_LIMIT_MAX_ATTEMPTS;
   delete process.env.API_RATE_LIMIT_MAX;
   delete process.env.SUBMISSION_MAX_PENDING;
 });
 
 describe("getConfiguredSettings", () => {
-  it("returns defaults when DB has no row", () => {
-    mockDbRow();
-    getMock.mockReturnValue(undefined);
+  it("returns defaults when DB has no row", async () => {
+    mockDbRow(undefined);
+    const { initializeSettings, getConfiguredSettings, SETTING_DEFAULTS } = await import("@/lib/system-settings-config");
 
+    await initializeSettings();
     const settings = getConfiguredSettings();
 
     expect(settings.loginRateLimitMaxAttempts).toBe(SETTING_DEFAULTS.loginRateLimitMaxAttempts);
@@ -57,82 +49,103 @@ describe("getConfiguredSettings", () => {
     expect(settings.defaultTimeLimitMs).toBe(SETTING_DEFAULTS.defaultTimeLimitMs);
   });
 
-  it("uses DB values when present", () => {
+  it("uses DB values when present", async () => {
     mockDbRow({ loginRateLimitMaxAttempts: 10, submissionMaxPending: 5 });
+    const { initializeSettings, getConfiguredSettings } = await import("@/lib/system-settings-config");
 
+    await initializeSettings();
     const settings = getConfiguredSettings();
 
     expect(settings.loginRateLimitMaxAttempts).toBe(10);
     expect(settings.submissionMaxPending).toBe(5);
   });
 
-  it("prefers env variable over DB value", () => {
+  it("prefers env variable over DB value", async () => {
     process.env.RATE_LIMIT_MAX_ATTEMPTS = "20";
     mockDbRow({ loginRateLimitMaxAttempts: 10 });
+    const { initializeSettings, getConfiguredSettings } = await import("@/lib/system-settings-config");
 
+    await initializeSettings();
     const settings = getConfiguredSettings();
 
     expect(settings.loginRateLimitMaxAttempts).toBe(20);
   });
 
-  it("ignores non-numeric env values", () => {
+  it("ignores non-numeric env values", async () => {
     process.env.RATE_LIMIT_MAX_ATTEMPTS = "not-a-number";
     mockDbRow({ loginRateLimitMaxAttempts: 10 });
+    const { initializeSettings, getConfiguredSettings } = await import("@/lib/system-settings-config");
 
+    await initializeSettings();
     const settings = getConfiguredSettings();
 
     expect(settings.loginRateLimitMaxAttempts).toBe(10);
   });
 
-  it("falls back to defaults when DB throws", () => {
+  it("falls back to defaults when DB throws", async () => {
     selectMock.mockImplementation(() => {
       throw new Error("DB unavailable");
     });
+    const { initializeSettings, getConfiguredSettings, SETTING_DEFAULTS } = await import("@/lib/system-settings-config");
 
+    await initializeSettings();
     const settings = getConfiguredSettings();
 
     expect(settings.loginRateLimitMaxAttempts).toBe(SETTING_DEFAULTS.loginRateLimitMaxAttempts);
   });
 
-  it("caches results for subsequent calls", () => {
+  it("caches results for subsequent calls", async () => {
     mockDbRow({ loginRateLimitMaxAttempts: 10 });
+    const { initializeSettings, getConfiguredSettings } = await import("@/lib/system-settings-config");
 
+    await initializeSettings();
     getConfiguredSettings();
     getConfiguredSettings();
 
     expect(selectMock).toHaveBeenCalledOnce();
   });
 
-  it("reloads after cache invalidation", () => {
+  it("reloads after cache invalidation", async () => {
     mockDbRow({ loginRateLimitMaxAttempts: 10 });
-    getConfiguredSettings();
+    const { initializeSettings, getConfiguredSettings, invalidateSettingsCache } = await import("@/lib/system-settings-config");
 
-    invalidateSettingsCache();
+    await initializeSettings();
+    expect(getConfiguredSettings().loginRateLimitMaxAttempts).toBe(10);
+
     mockDbRow({ loginRateLimitMaxAttempts: 20 });
+    invalidateSettingsCache();
+    getConfiguredSettings();
+    await Promise.resolve();
+    await Promise.resolve();
 
     const settings = getConfiguredSettings();
-
     expect(settings.loginRateLimitMaxAttempts).toBe(20);
     expect(selectMock).toHaveBeenCalledTimes(2);
   });
 });
 
 describe("invalidateSettingsCache", () => {
-  it("forces next call to reload from DB", () => {
+  it("forces next call to reload from DB", async () => {
     mockDbRow({});
-    getConfiguredSettings();
+    const { initializeSettings, getConfiguredSettings, invalidateSettingsCache } = await import("@/lib/system-settings-config");
+
+    await initializeSettings();
     expect(selectMock).toHaveBeenCalledOnce();
 
+    mockDbRow({ loginRateLimitMaxAttempts: 15 });
     invalidateSettingsCache();
-    mockDbRow({});
     getConfiguredSettings();
+    await Promise.resolve();
+    await Promise.resolve();
 
+    expect(getConfiguredSettings().loginRateLimitMaxAttempts).toBe(15);
     expect(selectMock).toHaveBeenCalledTimes(2);
   });
 });
 
 describe("SETTING_DEFAULTS", () => {
-  it("has all expected keys", () => {
+  it("has all expected keys", async () => {
+    const { SETTING_DEFAULTS } = await import("@/lib/system-settings-config");
     const expectedKeys = [
       "loginRateLimitMaxAttempts",
       "loginRateLimitWindowMs",

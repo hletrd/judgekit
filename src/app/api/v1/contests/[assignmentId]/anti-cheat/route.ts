@@ -8,9 +8,10 @@ import { rawQueryOne } from "@/lib/db/queries";
 import { antiCheatEvents, users } from "@/lib/db/schema";
 import { eq, and, desc, sql } from "drizzle-orm";
 import { getContestAssignment } from "@/lib/assignments/contests";
+import { LRUCache } from "lru-cache";
 
 /** last heartbeat insert time per "assignmentId:userId" — only insert once per 60s */
-const lastHeartbeatTime = new Map<string, number>();
+const lastHeartbeatTime = new LRUCache<string, number>({ max: 10_000, ttl: 120_000 });
 
 const VALID_EVENT_TYPES = [
   "tab_switch",
@@ -66,7 +67,7 @@ export const POST = createApiHandler({
     }
 
     const { eventType, details: rawDetails } = body;
-    const details: Record<string, unknown> | null = rawDetails ? { message: rawDetails } : null;
+    const details = rawDetails ? JSON.stringify({ message: rawDetails }) : null;
 
     // Heartbeat events: only insert a DB row once per 60 seconds to reduce churn
     if (eventType === "heartbeat") {
@@ -75,7 +76,7 @@ export const POST = createApiHandler({
       const last = lastHeartbeatTime.get(heartbeatKey) ?? 0;
       if (nowMs - last >= 60_000) {
         lastHeartbeatTime.set(heartbeatKey, nowMs);
-        db.insert(antiCheatEvents)
+        await db.insert(antiCheatEvents)
           .values({
             id: nanoid(),
             assignmentId,
@@ -85,8 +86,7 @@ export const POST = createApiHandler({
             ipAddress: req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? null,
             userAgent: null,
             createdAt: new Date(),
-          })
-          .run();
+          });
       }
       return apiSuccess({ logged: true });
     }
@@ -95,7 +95,7 @@ export const POST = createApiHandler({
       req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? null;
     const userAgent = req.headers.get("user-agent") ?? null;
 
-    db.insert(antiCheatEvents)
+    await db.insert(antiCheatEvents)
       .values({
         id: nanoid(),
         assignmentId,
@@ -105,8 +105,7 @@ export const POST = createApiHandler({
         ipAddress: ip,
         userAgent,
         createdAt: new Date(),
-      })
-      .run();
+      });
 
     return apiSuccess({ logged: true });
   },

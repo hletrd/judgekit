@@ -1,4 +1,3 @@
-import { NextResponse } from "next/server";
 import { apiSuccess } from "@/lib/api/responses";
 import { db } from "@/lib/db";
 import { languageConfigs } from "@/lib/db/schema";

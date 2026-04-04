@@ -359,7 +359,7 @@ async function runDocker(opts: {
         });
       };
 
-      child?.on("close", async (code) => {
+      child?.on("close", async () => {
         const durationMs = Math.round(performance.now() - start);
         await finish(durationMs);
       });

@@ -69,6 +69,13 @@ COPY --from=builder /app/public ./public
 COPY --from=builder /app/messages ./messages
 COPY --from=builder /app/drizzle ./drizzle
 
+# Drizzle migration support: config + schema + dependencies needed by drizzle-kit push
+COPY --from=builder /app/drizzle.config.ts ./drizzle.config.ts
+COPY --from=builder /app/tsconfig.json ./tsconfig.json
+COPY --from=builder /app/src/lib/db ./src/lib/db
+COPY --from=builder /app/src/lib/submissions/id.ts ./src/lib/submissions/id.ts
+COPY --from=builder /app/src/types ./src/types
+
 # PostgreSQL driver (pg) and all transitive dependencies
 COPY --from=builder /app/node_modules/pg ./node_modules/pg
 COPY --from=builder /app/node_modules/pg-connection-string ./node_modules/pg-connection-string

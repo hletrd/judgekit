@@ -179,18 +179,18 @@ export const DELETE = createApiHandler({
     const force = req.nextUrl.searchParams.get("force") === "true";
 
     let blocked = false;
-    execTransaction(() => {
-      const submissionCountRow = db
+    await execTransaction(async (tx) => {
+      const submissionCountRows = await tx
         .select({ total: sql<number>`count(${submissions.id})` })
         .from(submissions)
-        .where(eq(submissions.problemId, id))
-        .get() ?? { total: 0 };
+        .where(eq(submissions.problemId, id));
+      const submissionCountRow = submissionCountRows[0] ?? { total: 0 };
 
-      const assignmentLinkCountRow = db
+      const assignmentLinkCountRows = await tx
         .select({ total: sql<number>`count(${assignmentProblems.id})` })
         .from(assignmentProblems)
-        .where(eq(assignmentProblems.problemId, id))
-        .get() ?? { total: 0 };
+        .where(eq(assignmentProblems.problemId, id));
+      const assignmentLinkCountRow = assignmentLinkCountRows[0] ?? { total: 0 };
 
       const submissionCount = Number(submissionCountRow.total ?? 0);
       const assignmentLinkCount = Number(assignmentLinkCountRow.total ?? 0);
@@ -200,7 +200,7 @@ export const DELETE = createApiHandler({
         return;
       }
 
-      db.delete(problems).where(eq(problems.id, id)).run();
+      await tx.delete(problems).where(eq(problems.id, id));
     });
 
     if (blocked) {

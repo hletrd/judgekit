@@ -131,11 +131,11 @@ test("@smoke preserves remediation login, problem, submission, and group flows",
     });
   } finally {
     if (groupId) {
-      db.delete(groups).where(eq(groups.id, groupId)).run();
+      await db.delete(groups).where(eq(groups.id, groupId));
     }
     if (problemId) {
-      db.delete(submissions).where(eq(submissions.problemId, problemId)).run();
-      db.delete(problems).where(eq(problems.id, problemId)).run();
+      await db.delete(submissions).where(eq(submissions.problemId, problemId));
+      await db.delete(problems).where(eq(problems.id, problemId));
     }
   }
 });

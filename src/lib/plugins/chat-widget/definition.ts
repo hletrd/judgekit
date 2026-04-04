@@ -6,6 +6,7 @@ export const chatWidgetPlugin: PluginDefinition = {
   nameKey: "chatWidget.name",
   descriptionKey: "chatWidget.description",
   configSchema: chatWidgetConfigSchema,
+  secretConfigKeys: ["openaiApiKey", "claudeApiKey", "geminiApiKey"],
   defaultConfig: {
     provider: "openai",
     openaiApiKey: "",

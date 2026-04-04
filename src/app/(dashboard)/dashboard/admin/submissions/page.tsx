@@ -47,7 +47,6 @@ export default async function AdminSubmissionsPage({
   const resolvedSearchParams = searchParams ? await searchParams : undefined;
   const currentPage = Math.max(1, Number(resolvedSearchParams?.page ?? "1") || 1);
   const searchQuery = (resolvedSearchParams?.search ?? "").trim().slice(0, 200);
-  const offset = (currentPage - 1) * PAGE_SIZE;
   const t = await getTranslations("admin.submissions");
   const tCommon = await getTranslations("common");
   const tSubmissions = await getTranslations("submissions");

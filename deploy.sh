@@ -114,7 +114,12 @@ info "Loading Docker images on ${REMOTE_HOST}..."
 remote "docker load < /tmp/judgekit-images.tar.gz && rm -f /tmp/judgekit-images.tar.gz"
 success "Images loaded"
 
-# ---- Step 6: Start containers ----
+# ---- Step 6: Prepare host directories ----
+info "Ensuring /compiler-workspaces exists with correct permissions..."
+remote "sudo mkdir -p /compiler-workspaces && sudo chmod 1777 /compiler-workspaces"
+success "Host directories ready"
+
+# ---- Step 6b: Start containers ----
 info "Starting containers..."
 remote "cd ${REMOTE_DIR} && docker compose --env-file .env.production down --remove-orphans 2>/dev/null || true"
 remote "cd ${REMOTE_DIR} && docker compose --env-file .env.production up -d"
@@ -125,7 +130,7 @@ info "Waiting for app to start..."
 sleep 5
 
 info "Running database migrations (drizzle-kit push)..."
-remote "docker exec judgekit-app-1 npx drizzle-kit push --force" 2>&1 || \
+remote "docker exec judgekit-app npx drizzle-kit push --force" 2>&1 || \
   warn "drizzle-kit push failed — may need manual intervention"
 success "Database migrated"
 

@@ -7,9 +7,9 @@ import { redeemAccessCodeSchema } from "@/lib/validators/access-codes";
 export const POST = createApiHandler({
   rateLimit: "contest:join",
   schema: redeemAccessCodeSchema,
-  handler: async (req: NextRequest, { user, body, params: _params }) => {
+  handler: async (req: NextRequest, { user, body }) => {
     const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? null;
-    const result = redeemAccessCode(body.code, user.id, ip ?? undefined);
+    const result = await redeemAccessCode(body.code, user.id, ip ?? undefined);
 
     if (!result.ok) {
       return apiError(result.error, 400);

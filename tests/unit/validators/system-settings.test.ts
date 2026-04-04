@@ -109,8 +109,20 @@ describe("systemSettingsSchema", () => {
       siteTitle: "JudgeKit",
       siteDescription: "An online judge system",
       timeZone: "Europe/London",
+      platformMode: "contest",
     });
     expect(result.success).toBe(true);
+  });
+
+  it("accepts a valid platformMode", () => {
+    const result = systemSettingsSchema.safeParse({ platformMode: "recruiting" });
+    expect(result.success).toBe(true);
+    expect(result.data?.platformMode).toBe("recruiting");
+  });
+
+  it("rejects an invalid platformMode", () => {
+    const result = systemSettingsSchema.safeParse({ platformMode: "invalid-mode" });
+    expect(result.success).toBe(false);
   });
 
   it("accepts omitted fields returning undefined", () => {
@@ -118,5 +130,6 @@ describe("systemSettingsSchema", () => {
     expect(parsed.siteTitle).toBeUndefined();
     expect(parsed.siteDescription).toBeUndefined();
     expect(parsed.timeZone).toBeUndefined();
+    expect(parsed.platformMode).toBeUndefined();
   });
 });

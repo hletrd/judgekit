@@ -232,7 +232,7 @@ export default function AssignmentFormDialog({
             freezeLeaderboardAt: examMode !== "none" ? parseDateTimeInput(freezeLeaderboardAt) : null,
             enableAntiCheat: examMode !== "none" ? enableAntiCheat : false,
             ...(areProblemsEditable
-              ? { problems: problemRows.map(({ _key: _, ...rest }) => rest) }
+              ? { problems: problemRows.map(({ _key, ...rest }) => { void _key; return rest; }) }
               : {}),
             ...(problemOverrideEnabled ? { allowLockedProblems: true } : {}),
           }),
