@@ -150,17 +150,17 @@ test("admin can navigate, filter, and paginate login logs safely", async ({
       await page.getByRole("button", { name: "Apply Filters" }).click();
 
       await expect(page).toHaveURL(new RegExp(`${LOGIN_LOGS_PATH.replaceAll("/", "\\/")}\\?search=`));
-      await expect(page.getByText("Page 1 of 2", { exact: true })).toBeVisible();
+      await expect(page.getByLabel("Page 2")).toBeVisible();
       await expect(loginLogsTable).toContainText(`${paginationPrefix}51`);
       await expect(loginLogsTable).not.toContainText(`${paginationPrefix}00`);
       await captureEvidence(page, testInfo, "task11-login-logs-page-1");
     });
 
     await test.step("paginate to the older login events", async () => {
-      await page.getByRole("button", { name: "Next" }).click();
+      await page.getByLabel("Next page").click();
 
       await expect(page).toHaveURL(new RegExp(`${LOGIN_LOGS_PATH.replaceAll("/", "\\/")}\\?page=2&search=`));
-      await expect(page.getByText("Page 2 of 2", { exact: true })).toBeVisible();
+      await expect(page.getByLabel("Page 2")).toBeVisible();
       await expect(loginLogsTable).toContainText(`${paginationPrefix}00`);
       await expect(loginLogsTable).toContainText(`${paginationPrefix}01`);
     });

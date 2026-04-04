@@ -102,8 +102,8 @@ test.describe.serial("Problem Management", () => {
   });
 
   test("Step 6: Navigate to problem edit page and verify fields", async () => {
-    // Try the standard edit URL pattern
-    await navigateTo(adminPage, `/dashboard/admin/problems/${problemId}/edit`);
+    // Navigate to edit page
+    await navigateTo(adminPage, `/dashboard/problems/${problemId}/edit`);
     await adminPage.waitForLoadState("networkidle");
 
     const url = adminPage.url();

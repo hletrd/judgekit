@@ -35,7 +35,7 @@ test.describe("Contest System", () => {
       await page.goto("/dashboard/contests");
       await page.waitForLoadState("networkidle");
 
-      await expect(page.locator("h2")).toContainText(/Contests|대회/);
+      await expect(page.getByRole("heading", { level: 2 }).first()).toContainText(/Contests|대회/);
 
       // Filter badges exist
       const badges = page.locator("a [data-slot='badge']");
@@ -73,7 +73,7 @@ test.describe("Contest System", () => {
       // Click the last filter (Past) and verify page doesn't error
       await filterLinks.last().click();
       await page.waitForLoadState("networkidle");
-      await expect(page.locator("h2")).toContainText(/Contests|대회/);
+      await expect(page.getByRole("heading", { level: 2 }).first()).toContainText(/Contests|대회/);
     });
   });
 
@@ -83,7 +83,7 @@ test.describe("Contest System", () => {
       await page.goto("/dashboard/contests/create");
       await page.waitForLoadState("networkidle");
 
-      await expect(page.locator("h2")).toContainText(/Create Contest|대회 만들기/);
+      await expect(page.getByRole("heading", { level: 2 }).first()).toContainText(/Create Contest|대회 만들기/);
     });
 
     test("create page has back link to contests", async ({ page }) => {
