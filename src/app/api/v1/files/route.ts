@@ -18,14 +18,18 @@ import { logger } from "@/lib/logger";
 
 export async function POST(request: NextRequest) {
   try {
-    const csrfError = csrfForbidden(request);
-    if (csrfError) return csrfError;
-
     const rateLimitError = consumeApiRateLimit(request, "files:upload");
     if (rateLimitError) return rateLimitError;
 
     const user = await getApiUser(request);
     if (!user) return unauthorized();
+
+    // Skip CSRF for API key auth (no cookies involved)
+    const isApiKeyAuth = "_apiKeyAuth" in user;
+    if (!isApiKeyAuth) {
+      const csrfError = csrfForbidden(request);
+      if (csrfError) return csrfError;
+    }
 
     const caps = await resolveCapabilities(user.role);
     if (!caps.has("files.upload")) return forbidden();
