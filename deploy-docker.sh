@@ -266,6 +266,11 @@ else
     info "Skipping image build (--skip-build)"
 fi
 
+# Clean up stale (dangling) images from previous builds — keeps :latest tagged images
+info "Removing stale worker images from previous builds..."
+remote "docker image prune -f" >/dev/null 2>&1 || true
+success "Stale images cleaned up"
+
 # ---------------------------------------------------------------------------
 # Step 4: Set up docker-compose config on remote
 # ---------------------------------------------------------------------------

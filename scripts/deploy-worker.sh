@@ -78,6 +78,10 @@ echo ""
 echo "[1/4] Transferring judge-worker image..."
 docker save judgekit-judge-worker:latest | gzip | ssh "${REMOTE}" "docker load"
 
+# Clean up stale (dangling) worker images from previous deploys — keeps :latest
+echo "    Cleaning up stale worker images..."
+ssh "${REMOTE}" "docker image prune -f" >/dev/null 2>&1 || true
+
 # Step 2: Create remote directory and transfer compose file
 echo "[2/4] Setting up remote directory..."
 ssh "${REMOTE}" "mkdir -p ${REMOTE_DIR} /judge-workspaces"
