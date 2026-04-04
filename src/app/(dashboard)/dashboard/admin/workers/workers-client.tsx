@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useTranslations } from "next-intl";
+import { apiFetch } from "@/lib/api/client";
 import {
   Card,
   CardContent,
@@ -97,9 +98,9 @@ function AliasCell({ worker, onUpdate }: { worker: Worker; onUpdate: () => void 
   const [value, setValue] = useState(worker.alias ?? "");
 
   async function handleSave() {
-    const res = await fetch(`/api/v1/admin/workers/${worker.id}`, {
+    const res = await apiFetch(`/api/v1/admin/workers/${worker.id}`, {
       method: "PATCH",
-      headers: { "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest" },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ alias: value || null }),
     });
     if (res.ok) {
@@ -225,8 +226,8 @@ export function WorkersPageClient() {
   const fetchData = useCallback(async () => {
     try {
       const [workersRes, statsRes] = await Promise.all([
-        fetch("/api/v1/admin/workers"),
-        fetch("/api/v1/admin/workers/stats"),
+        apiFetch("/api/v1/admin/workers"),
+        apiFetch("/api/v1/admin/workers/stats"),
       ]);
       if (workersRes.ok) {
         const wd = await workersRes.json();
@@ -248,7 +249,7 @@ export function WorkersPageClient() {
   }, [fetchData]);
 
   async function handleRemove(id: string) {
-    const res = await fetch(`/api/v1/admin/workers/${id}`, { method: "DELETE", headers: { "X-Requested-With": "XMLHttpRequest" } });
+    const res = await apiFetch(`/api/v1/admin/workers/${id}`, { method: "DELETE" });
     if (res.ok) {
       toast.success(t("removeSuccess"));
       fetchData();
