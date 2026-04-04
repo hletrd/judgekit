@@ -42,12 +42,22 @@ interface AntiCheatDashboardProps {
   assignmentId: string;
 }
 
+type SimilarityPairView = {
+  userId1: string;
+  userId2: string;
+  user1Name: string;
+  user2Name: string;
+  problemId: string;
+  similarity: number;
+};
+
 type SimilarityCheckResponse = {
   status: "completed" | "not_run" | "timed_out";
   reason: "no_submissions" | "too_many_submissions" | "timeout" | null;
   flaggedPairs: number;
   submissionCount: number | null;
   maxSupportedSubmissions: number | null;
+  pairs?: SimilarityPairView[];
 };
 
 const EVENT_TYPE_COLORS: Record<string, string> = {
@@ -82,6 +92,7 @@ export function AntiCheatDashboard({ assignmentId }: AntiCheatDashboardProps) {
   const [offset, setOffset] = useState(0);
   const [loadingMore, setLoadingMore] = useState(false);
   const [similarityStatusMessage, setSimilarityStatusMessage] = useState<string | null>(null);
+  const [similarityPairs, setSimilarityPairs] = useState<SimilarityPairView[]>([]);
   const PAGE_SIZE = 100;
 
   const fetchEvents = useCallback(async () => {
@@ -196,6 +207,9 @@ export function AntiCheatDashboard({ assignmentId }: AntiCheatDashboardProps) {
         if (data.status === "completed") {
           const message = t("similarityComplete", { count: data.flaggedPairs });
           setSimilarityStatusMessage(message);
+          setSimilarityPairs(
+            [...(data.pairs ?? [])].sort((a, b) => b.similarity - a.similarity)
+          );
           toast.success(message);
           fetchEvents();
         } else if (data.reason === "no_submissions") {
@@ -263,6 +277,37 @@ export function AntiCheatDashboard({ assignmentId }: AntiCheatDashboardProps) {
         ) : null}
       </CardHeader>
       <CardContent className="space-y-4">
+        {similarityPairs.length > 0 && (
+          <div className="space-y-2">
+            <h4 className="flex items-center gap-2 text-sm font-medium">
+              <AlertTriangle className="size-4 text-destructive" />
+              {t("flaggedPairs")}
+            </h4>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>{t("student1")}</TableHead>
+                  <TableHead>{t("student2")}</TableHead>
+                  <TableHead className="text-right">{t("similarityPercent")}</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {similarityPairs.map((pair, idx) => (
+                  <TableRow key={idx}>
+                    <TableCell className="text-sm">{pair.user1Name}</TableCell>
+                    <TableCell className="text-sm">{pair.user2Name}</TableCell>
+                    <TableCell className="text-right">
+                      <Badge variant={pair.similarity >= 90 ? "destructive" : "secondary"}>
+                        {pair.similarity}%
+                      </Badge>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+
         <div className="rounded-lg border border-dashed px-3 py-2 text-xs text-muted-foreground">
           {t("signalsDisclaimer")}
         </div>
