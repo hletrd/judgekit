@@ -93,7 +93,7 @@ export default function ChatWidgetAdminConfig({ config, onSave }: PluginAdminPro
     try {
       const response = await fetch("/api/v1/plugins/chat-widget/test-connection", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest" },
         body: JSON.stringify({
           provider,
           apiKey: currentApiKey,

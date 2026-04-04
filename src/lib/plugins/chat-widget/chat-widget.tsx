@@ -151,7 +151,7 @@ export default function ChatWidget() {
 
       const response = await fetch("/api/v1/plugins/chat-widget/chat", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest" },
         body: JSON.stringify({
           messages: recentMessages.map((m) => ({ role: m.role, content: m.content })),
           context: problemContext ? {
