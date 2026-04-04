@@ -65,6 +65,7 @@ describe("api-key-auth helpers", () => {
         email: "admin@example.com",
         name: "Admin",
         className: null,
+        role: "admin",
         isActive: true,
       },
     ]);

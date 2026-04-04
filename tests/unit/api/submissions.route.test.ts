@@ -63,12 +63,15 @@ vi.mock("@/lib/capabilities/cache", () => ({
   isValidRole: vi.fn().mockResolvedValue(true),
 }));
 
+const dbMockObj = {
+  select: dbSelectMock,
+  insert: vi.fn(() => ({ values: dbInsertMock })),
+  query: { submissions: { findFirst: vi.fn() } },
+};
+
 vi.mock("@/lib/db", () => ({
-  db: {
-    select: dbSelectMock,
-    insert: vi.fn(() => ({ values: dbInsertMock })),
-  },
-  execTransaction: vi.fn(async (fn: () => unknown) => fn()),
+  db: dbMockObj,
+  execTransaction: vi.fn(async (fn: (tx: typeof dbMockObj) => unknown) => fn(dbMockObj)),
 }));
 
 function makeRequest(body: unknown, extraHeaders: Record<string, string> = {}) {
