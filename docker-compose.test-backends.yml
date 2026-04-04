@@ -1,0 +1,194 @@
+# =============================================================================
+# JudgeKit Multi-Backend Test Deployment
+#
+# Runs 3 parallel JudgeKit instances, each using a different database backend:
+#   - SQLite   → :3100 (existing production instance)
+#   - PostgreSQL → :3101 (+ PG 18 container)
+#   - MySQL    → :3102 (+ MySQL 8 container)
+#
+# Usage:
+#   docker compose -f docker-compose.test-backends.yml --env-file .env.production up -d
+#
+# Each instance shares the same app image but different DB config.
+# Judge workers are shared across all backends via the existing worker.
+# =============================================================================
+
+services:
+  # ---------------------------------------------------------------------------
+  # Database Servers
+  # ---------------------------------------------------------------------------
+  db-postgres:
+    image: postgres:18-alpine
+    container_name: judgekit-db-postgres
+    restart: unless-stopped
+    volumes:
+      - judgekit-pgdata:/var/lib/postgresql/data
+    environment:
+      POSTGRES_DB: judgekit
+      POSTGRES_USER: judgekit
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-judgekit_test}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U judgekit"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  db-mysql:
+    image: mysql:8.4
+    container_name: judgekit-db-mysql
+    restart: unless-stopped
+    volumes:
+      - judgekit-mysqldata:/var/lib/mysql
+    environment:
+      MYSQL_DATABASE: judgekit
+      MYSQL_USER: judgekit
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-judgekit_test}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-judgekit_root}
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "judgekit", "-pjudgekit_test"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # ---------------------------------------------------------------------------
+  # App: SQLite backend (existing, port 3100)
+  # ---------------------------------------------------------------------------
+  app-sqlite:
+    image: judgekit-app:latest
+    container_name: judgekit-app-sqlite
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3100:3000"
+    volumes:
+      - judgekit-data:/app/data
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /compiler-workspaces:/compiler-workspaces
+    env_file:
+      - .env.production
+    environment:
+      - DB_DIALECT=sqlite
+      - DATABASE_PATH=/app/data/judge.db
+      - HOSTNAME=0.0.0.0
+      - COMPILER_WORKSPACE_DIR=/compiler-workspaces
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "-O", "/dev/null", "http://127.0.0.1:3000/login"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+  # ---------------------------------------------------------------------------
+  # App: PostgreSQL backend (port 3101)
+  # ---------------------------------------------------------------------------
+  app-postgres:
+    image: judgekit-app:latest
+    container_name: judgekit-app-postgres
+    restart: unless-stopped
+    ports:
+      - "0.0.0.0:3101:3000"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /compiler-workspaces:/compiler-workspaces
+    env_file:
+      - .env.production
+    environment:
+      - DB_DIALECT=postgresql
+      - DATABASE_URL=postgres://judgekit:${POSTGRES_PASSWORD:-judgekit_test}@db-postgres:5432/judgekit
+      - HOSTNAME=0.0.0.0
+      - COMPILER_WORKSPACE_DIR=/compiler-workspaces
+      - AUTH_URL=http://oj-internal.maum.ai:3101
+    depends_on:
+      db-postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "-O", "/dev/null", "http://127.0.0.1:3000/login"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+
+  # ---------------------------------------------------------------------------
+  # App: MySQL backend (port 3102)
+  # ---------------------------------------------------------------------------
+  app-mysql:
+    image: judgekit-app:latest
+    container_name: judgekit-app-mysql
+    restart: unless-stopped
+    ports:
+      - "0.0.0.0:3102:3000"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /compiler-workspaces:/compiler-workspaces
+    env_file:
+      - .env.production
+    environment:
+      - DB_DIALECT=mysql
+      - DATABASE_URL=mysql://judgekit:${MYSQL_PASSWORD:-judgekit_test}@db-mysql:3306/judgekit
+      - HOSTNAME=0.0.0.0
+      - COMPILER_WORKSPACE_DIR=/compiler-workspaces
+      - AUTH_URL=http://oj-internal.maum.ai:3102
+    depends_on:
+      db-mysql:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "-O", "/dev/null", "http://127.0.0.1:3000/login"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 25s
+
+  # ---------------------------------------------------------------------------
+  # Shared: Judge Worker (connects to SQLite app by default)
+  # ---------------------------------------------------------------------------
+  judge-worker:
+    image: judgekit-judge-worker:latest
+    container_name: judgekit-judge-worker
+    restart: unless-stopped
+    cap_add:
+      - SYS_ADMIN
+    security_opt:
+      - apparmor:unconfined
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /judge-workspaces:/judge-workspaces
+      - judgekit-dead-letter:/app/dead-letter
+    env_file:
+      - .env.production
+    environment:
+      - JUDGE_BASE_URL=http://app-sqlite:3000/api/v1
+      - JUDGE_SECCOMP_PROFILE=/etc/judge/seccomp-profile.json
+      - DEAD_LETTER_DIR=/app/dead-letter
+      - TMPDIR=/judge-workspaces
+    depends_on:
+      app-sqlite:
+        condition: service_healthy
+
+  # ---------------------------------------------------------------------------
+  # Shared: Code Similarity
+  # ---------------------------------------------------------------------------
+  code-similarity:
+    image: judgekit-code-similarity:latest
+    container_name: judgekit-code-similarity
+    restart: unless-stopped
+    environment:
+      - RUST_LOG=info
+      - CODE_SIMILARITY_HOST=0.0.0.0
+      - CODE_SIMILARITY_PORT=3002
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "-O", "/dev/null", "http://127.0.0.1:3002/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+
+volumes:
+  judgekit-data:
+    driver: local
+  judgekit-pgdata:
+    driver: local
+  judgekit-mysqldata:
+    driver: local
+  judgekit-dead-letter:
+    driver: local

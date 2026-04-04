@@ -1,0 +1,16 @@
+services:
+  static:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: static-site:latest
+    container_name: static-site
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3101:80"
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "-O", "/dev/null", "http://127.0.0.1:80/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
