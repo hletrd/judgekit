@@ -8,7 +8,7 @@
   <a href="https://github.com/hletrd/JudgeKit"><img src="https://img.shields.io/badge/GitHub-JudgeKit-181717?logo=github" alt="GitHub" /></a>
   <img src="https://img.shields.io/badge/Next.js-16-black?logo=next.js" alt="Next.js 16" />
   <img src="https://img.shields.io/badge/TypeScript-6-blue?logo=typescript" alt="TypeScript 6" />
-  <img src="https://img.shields.io/badge/SQLite-Drizzle_ORM-green?logo=sqlite" alt="SQLite" />
+  <img src="https://img.shields.io/badge/PostgreSQL-Drizzle_ORM-green?logo=postgresql" alt="PostgreSQL" />
   <img src="https://img.shields.io/badge/Docker-Sandboxed-2496ED?logo=docker" alt="Docker" />
   <img src="https://img.shields.io/badge/Platform-AMD64_%7C_ARM64-orange?logo=linux" alt="AMD64 | ARM64" />
 </p>
@@ -136,7 +136,7 @@ All 100 images build on both amd64 and arm64.
 |-------|-----------|
 | Framework | Next.js 16 (App Router) |
 | Language | TypeScript |
-| Database | SQLite + Drizzle ORM |
+| Database | PostgreSQL + Drizzle ORM (SQLite, MySQL also supported) |
 | Auth | Auth.js v5 (Credentials) |
 | UI | Tailwind CSS v4, shadcn/ui |
 | Judge Worker | Rust binary with Docker-sandboxed execution (multi-worker) |
@@ -158,7 +158,7 @@ judgekit/
 │   └── types/           # TypeScript types
 ├── tests/               # Vitest unit + Playwright E2E
 ├── docs/                # Extended documentation
-└── data/                # SQLite database (gitignored)
+└── data/                # Local database files (gitignored)
 ```
 
 ## Architecture
@@ -204,6 +204,7 @@ Monitor workers at `/dashboard/admin/workers`.
 
 ## Documentation
 
+- [API Reference](docs/api.md) — all REST endpoints, authentication, request/response formats
 - [Deployment Guide](docs/deployment.md) — provisioning, deploy scripts, nginx, post-deploy checks
 - [Authentication](docs/authentication.md) — sign-in flow, cookie architecture, API smoke test
 - [Languages](docs/languages.md) — all 118 variants, Docker image presets, admin management

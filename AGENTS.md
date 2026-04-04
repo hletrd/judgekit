@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-JudgeKit is a secure online judge platform for programming assignments. Next.js 16 frontend + API, Rust judge worker, Docker-sandboxed execution, SQLite database.
+JudgeKit is a secure online judge platform for programming assignments. Next.js 16 frontend + API, Rust judge worker, Docker-sandboxed execution, PostgreSQL database (SQLite and MySQL also supported).
 
 ## Key Directories
 
@@ -13,7 +13,7 @@ JudgeKit is a secure online judge platform for programming assignments. Next.js 
 | `docker/` | Judge language Dockerfiles + seccomp profile |
 | `scripts/` | Systemd services, deploy helpers, backup tools |
 | `tests/` | Playwright E2E tests, Vitest unit/integration tests |
-| `data/` | SQLite database (gitignored) |
+| `data/` | Local database files (gitignored) |
 
 ## Supported Languages (114)
 
@@ -250,9 +250,9 @@ JudgeKit supports full contest management with two scoring models and two schedu
 ## Architecture
 
 ### Database
-- **SQLite** at `/app/data/judge.db` (inside Docker: volume-mounted)
-- **ORM**: Drizzle ORM with schema in `src/lib/db/schema.ts`
-- **Migrations**: Drizzle-generated SQL files in `drizzle/`, applied via Node script during Docker deployment (reads `.sql` files, splits on `--> statement-breakpoint`, executes each statement)
+- **PostgreSQL 18** (production default); SQLite and MySQL also supported via `DB_DIALECT` env var
+- **ORM**: Drizzle ORM with per-dialect schemas: `schema.ts` (SQLite), `schema.pg.ts` (PostgreSQL), `schema.mysql.ts` (MySQL)
+- **Migrations**: Drizzle-generated SQL files in `drizzle/` (SQLite), `drizzle/pg/` (PostgreSQL), `drizzle/mysql/` (MySQL)
 - **Sync**: `npm run languages:sync` syncs language definitions from TypeScript config to the `language_configs` table
 
 ### Security Sandbox

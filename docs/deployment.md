@@ -33,7 +33,9 @@ JUDGE_DISABLE_CUSTOM_SECCOMP=0
 | `AUTH_SECRET` | Yes | — | Session encryption key (`openssl rand -base64 32`) |
 | `AUTH_URL` | Yes | — | App public URL |
 | `AUTH_TRUST_HOST` | No | `false` | Set `true` behind a reverse proxy |
-| `DATABASE_PATH` | No | `./data/judge.db` | SQLite database path |
+| `DB_DIALECT` | No | `sqlite` | Database dialect: `postgresql` (recommended), `sqlite`, or `mysql` |
+| `DATABASE_URL` | Yes (PG/MySQL) | — | Connection string (e.g. `postgres://user:pass@host:5432/judgekit`) |
+| `DATABASE_PATH` | No | `./data/judge.db` | SQLite database path (only when `DB_DIALECT=sqlite`) |
 | `JUDGE_AUTH_TOKEN` | Yes | — | Shared secret for worker auth (`openssl rand -hex 32`) |
 | `JUDGE_BASE_URL` | No | `http://localhost:3000/api/v1` | App API URL for workers |
 | `JUDGE_CONCURRENCY` | No | `1` | Max parallel submissions per worker (1-16) |
@@ -166,11 +168,19 @@ curl http://127.0.0.1:3000/api/health
 ## CI and Backup
 
 - GitHub Actions CI: `.github/workflows/ci.yml` — lint, build, backup/restore, Playwright
-- SQLite backup: `scripts/backup-db.sh`, `scripts/verify-db-backup.sh`
+- Database backup: `scripts/backup-db.sh`, `scripts/verify-db-backup.sh` (supports PostgreSQL and SQLite)
 - Systemd backup timer: `scripts/online-judge-backup.service`, `scripts/online-judge-backup.timer`
 
 ## Database Reset
 
+**PostgreSQL (production):**
+```bash
+# Stop app first, then:
+DB_DIALECT=postgresql DATABASE_URL=postgres://... npx drizzle-kit push
+npm run seed
+```
+
+**SQLite (development):**
 ```bash
 # Stop app first, then:
 rm data/judge.db data/judge.db-shm data/judge.db-wal

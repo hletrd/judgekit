@@ -4,7 +4,7 @@ JudgeKit supports N concurrent judge workers connecting to a single app server. 
 
 ## Architecture
 
-Workers access the app via HTTP(S) only. SQLite remains the single writer (app process). The atomic `UPDATE...RETURNING` claim SQL prevents race conditions — only one worker can claim a given submission.
+Workers access the app via HTTP(S) only. The database (PostgreSQL in production, SQLite for development) handles concurrent access. The atomic `UPDATE...RETURNING` claim SQL prevents race conditions — only one worker can claim a given submission.
 
 <p align="center">
   <img src="./judge-workers-architecture.svg" alt="Judge Workers Architecture" width="720" />
