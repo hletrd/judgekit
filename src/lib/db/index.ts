@@ -56,37 +56,41 @@ let db = drizzle(activeDialect === "sqlite" ? sqlite : new Database(":memory:"),
   schema: { ...schema, ...relations },
 });
 
-// Runtime override for non-SQLite dialects
+// Runtime override for non-SQLite dialects (dynamic imports to avoid bundling unused drivers)
+let _pool: any = null;
+
 if (activeDialect === "postgresql" && !isBuildPhase) {
-  const { Pool } = require("pg") as typeof import("pg");
-  const { drizzle: pgDrizzle } = require("drizzle-orm/node-postgres") as typeof import("drizzle-orm/node-postgres");
-  const pgSchema = require("./schema.pg");
-  const pgRelations = require("./relations.pg");
+  const [{ Pool }, { drizzle: pgDrizzle }, pgSchema, pgRelations] = await Promise.all([
+    import("pg"),
+    import("drizzle-orm/node-postgres"),
+    import("./schema.pg"),
+    import("./relations.pg"),
+  ]);
 
   const url = process.env.DATABASE_URL;
   if (!url) throw new Error("DATABASE_URL is required when DB_DIALECT=postgresql");
 
-  const pool = new Pool({ connectionString: url });
-  db = pgDrizzle(pool, { schema: { ...pgSchema, ...pgRelations } }) as unknown as typeof db;
-  (module as any)._pool = pool;
+  _pool = new Pool({ connectionString: url });
+  db = pgDrizzle(_pool, { schema: { ...pgSchema, ...pgRelations } }) as unknown as typeof db;
 } else if (activeDialect === "mysql" && !isBuildPhase) {
-  const mysql2 = require("mysql2/promise") as typeof import("mysql2/promise");
-  const { drizzle: mysqlDrizzle } = require("drizzle-orm/mysql2") as typeof import("drizzle-orm/mysql2");
-  const mysqlSchema = require("./schema.mysql");
-  const mysqlRelations = require("./relations.mysql");
+  const [mysql2, { drizzle: mysqlDrizzle }, mysqlSchema, mysqlRelations] = await Promise.all([
+    import("mysql2/promise"),
+    import("drizzle-orm/mysql2"),
+    import("./schema.mysql"),
+    import("./relations.mysql"),
+  ]);
 
   const url = process.env.DATABASE_URL;
   if (!url) throw new Error("DATABASE_URL is required when DB_DIALECT=mysql");
 
-  const pool = mysql2.createPool(url);
-  db = mysqlDrizzle(pool, { schema: { ...mysqlSchema, ...mysqlRelations } }) as unknown as typeof db;
-  (module as any)._pool = pool;
+  _pool = mysql2.createPool(url);
+  db = mysqlDrizzle(_pool, { schema: { ...mysqlSchema, ...mysqlRelations }, mode: "default" }) as unknown as typeof db;
 }
 
 /**
  * Connection pool for PostgreSQL/MySQL. Null for SQLite.
  */
-export const pool: any = (module as any)._pool ?? null;
+export const pool: any = _pool;
 
 export { db, sqlite };
 export type DbType = typeof db;
