@@ -1,17 +1,19 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { CodeEditor } from "@/components/code/code-editor";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { LanguageSelector } from "@/components/language-selector";
 import { apiFetch } from "@/lib/api/client";
 import { useSourceDraft } from "@/hooks/use-source-draft";
 import { useUnsavedChangesGuard } from "@/hooks/use-unsaved-changes-guard";
 import { useEditorContent } from "@/contexts/editor-content-context";
+import { ChevronDown, ChevronRight, Play, Loader2 } from "lucide-react";
 
 type SubmissionLanguage = {
   id: string;
@@ -52,6 +54,43 @@ export function ProblemSubmissionForm({
 
   const { allowNextNavigation } = useUnsavedChangesGuard({ isDirty });
   const { setContent } = useEditorContent();
+  const [isRunning, setIsRunning] = useState(false);
+  const [stdinOpen, setStdinOpen] = useState(false);
+  const [stdin, setStdin] = useState("");
+  const [runResult, setRunResult] = useState<{
+    stdout: string;
+    stderr: string;
+    executionTimeMs: number;
+    timedOut: boolean;
+    oomKilled: boolean;
+    compileOutput: string | null;
+  } | null>(null);
+
+  const handleRun = useCallback(async () => {
+    if (!sourceCode) {
+      toast.error(translateSubmissionError("sourceCode is required"));
+      return;
+    }
+    setIsRunning(true);
+    setRunResult(null);
+    try {
+      const response = await apiFetch("/api/v1/compiler/run", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ language, sourceCode, stdin }),
+      });
+      const payload = await response.json();
+      if (!response.ok) {
+        toast.error(payload.error ?? tCommon("error"));
+        return;
+      }
+      setRunResult(payload.data);
+    } catch {
+      toast.error(tCommon("error"));
+    } finally {
+      setIsRunning(false);
+    }
+  }, [sourceCode, language, stdin, tCommon]);
 
   // Publish editor content for AI chat widget (read-only bridge)
   useEffect(() => {
@@ -198,9 +237,74 @@ export function ProblemSubmissionForm({
           onValueChange={setSourceCode}
         />
       </div>
-      <Button type="submit" className="w-full" disabled={isSubmitting}>
-        {isSubmitting ? tCommon("loading") : tCommon("submit")}
-      </Button>
+      <div className="space-y-2">
+        <button
+          type="button"
+          className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
+          onClick={() => setStdinOpen((prev) => !prev)}
+        >
+          {stdinOpen ? <ChevronDown className="size-4" /> : <ChevronRight className="size-4" />}
+          {t("stdinLabel")}
+        </button>
+        {stdinOpen && (
+          <Textarea
+            placeholder={t("stdinPlaceholder")}
+            value={stdin}
+            onChange={(e) => setStdin(e.target.value)}
+            rows={4}
+            className="font-mono text-sm"
+          />
+        )}
+      </div>
+      <div className="flex gap-2">
+        <Button
+          type="button"
+          variant="outline"
+          className="flex-1"
+          disabled={isRunning || isSubmitting}
+          onClick={() => void handleRun()}
+        >
+          {isRunning ? <Loader2 className="mr-2 size-4 animate-spin" /> : <Play className="mr-2 size-4" />}
+          {isRunning ? t("running") : t("run")}
+        </Button>
+        <Button type="submit" className="flex-1" disabled={isSubmitting || isRunning}>
+          {isSubmitting ? tCommon("loading") : tCommon("submit")}
+        </Button>
+      </div>
+      {runResult && (
+        <div className="rounded-md border bg-muted/50 p-4 space-y-3 text-sm">
+          <div className="flex items-center justify-between">
+            <span className="font-medium">{t("runResult")}</span>
+            <span className="text-xs text-muted-foreground">
+              {runResult.timedOut
+                ? t("timedOut")
+                : runResult.oomKilled
+                  ? t("memoryLimitExceeded")
+                  : `${runResult.executionTimeMs}ms`}
+            </span>
+          </div>
+          {runResult.compileOutput && (
+            <div>
+              <Label className="text-xs text-destructive">{t("compileError")}</Label>
+              <pre className="mt-1 max-h-40 overflow-auto rounded bg-background p-2 text-xs whitespace-pre-wrap">{runResult.compileOutput}</pre>
+            </div>
+          )}
+          {!runResult.compileOutput && (
+            <>
+              <div>
+                <Label className="text-xs">{t("stdout")}</Label>
+                <pre className="mt-1 max-h-40 overflow-auto rounded bg-background p-2 text-xs whitespace-pre-wrap">{runResult.stdout || t("noOutput")}</pre>
+              </div>
+              {runResult.stderr && (
+                <div>
+                  <Label className="text-xs text-yellow-600 dark:text-yellow-400">{t("stderr")}</Label>
+                  <pre className="mt-1 max-h-40 overflow-auto rounded bg-background p-2 text-xs whitespace-pre-wrap">{runResult.stderr}</pre>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      )}
     </form>
   );
 }
