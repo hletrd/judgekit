@@ -14,6 +14,7 @@ import { useTranslations, useLocale } from "next-intl";
 type CommentView = {
   id: string;
   content: string;
+  lineNumber: number | null;
   createdAt: string | number | null;
   author: {
     name: string | null;
@@ -24,9 +25,11 @@ type CommentView = {
 type CommentSectionProps = {
   submissionId: string;
   canComment: boolean;
+  targetLine?: number | null;
+  onClearTargetLine?: () => void;
 };
 
-export function CommentSection({ submissionId, canComment }: CommentSectionProps) {
+export function CommentSection({ submissionId, canComment, targetLine = null, onClearTargetLine }: CommentSectionProps) {
   const tCommon = useTranslations("common");
   const tComments = useTranslations("comments");
   const locale = useLocale();
@@ -61,11 +64,12 @@ export function CommentSection({ submissionId, canComment }: CommentSectionProps
       const response = await apiFetch(`/api/v1/submissions/${submissionId}/comments`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content: commentContent.trim() }),
+        body: JSON.stringify({ content: commentContent.trim(), lineNumber: targetLine }),
       });
 
       if (response.ok) {
         setCommentContent("");
+        onClearTargetLine?.();
         void fetchComments();
       }
     } catch {
@@ -88,6 +92,11 @@ export function CommentSection({ submissionId, canComment }: CommentSectionProps
         {comments.map((comment) => (
           <div key={comment.id} className="rounded-md border p-3 space-y-1">
             <div className="flex items-center gap-2 text-sm">
+              {comment.lineNumber != null && (
+                <Badge variant="outline" className="text-xs font-mono">
+                  L{comment.lineNumber}
+                </Badge>
+              )}
               <span className="font-medium">
                 {comment.author
                   ? tComments("by", { author: comment.author.name ?? "-" })
@@ -118,8 +127,17 @@ export function CommentSection({ submissionId, canComment }: CommentSectionProps
 
         {canComment && (
           <div className="space-y-2 pt-2">
+            {targetLine != null && (
+              <div className="flex items-center gap-2 text-xs">
+                <Badge variant="outline" className="font-mono">L{targetLine}</Badge>
+                <span className="text-muted-foreground">{tComments("commentingOnLine")}</span>
+                <Button variant="ghost" size="sm" className="h-5 px-1 text-xs" onClick={onClearTargetLine}>
+                  {tCommon("clear")}
+                </Button>
+              </div>
+            )}
             <Textarea
-              placeholder={tComments("placeholder")}
+              placeholder={targetLine != null ? tComments("linePlaceholder", { line: targetLine }) : tComments("placeholder")}
               value={commentContent}
               onChange={(e) => setCommentContent(e.target.value)}
               maxLength={2000}

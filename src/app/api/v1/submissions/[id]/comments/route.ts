@@ -70,6 +70,7 @@ export const POST = createApiHandler({
         submissionId: id,
         authorId: user.id,
         content: sanitizeHtml(body.content),
+        lineNumber: body.lineNumber ?? null,
       })
       .returning();
 

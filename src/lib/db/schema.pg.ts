@@ -556,6 +556,7 @@ export const submissionComments = pgTable(
     authorId: text("author_id")
       .references(() => users.id, { onDelete: "set null" }),
     content: text("content").notNull(),
+    lineNumber: integer("line_number"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .$defaultFn(() => new Date(Date.now())),

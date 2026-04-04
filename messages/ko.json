@@ -9,6 +9,7 @@
     "save": "저장",
     "add": "추가",
     "cancel": "취소",
+    "clear": "초기화",
     "delete": "삭제",
     "edit": "수정",
     "create": "생성",
@@ -1437,7 +1438,9 @@
     "by": "{author} 작성",
     "aiAssistant": "AI 도우미",
     "loadError": "댓글을 불러오지 못했습니다",
-    "submitError": "댓글 제출에 실패했습니다"
+    "submitError": "댓글 제출에 실패했습니다",
+    "commentingOnLine": "줄에 댓글 작성 중",
+    "linePlaceholder": "{line}번째 줄에 피드백을 작성하세요..."
   },
   "judge": {
     "title": "채점 환경",

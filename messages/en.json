@@ -9,6 +9,7 @@
     "save": "Save",
     "add": "Add",
     "cancel": "Cancel",
+    "clear": "Clear",
     "delete": "Delete",
     "edit": "Edit",
     "create": "Create",
@@ -1437,7 +1438,9 @@
     "by": "by {author}",
     "aiAssistant": "AI Assistant",
     "loadError": "Failed to load comments",
-    "submitError": "Failed to submit comment"
+    "submitError": "Failed to submit comment",
+    "commentingOnLine": "Commenting on line",
+    "linePlaceholder": "Write feedback for line {line}..."
   },
   "judge": {
     "title": "Judge Environment",
