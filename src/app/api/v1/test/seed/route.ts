@@ -30,6 +30,7 @@ function getPlaywrightToken(): string | undefined {
 }
 
 function isTestEnvironment(): boolean {
+  if (process.env.NODE_ENV === "production") return false;
   return Boolean(getPlaywrightToken());
 }
 

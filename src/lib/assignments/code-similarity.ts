@@ -231,26 +231,28 @@ export async function runAndStoreSimilarityCheck(
       )
     );
 
-  for (const pair of pairs) {
-    const now = new Date();
-    // Store event for both users
-    for (const userId of [pair.userId1, pair.userId2]) {
-      const otherUserId =
-        userId === pair.userId1 ? pair.userId2 : pair.userId1;
-      await db.insert(antiCheatEvents)
-        .values({
-          id: nanoid(),
-          assignmentId,
-          userId,
-          eventType: "code_similarity",
-          details: JSON.stringify({
-            pairedWith: otherUserId,
-            problemId: pair.problemId,
-            similarity: pair.similarity,
-          }),
-          createdAt: now,
-        });
-    }
+  // Batch insert all similarity events at once
+  const now = new Date();
+  const eventValues = pairs.flatMap((pair) =>
+    [pair.userId1, pair.userId2].map((userId) => {
+      const otherUserId = userId === pair.userId1 ? pair.userId2 : pair.userId1;
+      return {
+        id: nanoid(),
+        assignmentId,
+        userId,
+        eventType: "code_similarity" as const,
+        details: JSON.stringify({
+          pairedWith: otherUserId,
+          problemId: pair.problemId,
+          similarity: pair.similarity,
+        }),
+        createdAt: now,
+      };
+    })
+  );
+
+  if (eventValues.length > 0) {
+    await db.insert(antiCheatEvents).values(eventValues);
   }
 
   return result;

@@ -1,10 +1,10 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { eq, and } from "drizzle-orm";
-import { createTestDb, seedUser, seedGroup, seedEnrollment, type TestDb } from "../support";
+import { createTestDb, hasSqliteIntegrationSupport, seedUser, seedGroup, seedEnrollment, type TestDb } from "../support";
 import { users, groups, enrollments } from "@/lib/db/schema";
 import { withUpdatedAt } from "@/lib/db/helpers";
 
-describe("User CRUD (integration)", () => {
+describe.skipIf(!hasSqliteIntegrationSupport)("User CRUD (integration)", () => {
   let ctx: TestDb;
 
   beforeEach(() => {

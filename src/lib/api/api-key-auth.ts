@@ -65,9 +65,16 @@ export async function authenticateApiKey(authHeader: string | null) {
     .set({ lastUsedAt: new Date() })
     .where(eq(apiKeys.id, candidate.id));
 
+  // Use the lesser of the API key's declared role and the creator's current role.
+  // This prevents privilege escalation when a user is demoted after creating a key.
+  const ROLE_RANK: Record<string, number> = { student: 0, instructor: 1, admin: 2, super_admin: 3 };
+  const keyRoleRank = ROLE_RANK[candidate.role] ?? 0;
+  const userRoleRank = ROLE_RANK[user.role] ?? 0;
+  const effectiveRole = (keyRoleRank <= userRoleRank ? candidate.role : user.role) as UserRole;
+
   return {
     id: user.id,
-    role: candidate.role as UserRole,
+    role: effectiveRole,
     username: user.username,
     email: user.email,
     name: user.name,

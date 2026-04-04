@@ -70,3 +70,5 @@ rate-limiter-rs/target/
 dead-letter/
 judge-worker-rs/dead-letter/
 .context/
+node-compile-cache/
+.agent/

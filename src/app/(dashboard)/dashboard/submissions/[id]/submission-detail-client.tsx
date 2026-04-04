@@ -30,6 +30,7 @@ type SubmissionDetailClientProps = {
   timeZone: string;
   userRole: string;
   userId: string;
+  capabilities: string[];
 };
 
 export function SubmissionDetailClient(props: SubmissionDetailClientProps) {

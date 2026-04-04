@@ -3,6 +3,7 @@ import { submissions } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import { canAccessSubmission } from "@/lib/auth/permissions";
+import { resolveCapabilities } from "@/lib/capabilities/cache";
 import { getResolvedSystemTimeZone } from "@/lib/system-settings";
 import { redirect, notFound } from "next/navigation";
 import { SubmissionDetailClient } from "./submission-detail-client";
@@ -57,6 +58,7 @@ export default async function SubmissionDetailPage({ params, searchParams }: { p
     redirect("/dashboard/submissions");
   }
 
+  const caps = await resolveCapabilities(session.user.role);
   const isPrivileged =
     session.user.role === "admin" ||
     session.user.role === "super_admin" ||
@@ -131,6 +133,7 @@ export default async function SubmissionDetailPage({ params, searchParams }: { p
       showRuntimeErrors={showRuntimeErrors}
       userRole={session.user.role}
       userId={session.user.id}
+      capabilities={[...caps]}
     />
   );
 }

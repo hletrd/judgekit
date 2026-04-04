@@ -59,7 +59,7 @@ export function AntiCheatMonitor({
   const sendEvent = useCallback(
     async (event: PendingEvent): Promise<boolean> => {
       try {
-        await apiFetch(`/api/v1/contests/${assignmentId}/anti-cheat`, {
+        const res = await apiFetch(`/api/v1/contests/${assignmentId}/anti-cheat`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -67,7 +67,7 @@ export function AntiCheatMonitor({
             details: event.details,
           }),
         });
-        return true;
+        return res.ok;
       } catch {
         return false;
       }

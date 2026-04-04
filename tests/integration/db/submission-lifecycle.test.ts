@@ -2,6 +2,8 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { eq, and } from "drizzle-orm";
 import {
   createTestDb,
+  hasSqliteIntegrationSupport,
+  hasSqliteIntegrationSupport,
   seedUser,
   seedProblem,
   seedTestCase,
@@ -23,7 +25,7 @@ import {
 } from "@/lib/db/schema";
 import { nanoid } from "nanoid";
 
-describe("Submission lifecycle (integration)", () => {
+describe.skipIf(!hasSqliteIntegrationSupport)("Submission lifecycle (integration)", () => {
   let ctx: TestDb;
   let userId: string;
   let problemId: string;

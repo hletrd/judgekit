@@ -1,9 +1,9 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { createTestDb, seedUser, type TestDb } from "../support";
+import { createTestDb, hasSqliteIntegrationSupport, seedUser, type TestDb } from "../support";
 import { eq } from "drizzle-orm";
 import { users } from "@/lib/db/schema";
 
-describe("Integration DB health check", () => {
+describe.skipIf(!hasSqliteIntegrationSupport)("Integration DB health check", () => {
   let ctx: TestDb;
 
   beforeEach(() => {
