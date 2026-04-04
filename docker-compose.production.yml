@@ -11,6 +11,22 @@
 # =============================================================================
 
 services:
+  # Restricted Docker socket proxy — only exposes image/build APIs.
+  # Prevents the app container from creating containers or escaping to the host
+  # even if the Node.js process is compromised.
+  docker-proxy:
+    image: tecnativa/docker-socket-proxy:latest
+    container_name: judgekit-docker-proxy
+    restart: unless-stopped
+    environment:
+      - IMAGES=1
+      - BUILD=1
+      - POST=1
+      - DELETE=1
+      - LOG_LEVEL=warning
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+
   app:
     build:
       context: .
@@ -22,7 +38,6 @@ services:
       - "127.0.0.1:3100:3000"
     volumes:
       - judgekit-data:/app/data
-      - /var/run/docker.sock:/var/run/docker.sock  # Docker CLI for admin image management
       - /compiler-workspaces:/compiler-workspaces   # Shared path for compiler sandbox volumes
     env_file:
       - .env.production
@@ -30,6 +45,9 @@ services:
       - DATABASE_PATH=/app/data/judge.db
       - HOSTNAME=0.0.0.0
       - COMPILER_WORKSPACE_DIR=/compiler-workspaces
+      - DOCKER_HOST=tcp://docker-proxy:2375
+    depends_on:
+      - docker-proxy
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "-O", "/dev/null", "http://127.0.0.1:3000/login"]
       interval: 30s
