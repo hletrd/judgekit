@@ -24,12 +24,24 @@ set -euo pipefail
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+
+# Source deployment env vars from proxmox-ops .env or .env.deploy
+for _envfile in "${SCRIPT_DIR}/../proxmox-ops/.env" "${SCRIPT_DIR}/.env.deploy"; do
+    if [[ -f "$_envfile" ]]; then
+        set -a
+        # shellcheck disable=SC1091
+        source "$_envfile"
+        set +a
+        break
+    fi
+done
+
 REMOTE_HOST="${REMOTE_HOST:?REMOTE_HOST is required (see .env)}"
 REMOTE_USER="${REMOTE_USER:?REMOTE_USER is required (see .env)}"
 REMOTE_DIR="/home/${REMOTE_USER}/judgekit"
 DOMAIN="${DOMAIN:?DOMAIN is required (see .env)}"
 APP_PORT=3100
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 # Language presets
 CORE_LANGS="cpp python jvm"
@@ -86,17 +98,6 @@ success() { echo -e "${GREEN}[OK]${NC} $*"; }
 warn()    { echo -e "${YELLOW}[WARN]${NC} $*"; }
 error()   { echo -e "${RED}[ERROR]${NC} $*" >&2; }
 die()     { error "$*"; exit 1; }
-
-# Source deployment env vars from proxmox-ops .env or .env.deploy
-for _envfile in "${SCRIPT_DIR}/../proxmox-ops/.env" "${SCRIPT_DIR}/.env.deploy"; do
-    if [[ -f "$_envfile" ]]; then
-        set -a
-        # shellcheck disable=SC1091
-        source "$_envfile"
-        set +a
-        break
-    fi
-done
 
 SSH_OPTS="-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR"
 if [[ -n "${SSH_KEY:-}" ]]; then
