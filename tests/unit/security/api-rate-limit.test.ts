@@ -1,19 +1,26 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
 
-const { getRateLimitKeyMock, isRateLimitedMock, dbMock } = vi.hoisted(() => ({
-  getRateLimitKeyMock: vi.fn(),
-  isRateLimitedMock: vi.fn(),
-  dbMock: {
+const { getRateLimitKeyMock, dbMock } = vi.hoisted(() => {
+  const txMock = {
     select: vi.fn(),
     insert: vi.fn(),
     update: vi.fn(),
-  },
-}));
+  };
+  return {
+    getRateLimitKeyMock: vi.fn(),
+    dbMock: {
+      select: vi.fn(),
+      insert: vi.fn(),
+      update: vi.fn(),
+      transaction: vi.fn(async (cb: (tx: typeof txMock) => Promise<unknown>) => cb(txMock)),
+      _tx: txMock,
+    },
+  };
+});
 
 vi.mock("@/lib/security/rate-limit", () => ({
   getRateLimitKey: getRateLimitKeyMock,
-  isRateLimited: isRateLimitedMock,
 }));
 
 vi.mock("@/lib/db", () => ({
@@ -26,24 +33,30 @@ vi.mock("nanoid", () => ({
 
 import { consumeApiRateLimit } from "@/lib/security/api-rate-limit";
 
-beforeEach(() => {
-  vi.clearAllMocks();
-  // Default: db.select returns no existing row (new request)
-  dbMock.select.mockReturnValue({
+function mockTxSelectResult(row: Record<string, unknown> | undefined) {
+  const rows = row ? [row] : [];
+  dbMock._tx.select.mockReturnValue({
     from: vi.fn(() => ({
       where: vi.fn(() => ({
-        get: vi.fn(() => undefined),
+        limit: vi.fn(() => rows),
       })),
     })),
   });
-  dbMock.insert.mockReturnValue({
+}
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  // Default: tx.select returns no existing row (new request)
+  mockTxSelectResult(undefined);
+  dbMock._tx.insert.mockReturnValue({
     values: vi.fn(() => ({ run: vi.fn() })),
   });
-  dbMock.update.mockReturnValue({
+  dbMock._tx.update.mockReturnValue({
     set: vi.fn(() => ({
       where: vi.fn(() => ({ run: vi.fn() })),
     })),
   });
+  dbMock.transaction.mockImplementation(async (cb: any) => cb(dbMock._tx));
 });
 
 function createRequest() {
@@ -56,40 +69,47 @@ function createRequest() {
 }
 
 describe("consumeApiRateLimit", () => {
-  it("returns null when the endpoint is still allowed", () => {
+  it("returns null when the endpoint is still allowed", async () => {
     getRateLimitKeyMock.mockReturnValue("api:groups:198.51.100.8");
-    isRateLimitedMock.mockReturnValueOnce(false);
 
-    expect(consumeApiRateLimit(createRequest(), "groups")).toBeNull();
+    const result = await consumeApiRateLimit(createRequest(), "groups");
+    expect(result).toBeNull();
     expect(getRateLimitKeyMock).toHaveBeenCalledWith(
       "api:groups",
       expect.any(Headers)
     );
-    // recordApiAttempt is called internally via db.insert (new key)
-    expect(dbMock.insert).toHaveBeenCalled();
+    // atomicConsumeRateLimit inserts via tx for new keys
+    expect(dbMock._tx.insert).toHaveBeenCalled();
   });
 
   it("returns a 429 response when the request is already rate limited", async () => {
     getRateLimitKeyMock.mockReturnValue("api:groups:198.51.100.8");
-    isRateLimitedMock.mockReturnValue(true);
+    // Simulate an existing entry that is blocked
+    mockTxSelectResult({
+      key: "api:groups:198.51.100.8",
+      attempts: 120,
+      windowStartedAt: Date.now(),
+      blockedUntil: Date.now() + 60000,
+      consecutiveBlocks: 1,
+      lastAttempt: Date.now(),
+    });
 
-    const response = consumeApiRateLimit(createRequest(), "groups");
+    const response = await consumeApiRateLimit(createRequest(), "groups");
 
     expect(response?.status).toBe(429);
     expect(response?.headers.get("Retry-After")).toBe("60");
     await expect(response?.json()).resolves.toEqual({ error: "rateLimited" });
   });
 
-  it("does not double-count the same request key", () => {
+  it("does not double-count the same request key", async () => {
     getRateLimitKeyMock.mockReturnValue("api:groups:198.51.100.8");
-    isRateLimitedMock.mockReturnValue(false);
     const request = createRequest();
 
-    consumeApiRateLimit(request, "groups");
+    await consumeApiRateLimit(request, "groups");
     // Second call with same request object: key already consumed, returns null without recording
-    consumeApiRateLimit(request, "groups");
+    await consumeApiRateLimit(request, "groups");
 
-    // recordApiAttempt is only called once (dedup via WeakMap)
-    expect(dbMock.insert).toHaveBeenCalledTimes(1);
+    // transaction is only called once (dedup via WeakMap)
+    expect(dbMock.transaction).toHaveBeenCalledTimes(1);
   });
 });
