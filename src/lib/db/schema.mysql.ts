@@ -128,6 +128,28 @@ export const auditEvents = mysqlTable(
   ]
 );
 
+export const apiKeys = mysqlTable("api_keys", {
+  id: varchar("id", { length: 36 })
+    .primaryKey()
+    .$defaultFn(() => nanoid()),
+  name: varchar("name", { length: 255 }).notNull(),
+  keyPlain: text("key_plain").notNull(),
+  keyPrefix: varchar("key_prefix", { length: 255 }).notNull(),
+  createdById: varchar("created_by_id", { length: 36 })
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  role: varchar("role", { length: 255 }).notNull().default("admin"),
+  lastUsedAt: timestamp("last_used_at"),
+  expiresAt: timestamp("expires_at"),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at")
+    .notNull()
+    .$defaultFn(() => new Date(Date.now())),
+  updatedAt: timestamp("updated_at")
+    .notNull()
+    .$defaultFn(() => new Date(Date.now())),
+});
+
 export const groups = mysqlTable("groups", {
   id: varchar("id", { length: 36 })
     .primaryKey()
@@ -258,6 +280,7 @@ export const assignments = mysqlTable(
     accessCode: varchar("access_code", { length: 255 }),
     freezeLeaderboardAt: timestamp("freeze_leaderboard_at"),
     enableAntiCheat: boolean("enable_anti_cheat").notNull().default(false),
+    anonymousLeaderboard: boolean("anonymous_leaderboard").default(false),
     createdAt: timestamp("created_at")
       .notNull()
       .$defaultFn(() => new Date(Date.now())),
@@ -439,10 +462,14 @@ export const systemSettings = mysqlTable("system_settings", {
   maxSseConnectionsPerUser: int("max_sse_connections_per_user"),
   ssePollIntervalMs: int("sse_poll_interval_ms"),
   sseTimeoutMs: int("sse_timeout_ms"),
+  // Compiler
+  compilerTimeLimitMs: int("compiler_time_limit_ms"),
   // File Uploads
   uploadMaxImageSizeBytes: int("upload_max_image_size_bytes"),
   uploadMaxFileSizeBytes: int("upload_max_file_size_bytes"),
   uploadMaxImageDimension: int("upload_max_image_dimension"),
+  // Allowed Hosts (JSON array of domain strings)
+  allowedHosts: text("allowed_hosts"),
   updatedAt: timestamp("updated_at")
     .notNull()
     .$defaultFn(() => new Date(Date.now())),

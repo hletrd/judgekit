@@ -14,37 +14,43 @@ import { nanoid } from "nanoid";
 import { generateSubmissionId } from "@/lib/submissions/id";
 import type { ExamMode, ScoringModel } from "@/types";
 
-export const users = pgTable("users", {
-  id: text("id")
-    .primaryKey()
-    .$defaultFn(() => nanoid()),
-  username: text("username").unique().notNull(),
-  email: text("email").unique(),
-  name: text("name").notNull(),
-  className: text("class_name"),
-  passwordHash: text("password_hash"),
-  role: text("role").notNull().default("student"),
-  isActive: boolean("is_active").default(true),
-  mustChangePassword: boolean("must_change_password").default(false),
-  tokenInvalidatedAt: timestamp("token_invalidated_at", { withTimezone: true }),
-  emailVerified: timestamp("email_verified", { withTimezone: true }),
-  image: text("image"),
-  preferredLanguage: text("preferred_language"),
-  preferredTheme: text("preferred_theme"),
-  editorTheme: text("editor_theme"),
-  editorFontSize: text("editor_font_size"),
-  editorFontFamily: text("editor_font_family"),
-  lectureMode: text("lecture_mode"),
-  lectureFontScale: text("lecture_font_scale"),
-  lectureColorScheme: text("lecture_color_scheme"),
-  createdAt: timestamp("created_at", { withTimezone: true })
-    .notNull()
-    .$defaultFn(() => new Date(Date.now())),
-  // NOTE: $defaultFn only fires on INSERT. Use withUpdatedAt() from @/lib/db/helpers for every UPDATE.
-  updatedAt: timestamp("updated_at", { withTimezone: true })
-    .notNull()
-    .$defaultFn(() => new Date(Date.now())),
-});
+export const users = pgTable(
+  "users",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => nanoid()),
+    username: text("username").unique().notNull(),
+    email: text("email").unique(),
+    name: text("name").notNull(),
+    className: text("class_name"),
+    passwordHash: text("password_hash"),
+    role: text("role").notNull().default("student"),
+    isActive: boolean("is_active").default(true),
+    mustChangePassword: boolean("must_change_password").default(false),
+    tokenInvalidatedAt: timestamp("token_invalidated_at", { withTimezone: true }),
+    emailVerified: timestamp("email_verified", { withTimezone: true }),
+    image: text("image"),
+    preferredLanguage: text("preferred_language"),
+    preferredTheme: text("preferred_theme"),
+    editorTheme: text("editor_theme"),
+    editorFontSize: text("editor_font_size"),
+    editorFontFamily: text("editor_font_family"),
+    lectureMode: text("lecture_mode"),
+    lectureFontScale: text("lecture_font_scale"),
+    lectureColorScheme: text("lecture_color_scheme"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .$defaultFn(() => new Date(Date.now())),
+    // NOTE: $defaultFn only fires on INSERT. Use withUpdatedAt() from @/lib/db/helpers for every UPDATE.
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .$defaultFn(() => new Date(Date.now())),
+  },
+  (table) => [
+    index("users_created_at_idx").on(table.createdAt),
+  ]
+);
 
 export const sessions = pgTable("sessions", {
   sessionToken: text("session_token").primaryKey(),
@@ -127,24 +133,52 @@ export const auditEvents = pgTable(
   ]
 );
 
-export const groups = pgTable("groups", {
+export const apiKeys = pgTable("api_keys", {
   id: text("id")
     .primaryKey()
     .$defaultFn(() => nanoid()),
   name: text("name").notNull(),
-  description: text("description"),
-  instructorId: text("instructor_id").references(() => users.id, {
-    onDelete: "set null",
-  }),
-  isArchived: boolean("is_archived").default(false),
+  keyPlain: text("key_plain").notNull(),
+  keyPrefix: text("key_prefix").notNull(),
+  createdById: text("created_by_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  role: text("role").notNull().default("admin"),
+  lastUsedAt: timestamp("last_used_at", { withTimezone: true }),
+  expiresAt: timestamp("expires_at", { withTimezone: true }),
+  isActive: boolean("is_active").notNull().default(true),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .$defaultFn(() => new Date(Date.now())),
-  // NOTE: $defaultFn only fires on INSERT. Use withUpdatedAt() from @/lib/db/helpers for every UPDATE.
   updatedAt: timestamp("updated_at", { withTimezone: true })
     .notNull()
     .$defaultFn(() => new Date(Date.now())),
 });
+
+export const groups = pgTable(
+  "groups",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => nanoid()),
+    name: text("name").notNull(),
+    description: text("description"),
+    instructorId: text("instructor_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    isArchived: boolean("is_archived").default(false),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .$defaultFn(() => new Date(Date.now())),
+    // NOTE: $defaultFn only fires on INSERT. Use withUpdatedAt() from @/lib/db/helpers for every UPDATE.
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .$defaultFn(() => new Date(Date.now())),
+  },
+  (table) => [
+    index("groups_instructor_id_idx").on(table.instructorId),
+  ]
+);
 
 export const enrollments = pgTable(
   "enrollments",
@@ -169,35 +203,41 @@ export const enrollments = pgTable(
   ]
 );
 
-export const problems = pgTable("problems", {
-  id: text("id")
-    .primaryKey()
-    .$defaultFn(() => nanoid()),
-  sequenceNumber: integer("sequence_number"),
-  title: text("title").notNull(),
-  description: text("description"),
-  timeLimitMs: integer("time_limit_ms").default(2000),
-  memoryLimitMb: integer("memory_limit_mb").default(256),
-  visibility: text("visibility").default("private"),
-  showCompileOutput: boolean("show_compile_output").notNull().default(true),
-  showDetailedResults: boolean("show_detailed_results").notNull().default(true),
-  showRuntimeErrors: boolean("show_runtime_errors").notNull().default(true),
-  allowAiAssistant: boolean("allow_ai_assistant").notNull().default(true),
-  comparisonMode: text("comparison_mode").notNull().default("exact"),
-  floatAbsoluteError: doublePrecision("float_absolute_error"),
-  floatRelativeError: doublePrecision("float_relative_error"),
-  difficulty: doublePrecision("difficulty"),
-  authorId: text("author_id").references(() => users.id, {
-    onDelete: "set null",
-  }),
-  createdAt: timestamp("created_at", { withTimezone: true })
-    .notNull()
-    .$defaultFn(() => new Date(Date.now())),
-  // NOTE: $defaultFn only fires on INSERT. Use withUpdatedAt() from @/lib/db/helpers for every UPDATE.
-  updatedAt: timestamp("updated_at", { withTimezone: true })
-    .notNull()
-    .$defaultFn(() => new Date(Date.now())),
-});
+export const problems = pgTable(
+  "problems",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => nanoid()),
+    sequenceNumber: integer("sequence_number"),
+    title: text("title").notNull(),
+    description: text("description"),
+    timeLimitMs: integer("time_limit_ms").default(2000),
+    memoryLimitMb: integer("memory_limit_mb").default(256),
+    visibility: text("visibility").default("private"),
+    showCompileOutput: boolean("show_compile_output").notNull().default(true),
+    showDetailedResults: boolean("show_detailed_results").notNull().default(true),
+    showRuntimeErrors: boolean("show_runtime_errors").notNull().default(true),
+    allowAiAssistant: boolean("allow_ai_assistant").notNull().default(true),
+    comparisonMode: text("comparison_mode").notNull().default("exact"),
+    floatAbsoluteError: doublePrecision("float_absolute_error"),
+    floatRelativeError: doublePrecision("float_relative_error"),
+    difficulty: doublePrecision("difficulty"),
+    authorId: text("author_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .$defaultFn(() => new Date(Date.now())),
+    // NOTE: $defaultFn only fires on INSERT. Use withUpdatedAt() from @/lib/db/helpers for every UPDATE.
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .$defaultFn(() => new Date(Date.now())),
+  },
+  (table) => [
+    index("problems_created_at_idx").on(table.createdAt),
+  ]
+);
 
 export const testCases = pgTable(
   "test_cases",
@@ -257,6 +297,7 @@ export const assignments = pgTable(
     accessCode: text("access_code"),
     freezeLeaderboardAt: timestamp("freeze_leaderboard_at", { withTimezone: true }),
     enableAntiCheat: boolean("enable_anti_cheat").notNull().default(false),
+    anonymousLeaderboard: boolean("anonymous_leaderboard").default(false),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .$defaultFn(() => new Date(Date.now())),
@@ -383,6 +424,7 @@ export const submissions = pgTable(
     index("submissions_problem_idx").on(table.problemId),
     index("submissions_assignment_idx").on(table.assignmentId),
     index("submissions_judge_worker_idx").on(table.judgeWorkerId),
+    index("submissions_submitted_at_idx").on(table.submittedAt),
   ]
 );
 
@@ -438,10 +480,14 @@ export const systemSettings = pgTable("system_settings", {
   maxSseConnectionsPerUser: integer("max_sse_connections_per_user"),
   ssePollIntervalMs: integer("sse_poll_interval_ms"),
   sseTimeoutMs: integer("sse_timeout_ms"),
+  // Compiler
+  compilerTimeLimitMs: integer("compiler_time_limit_ms"),
   // File Uploads
   uploadMaxImageSizeBytes: integer("upload_max_image_size_bytes"),
   uploadMaxFileSizeBytes: integer("upload_max_file_size_bytes"),
   uploadMaxImageDimension: integer("upload_max_image_dimension"),
+  // Allowed Hosts (JSON array of domain strings)
+  allowedHosts: text("allowed_hosts"),
   updatedAt: timestamp("updated_at", { withTimezone: true })
     .notNull()
     .$defaultFn(() => new Date(Date.now())),

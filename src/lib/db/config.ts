@@ -1,90 +1,54 @@
 /**
  * Database dialect configuration.
- *
- * Supported dialects:
- *   - sqlite (default) — file-based, zero-config
- *   - postgresql — requires DATABASE_URL
- *   - mysql — requires DATABASE_URL
- *
- * Set via DB_DIALECT environment variable.
+ * PostgreSQL is the only supported dialect.
  */
 
-export type DbDialect = "sqlite" | "postgresql" | "mysql";
-
-const VALID_DIALECTS = new Set<DbDialect>(["sqlite", "postgresql", "mysql"]);
-
-let cachedDialect: DbDialect | null = null;
+export type DbDialect = "postgresql";
 
 /**
- * Returns the configured database dialect.
- * Defaults to "sqlite" if DB_DIALECT is not set.
+ * Returns the configured database dialect. Always "postgresql".
  */
 export function getDialect(): DbDialect {
-  if (cachedDialect) return cachedDialect;
-
-  const raw = process.env.DB_DIALECT?.trim().toLowerCase() ?? "sqlite";
-  if (!VALID_DIALECTS.has(raw as DbDialect)) {
-    throw new Error(
-      `Invalid DB_DIALECT "${raw}". Must be one of: ${[...VALID_DIALECTS].join(", ")}`
-    );
-  }
-  cachedDialect = raw as DbDialect;
-  return cachedDialect;
+  return "postgresql";
 }
 
 /**
- * Returns true if the current dialect is SQLite.
+ * @deprecated Always returns false. Will be removed.
  */
 export function isSqlite(): boolean {
-  return getDialect() === "sqlite";
+  return false;
 }
 
 /**
- * Returns true if the current dialect is PostgreSQL.
+ * Returns true — PostgreSQL is the only supported dialect.
  */
 export function isPostgresql(): boolean {
-  return getDialect() === "postgresql";
+  return true;
 }
 
 /**
- * Returns true if the current dialect is MySQL.
+ * @deprecated Always returns false. Will be removed.
  */
 export function isMysql(): boolean {
-  return getDialect() === "mysql";
+  return false;
 }
 
-export type ConnectionConfig =
-  | { dialect: "sqlite"; path: string }
-  | { dialect: "postgresql"; url: string }
-  | { dialect: "mysql"; url: string };
+export type ConnectionConfig = { dialect: "postgresql"; url: string };
 
 /**
- * Returns the connection configuration for the current dialect.
+ * Returns the connection configuration.
  */
 export function getConnectionConfig(): ConnectionConfig {
-  const dialect = getDialect();
-
-  switch (dialect) {
-    case "sqlite": {
-      const path = process.env.DATABASE_PATH ?? "data/judge.db";
-      return { dialect, path };
-    }
-    case "postgresql":
-    case "mysql": {
-      const url = process.env.DATABASE_URL;
-      if (!url) {
-        throw new Error(
-          `DATABASE_URL is required when DB_DIALECT is "${dialect}"`
-        );
-      }
-      return { dialect, url };
-    }
+  const url = process.env.DATABASE_URL;
+  if (!url) {
+    throw new Error("DATABASE_URL is required");
   }
+  return { dialect: "postgresql", url };
 }
 
 /**
  * Reset cached dialect (for testing only).
  */
 export function _resetDialectCache(): void {
-  cachedDialect = null;
+  // no-op
 }

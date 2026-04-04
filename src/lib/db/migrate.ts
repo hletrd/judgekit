@@ -1,6 +1,6 @@
-import { migrate } from "drizzle-orm/better-sqlite3/migrator";
+import { migrate } from "drizzle-orm/node-postgres/migrator";
 import { db } from "./index";
 
-console.log("Running migrations...");
-migrate(db, { migrationsFolder: "./drizzle" });
+console.log("Running PostgreSQL migrations...");
+await migrate(db as any, { migrationsFolder: "./drizzle/pg" });
 console.log("Migrations complete.");
