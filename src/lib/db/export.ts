@@ -97,8 +97,11 @@ function normalizeValue(val: unknown, _colName: string): unknown {
   return val;
 }
 
+const EXPORT_CHUNK_SIZE = 1000;
+
 /**
  * Export the entire database to a portable JSON format.
+ * Uses cursor-based pagination to avoid loading entire tables into memory.
  */
 export async function exportDatabase(): Promise<JudgeKitExport> {
   const result: JudgeKitExport = {
@@ -110,22 +113,38 @@ export async function exportDatabase(): Promise<JudgeKitExport> {
   };
 
   for (const { name, table } of TABLE_ORDER) {
-    const rows = await db.select().from(table);
+    let columns: string[] | null = null;
+    const allExportedRows: unknown[][] = [];
+    let offset = 0;
 
-    if (rows.length === 0) {
-      result.tables[name] = { columns: [], rows: [], rowCount: 0 };
-      continue;
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      const chunk = await db
+        .select()
+        .from(table)
+        .limit(EXPORT_CHUNK_SIZE)
+        .offset(offset);
+
+      if (chunk.length === 0) break;
+
+      if (!columns) {
+        columns = Object.keys(chunk[0] as object);
+      }
+
+      for (const row of chunk) {
+        allExportedRows.push(
+          columns.map((col) => normalizeValue((row as any)[col], col))
+        );
+      }
+
+      if (chunk.length < EXPORT_CHUNK_SIZE) break;
+      offset += EXPORT_CHUNK_SIZE;
     }
 
-    const columns = Object.keys(rows[0] as object);
-    const exportedRows = rows.map((row: any) =>
-      columns.map((col) => normalizeValue(row[col], col))
-    );
-
     result.tables[name] = {
-      columns,
-      rows: exportedRows,
-      rowCount: exportedRows.length,
+      columns: columns ?? [],
+      rows: allExportedRows,
+      rowCount: allExportedRows.length,
     };
   }
 

@@ -5,7 +5,7 @@
  * handling type conversions between dialects.
  */
 
-import { db, sqlite, activeDialect, pool } from "./index";
+import { db, pool } from "./index";
 import * as schema from "./schema";
 import { validateExport, getReversedTableOrder, type JudgeKitExport } from "./export";
 import { rawQueryOne } from "./queries";
@@ -92,41 +92,24 @@ export interface ImportResult {
 function convertValue(val: unknown, colName: string): unknown {
   if (val === null || val === undefined) return null;
 
-  // Timestamp columns: ISO string → Date (PG/MySQL) or epoch integer (SQLite)
+  // Timestamp columns: ISO string → Date
   if (TIMESTAMP_COLUMNS.has(colName) && typeof val === "string") {
     const date = new Date(val);
     if (isNaN(date.getTime())) return val;
-    if (activeDialect === "sqlite") {
-      // SQLite stores timestamps as epoch seconds or milliseconds depending on column
-      return date;
-    }
     return date;
   }
 
-  // Boolean columns: normalize to dialect
+  // Boolean columns
   if (BOOLEAN_COLUMNS.has(colName)) {
-    if (activeDialect === "sqlite") {
-      return val ? 1 : 0;
-    }
     return Boolean(val);
   }
 
-  // JSON columns: ensure proper format
+  // JSON columns: parse string to native object for PostgreSQL jsonb
   if (JSON_COLUMNS.has(colName)) {
     if (typeof val === "string") {
-      try {
-        // If it's already a string, parse it for PG/MySQL native JSON
-        const parsed = JSON.parse(val);
-        if (activeDialect === "sqlite") return val; // keep as string
-        return parsed;
-      } catch {
-        return val;
-      }
+      try { return JSON.parse(val); } catch { return val; }
     }
-    if (typeof val === "object") {
-      if (activeDialect === "sqlite") return JSON.stringify(val);
-      return val;
-    }
+    return val;
   }
 
   return val;
@@ -233,31 +216,11 @@ export async function importDatabase(data: JudgeKitExport): Promise<ImportResult
 }
 
 async function disableForeignKeys(): Promise<void> {
-  switch (activeDialect) {
-    case "sqlite":
-      if (sqlite) sqlite.pragma("foreign_keys = OFF");
-      break;
-    case "postgresql":
-      if (pool) await pool.query("SET CONSTRAINTS ALL DEFERRED");
-      break;
-    case "mysql":
-      if (pool) await pool.query("SET FOREIGN_KEY_CHECKS = 0");
-      break;
-  }
+  if (pool) await pool.query("SET CONSTRAINTS ALL DEFERRED");
 }
 
 async function enableForeignKeys(): Promise<void> {
-  switch (activeDialect) {
-    case "sqlite":
-      if (sqlite) sqlite.pragma("foreign_keys = ON");
-      break;
-    case "postgresql":
-      if (pool) await pool.query("SET CONSTRAINTS ALL IMMEDIATE");
-      break;
-    case "mysql":
-      if (pool) await pool.query("SET FOREIGN_KEY_CHECKS = 1");
-      break;
-  }
+  if (pool) await pool.query("SET CONSTRAINTS ALL IMMEDIATE");
 }
 
 /**
