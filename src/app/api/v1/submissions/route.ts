@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { db, sqlite } from "@/lib/db";
+import { db, sqlite, execTransaction } from "@/lib/db";
 import { examSessions, languageConfigs, problems, submissions } from "@/lib/db/schema";
 import { isJudgeLanguage } from "@/lib/judge/languages";
 import { and, desc, eq, lt, sql } from "drizzle-orm";
@@ -209,7 +209,7 @@ export const POST = createApiHandler({
     const oneMinuteAgo = new Date(Date.now() - 60_000);
 
     type RateLimitError = { error: string; status: number; retryAfter: string };
-    const txResult = sqlite.transaction(() => {
+    execTransaction(() => {
       // User-scoped counts (uses submissions_user_status_submitted_idx)
       const userCounts = sqlite.prepare(`
         SELECT
@@ -263,7 +263,7 @@ export const POST = createApiHandler({
       }).run();
 
       return null; // success
-    })();
+    });
 
     if (txResult) {
       return apiError(txResult.error, txResult.status, undefined, {

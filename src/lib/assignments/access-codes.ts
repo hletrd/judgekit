@@ -1,6 +1,6 @@
 import { randomBytes } from "crypto";
 import { nanoid } from "nanoid";
-import { db, sqlite } from "@/lib/db";
+import { db, sqlite, execTransaction } from "@/lib/db";
 import { assignments, contestAccessTokens, enrollments } from "@/lib/db/schema";
 import { and, eq } from "drizzle-orm";
 
@@ -103,7 +103,7 @@ export function redeemAccessCode(
   }
 
   // Transaction: check + create token + auto-enroll (atomic to prevent TOCTOU race)
-  const execute = sqlite.transaction(() => {
+  execTransaction(() => {
     // Check if already redeemed (inside transaction to prevent race condition)
     const existing = db
       .select({ id: contestAccessTokens.id })

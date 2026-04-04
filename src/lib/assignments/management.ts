@@ -1,6 +1,6 @@
 import { and, eq, or, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
-import { db, sqlite } from "@/lib/db";
+import { db, sqlite, execTransaction } from "@/lib/db";
 import {
   assignmentProblems,
   assignments,
@@ -101,7 +101,7 @@ export function createAssignmentWithProblems(
   const id = nanoid();
   const now = new Date();
 
-  const execute = sqlite.transaction(() => {
+  execTransaction(() => {
     db.insert(assignments)
       .values({
         id,
@@ -125,9 +125,6 @@ export function createAssignmentWithProblems(
     db.insert(assignmentProblems).values(mapAssignmentProblems(id, input.problems)).run();
     syncGroupAccessRows(groupId);
   });
-
-  execute();
-
   return id;
 }
 
@@ -137,7 +134,7 @@ export function updateAssignmentWithProblems(
 ) {
   const now = new Date();
 
-  const execute = sqlite.transaction(() => {
+  execTransaction(() => {
     const assignment = db
       .select({
         groupId: assignments.groupId,
@@ -206,12 +203,10 @@ export function updateAssignmentWithProblems(
 
     syncGroupAccessRows(assignment.groupId);
   });
-
-  execute();
 }
 
 export function deleteAssignmentWithProblems(assignmentId: string) {
-  const execute = sqlite.transaction(() => {
+  execTransaction(() => {
     const assignment = db
       .select({ groupId: assignments.groupId })
       .from(assignments)
@@ -236,6 +231,4 @@ export function deleteAssignmentWithProblems(assignmentId: string) {
     db.delete(assignments).where(eq(assignments.id, assignmentId)).run();
     syncGroupAccessRows(assignment.groupId);
   });
-
-  execute();
 }

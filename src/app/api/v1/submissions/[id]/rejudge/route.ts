@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { db, sqlite } from "@/lib/db";
+import { db, sqlite, execTransaction } from "@/lib/db";
 import { submissions, submissionResults } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { forbidden, notFound, isInstructor } from "@/lib/api/auth";
@@ -34,7 +34,7 @@ export const POST = createApiHandler({
     if (!hasAccess) return forbidden();
 
     // Delete existing test case results and reset submission (atomic transaction)
-    sqlite.transaction(() => {
+    execTransaction(() => {
       db.delete(submissionResults).where(eq(submissionResults.submissionId, id)).run();
 
       db.update(submissions)
@@ -50,7 +50,7 @@ export const POST = createApiHandler({
         })
         .where(eq(submissions.id, id))
         .run();
-    })();
+    });
 
     const updated = await db.query.submissions.findFirst({
       where: eq(submissions.id, id),

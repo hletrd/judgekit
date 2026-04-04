@@ -4,7 +4,7 @@ import { z } from "zod";
 import { createApiHandler } from "@/lib/api/handler";
 import { apiSuccess, apiError } from "@/lib/api/responses";
 import { getContestAssignment, canManageContest } from "@/lib/assignments/contests";
-import { db, sqlite } from "@/lib/db";
+import { db, sqlite, execTransaction } from "@/lib/db";
 import { users, enrollments, contestAccessTokens } from "@/lib/db/schema";
 import { and, eq, inArray, like, or, sql } from "drizzle-orm";
 
@@ -92,7 +92,7 @@ export const POST = createApiHandler({
 
     if (!targetUser) return apiError("userNotFound", 404);
 
-    const execute = sqlite.transaction(() => {
+    execTransaction(() => {
       // Create contest access token if not exists
       const existingToken = db
         .select({ id: contestAccessTokens.id })
@@ -140,9 +140,6 @@ export const POST = createApiHandler({
           .run();
       }
     });
-
-    execute();
-
     return apiSuccess({
       userId: targetUser.id,
       username: targetUser.username,

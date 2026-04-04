@@ -1,4 +1,4 @@
-import { sqlite } from "@/lib/db";
+import { sqlite, execTransaction } from "@/lib/db";
 import { logger } from "@/lib/logger";
 import { LRUCache } from "lru-cache";
 import type { ScoringModel } from "@/types";
@@ -43,7 +43,15 @@ export type LeaderboardEntry = {
   problems: LeaderboardProblemResult[];
 };
 
-const rankingCache = new LRUCache<string, any>({ max: 50, ttl: 15_000 });
+/** Cache entries live for 30s but are considered stale after 15s. */
+const CACHE_TTL_MS = 30_000;
+const STALE_AFTER_MS = 15_000;
+
+type CacheEntry = { data: any; createdAt: number };
+const rankingCache = new LRUCache<string, CacheEntry>({ max: 50, ttl: CACHE_TTL_MS });
+
+/** Tracks which cache keys currently have a background refresh in progress. */
+const _refreshingKeys = new Set<string>();
 
 type RawLeaderboardRow = {
   userId: string;
@@ -78,8 +86,44 @@ export function computeContestRanking(assignmentId: string, cutoffSec?: number):
 } {
   const cacheKey = `${assignmentId}:${cutoffSec ?? 'live'}`;
   const cached = rankingCache.get(cacheKey);
-  if (cached) return cached;
+  if (cached) {
+    const age = Date.now() - cached.createdAt;
+    if (age <= STALE_AFTER_MS) {
+      // Fresh — return immediately
+      return cached.data;
+    }
+    // Stale but still within TTL — return stale data and trigger ONE background refresh
+    if (!_refreshingKeys.has(cacheKey)) {
+      _refreshingKeys.add(cacheKey);
+      // Use queueMicrotask so the refresh runs after this synchronous function returns
+      queueMicrotask(() => {
+        try {
+          const fresh = _computeContestRankingInner(assignmentId, cutoffSec);
+          rankingCache.set(cacheKey, { data: fresh, createdAt: Date.now() });
+        } catch {
+          // On error the stale entry remains in cache; next request will retry
+        } finally {
+          _refreshingKeys.delete(cacheKey);
+        }
+      });
+    }
+    return cached.data;
+  }
 
+  // Cache miss — compute fresh and populate cache
+  const result = _computeContestRankingInner(assignmentId, cutoffSec);
+  rankingCache.set(cacheKey, { data: result, createdAt: Date.now() });
+  return result;
+}
+
+/**
+ * Inner computation extracted so it can be called from both the public API
+ * and the background stale-while-revalidate refresh path.
+ */
+function _computeContestRankingInner(assignmentId: string, cutoffSec?: number): {
+  scoringModel: ScoringModel;
+  entries: LeaderboardEntry[];
+} {
   // Get assignment metadata, scoring rows, and problem list in a single
   // read transaction to ensure a consistent snapshot across all three queries.
   function buildScoringQuery(withCutoff: boolean): string {
@@ -133,7 +177,7 @@ export function computeContestRanking(assignmentId: string, cutoffSec?: number):
     `;
   }
 
-  const { meta, rows, assignmentProblemRows } = sqlite.transaction(() => {
+  const { meta, rows, assignmentProblemRows } = execTransaction(() => {
     const meta = sqlite
       .prepare<[string], AssignmentMetaRow>(
         `SELECT scoring_model AS scoringModel, starts_at AS startsAt, deadline, late_penalty AS latePenalty, exam_mode AS examMode
@@ -164,7 +208,7 @@ export function computeContestRanking(assignmentId: string, cutoffSec?: number):
       .all(assignmentId);
 
     return { meta, rows, assignmentProblemRows };
-  })();
+  });
 
   if (!meta) {
     return { scoringModel: "ioi", entries: [] };
@@ -319,7 +363,5 @@ export function computeContestRanking(assignmentId: string, cutoffSec?: number):
     entries[i].rank = currentRank;
   }
 
-  const result = { scoringModel, entries };
-  rankingCache.set(cacheKey, result);
-  return result;
+  return { scoringModel, entries };
 }

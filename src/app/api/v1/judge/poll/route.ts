@@ -5,7 +5,7 @@
 // directory would break production without a coordinated redeploy.
 import { NextRequest } from "next/server";
 import { apiSuccess, apiError } from "@/lib/api/responses";
-import { db, sqlite } from "@/lib/db";
+import { db, sqlite, execTransaction } from "@/lib/db";
 import { submissions, submissionResults } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 import { recordAuditEvent } from "@/lib/audit/events";
@@ -97,7 +97,7 @@ export async function POST(request: NextRequest) {
     const { score, maxExecutionTimeMs, maxMemoryUsedKb } = computeFinalJudgeMetrics(results);
 
     try {
-      sqlite.transaction(() => {
+      execTransaction(() => {
         const finalResult = db.update(submissions).set({
           status,
           judgeClaimToken: null,
@@ -121,7 +121,7 @@ export async function POST(request: NextRequest) {
         if (rows.length > 0) {
           db.insert(submissionResults).values(rows).run();
         }
-      })();
+      });
     } catch (txError) {
       if (txError instanceof Error && txError.message === "claim_mismatch") {
         return apiError("invalidJudgeClaim", 403);

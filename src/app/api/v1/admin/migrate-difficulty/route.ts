@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { db, sqlite } from "@/lib/db";
+import { db, sqlite, execTransaction } from "@/lib/db";
 import { problems, tags, problemTags } from "@/lib/db/schema";
 import { createApiHandler, isAdmin } from "@/lib/api/handler";
 import { forbidden } from "@/lib/api/auth";
@@ -15,7 +15,7 @@ export const POST = createApiHandler({
   handler: async (_req: NextRequest, { user }) => {
     if (!isAdmin(user.role)) return forbidden();
 
-    const result = sqlite.transaction(() => {
+    execTransaction(() => {
       const log: string[] = [];
 
       // ── Step 1: Delete specific problems ──
@@ -125,7 +125,7 @@ export const POST = createApiHandler({
       }
 
       return { operations: log.length, log };
-    })();
+    });
 
     return apiSuccess(result);
   },

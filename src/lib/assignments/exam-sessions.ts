@@ -1,4 +1,4 @@
-import { db, sqlite } from "@/lib/db";
+import { db, sqlite, execTransaction } from "@/lib/db";
 import { assignments, examSessions, users } from "@/lib/db/schema";
 import { and, eq, asc } from "drizzle-orm";
 import { nanoid } from "nanoid";
@@ -85,7 +85,7 @@ export async function startExamSession(
   const nowSec = Math.floor(startedAt.getTime() / 1000);
   const personalDeadlineSec = Math.floor(personalDeadline.getTime() / 1000);
 
-  const insertAndSelect = sqlite.transaction(() => {
+  execTransaction(() => {
     const result = sqlite
       .prepare(
         `INSERT OR IGNORE INTO exam_sessions (id, assignment_id, user_id, started_at, personal_deadline, ip_address)

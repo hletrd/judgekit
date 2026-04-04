@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import { nanoid } from "nanoid";
-import { db, sqlite } from "@/lib/db";
+import { db, sqlite, execTransaction } from "@/lib/db";
 import { problems, testCases, tags, problemTags } from "@/lib/db/schema";
 import type { ProblemMutationInput } from "@/lib/validators/problem-management";
 import { sanitizeHtml } from "@/lib/security/sanitize-html";
@@ -56,8 +56,7 @@ export function createProblemWithTestCases(input: ProblemMutationInput, authorId
   const id = nanoid();
   const now = new Date();
 
-  sqlite.exec("BEGIN IMMEDIATE");
-  try {
+  execTransaction(() => {
     db.insert(problems)
       .values({
         id,
@@ -91,11 +90,7 @@ export function createProblemWithTestCases(input: ProblemMutationInput, authorId
       syncProblemTags(id, tagIds);
     }
 
-    sqlite.exec("COMMIT");
-  } catch (e) {
-    sqlite.exec("ROLLBACK");
-    throw e;
-  }
+  });
 
   return id;
 }
@@ -103,8 +98,7 @@ export function createProblemWithTestCases(input: ProblemMutationInput, authorId
 export function updateProblemWithTestCases(problemId: string, input: ProblemMutationInput, actorId?: string) {
   const now = new Date();
 
-  sqlite.exec("BEGIN IMMEDIATE");
-  try {
+  execTransaction(() => {
     db.update(problems)
       .set({
         sequenceNumber: input.sequenceNumber ?? null,
@@ -136,9 +130,5 @@ export function updateProblemWithTestCases(problemId: string, input: ProblemMuta
     const tagIds = resolveTagIds(input.tags, actorId ?? "");
     syncProblemTags(problemId, tagIds);
 
-    sqlite.exec("COMMIT");
-  } catch (e) {
-    sqlite.exec("ROLLBACK");
-    throw e;
-  }
+  });
 }

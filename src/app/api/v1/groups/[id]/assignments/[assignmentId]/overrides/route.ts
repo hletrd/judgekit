@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import { apiSuccess, apiError } from "@/lib/api/responses";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
-import { db, sqlite } from "@/lib/db";
+import { db, sqlite, execTransaction } from "@/lib/db";
 import { assignmentProblems, assignments, enrollments, scoreOverrides } from "@/lib/db/schema";
 import { recordAuditEvent } from "@/lib/audit/events";
 import { canManageGroupResourcesAsync } from "@/lib/assignments/management";
@@ -114,7 +114,7 @@ export async function POST(
     }
 
     // Upsert: delete existing then insert (atomic transaction)
-    sqlite.transaction(() => {
+    execTransaction(() => {
       db.delete(scoreOverrides)
         .where(
           and(
@@ -136,7 +136,7 @@ export async function POST(
           createdAt: new Date(),
         })
         .run();
-    })();
+    });
 
     recordAuditEvent({
       actorId: user.id,

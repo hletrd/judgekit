@@ -1,6 +1,6 @@
 import { eq, inArray, and } from "drizzle-orm";
 import { nanoid } from "nanoid";
-import { db, sqlite } from "@/lib/db";
+import { db, sqlite, execTransaction } from "@/lib/db";
 import {
   problemSets,
   problemSetProblems,
@@ -82,7 +82,7 @@ export function createProblemSet(input: ProblemSetMutationInput, createdBy: stri
   const id = nanoid();
   const now = new Date();
 
-  const execute = sqlite.transaction(() => {
+  execTransaction(() => {
     db.insert(problemSets)
       .values({
         id,
@@ -100,15 +100,13 @@ export function createProblemSet(input: ProblemSetMutationInput, createdBy: stri
         .run();
     }
   });
-
-  execute();
   return id;
 }
 
 export function updateProblemSet(problemSetId: string, input: ProblemSetMutationInput) {
   const now = new Date();
 
-  const execute = sqlite.transaction(() => {
+  execTransaction(() => {
     db.update(problemSets)
       .set({
         name: input.name,
@@ -140,12 +138,10 @@ export function updateProblemSet(problemSetId: string, input: ProblemSetMutation
       syncGroupAccessRows(groupId);
     }
   });
-
-  execute();
 }
 
 export function deleteProblemSet(problemSetId: string) {
-  const execute = sqlite.transaction(() => {
+  execTransaction(() => {
     // Find affected groups before deleting
     const affectedGroups = db
       .select({ groupId: problemSetGroupAccess.groupId })
@@ -168,14 +164,12 @@ export function deleteProblemSet(problemSetId: string) {
       syncGroupAccessRows(groupId);
     }
   });
-
-  execute();
 }
 
 export function assignProblemSetToGroups(problemSetId: string, groupIds: string[]) {
   const now = new Date();
 
-  const execute = sqlite.transaction(() => {
+  execTransaction(() => {
     // Get existing assignments to avoid duplicates
     const existing = db
       .select({ groupId: problemSetGroupAccess.groupId })
@@ -204,12 +198,10 @@ export function assignProblemSetToGroups(problemSetId: string, groupIds: string[
       }
     }
   });
-
-  execute();
 }
 
 export function removeProblemSetFromGroup(problemSetId: string, groupId: string) {
-  const execute = sqlite.transaction(() => {
+  execTransaction(() => {
     db.delete(problemSetGroupAccess)
       .where(
         and(
@@ -221,6 +213,4 @@ export function removeProblemSetFromGroup(problemSetId: string, groupId: string)
 
     syncGroupAccessRows(groupId);
   });
-
-  execute();
 }

@@ -92,6 +92,27 @@ if (activeDialect === "postgresql" && !isBuildPhase) {
  */
 export const pool: any = _pool;
 
+/**
+ * Run a function inside a SQLite transaction using explicit BEGIN/COMMIT.
+ *
+ * better-sqlite3's `sqlite.transaction()` throws when the callback returns a
+ * Promise.  Turbopack converts modules with top-level `await` into async
+ * modules, which can cause arrow-function callbacks to become async and
+ * implicitly return a Promise.  This helper avoids that by using raw SQL
+ * BEGIN/COMMIT instead of the `transaction()` wrapper.
+ */
+export function execTransaction<T>(fn: () => T): T {
+  sqlite.exec("BEGIN IMMEDIATE");
+  try {
+    const result = fn();
+    sqlite.exec("COMMIT");
+    return result;
+  } catch (e) {
+    sqlite.exec("ROLLBACK");
+    throw e;
+  }
+}
+
 export { db, sqlite };
 export type DbType = typeof db;
 
