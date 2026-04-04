@@ -44,6 +44,7 @@ import { AntiCheatMonitor } from "@/components/exam/anti-cheat-monitor";
 import { AntiCheatDashboard } from "@/components/contest/anti-cheat-dashboard";
 import { AnalyticsCharts } from "@/components/contest/analytics-charts";
 import { ExportButton } from "@/components/contest/export-button";
+import { RecruiterCandidatesPanel } from "@/components/contest/recruiter-candidates-panel";
 import AssignmentFormDialog, { type AssignmentEditorValue } from "../../groups/[id]/assignment-form-dialog";
 
 const STATUS_FILTER_VALUES = [
@@ -589,6 +590,9 @@ export default async function ContestDetailPage({
           {assignment.enableAntiCheat && (
             <TabsTrigger value="antiCheat" className="gap-1.5">{t("tabs.antiCheat")}</TabsTrigger>
           )}
+          {canManage && (
+            <TabsTrigger value="candidates" className="gap-1.5">{t("tabs.candidates")}</TabsTrigger>
+          )}
         </TabsList>
 
         {/* Overview Tab */}
@@ -704,6 +708,13 @@ export default async function ContestDetailPage({
         {assignment.enableAntiCheat && (
           <TabsContent value="antiCheat" className="mt-6">
             <AntiCheatDashboard assignmentId={assignmentId} />
+          </TabsContent>
+        )}
+
+        {/* Candidates Tab (for instructors/admins) */}
+        {canManage && (
+          <TabsContent value="candidates" className="mt-6">
+            <RecruiterCandidatesPanel assignmentId={assignmentId} />
           </TabsContent>
         )}
       </HashTabs>

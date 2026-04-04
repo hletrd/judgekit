@@ -1745,7 +1745,21 @@
       "leaderboard": "리더보드",
       "analytics": "분석",
       "antiCheat": "부정행위 방지",
-      "submissions": "제출"
+      "submissions": "제출",
+      "candidates": "지원자"
+    },
+    "recruiter": {
+      "title": "지원자 현황",
+      "candidateCount": "{count}명의 지원자",
+      "exportCsv": "CSV 내보내기",
+      "searchPlaceholder": "이름 또는 사용자명으로 검색...",
+      "name": "이름",
+      "score": "점수",
+      "solved": "풀이",
+      "flags": "경고",
+      "noCandidates": "지원자가 없습니다.",
+      "loading": "지원자 정보를 불러오는 중...",
+      "fetchError": "지원자 정보를 불러오지 못했습니다."
     },
     "mySubmissions": {
       "title": "내 제출",
