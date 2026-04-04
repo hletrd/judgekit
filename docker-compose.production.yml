@@ -11,14 +11,35 @@
 # =============================================================================
 
 services:
-  # Restricted Docker socket proxy — only exposes image/build APIs.
-  # Prevents the app container from creating containers or escaping to the host
-  # even if the Node.js process is compromised.
+  # ---------------------------------------------------------------------------
+  # PostgreSQL Database
+  # ---------------------------------------------------------------------------
+  db:
+    image: postgres:18-alpine
+    container_name: judgekit-db
+    restart: unless-stopped
+    volumes:
+      - judgekit-pgdata:/var/lib/postgresql/data
+    environment:
+      POSTGRES_DB: judgekit
+      POSTGRES_USER: judgekit
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U judgekit"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # Restricted Docker socket proxy — exposes image/build/container APIs.
+  # The app container needs CONTAINERS to run compiler sandbox containers
+  # via docker run (used by /api/v1/compiler/run).
   docker-proxy:
     image: tecnativa/docker-socket-proxy:latest
     container_name: judgekit-docker-proxy
     restart: unless-stopped
     environment:
+      - CONTAINERS=1
       - IMAGES=1
       - BUILD=1
       - POST=1
@@ -37,17 +58,20 @@ services:
     ports:
       - "127.0.0.1:3100:3000"
     volumes:
-      - judgekit-data:/app/data
       - /compiler-workspaces:/compiler-workspaces   # Shared path for compiler sandbox volumes
     env_file:
       - .env.production
     environment:
-      - DATABASE_PATH=/app/data/judge.db
+      - DB_DIALECT=postgresql
+      - DATABASE_URL=postgres://judgekit:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@db:5432/judgekit
       - HOSTNAME=0.0.0.0
       - COMPILER_WORKSPACE_DIR=/compiler-workspaces
       - DOCKER_HOST=tcp://docker-proxy:2375
     depends_on:
-      - docker-proxy
+      docker-proxy:
+        condition: service_started
+      db:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "-O", "/dev/null", "http://127.0.0.1:3000/login"]
       interval: 30s
@@ -100,7 +124,7 @@ services:
       start_period: 5s
 
 volumes:
-  judgekit-data:
+  judgekit-pgdata:
     driver: local
   judgekit-dead-letter:
     driver: local
