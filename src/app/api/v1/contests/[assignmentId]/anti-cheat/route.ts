@@ -3,7 +3,8 @@ import { nanoid } from "nanoid";
 import { z } from "zod";
 import { createApiHandler, isAdmin, isInstructor } from "@/lib/api/handler";
 import { apiSuccess, apiError } from "@/lib/api/responses";
-import { db, sqlite } from "@/lib/db";
+import { db } from "@/lib/db";
+import { rawQueryOne } from "@/lib/db/queries";
 import { antiCheatEvents, users } from "@/lib/db/schema";
 import { eq, and, desc, sql } from "drizzle-orm";
 import { getContestAssignment } from "@/lib/assignments/contests";
@@ -33,19 +34,20 @@ export const POST = createApiHandler({
   schema: antiCheatEventSchema,
   handler: async (req: NextRequest, { user, body, params }) => {
     const { assignmentId } = params;
-    const assignment = getContestAssignment(assignmentId);
+    const assignment = await getContestAssignment(assignmentId);
 
     if (!assignment || assignment.examMode === "none") {
       return apiError("notFound", 404);
     }
 
     // Verify user has access to this contest
-    const hasAccess = sqlite
-      .prepare(`SELECT 1 FROM enrollments WHERE group_id = ? AND user_id = ?
-                UNION ALL
-                SELECT 1 FROM contest_access_tokens WHERE assignment_id = ? AND user_id = ?
-                LIMIT 1`)
-      .get(assignment.groupId, user.id, assignmentId, user.id);
+    const hasAccess = await rawQueryOne(
+      `SELECT 1 FROM enrollments WHERE group_id = @groupId AND user_id = @userId
+       UNION ALL
+       SELECT 1 FROM contest_access_tokens WHERE assignment_id = @assignmentId AND user_id = @userId
+       LIMIT 1`,
+      { groupId: assignment.groupId, userId: user.id, assignmentId }
+    );
     if (!hasAccess) {
       return apiError("forbidden", 403);
     }
@@ -114,7 +116,7 @@ export const POST = createApiHandler({
 export const GET = createApiHandler({
   handler: async (req: NextRequest, { user, params }) => {
     const { assignmentId } = params;
-    const assignment = getContestAssignment(assignmentId);
+    const assignment = await getContestAssignment(assignmentId);
 
     if (!assignment || assignment.examMode === "none") {
       return apiError("notFound", 404);

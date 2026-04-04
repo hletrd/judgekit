@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { apiSuccess, apiError } from "@/lib/api/responses";
-import { db, sqlite, execTransaction } from "@/lib/db";
+import { db, execTransaction } from "@/lib/db";
 import { assignments, groups, submissions, enrollments } from "@/lib/db/schema";
 import { eq, sql } from "drizzle-orm";
 import { canAccessGroup } from "@/lib/auth/permissions";

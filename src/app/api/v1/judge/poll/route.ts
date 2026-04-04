@@ -5,7 +5,7 @@
 // directory would break production without a coordinated redeploy.
 import { NextRequest } from "next/server";
 import { apiSuccess, apiError } from "@/lib/api/responses";
-import { db, sqlite, execTransaction } from "@/lib/db";
+import { db, execTransaction } from "@/lib/db";
 import { submissions, submissionResults } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 import { recordAuditEvent } from "@/lib/audit/events";

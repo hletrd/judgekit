@@ -3,7 +3,7 @@ import { createApiHandler, isAdmin, isInstructor } from "@/lib/api/handler";
 import { apiError } from "@/lib/api/responses";
 import { computeContestRanking } from "@/lib/assignments/contest-scoring";
 import { getLeaderboardProblems } from "@/lib/assignments/leaderboard";
-import { sqlite } from "@/lib/db";
+import { rawQueryOne, rawQueryAll } from "@/lib/db/queries";
 
 function sanitizeFilename(name: string): string {
   return name.replace(/[^a-zA-Z0-9_\- ]/g, "_").slice(0, 100);
@@ -44,13 +44,12 @@ export const GET = createApiHandler({
   handler: async (req: NextRequest, { user, params }) => {
     const { assignmentId } = params;
 
-    const assignment = sqlite
-      .prepare<[string], AssignmentRow>(
-        `SELECT a.group_id AS groupId, g.instructor_id AS instructorId, a.exam_mode AS examMode,
-                a.title, a.scoring_model AS scoringModel
-         FROM assignments a INNER JOIN groups g ON g.id = a.group_id WHERE a.id = ?`
-      )
-      .get(assignmentId);
+    const assignment = await rawQueryOne<AssignmentRow>(
+      `SELECT a.group_id AS "groupId", g.instructor_id AS "instructorId", a.exam_mode AS "examMode",
+              a.title, a.scoring_model AS "scoringModel"
+       FROM assignments a INNER JOIN groups g ON g.id = a.group_id WHERE a.id = @assignmentId`,
+      { assignmentId }
+    );
 
     if (!assignment || assignment.examMode === "none") {
       return apiError("notFound", 404);
@@ -65,24 +64,22 @@ export const GET = createApiHandler({
     }
 
     const format = req.nextUrl.searchParams.get("format") ?? "csv";
-    const problems = getLeaderboardProblems(assignmentId);
-    const { scoringModel, entries } = computeContestRanking(assignmentId);
+    const problems = await getLeaderboardProblems(assignmentId);
+    const { scoringModel, entries } = await computeContestRanking(assignmentId);
 
     // Get anti-cheat event counts per user
-    const cheatCounts = sqlite
-      .prepare<[string], CheatCountRow>(
-        `SELECT user_id AS userId, COUNT(*) AS count FROM anti_cheat_events WHERE assignment_id = ? GROUP BY user_id`
-      )
-      .all(assignmentId);
+    const cheatCounts = await rawQueryAll<CheatCountRow>(
+      `SELECT user_id AS "userId", COUNT(*)::int AS count FROM anti_cheat_events WHERE assignment_id = @assignmentId GROUP BY user_id`,
+      { assignmentId }
+    );
     const cheatCountMap = new Map(cheatCounts.map((r) => [r.userId, r.count]));
 
     // Get distinct IPs per user
-    const ipRows = sqlite
-      .prepare<[string], IpRow>(
-        `SELECT user_id AS userId, GROUP_CONCAT(DISTINCT ip_address) AS ips
-         FROM submissions WHERE assignment_id = ? AND ip_address IS NOT NULL GROUP BY user_id`
-      )
-      .all(assignmentId);
+    const ipRows = await rawQueryAll<IpRow>(
+      `SELECT user_id AS "userId", STRING_AGG(DISTINCT ip_address, ',') AS ips
+       FROM submissions WHERE assignment_id = @assignmentId AND ip_address IS NOT NULL GROUP BY user_id`,
+      { assignmentId }
+    );
     const ipMap = new Map(ipRows.map((r) => [r.userId, r.ips]));
 
     if (format === "json") {

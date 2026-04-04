@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import { createApiHandler, isAdmin, isInstructor } from "@/lib/api/handler";
 import { apiSuccess, apiError } from "@/lib/api/responses";
 import { computeLeaderboard, getLeaderboardProblems } from "@/lib/assignments/leaderboard";
-import { sqlite } from "@/lib/db";
+import { rawQueryOne } from "@/lib/db/queries";
 
 type AssignmentAccessRow = {
   groupId: string;
@@ -16,14 +16,13 @@ export const GET = createApiHandler({
   handler: async (req: NextRequest, { user, params }) => {
     const { assignmentId } = params;
 
-    const assignment = sqlite
-      .prepare<[string], AssignmentAccessRow>(
-        `SELECT a.group_id AS groupId, g.instructor_id AS instructorId, a.exam_mode AS examMode, a.anonymous_leaderboard AS anonymousLeaderboard
-         FROM assignments a
-         INNER JOIN groups g ON g.id = a.group_id
-         WHERE a.id = ?`
-      )
-      .get(assignmentId);
+    const assignment = await rawQueryOne<AssignmentAccessRow>(
+      `SELECT a.group_id AS "groupId", g.instructor_id AS "instructorId", a.exam_mode AS "examMode", a.anonymous_leaderboard AS "anonymousLeaderboard"
+       FROM assignments a
+       INNER JOIN groups g ON g.id = a.group_id
+       WHERE a.id = @assignmentId`,
+      { assignmentId }
+    );
 
     if (!assignment || assignment.examMode === "none") {
       return apiError("notFound", 404);
@@ -36,22 +35,21 @@ export const GET = createApiHandler({
 
     if (!isInstructorView) {
       // Student: must be enrolled or have access token
-      const hasAccess = sqlite
-        .prepare(
-          `SELECT 1 FROM enrollments WHERE group_id = ? AND user_id = ?
-           UNION ALL
-           SELECT 1 FROM contest_access_tokens WHERE assignment_id = ? AND user_id = ?
-           LIMIT 1`
-        )
-        .get(assignment.groupId, user.id, assignmentId, user.id);
+      const hasAccess = await rawQueryOne(
+        `SELECT 1 FROM enrollments WHERE group_id = @groupId AND user_id = @userId
+         UNION ALL
+         SELECT 1 FROM contest_access_tokens WHERE assignment_id = @assignmentId AND user_id = @userId
+         LIMIT 1`,
+        { groupId: assignment.groupId, userId: user.id, assignmentId }
+      );
 
       if (!hasAccess) {
         return apiError("forbidden", 403);
       }
     }
 
-    const problems = getLeaderboardProblems(assignmentId);
-    const leaderboard = computeLeaderboard(assignmentId, isInstructorView);
+    const problems = await getLeaderboardProblems(assignmentId);
+    const leaderboard = await computeLeaderboard(assignmentId, isInstructorView);
 
     // Always anonymize in exam mode for non-instructors, regardless of anonymousLeaderboard flag
     const isExamMode = assignment.examMode !== "none";

@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { db, sqlite, execTransaction } from "@/lib/db";
+import { db, execTransaction } from "@/lib/db";
 import { problems, tags, problemTags } from "@/lib/db/schema";
 import { createApiHandler, isAdmin } from "@/lib/api/handler";
 import { forbidden } from "@/lib/api/auth";

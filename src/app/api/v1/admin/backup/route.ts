@@ -1,30 +1,19 @@
 // Database backup route: POST with password re-confirmation for security
-// Supports all dialects: SQLite (.sqlite), PostgreSQL/MySQL (JSON export)
+// Exports the database as portable JSON
 import { NextRequest, NextResponse } from "next/server";
 import { getApiUser, unauthorized, forbidden, csrfForbidden } from "@/lib/api/auth";
 import { consumeApiRateLimit } from "@/lib/security/api-rate-limit";
 import { recordAuditEvent } from "@/lib/audit/events";
 import { verifyPassword } from "@/lib/security/password-hash";
 import { logger } from "@/lib/logger";
-import { sqlite, db, activeDialect } from "@/lib/db";
+import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { exportDatabase } from "@/lib/db/export";
-import fs from "fs/promises";
-import { existsSync } from "fs";
-import path from "path";
-import os from "os";
 
 export const dynamic = "force-dynamic";
 
-function getDbPath(): string {
-  return process.env.DATABASE_PATH
-    ? path.resolve(process.env.DATABASE_PATH)
-    : path.join(process.cwd(), "data", "judge.db");
-}
-
 export async function POST(request: NextRequest) {
-  let backupPath: string | null = null;
   try {
     const csrfError = csrfForbidden(request);
     if (csrfError) return csrfError;
@@ -66,40 +55,7 @@ export async function POST(request: NextRequest) {
 
     const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
 
-    if (activeDialect === "sqlite") {
-      // SQLite: use native backup API for WAL-consistent snapshot
-      const dbPath = getDbPath();
-      if (!existsSync(dbPath)) {
-        return NextResponse.json({ error: "databaseNotFound" }, { status: 404 });
-      }
-
-      const filename = `judgekit-backup-${timestamp}.sqlite`;
-      backupPath = path.join(os.tmpdir(), filename);
-      await sqlite.backup(backupPath);
-
-      const fileBuffer = await fs.readFile(backupPath);
-
-      recordAuditEvent({
-        actorId: user.id,
-        actorRole: user.role,
-        action: "system_settings.backup_downloaded",
-        resourceType: "system_settings",
-        resourceId: "database",
-        resourceLabel: "Database backup",
-        summary: `Downloaded SQLite backup (${(fileBuffer.length / 1024 / 1024).toFixed(1)} MB)`,
-        request,
-      });
-
-      return new Response(fileBuffer, {
-        headers: {
-          "Content-Type": "application/x-sqlite3",
-          "Content-Disposition": `attachment; filename="${filename}"`,
-          "Cache-Control": "no-store",
-        },
-      });
-    }
-
-    // PostgreSQL / MySQL: export as portable JSON
+    // Export as portable JSON
     const data = await exportDatabase();
     const json = JSON.stringify(data);
     const filename = `judgekit-backup-${timestamp}.json`;
@@ -111,7 +67,7 @@ export async function POST(request: NextRequest) {
       resourceType: "system_settings",
       resourceId: "database",
       resourceLabel: "Database backup",
-      summary: `Downloaded ${activeDialect} backup as JSON (${(json.length / 1024 / 1024).toFixed(1)} MB, ${Object.values(data.tables).reduce((s, t) => s + t.rowCount, 0)} rows)`,
+      summary: `Downloaded PostgreSQL backup as JSON (${(json.length / 1024 / 1024).toFixed(1)} MB, ${Object.values(data.tables).reduce((s, t) => s + t.rowCount, 0)} rows)`,
       request,
     });
 
@@ -125,9 +81,5 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     logger.error({ err: error }, "Database backup error");
     return NextResponse.json({ error: "backupFailed" }, { status: 500 });
-  } finally {
-    if (backupPath) {
-      fs.unlink(backupPath).catch(() => {});
-    }
   }
 }

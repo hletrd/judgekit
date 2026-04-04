@@ -33,16 +33,17 @@ export const POST = createApiHandler({
       return apiError("languageNotFound", 404, "language");
     }
 
-    const langConfig = await db.query.languageConfigs.findFirst({
-      where: eq(languageConfigs.language, body.language),
-      columns: {
-        extension: true,
-        dockerImage: true,
-        compileCommand: true,
-        runCommand: true,
-        isEnabled: true,
-      },
-    });
+    const [langConfig] = await db
+      .select({
+        extension: languageConfigs.extension,
+        dockerImage: languageConfigs.dockerImage,
+        compileCommand: languageConfigs.compileCommand,
+        runCommand: languageConfigs.runCommand,
+        isEnabled: languageConfigs.isEnabled,
+      })
+      .from(languageConfigs)
+      .where(eq(languageConfigs.language, body.language))
+      .limit(1);
 
     // Language not found in DB
     if (!langConfig) {

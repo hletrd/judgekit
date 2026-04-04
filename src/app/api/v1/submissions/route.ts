@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
-import { db, sqlite, execTransaction } from "@/lib/db";
+import { db, execTransaction } from "@/lib/db";
+import { rawQueryOne } from "@/lib/db/queries";
 import { examSessions, languageConfigs, problems, submissions } from "@/lib/db/schema";
 import { isJudgeLanguage } from "@/lib/judge/languages";
 import { and, desc, eq, lt, sql } from "drizzle-orm";
@@ -149,18 +150,20 @@ export const POST = createApiHandler({
     }
 
     // Fetch problem and language config in parallel
-    const [problem, languageConfig] = await Promise.all([
-      db.query.problems.findFirst({
-        where: eq(problems.id, problemId),
-        columns: { id: true, title: true },
-      }),
-      db.query.languageConfigs.findFirst({
-        where: and(
+    const [[problem], [languageConfig]] = await Promise.all([
+      db
+        .select({ id: problems.id, title: problems.title })
+        .from(problems)
+        .where(eq(problems.id, problemId))
+        .limit(1),
+      db
+        .select({ id: languageConfigs.id })
+        .from(languageConfigs)
+        .where(and(
           eq(languageConfigs.language, language),
           eq(languageConfigs.isEnabled, true)
-        ),
-        columns: { id: true },
-      }),
+        ))
+        .limit(1),
     ]);
 
     if (!problem) {
@@ -208,68 +211,73 @@ export const POST = createApiHandler({
     const maxGlobalQueue = getSubmissionGlobalQueueLimit();
     const oneMinuteAgo = new Date(Date.now() - 60_000);
 
-    type RateLimitError = { error: string; status: number; retryAfter: string };
-    execTransaction(() => {
-      // User-scoped counts (uses submissions_user_status_submitted_idx)
-      const userCounts = sqlite.prepare(`
-        SELECT
-          SUM(CASE WHEN submitted_at > ? THEN 1 ELSE 0 END) AS recent_count,
-          SUM(CASE WHEN status IN ('pending', 'judging', 'queued') THEN 1 ELSE 0 END) AS pending_count
-        FROM submissions
-        WHERE user_id = ?
-      `).get(oneMinuteAgo.toISOString(), user.id) as { recent_count: number; pending_count: number } | undefined;
+    // Rate-limit checks + insert (dialect-agnostic via Drizzle)
+    const userCounts = await db
+      .select({
+        recentCount: sql<number>`SUM(CASE WHEN ${submissions.submittedAt} > ${oneMinuteAgo} THEN 1 ELSE 0 END)`,
+        pendingCount: sql<number>`SUM(CASE WHEN ${submissions.status} IN ('pending', 'judging', 'queued') THEN 1 ELSE 0 END)`,
+      })
+      .from(submissions)
+      .where(eq(submissions.userId, user.id));
 
-      const recentSubmissions = Number(userCounts?.recent_count ?? 0);
-      const pendingCount = Number(userCounts?.pending_count ?? 0);
+    const recentSubmissions = Number(userCounts[0]?.recentCount ?? 0);
+    const pendingCount = Number(userCounts[0]?.pendingCount ?? 0);
 
-      if (recentSubmissions >= maxPerMinute) {
-        return { error: "submissionRateLimited", status: 429, retryAfter: "60" } satisfies RateLimitError;
-      }
-      if (pendingCount >= maxPending) {
-        return { error: "tooManyPendingSubmissions", status: 429, retryAfter: "10" } satisfies RateLimitError;
-      }
-
-      // Global pending count (uses submissions_status_idx)
-      const globalRow = sqlite.prepare(`
-        SELECT COUNT(*) AS count FROM submissions WHERE status IN ('pending', 'queued')
-      `).get() as { count: number } | undefined;
-
-      if (Number(globalRow?.count ?? 0) >= maxGlobalQueue) {
-        return { error: "judgeQueueFull", status: 503, retryAfter: "30" } satisfies RateLimitError;
-      }
-
-      // For windowed exams, enforce deadline at insert time
-      if (normalizedAssignmentId) {
-        const expiredSession = sqlite.prepare(`
-          SELECT 1 FROM exam_sessions
-          WHERE assignment_id = ? AND user_id = ? AND personal_deadline < datetime('now')
-        `).get(normalizedAssignmentId, user.id);
-        if (expiredSession) {
-          return { error: "examTimeExpired", status: 403, retryAfter: "0" } satisfies RateLimitError;
-        }
-      }
-
-      // Insert the submission
-      db.insert(submissions).values({
-        id,
-        userId: user.id,
-        problemId,
-        language,
-        sourceCode,
-        assignmentId: normalizedAssignmentId,
-        status: "pending",
-        ipAddress: ip,
-        submittedAt: new Date(),
-      }).run();
-
-      return null; // success
-    });
-
-    if (txResult) {
-      return apiError(txResult.error, txResult.status, undefined, {
-        headers: { "Retry-After": txResult.retryAfter },
+    if (recentSubmissions >= maxPerMinute) {
+      return apiError("submissionRateLimited", 429, undefined, {
+        headers: { "Retry-After": "60" },
       });
     }
+    if (pendingCount >= maxPending) {
+      return apiError("tooManyPendingSubmissions", 429, undefined, {
+        headers: { "Retry-After": "10" },
+      });
+    }
+
+    // Global pending count
+    const globalRow = await db
+      .select({ count: sql<number>`COUNT(*)` })
+      .from(submissions)
+      .where(sql`${submissions.status} IN ('pending', 'queued')`);
+
+    if (Number(globalRow[0]?.count ?? 0) >= maxGlobalQueue) {
+      return apiError("judgeQueueFull", 503, undefined, {
+        headers: { "Retry-After": "30" },
+      });
+    }
+
+    // For windowed exams, enforce deadline at insert time
+    if (normalizedAssignmentId) {
+      const expiredSession = await db
+        .select({ one: sql<number>`1` })
+        .from(examSessions)
+        .where(
+          and(
+            eq(examSessions.assignmentId, normalizedAssignmentId),
+            eq(examSessions.userId, user.id),
+            lt(examSessions.personalDeadline, new Date()),
+          )
+        )
+        .limit(1);
+      if (expiredSession.length > 0) {
+        return apiError("examTimeExpired", 403, undefined, {
+          headers: { "Retry-After": "0" },
+        });
+      }
+    }
+
+    // Insert the submission
+    await db.insert(submissions).values({
+      id,
+      userId: user.id,
+      problemId,
+      language,
+      sourceCode,
+      assignmentId: normalizedAssignmentId,
+      status: "pending",
+      ipAddress: ip,
+      submittedAt: new Date(),
+    });
 
     // Fetch the inserted submission for the response
     const [submission] = db.select({

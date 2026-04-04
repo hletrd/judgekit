@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { apiSuccess, apiError } from "@/lib/api/responses";
-import { db, sqlite } from "@/lib/db";
+import { db } from "@/lib/db";
+import { rawQueryOne } from "@/lib/db/queries";
 import { problems, testCases, languageConfigs } from "@/lib/db/schema";
 import { eq, asc } from "drizzle-orm";
 import { nanoid } from "nanoid";
@@ -47,47 +48,45 @@ export async function POST(request: NextRequest) {
     const claimToken = nanoid();
     const claimCreatedAt = Date.now();
 
-    // Raw SQL is required here for an atomic UPDATE...RETURNING claim operation.
-    // Drizzle ORM does not natively support UPDATE...RETURNING for SQLite in a
-    // single round-trip, which would create a race condition between claim and fetch.
-    const claimedRaw = sqlite
-      .prepare(
-        `
-          UPDATE submissions
-          SET
-            status = 'queued',
-            judge_claim_token = @claimToken,
-            judge_claimed_at = @claimCreatedAt,
-            judge_worker_id = @workerId
-          WHERE id = (
-            SELECT id
-            FROM submissions
-            WHERE status = 'pending'
-               OR (status IN ('queued', 'judging')
-                   AND judge_claimed_at < (unixepoch('now') * 1000 - @staleClaimTimeoutMs))
-            ORDER BY submitted_at ASC, rowid ASC
-            LIMIT 1
-          )
-          RETURNING
-            id,
-            user_id AS userId,
-            problem_id AS problemId,
-            assignment_id AS assignmentId,
-            judge_claim_token AS claimToken,
-            language,
-            source_code AS sourceCode,
-            status,
-            compile_output AS compileOutput,
-            execution_time_ms AS executionTimeMs,
-            memory_used_kb AS memoryUsedKb,
-            score,
-            judged_at AS judgedAt,
-            submitted_at AS submittedAt
-        `
-      )
-      .get({ claimToken, claimCreatedAt, staleClaimTimeoutMs: getConfiguredSettings().staleClaimTimeoutMs, workerId });
+    // Atomic UPDATE...RETURNING for race-free claim via raw SQL (PostgreSQL).
+    const claimedRaw = await rawQueryOne<ClaimedSubmissionRow>(
+      `
+        UPDATE submissions
+        SET
+          status = 'queued',
+          judge_claim_token = @claimToken,
+          judge_claimed_at = to_timestamp(@claimCreatedAt::double precision / 1000),
+          judge_worker_id = @workerId
+        WHERE id = (
+          SELECT id
+          FROM submissions
+          WHERE status = 'pending'
+             OR (status IN ('queued', 'judging')
+                 AND judge_claimed_at < NOW() - (@staleClaimTimeoutMs || ' milliseconds')::interval)
+          ORDER BY submitted_at ASC, id ASC
+          LIMIT 1
+          FOR UPDATE SKIP LOCKED
+        )
+        RETURNING
+          id,
+          user_id AS "userId",
+          problem_id AS "problemId",
+          assignment_id AS "assignmentId",
+          judge_claim_token AS "claimToken",
+          language,
+          source_code AS "sourceCode",
+          status,
+          compile_output AS "compileOutput",
+          execution_time_ms AS "executionTimeMs",
+          memory_used_kb AS "memoryUsedKb",
+          score,
+          EXTRACT(EPOCH FROM judged_at)::integer AS "judgedAt",
+          EXTRACT(EPOCH FROM submitted_at)::integer AS "submittedAt"
+      `,
+      { claimToken, claimCreatedAt, staleClaimTimeoutMs: getConfiguredSettings().staleClaimTimeoutMs, workerId }
+    );
 
-    const claimed: ClaimedSubmissionRow | undefined = claimedRaw !== undefined
+    const claimed: ClaimedSubmissionRow | undefined = claimedRaw
       ? claimedSubmissionRowSchema.parse(claimedRaw)
       : undefined;
 
@@ -139,14 +138,15 @@ export async function POST(request: NextRequest) {
       .where(eq(testCases.problemId, claimed.problemId))
       .orderBy(asc(testCases.sortOrder));
 
-    const langConfig = await db.query.languageConfigs.findFirst({
-      where: eq(languageConfigs.language, claimed.language),
-      columns: {
-        dockerImage: true,
-        compileCommand: true,
-        runCommand: true,
-      },
-    });
+    const [langConfig] = await db
+      .select({
+        dockerImage: languageConfigs.dockerImage,
+        compileCommand: languageConfigs.compileCommand,
+        runCommand: languageConfigs.runCommand,
+      })
+      .from(languageConfigs)
+      .where(eq(languageConfigs.language, claimed.language))
+      .limit(1);
 
     return apiSuccess({
       ...claimed,

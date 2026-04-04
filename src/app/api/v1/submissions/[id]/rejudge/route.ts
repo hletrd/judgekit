@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { db, sqlite, execTransaction } from "@/lib/db";
+import { db, execTransaction } from "@/lib/db";
 import { submissions, submissionResults } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { forbidden, notFound, isInstructor } from "@/lib/api/auth";

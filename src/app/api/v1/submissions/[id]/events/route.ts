@@ -3,7 +3,7 @@ import { NextRequest } from "next/server";
 import { apiError } from "@/lib/api/responses";
 import { db } from "@/lib/db";
 import { submissions } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { getApiUser, unauthorized, forbidden, notFound } from "@/lib/api/auth";
 import { canAccessSubmission } from "@/lib/auth/permissions";
 import { resolveCapabilities } from "@/lib/capabilities/cache";
@@ -12,14 +12,42 @@ import { logger } from "@/lib/logger";
 import { consumeApiRateLimit } from "@/lib/security/api-rate-limit";
 import { getConfiguredSettings } from "@/lib/system-settings-config";
 
-// Track active SSE connections per user to prevent resource exhaustion
-const activeConnections = new Map<string, number>();
-const connectionLastActivity = new Map<string, number>();
+// ---------------------------------------------------------------------------
+// Connection tracking via Set<connectionId> to avoid TOCTOU races.
+// Each connection ID encodes the userId so per-user counts can be derived.
+// ---------------------------------------------------------------------------
+interface ConnectionInfo {
+  userId: string;
+  createdAt: number;
+}
+const activeConnectionSet = new Set<string>();
+const connectionInfoMap = new Map<string, ConnectionInfo>();
 
-let globalConnectionCount = 0;
 const MAX_GLOBAL_SSE_CONNECTIONS = 500;
-
 const AUTH_RECHECK_INTERVAL_MS = 30_000;
+
+function generateConnectionId(userId: string): string {
+  return `${userId}-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+function countUserConnections(userId: string): number {
+  let count = 0;
+  for (const connId of activeConnectionSet) {
+    const info = connectionInfoMap.get(connId);
+    if (info && info.userId === userId) count++;
+  }
+  return count;
+}
+
+function addConnection(connId: string, userId: string): void {
+  activeConnectionSet.add(connId);
+  connectionInfoMap.set(connId, { userId, createdAt: Date.now() });
+}
+
+function removeConnection(connId: string): void {
+  activeConnectionSet.delete(connId);
+  connectionInfoMap.delete(connId);
+}
 
 // Periodic cleanup of stale connection tracking entries
 const CLEANUP_INTERVAL_MS = 60_000;
@@ -27,15 +55,94 @@ const CLEANUP_KEY = '__sseCleanupTimer' as const;
 if ((globalThis as any)[CLEANUP_KEY]) clearInterval((globalThis as any)[CLEANUP_KEY]);
 (globalThis as any)[CLEANUP_KEY] = setInterval(() => {
   const now = Date.now();
-  const staleThreshold = getConfiguredSettings().sseTimeoutMs + 30_000; // timeout + 30s buffer
-  for (const [userId, lastActive] of connectionLastActivity) {
-    if (now - lastActive > staleThreshold) {
-      activeConnections.delete(userId);
-      connectionLastActivity.delete(userId);
+  const staleThreshold = getConfiguredSettings().sseTimeoutMs + 30_000;
+  for (const [connId, info] of connectionInfoMap) {
+    if (now - info.createdAt > staleThreshold) {
+      removeConnection(connId);
     }
   }
 }, CLEANUP_INTERVAL_MS);
 
+// ---------------------------------------------------------------------------
+// Shared polling manager: one setInterval queries ALL active submission IDs
+// in a single batch, then dispatches results to per-connection callbacks.
+// ---------------------------------------------------------------------------
+type PollCallback = (status: string) => void;
+
+const submissionSubscribers = new Map<string, Set<PollCallback>>();
+let sharedPollTimer: ReturnType<typeof setInterval> | null = null;
+
+function subscribeToPoll(submissionId: string, callback: PollCallback): void {
+  let subs = submissionSubscribers.get(submissionId);
+  if (!subs) {
+    subs = new Set();
+    submissionSubscribers.set(submissionId, subs);
+  }
+  subs.add(callback);
+
+  // Start the shared poll timer if not already running
+  if (!sharedPollTimer) {
+    startSharedPollTimer();
+  }
+}
+
+function unsubscribeFromPoll(submissionId: string, callback: PollCallback): void {
+  const subs = submissionSubscribers.get(submissionId);
+  if (!subs) return;
+  subs.delete(callback);
+  if (subs.size === 0) {
+    submissionSubscribers.delete(submissionId);
+  }
+
+  // Stop the timer if no more subscribers
+  if (submissionSubscribers.size === 0 && sharedPollTimer) {
+    clearInterval(sharedPollTimer);
+    sharedPollTimer = null;
+  }
+}
+
+function startSharedPollTimer(): void {
+  const pollIntervalMs = getConfiguredSettings().ssePollIntervalMs;
+  sharedPollTimer = setInterval(() => {
+    void sharedPollTick();
+  }, pollIntervalMs);
+}
+
+async function sharedPollTick(): Promise<void> {
+  const submissionIds = Array.from(submissionSubscribers.keys());
+  if (submissionIds.length === 0) return;
+
+  try {
+    // Single batch query for all active submission IDs
+    const results = await db
+      .select({ id: submissions.id, status: submissions.status })
+      .from(submissions)
+      .where(inArray(submissions.id, submissionIds));
+
+    const statusMap = new Map<string, string>();
+    for (const row of results) {
+      statusMap.set(row.id, row.status ?? "");
+    }
+
+    // Dispatch results to all subscribers
+    for (const [subId, subs] of submissionSubscribers) {
+      const status = statusMap.get(subId) ?? "";
+      for (const cb of subs) {
+        try {
+          cb(status);
+        } catch {
+          // Individual callback errors should not break the loop
+        }
+      }
+    }
+  } catch (err) {
+    logger.error({ err }, "Shared SSE poll tick error");
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Route handler
+// ---------------------------------------------------------------------------
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -47,18 +154,21 @@ export async function GET(
     const rateLimitResponse = await consumeApiRateLimit(request, "submissions:events");
     if (rateLimitResponse) return rateLimitResponse;
 
-    if (globalConnectionCount >= MAX_GLOBAL_SSE_CONNECTIONS) {
+    if (activeConnectionSet.size >= MAX_GLOBAL_SSE_CONNECTIONS) {
       return apiError("serverBusy", 503);
     }
 
     // Enforce per-user SSE connection cap
     const sseConfig = getConfiguredSettings();
-    const currentCount = activeConnections.get(user.id) ?? 0;
-    if (currentCount >= sseConfig.maxSseConnectionsPerUser) {
+    const userId = user.id;
+    if (countUserConnections(userId) >= sseConfig.maxSseConnectionsPerUser) {
       return apiError("tooManyConnections", 429);
     }
 
-    const userId = user.id;
+    // Register connection IMMEDIATELY after cap checks, BEFORE any awaits,
+    // to close the TOCTOU window where concurrent requests could bypass caps.
+    const connId = generateConnectionId(userId);
+    addConnection(connId, userId);
 
     const { id } = await params;
 
@@ -72,15 +182,16 @@ export async function GET(
       },
     });
 
-    if (!submission) return notFound("Submission");
+    if (!submission) {
+      removeConnection(connId);
+      return notFound("Submission");
+    }
 
     const hasAccess = await canAccessSubmission(submission, user.id, user.role);
-    if (!hasAccess) return forbidden();
-
-    // Increment counters after all fallible checks pass
-    activeConnections.set(userId, currentCount + 1);
-    connectionLastActivity.set(userId, Date.now());
-    globalConnectionCount += 1;
+    if (!hasAccess) {
+      removeConnection(connId);
+      return forbidden();
+    }
 
     const isOwner = submission.userId === user.id;
     const caps = await resolveCapabilities(user.role);
@@ -93,14 +204,7 @@ export async function GET(
         ? stripSourceCode(fullSubmission)
         : fullSubmission;
       const body = `event: result\ndata: ${JSON.stringify(sanitized)}\n\n`;
-      // Decrement connection count for non-streaming early return
-      const count = activeConnections.get(userId) ?? 1;
-      if (count <= 1) {
-        activeConnections.delete(userId);
-      } else {
-        activeConnections.set(userId, count - 1);
-      }
-      globalConnectionCount = Math.max(0, globalConnectionCount - 1);
+      removeConnection(connId);
       return new Response(body, {
         headers: sseHeaders(),
       });
@@ -114,17 +218,9 @@ export async function GET(
         function close() {
           if (closed) return;
           closed = true;
-          clearInterval(pollTimer);
+          unsubscribeFromPoll(id, onPollResult);
           clearTimeout(timeoutTimer);
-          // Decrement active connection count
-          const count = activeConnections.get(userId) ?? 1;
-          if (count <= 1) {
-            activeConnections.delete(userId);
-            connectionLastActivity.delete(userId);
-          } else {
-            activeConnections.set(userId, count - 1);
-          }
-          globalConnectionCount = Math.max(0, globalConnectionCount - 1);
+          removeConnection(connId);
           try {
             controller.close();
           } catch {
@@ -143,37 +239,34 @@ export async function GET(
 
         let lastAuthCheck = Date.now();
 
-        const pollTimer = setInterval(() => {
-          void (async () => {
-            if (closed) return;
-            connectionLastActivity.set(userId, Date.now());
+        // Callback invoked by the shared poll timer with the latest status
+        const onPollResult: PollCallback = (status: string) => {
+          if (closed) return;
 
-              // Periodically re-check auth to ensure deactivated users don't continue receiving data
-              if (Date.now() - lastAuthCheck >= AUTH_RECHECK_INTERVAL_MS) {
-                lastAuthCheck = Date.now();
-                const reAuthUser = await getApiUser(request);
-                if (!reAuthUser) {
-                  close();
-                  return;
-                }
-              }
-
-            try {
-              const current = await db.query.submissions.findFirst({
-                where: eq(submissions.id, id),
-                columns: { status: true },
-              });
-
-              if (closed) return;
-
-              if (!current) {
+          // Periodically re-check auth to ensure deactivated users don't keep receiving data
+          const now = Date.now();
+          if (now - lastAuthCheck >= AUTH_RECHECK_INTERVAL_MS) {
+            lastAuthCheck = now;
+            void (async () => {
+              const reAuthUser = await getApiUser(request);
+              if (!reAuthUser) {
                 close();
-                return;
               }
+            })();
+            // Don't return early -- still process the current status update
+            // (the auth revocation will take effect on the next tick)
+          }
 
-              const status = current.status ?? "";
+          if (!status) {
+            // Submission was deleted
+            close();
+            return;
+          }
 
-              if (!IN_PROGRESS_JUDGE_STATUSES.has(status)) {
+          if (!IN_PROGRESS_JUDGE_STATUSES.has(status)) {
+            // Terminal state reached -- fetch full submission and send final event
+            void (async () => {
+              try {
                 const fullSubmission = await queryFullSubmission(id);
                 if (closed) return;
                 const sanitized = (!isOwner && !canViewSource && fullSubmission)
@@ -182,22 +275,31 @@ export async function GET(
                 controller.enqueue(
                   encoder.encode(`event: result\ndata: ${JSON.stringify(sanitized)}\n\n`)
                 );
+              } catch (err) {
+                if (!closed) {
+                  logger.error({ err }, "SSE final fetch error for submission %s", id);
+                }
+              } finally {
                 close();
-                return;
               }
+            })();
+            return;
+          }
 
-              // Emit a status heartbeat so the client knows the connection is alive
-              controller.enqueue(
-                encoder.encode(`event: status\ndata: ${JSON.stringify({ status })}\n\n`)
-              );
-            } catch (err) {
-              if (!closed) {
-                logger.error({ err }, "SSE poll error for submission %s", id);
-                close();
-              }
+          // Emit a status heartbeat so the client knows the connection is alive
+          try {
+            controller.enqueue(
+              encoder.encode(`event: status\ndata: ${JSON.stringify({ status })}\n\n`)
+            );
+          } catch (err) {
+            if (!closed) {
+              logger.error({ err }, "SSE enqueue error for submission %s", id);
+              close();
             }
-          })();
-        }, sseConfig.ssePollIntervalMs);
+          }
+        };
+
+        subscribeToPoll(id, onPollResult);
       },
     });
 

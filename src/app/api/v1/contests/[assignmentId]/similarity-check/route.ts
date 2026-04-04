@@ -9,7 +9,7 @@ export const POST = createApiHandler({
   handler: async (req: NextRequest, { user, params }) => {
     const { assignmentId } = params;
 
-    const assignment = getContestAssignment(assignmentId);
+    const assignment = await getContestAssignment(assignmentId);
 
     if (!assignment || assignment.examMode === "none") {
       return apiError("notFound", 404);

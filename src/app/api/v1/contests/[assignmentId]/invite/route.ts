@@ -4,7 +4,7 @@ import { z } from "zod";
 import { createApiHandler } from "@/lib/api/handler";
 import { apiSuccess, apiError } from "@/lib/api/responses";
 import { getContestAssignment, canManageContest } from "@/lib/assignments/contests";
-import { db, sqlite, execTransaction } from "@/lib/db";
+import { db, execTransaction } from "@/lib/db";
 import { users, enrollments, contestAccessTokens } from "@/lib/db/schema";
 import { and, eq, inArray, like, or, sql } from "drizzle-orm";
 
@@ -20,7 +20,7 @@ export const GET = createApiHandler({
   handler: async (req: NextRequest, { user, params }) => {
     const { assignmentId } = params;
 
-    const assignment = getContestAssignment(assignmentId);
+    const assignment = await getContestAssignment(assignmentId);
     if (!assignment || assignment.examMode === "none") return apiError("notFound", 404);
     if (!canManageContest(user, assignment)) return apiError("forbidden", 403);
 
@@ -81,7 +81,7 @@ export const POST = createApiHandler({
   handler: async (req: NextRequest, { user: apiUser, body, params }) => {
     const { assignmentId } = params;
 
-    const assignment = getContestAssignment(assignmentId);
+    const assignment = await getContestAssignment(assignmentId);
     if (!assignment || assignment.examMode === "none") return apiError("notFound", 404);
     if (!canManageContest(apiUser, assignment)) return apiError("forbidden", 403);
 

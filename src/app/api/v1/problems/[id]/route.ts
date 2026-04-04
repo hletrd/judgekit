@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { z } from "zod";
 import { apiSuccess, apiError } from "@/lib/api/responses";
-import { db, sqlite, execTransaction } from "@/lib/db";
+import { db, execTransaction } from "@/lib/db";
 import { assignmentProblems, problems, submissions, testCases, problemTags, tags } from "@/lib/db/schema";
 import { eq, sql } from "drizzle-orm";
 import { forbidden, notFound, isAdmin, createApiHandler } from "@/lib/api/handler";

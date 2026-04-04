@@ -3,7 +3,7 @@ import { LRUCache } from "lru-cache";
 import { createApiHandler, isAdmin, isInstructor } from "@/lib/api/handler";
 import { apiSuccess, apiError } from "@/lib/api/responses";
 import { computeContestAnalytics } from "@/lib/assignments/contest-analytics";
-import { sqlite } from "@/lib/db";
+import { rawQueryOne } from "@/lib/db/queries";
 
 const analyticsCache = new LRUCache<string, any>({ max: 100, ttl: 60_000 });
 
@@ -18,12 +18,11 @@ export const GET = createApiHandler({
   handler: async (req: NextRequest, { user, params }) => {
     const { assignmentId } = params;
 
-    const assignment = sqlite
-      .prepare<[string], AssignmentRow>(
-        `SELECT a.group_id AS groupId, g.instructor_id AS instructorId, a.exam_mode AS examMode
-         FROM assignments a INNER JOIN groups g ON g.id = a.group_id WHERE a.id = ?`
-      )
-      .get(assignmentId);
+    const assignment = await rawQueryOne<AssignmentRow>(
+      `SELECT a.group_id AS "groupId", g.instructor_id AS "instructorId", a.exam_mode AS "examMode"
+       FROM assignments a INNER JOIN groups g ON g.id = a.group_id WHERE a.id = @assignmentId`,
+      { assignmentId }
+    );
 
     if (!assignment || assignment.examMode === "none") {
       return apiError("notFound", 404);
@@ -41,7 +40,7 @@ export const GET = createApiHandler({
     const cached = analyticsCache.get(cacheKey);
     if (cached) return apiSuccess(cached);
 
-    const analytics = computeContestAnalytics(assignmentId);
+    const analytics = await computeContestAnalytics(assignmentId);
     analyticsCache.set(cacheKey, analytics);
     return apiSuccess(analytics);
   },
