@@ -16,7 +16,7 @@ Workers access the app via HTTP(S) only. SQLite remains the single writer (app p
 
 On startup, the worker POSTs to `/api/v1/judge/register` with its hostname and concurrency. The server returns a `workerId` and heartbeat interval.
 
-If registration fails (e.g., older server without worker support), the worker continues without registration — full backward compatibility.
+If registration fails (e.g., older server without worker support), the worker continues without registration — backward compatible.
 
 ### Heartbeat
 
@@ -111,7 +111,7 @@ For larger fleets, consider a private Docker registry and set `JUDGE_DOCKER_REGI
 
 ## Admin Dashboard
 
-The workers admin page at `/dashboard/admin/workers` (requires `system.settings` capability) provides:
+The workers admin page at `/dashboard/admin/workers` (requires `system.settings` capability) shows:
 
 - **Stats cards** — Workers online, queue depth, active judging, total concurrency
 - **Workers table** — Alias, hostname, IP address, status, concurrency, active tasks, version, last heartbeat

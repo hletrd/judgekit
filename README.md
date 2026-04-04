@@ -24,7 +24,7 @@
 
 - **Cross-platform (AMD64 + ARM64)** — Full stack runs natively on both architectures: Next.js app, Rust judge worker, Rust sidecars, and all 100 Docker judge images. Deploy on x86-64 servers or ARM64 (AWS Graviton, Ampere Altra, Apple Silicon) with automatic architecture detection — no emulation, no cross-compilation
 - **118 languages** — C/C++, Java, Python, Rust, Go, Deno, Bun, Gleam, Lean 4, Hare, Koka, Chapel, Elm, Idris 2, and [104 more](docs/languages.md), all with multi-arch Docker images and admin-customizable compile/run settings
-- **Scalable judging** — Dedicated judge workers with multi-worker support. Workers register, send heartbeats, and gracefully deregister. Admin dashboard for real-time monitoring. Deploy N workers across multiple machines with a single deploy script
+- **Scalable judging** — Distributed judge workers with automatic registration and heartbeats. Live admin dashboard. Deploy across multiple machines with a single script
 - **Secure execution** — Docker containers with no network, seccomp, memory/CPU limits
 - **Role-based access** — Super admin, admin, instructor, student
 - **Classroom management** — Groups, enrollments, assignments with deadlines and late penalties
@@ -167,7 +167,7 @@ judgekit/
   <img src="docs/architecture.svg" alt="JudgeKit Architecture" width="720" />
 </p>
 
-Workers connect to the app server via HTTP(S) only. Each worker registers on startup, sends periodic heartbeats, and deregisters on graceful shutdown. The atomic `UPDATE...RETURNING` claim SQL ensures no two workers can claim the same submission. Stale workers are automatically detected and their submissions reclaimed.
+Workers connect to the app server via HTTP(S) only. Each worker registers on startup, sends periodic heartbeats, and deregisters on graceful shutdown. The atomic `UPDATE...RETURNING` claim SQL prevents two workers from claiming the same submission. Stale workers are detected automatically and their submissions reclaimed.
 
 ## Deployment
 

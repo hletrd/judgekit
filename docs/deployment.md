@@ -119,7 +119,7 @@ SSH_KEY=key.pem REMOTE_HOST=... REMOTE_USER=... DOMAIN=... ./deploy-docker.sh
 
 ## Dedicated Judge Workers
 
-Scale judging capacity by deploying workers on separate machines. Each worker connects to the app server via HTTP(S), registers on startup, and sends periodic heartbeats.
+Add judging capacity by deploying workers on separate machines. Each worker connects to the app server via HTTP(S), registers on startup, and sends periodic heartbeats.
 
 ### Deploy a remote worker
 
