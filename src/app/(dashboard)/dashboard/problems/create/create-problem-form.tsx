@@ -4,7 +4,8 @@ import { useRef, useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { nanoid } from "nanoid";
-import { Plus, Trash2, X, ImageIcon } from "lucide-react";
+import { Plus, Trash2, X, ImageIcon, Upload } from "lucide-react";
+import JSZip from "jszip";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -129,6 +130,59 @@ export default function CreateProblemForm({
 
   const testCaseInputFileRefs = useRef<HTMLInputElement[]>([]);
   const testCaseOutputFileRefs = useRef<HTMLInputElement[]>([]);
+  const zipImportRef = useRef<HTMLInputElement>(null);
+
+  const handleZipImport = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    event.target.value = "";
+
+    try {
+      const zip = await JSZip.loadAsync(file);
+      const fileMap = new Map<string, { input?: string; output?: string }>();
+
+      for (const [path, entry] of Object.entries(zip.files)) {
+        if (entry.dir) continue;
+        const name = path.split("/").pop() ?? path;
+        const match = name.match(/^(\d+)\.(in|out|input|output|ans)$/i);
+        if (!match) continue;
+        const num = match[1];
+        const kind = match[2].toLowerCase();
+        const content = await entry.async("string");
+        const existing = fileMap.get(num) ?? {};
+        if (kind === "in" || kind === "input") {
+          existing.input = content;
+        } else {
+          existing.output = content;
+        }
+        fileMap.set(num, existing);
+      }
+
+      const sortedKeys = [...fileMap.keys()].sort((a, b) => Number(a) - Number(b));
+      const imported: ProblemTestCaseDraft[] = [];
+
+      for (const key of sortedKeys) {
+        const pair = fileMap.get(key)!;
+        if (pair.input === undefined || pair.output === undefined) continue;
+        imported.push({
+          _key: nanoid(),
+          input: pair.input,
+          expectedOutput: pair.output,
+          isVisible: false,
+        });
+      }
+
+      if (imported.length === 0) {
+        toast.error(t("zipImportNoPairs"));
+        return;
+      }
+
+      setTestCases((prev) => [...prev, ...imported]);
+      toast.success(t("zipImportSuccess", { count: imported.length }));
+    } catch {
+      toast.error(t("zipImportFailed"));
+    }
+  }, [t]);
 
   // Fetch tag suggestions
   const fetchSuggestions = useCallback(async (query: string) => {
@@ -684,6 +738,22 @@ export default function CreateProblemForm({
             >
               <Plus aria-hidden="true" />
               {t("addTestCase")}
+            </Button>
+            <input
+              ref={zipImportRef}
+              type="file"
+              accept=".zip"
+              className="sr-only"
+              onChange={(e) => { void handleZipImport(e); }}
+            />
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => zipImportRef.current?.click()}
+              disabled={isLoading || !areTestCasesEditable}
+            >
+              <Upload aria-hidden="true" />
+              {t("importFromZip")}
             </Button>
           </div>
         </div>
