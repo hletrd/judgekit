@@ -98,7 +98,7 @@ function AliasCell({ worker, onUpdate }: { worker: Worker; onUpdate: () => void 
   async function handleSave() {
     const res = await fetch(`/api/v1/admin/workers/${worker.id}`, {
       method: "PATCH",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest" },
       body: JSON.stringify({ alias: value || null }),
     });
     if (res.ok) {
@@ -247,7 +247,7 @@ export function WorkersPageClient() {
   }, [fetchData]);
 
   async function handleRemove(id: string) {
-    const res = await fetch(`/api/v1/admin/workers/${id}`, { method: "DELETE" });
+    const res = await fetch(`/api/v1/admin/workers/${id}`, { method: "DELETE", headers: { "X-Requested-With": "XMLHttpRequest" } });
     if (res.ok) {
       toast.success(t("removeSuccess"));
       fetchData();
