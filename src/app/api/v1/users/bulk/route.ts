@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { apiError } from "@/lib/api/responses";
-import { db } from "@/lib/db";
+import { db, execTransaction } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { inArray } from "drizzle-orm";
 import { forbidden, isAdmin, isInstructor, createApiHandler } from "@/lib/api/handler";
@@ -114,9 +114,9 @@ export const POST = createApiHandler({
 
     // Insert all valid users in a single transaction
     if (toInsert.length > 0) {
-      await db.transaction(async (tx) => {
+      execTransaction(() => {
         for (const entry of toInsert) {
-          await tx.insert(users).values({
+          db.insert(users).values({
             id: entry.id,
             username: entry.username,
             email: entry.email,
@@ -128,7 +128,7 @@ export const POST = createApiHandler({
             mustChangePassword: true,
             createdAt: new Date(),
             updatedAt: new Date(),
-          });
+          }).run();
         }
       });
 

@@ -1,4 +1,4 @@
-import { db } from "@/lib/db";
+import { db, execTransaction } from "@/lib/db";
 import { rateLimits } from "@/lib/db/schema";
 import { extractClientIp } from "@/lib/security/ip";
 import { getConfiguredSettings } from "@/lib/system-settings-config";
@@ -59,9 +59,9 @@ export function stopRateLimitEviction() {
   }
 }
 
-async function getEntry(key: string) {
+function getEntry(key: string, queryDb: Pick<typeof db, "select"> = db) {
   const now = Date.now();
-  const [existing] = await db.select().from(rateLimits).where(eq(rateLimits.key, key)).limit(1);
+  const [existing] = queryDb.select().from(rateLimits).where(eq(rateLimits.key, key)).limit(1).all();
 
   if (!existing) {
     return {
@@ -111,9 +111,9 @@ export async function isAnyKeyRateLimited(...keys: string[]) {
   return results.some(Boolean);
 }
 
-export async function recordRateLimitFailure(key: string) {
-  await db.transaction(async (tx) => {
-    const { now, entry, exists } = await getEntry(key);
+export function recordRateLimitFailure(key: string) {
+  execTransaction(() => {
+    const { now, entry, exists } = getEntry(key);
     const attempts = entry.attempts + 1;
 
     let blockedUntil = entry.blockedUntil;
@@ -128,7 +128,7 @@ export async function recordRateLimitFailure(key: string) {
     }
 
     if (exists) {
-      await tx.update(rateLimits)
+      db.update(rateLimits)
         .set({
           attempts,
           windowStartedAt: entry.windowStartedAt,
@@ -136,9 +136,10 @@ export async function recordRateLimitFailure(key: string) {
           consecutiveBlocks,
           lastAttempt: now,
         })
-        .where(eq(rateLimits.key, key));
+        .where(eq(rateLimits.key, key))
+        .run();
     } else {
-      await tx.insert(rateLimits)
+      db.insert(rateLimits)
         .values({
           id: nanoid(),
           key,
@@ -147,7 +148,8 @@ export async function recordRateLimitFailure(key: string) {
           blockedUntil: blockedUntil || null,
           consecutiveBlocks,
           lastAttempt: now,
-        });
+        })
+        .run();
     }
   });
 }
