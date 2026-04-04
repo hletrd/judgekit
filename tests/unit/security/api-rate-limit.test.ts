@@ -1,21 +1,17 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
 
-const { getRateLimitKeyMock, dbMock } = vi.hoisted(() => {
-  const txMock = {
+const { getRateLimitKeyMock, dbMock, execTransactionMock } = vi.hoisted(() => {
+  const dbMock = {
     select: vi.fn(),
     insert: vi.fn(),
     update: vi.fn(),
   };
   return {
     getRateLimitKeyMock: vi.fn(),
-    dbMock: {
-      select: vi.fn(),
-      insert: vi.fn(),
-      update: vi.fn(),
-      transaction: vi.fn(async (cb: (tx: typeof txMock) => Promise<unknown>) => cb(txMock)),
-      _tx: txMock,
-    },
+    dbMock,
+    // execTransaction runs the callback with the db mock as the transaction client
+    execTransactionMock: vi.fn(async (fn: (tx: typeof dbMock) => unknown) => fn(dbMock)),
   };
 });
 
@@ -25,6 +21,14 @@ vi.mock("@/lib/security/rate-limit", () => ({
 
 vi.mock("@/lib/db", () => ({
   db: dbMock,
+  execTransaction: execTransactionMock,
+}));
+
+vi.mock("@/lib/system-settings-config", () => ({
+  getConfiguredSettings: () => ({
+    apiRateLimitMax: 2,
+    apiRateLimitWindowMs: 60_000,
+  }),
 }));
 
 vi.mock("nanoid", () => ({
@@ -33,11 +37,14 @@ vi.mock("nanoid", () => ({
 
 import { consumeApiRateLimit } from "@/lib/security/api-rate-limit";
 
-function mockTxSelectResult(row: Record<string, unknown> | undefined) {
+function mockSelectResult(row: Record<string, unknown> | undefined) {
   const rows = row ? [row] : [];
-  dbMock._tx.select.mockReturnValue({
+  dbMock.select.mockReturnValue({
     from: vi.fn(() => ({
       where: vi.fn(() => ({
+        for: vi.fn(() => ({
+          limit: vi.fn(() => rows),
+        })),
         limit: vi.fn(() => rows),
       })),
     })),
@@ -46,17 +53,16 @@ function mockTxSelectResult(row: Record<string, unknown> | undefined) {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  // Default: tx.select returns no existing row (new request)
-  mockTxSelectResult(undefined);
-  dbMock._tx.insert.mockReturnValue({
-    values: vi.fn(() => ({ run: vi.fn() })),
+  // Default: select returns no existing row (new request)
+  mockSelectResult(undefined);
+  dbMock.insert.mockReturnValue({
+    values: vi.fn(async () => undefined),
   });
-  dbMock._tx.update.mockReturnValue({
+  dbMock.update.mockReturnValue({
     set: vi.fn(() => ({
-      where: vi.fn(() => ({ run: vi.fn() })),
+      where: vi.fn(async () => undefined),
     })),
   });
-  dbMock.transaction.mockImplementation(async (cb: any) => cb(dbMock._tx));
 });
 
 function createRequest() {
@@ -78,14 +84,13 @@ describe("consumeApiRateLimit", () => {
       "api:groups",
       expect.any(Headers)
     );
-    // atomicConsumeRateLimit inserts via tx for new keys
-    expect(dbMock._tx.insert).toHaveBeenCalled();
+    expect(dbMock.insert).toHaveBeenCalled();
   });
 
   it("returns a 429 response when the request is already rate limited", async () => {
     getRateLimitKeyMock.mockReturnValue("api:groups:198.51.100.8");
     // Simulate an existing entry that is blocked
-    mockTxSelectResult({
+    mockSelectResult({
       key: "api:groups:198.51.100.8",
       attempts: 120,
       windowStartedAt: Date.now(),
@@ -110,6 +115,6 @@ describe("consumeApiRateLimit", () => {
     await consumeApiRateLimit(request, "groups");
 
     // transaction is only called once (dedup via WeakMap)
-    expect(dbMock.transaction).toHaveBeenCalledTimes(1);
+    expect(dbMock.insert).toHaveBeenCalledTimes(1);
   });
 });
