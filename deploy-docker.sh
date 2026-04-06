@@ -307,7 +307,7 @@ success "Config ready"
 # Step 5: Stop old containers, start DB first, migrate, then start all
 # ---------------------------------------------------------------------------
 info "Stopping existing containers (if any)..."
-remote "cd ${REMOTE_DIR} && cp -f .env.production .env && (docker compose -f docker-compose.production.yml down --remove-orphans 2>/dev/null || docker-compose -f docker-compose.production.yml down --remove-orphans 2>/dev/null || true)"
+remote "cd ${REMOTE_DIR} && cp -f .env.production .env && (docker compose -f docker-compose.production.yml --profile worker down --remove-orphans 2>/dev/null || docker-compose -f docker-compose.production.yml --profile worker down --remove-orphans 2>/dev/null || true)"
 
 # 5a. Start only the database container
 info "Starting database container..."
