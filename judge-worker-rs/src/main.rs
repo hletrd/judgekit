@@ -17,6 +17,7 @@ use tokio::sync::Semaphore;
 fn detect_cpu_model() -> Option<String> {
     #[cfg(target_os = "linux")]
     {
+        // Try /proc/cpuinfo first (works on x86)
         if let Ok(contents) = std::fs::read_to_string("/proc/cpuinfo") {
             for line in contents.lines() {
                 if let Some(value) = line.strip_prefix("model name") {
@@ -25,6 +26,18 @@ fn detect_cpu_model() -> Option<String> {
                         if !name.is_empty() {
                             return Some(name.to_string());
                         }
+                    }
+                }
+            }
+        }
+        // Fallback to lscpu (works on ARM64 where /proc/cpuinfo lacks model name)
+        if let Ok(output) = std::process::Command::new("lscpu").output() {
+            let text = String::from_utf8_lossy(&output.stdout);
+            for line in text.lines() {
+                if let Some(rest) = line.strip_prefix("Model name:") {
+                    let name = rest.trim();
+                    if !name.is_empty() {
+                        return Some(name.to_string());
                     }
                 }
             }
