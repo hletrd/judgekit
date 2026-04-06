@@ -33,7 +33,8 @@ export function isTokenInvalidated(
     return false;
   }
 
-  return authenticatedAtSeconds * 1000 < tokenInvalidatedAt.getTime();
+  const invalidatedAtSeconds = Math.floor(tokenInvalidatedAt.getTime() / 1000);
+  return authenticatedAtSeconds < invalidatedAtSeconds;
 }
 
 export function clearAuthToken(token: JWT) {
