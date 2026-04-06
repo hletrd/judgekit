@@ -1,4 +1,4 @@
-import { createHash, randomBytes } from "node:crypto";
+import { createCipheriv, createDecipheriv, createHash, randomBytes } from "node:crypto";
 import { eq, and } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { apiKeys, users } from "@/lib/db/schema";
@@ -16,6 +16,28 @@ export function buildMaskedApiKeyPreview(keyPrefix: string) {
 
 export function hashApiKey(rawKey: string) {
   return createHash("sha256").update(rawKey).digest("hex");
+}
+
+function getEncryptionKey() {
+  const secret = process.env.PLUGIN_CONFIG_ENCRYPTION_KEY || process.env.AUTH_SECRET;
+  if (!secret) throw new Error("PLUGIN_CONFIG_ENCRYPTION_KEY or AUTH_SECRET must be set");
+  return createHash("sha256").update(secret).digest();
+}
+
+export function encryptApiKey(rawKey: string): string {
+  const iv = randomBytes(12);
+  const cipher = createCipheriv("aes-256-gcm", getEncryptionKey(), iv);
+  const ciphertext = Buffer.concat([cipher.update(rawKey, "utf8"), cipher.final()]);
+  const tag = cipher.getAuthTag();
+  return [iv.toString("base64url"), tag.toString("base64url"), ciphertext.toString("base64url")].join(":");
+}
+
+export function decryptApiKey(encrypted: string): string {
+  const [ivRaw, tagRaw, ciphertextRaw] = encrypted.split(":");
+  if (!ivRaw || !tagRaw || !ciphertextRaw) throw new Error("Malformed encrypted API key");
+  const decipher = createDecipheriv("aes-256-gcm", getEncryptionKey(), Buffer.from(ivRaw, "base64url"));
+  decipher.setAuthTag(Buffer.from(tagRaw, "base64url"));
+  return Buffer.concat([decipher.update(Buffer.from(ciphertextRaw, "base64url")), decipher.final()]).toString("utf8");
 }
 
 /** Generate a new API key. Returns the one-time reveal token plus stored fields. */

@@ -5,7 +5,7 @@ import { apiKeys, users, roles } from "@/lib/db/schema";
 import { eq, desc } from "drizzle-orm";
 import { createApiHandler, isAdmin } from "@/lib/api/handler";
 import { apiSuccess, apiError } from "@/lib/api/responses";
-import { generateApiKey } from "@/lib/api/api-key-auth";
+import { generateApiKey, encryptApiKey } from "@/lib/api/api-key-auth";
 import { recordAuditEvent } from "@/lib/audit/events";
 import { canManageRoleAsync, isUserRole } from "@/lib/security/constants";
 
@@ -19,7 +19,7 @@ export const GET = createApiHandler({
   handler: async (req: NextRequest, { user }) => {
     if (!isAdmin(user.role)) return apiError("forbidden", 403);
 
-    const keys = await db
+    const rows = await db
       .select({
         id: apiKeys.id,
         name: apiKeys.name,
@@ -31,10 +31,16 @@ export const GET = createApiHandler({
         expiresAt: apiKeys.expiresAt,
         isActive: apiKeys.isActive,
         createdAt: apiKeys.createdAt,
+        encryptedKey: apiKeys.encryptedKey,
       })
       .from(apiKeys)
       .leftJoin(users, eq(apiKeys.createdById, users.id))
       .orderBy(desc(apiKeys.createdAt));
+
+    const keys = rows.map(({ encryptedKey, ...rest }) => ({
+      ...rest,
+      hasEncryptedKey: encryptedKey != null,
+    }));
 
     return apiSuccess(keys);
   },
@@ -65,6 +71,7 @@ export const POST = createApiHandler({
     }
 
     const { rawKey, keyPrefix, keyHash } = generateApiKey();
+    const encryptedKey = encryptApiKey(rawKey);
 
     const [created] = await db
       .insert(apiKeys)
@@ -72,6 +79,7 @@ export const POST = createApiHandler({
         name: body.name,
         keyHash,
         keyPrefix,
+        encryptedKey,
         createdById: user.id,
         role: body.role,
         expiresAt: body.expiresAt ? new Date(body.expiresAt) : null,

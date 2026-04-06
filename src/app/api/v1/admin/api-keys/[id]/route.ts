@@ -5,6 +5,7 @@ import { apiKeys, roles } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { createApiHandler, isAdmin } from "@/lib/api/handler";
 import { apiSuccess, apiError } from "@/lib/api/responses";
+import { decryptApiKey } from "@/lib/api/api-key-auth";
 import { recordAuditEvent } from "@/lib/audit/events";
 import { canManageRoleAsync, isUserRole } from "@/lib/security/constants";
 
@@ -13,6 +14,36 @@ const updateSchema = z.object({
   role: z.string().min(1).max(50).optional(),
   isActive: z.boolean().optional(),
   expiresAt: z.string().datetime().nullable().optional(),
+});
+
+export const GET = createApiHandler({
+  handler: async (req: NextRequest, { user, params }) => {
+    if (!isAdmin(user.role)) return apiError("forbidden", 403);
+
+    const { id } = params;
+    const [existing] = await db
+      .select({ id: apiKeys.id, name: apiKeys.name, encryptedKey: apiKeys.encryptedKey })
+      .from(apiKeys)
+      .where(eq(apiKeys.id, id))
+      .limit(1);
+    if (!existing) return apiError("notFound", 404, "ApiKey");
+    if (!existing.encryptedKey) return apiError("noEncryptedKey", 400);
+
+    const rawKey = decryptApiKey(existing.encryptedKey);
+
+    recordAuditEvent({
+      actorId: user.id,
+      actorRole: user.role,
+      action: "api_key.viewed",
+      resourceType: "api_key",
+      resourceId: id,
+      resourceLabel: existing.name,
+      summary: `Viewed API key "${existing.name}"`,
+      request: req,
+    });
+
+    return apiSuccess({ key: rawKey });
+  },
 });
 
 export const PATCH = createApiHandler({
