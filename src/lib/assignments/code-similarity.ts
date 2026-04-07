@@ -222,16 +222,7 @@ export async function runAndStoreSimilarityCheck(
 
   const { pairs } = result;
 
-  // Delete previous code_similarity events for this assignment to avoid duplicates
-  await db.delete(antiCheatEvents)
-    .where(
-      and(
-        eq(antiCheatEvents.assignmentId, assignmentId),
-        eq(antiCheatEvents.eventType, "code_similarity")
-      )
-    );
-
-  // Batch insert all similarity events at once
+  // Batch all similarity events at once (before transaction — no DB access needed)
   const now = new Date();
   const eventValues = pairs.flatMap((pair) =>
     [pair.userId1, pair.userId2].map((userId) => {
@@ -251,9 +242,20 @@ export async function runAndStoreSimilarityCheck(
     })
   );
 
-  if (eventValues.length > 0) {
-    await db.insert(antiCheatEvents).values(eventValues);
-  }
+  // Atomic: delete old events and insert new ones
+  await db.transaction(async (tx) => {
+    await tx.delete(antiCheatEvents)
+      .where(
+        and(
+          eq(antiCheatEvents.assignmentId, assignmentId),
+          eq(antiCheatEvents.eventType, "code_similarity")
+        )
+      );
+
+    if (eventValues.length > 0) {
+      await tx.insert(antiCheatEvents).values(eventValues);
+    }
+  });
 
   return result;
 }
