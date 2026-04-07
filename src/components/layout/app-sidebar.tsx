@@ -64,6 +64,7 @@ const navGroups: NavGroup[] = [
         href: "/dashboard/problems",
         icon: BookOpen,
         titleKeyByMode: { recruiting: "challenges" },
+        hiddenInModes: ["recruiting"],
       },
       {
         titleKey: "submissions",
@@ -76,7 +77,7 @@ const navGroups: NavGroup[] = [
         href: "/dashboard/contests",
         icon: Timer,
       },
-      { titleKey: "compiler", href: "/dashboard/compiler", icon: Play },
+      { titleKey: "compiler", href: "/dashboard/compiler", icon: Play, hiddenInModes: ["recruiting"] },
       {
         titleKey: "rankings",
         href: "/dashboard/rankings",
@@ -92,6 +93,7 @@ const navGroups: NavGroup[] = [
         titleKey: "groups",
         href: "/dashboard/groups",
         icon: Users,
+        hiddenInModes: ["recruiting"],
       },
       {
         titleKey: "problemSets",

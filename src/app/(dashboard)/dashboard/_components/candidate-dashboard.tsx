@@ -7,7 +7,7 @@ import { enrollments, languageConfigs, problems, submissions } from "@/lib/db/sc
 import { getTranslations } from "next-intl/server";
 import { resolveCapabilities } from "@/lib/capabilities/cache";
 import { formatDateTimeInTimeZone } from "@/lib/datetime";
-import { getResolvedSystemSettings } from "@/lib/system-settings";
+import { getResolvedPlatformMode, getResolvedSystemSettings } from "@/lib/system-settings";
 import { getLocale } from "next-intl/server";
 
 type CandidateDashboardProps = {
@@ -28,11 +28,25 @@ export async function CandidateDashboard({ userId, role }: CandidateDashboardPro
   const caps = await resolveCapabilities(role);
   const canViewAll = caps.has("problems.view_all") || role === "super_admin" || role === "admin";
 
+  const isRecruitingMode = (await getResolvedPlatformMode()) === "recruiting";
+
   const [accessibleProblemCount, submissionCountRows, enabledLanguagesRows, recentSubmissions] = await Promise.all([
     canViewAll
       ? db.select({ count: sql<number>`count(*)` }).from(problems).then((r) => Number(r[0]?.count ?? 0))
       : (async () => {
-          // Count public problems + problems accessible via group enrollment
+          if (isRecruitingMode) {
+            // In recruiting mode: count only problems assigned to the user's enrolled contests
+            const count = await db.execute(sql`
+              SELECT count(DISTINCT ap.problem_id) AS count
+              FROM assignment_problems ap
+              INNER JOIN assignments a ON a.id = ap.assignment_id
+              INNER JOIN enrollments e ON e.group_id = a.group_id AND e.user_id = ${userId}
+              WHERE a.exam_mode != 'none'
+            `).then((r) => Number(r.rows[0]?.count ?? 0));
+            return count;
+          }
+
+          // Non-recruiting: count public + group-accessible + authored problems
           const userGroupIds = await db
             .select({ groupId: enrollments.groupId })
             .from(enrollments)
@@ -47,14 +61,14 @@ export async function CandidateDashboard({ userId, role }: CandidateDashboardPro
 
           if (userGroupIds.length === 0) return publicCount;
 
-          // Use a union-based distinct count for accuracy
+          const groupIdArray = sql.raw(`ARRAY[${userGroupIds.map((id) => `'${id.replace(/'/g, "''")}'`).join(",")}]`);
           const distinctCount = await db.execute(sql`
             SELECT count(*) AS count FROM (
               SELECT id FROM problems WHERE visibility = 'public'
               UNION
               SELECT p.id FROM problems p
                 JOIN problem_group_access pga ON pga.problem_id = p.id
-                WHERE pga.group_id = ANY(${userGroupIds})
+                WHERE pga.group_id = ANY(${groupIdArray})
               UNION
               SELECT id FROM problems WHERE author_id = ${userId}
             ) accessible
