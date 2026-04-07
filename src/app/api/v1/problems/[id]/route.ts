@@ -30,6 +30,7 @@ const problemPatchSchema = z.object({
     id: z.string().optional(),
     input: z.string().optional(),
     expectedOutput: z.string().optional(),
+    isVisible: z.boolean().optional(),
     sortOrder: z.number().int().optional(),
   })).optional(),
   tags: z.array(z.string().min(1).max(50)).max(20).optional(),

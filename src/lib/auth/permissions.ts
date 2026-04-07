@@ -26,7 +26,7 @@ export async function canAccessGroup(
 
   const recruitingAccess = await getRecruitingAccessContext(userId);
   if (recruitingAccess.isRecruitingCandidate) {
-    // Allow access only to the group the candidate is enrolled in
+    // Allow access to their enrolled group only
     const enrollment = await db.query.enrollments.findFirst({
       where: and(eq(enrollments.userId, userId), eq(enrollments.groupId, groupId)),
     });

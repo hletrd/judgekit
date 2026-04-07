@@ -268,10 +268,7 @@ export default async function ProblemDetailPage({
         </div>
       </div>
       <Card>
-        <CardHeader>
-          <CardTitle>{t("descriptionTitle")}</CardTitle>
-        </CardHeader>
-        <CardContent>
+        <CardContent className="pt-6">
           {problem.description ? (
             <ProblemDescription
               className="text-sm sm:text-base"

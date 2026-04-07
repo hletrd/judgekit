@@ -260,17 +260,17 @@ async function _computeContestRankingInner(assignmentId: string, cutoffSec?: num
         }
 
         if (scoringModel === "icpc") {
-          const solved = row.hasAc === 1;
+          const solved = Number(row.hasAc) === 1;
           const firstAcMs = row.firstAcAt ? new Date(row.firstAcAt).getTime() : null;
           const penalty =
             solved && firstAcMs
-              ? computeIcpcPenalty(contestStartMs, firstAcMs, row.wrongBeforeAc)
+              ? computeIcpcPenalty(contestStartMs, firstAcMs, Number(row.wrongBeforeAc) || 0)
               : 0;
 
           return {
             problemId: ap.problemId,
             score: solved ? ap.points : 0,
-            attempts: row.attemptCount,
+            attempts: Number(row.attemptCount) || 0,
             solved,
             firstAcAt: firstAcMs,
             penalty,
@@ -278,11 +278,12 @@ async function _computeContestRankingInner(assignmentId: string, cutoffSec?: num
         }
 
         // IOI
+        const bestScore = Number(row.bestScore) || 0;
         return {
           problemId: ap.problemId,
-          score: row.bestScore ?? 0,
-          attempts: row.attemptCount,
-          solved: (row.bestScore ?? 0) >= ap.points,
+          score: bestScore,
+          attempts: Number(row.attemptCount) || 0,
+          solved: bestScore >= ap.points,
           firstAcAt: row.firstAcAt ? new Date(row.firstAcAt).getTime() : null,
           penalty: 0,
         };

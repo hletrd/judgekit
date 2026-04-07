@@ -333,6 +333,7 @@ export const assignments = pgTable(
     enableAntiCheat: boolean("enable_anti_cheat").notNull().default(false),
     anonymousLeaderboard: boolean("anonymous_leaderboard").default(false),
     showResultsToCandidate: boolean("show_results_to_candidate").notNull().default(false),
+    hideScoresFromCandidates: boolean("hide_scores_from_candidates").notNull().default(false),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .$defaultFn(() => new Date(Date.now())),

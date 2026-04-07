@@ -623,7 +623,8 @@ export async function getAssignmentStatusRows(
       const overrideScore = overrideMap.get(key);
       const isOverridden = overrideScore !== undefined;
 
-      let bestScore: number | null = agg?.bestAdjustedScore ?? null;
+      let bestScore: number | null = agg?.bestAdjustedScore != null ? Number(agg.bestAdjustedScore) : null;
+      if (isNaN(bestScore as number)) bestScore = null;
       if (isOverridden) {
         bestScore = overrideScore;
       }
@@ -634,7 +635,7 @@ export async function getAssignmentStatusRows(
         points: problem.points,
         sortOrder: problem.sortOrder,
         bestScore,
-        attemptCount: agg?.attemptCount ?? 0,
+        attemptCount: Number(agg?.attemptCount) || 0,
         latestSubmissionId: agg?.latestSubId ?? null,
         latestStatus: (agg?.latestStatus as SubmissionStatus) ?? null,
         latestSubmittedAt: agg?.latestSubmittedAt

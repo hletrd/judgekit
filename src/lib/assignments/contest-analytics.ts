@@ -102,7 +102,7 @@ export async function computeContestAnalytics(assignmentId: string, includeTimel
   );
 
   // 1. Score distribution
-  const totalPointsPossible = problems.reduce((s, p) => s + p.points, 0);
+  const totalPointsPossible = problems.reduce((s, p) => s + Number(p.points), 0);
   const scoreDistribution: HistogramBucket[] = [];
   for (let i = 0; i < 10; i++) {
     const min = i * 10;
@@ -111,8 +111,12 @@ export async function computeContestAnalytics(assignmentId: string, includeTimel
   }
 
   for (const entry of entries) {
-    const pct = totalPointsPossible > 0 ? (entry.totalScore / totalPointsPossible) * 100 : 0;
-    const bucketIdx = Math.min(Math.floor(pct / 10), 9);
+    const numericScore = Number(entry.totalScore ?? 0);
+    const safeScore = Number.isFinite(numericScore) ? numericScore : 0;
+    const pct = totalPointsPossible > 0 ? (safeScore / totalPointsPossible) * 100 : 0;
+    const bucketIdx = Number.isFinite(pct)
+      ? Math.min(Math.max(Math.floor(pct / 10), 0), 9)
+      : 0;
     scoreDistribution[bucketIdx].count++;
   }
 
@@ -210,7 +214,7 @@ export async function computeContestAnalytics(assignmentId: string, includeTimel
         userProgressMap.set(sub.userId, { name: sub.name, bestScores: new Map(), progressionPoints: [] });
       }
       const userData = userProgressMap.get(sub.userId)!;
-      const adjustedScore = sub.score != null ? Math.round(Math.min(Math.max(sub.score, 0), 100) / 100 * sub.points * 100) / 100 : 0;
+      const adjustedScore = sub.score != null ? Math.round(Math.min(Math.max(Number(sub.score), 0), 100) / 100 * Number(sub.points) * 100) / 100 : 0;
       const currentBest = userData.bestScores.get(sub.problemId) ?? 0;
       const submittedAtMs = new Date(sub.submittedAt).getTime();
 

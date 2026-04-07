@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import { submissions } from "@/lib/db/schema";
+import { assignments, submissions } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import { canAccessSubmission } from "@/lib/auth/permissions";
@@ -64,6 +64,16 @@ export default async function SubmissionDetailPage({ params, searchParams }: { p
     session.user.role === "super_admin" ||
     session.user.role === "instructor";
 
+  // Check if scores should be hidden from candidates
+  let hideScore = false;
+  if (!isPrivileged && submission.assignmentId) {
+    const assignmentRow = await db.query.assignments.findFirst({
+      where: eq(assignments.id, submission.assignmentId),
+      columns: { hideScoresFromCandidates: true },
+    });
+    hideScore = assignmentRow?.hideScoresFromCandidates ?? false;
+  }
+
   const showDetailedResults = isPrivileged
     ? true
     : (submission.problem?.showDetailedResults ?? true);
@@ -117,7 +127,7 @@ export default async function SubmissionDetailPage({ params, searchParams }: { p
         compileOutput: submission.compileOutput ?? null,
         executionTimeMs: submission.executionTimeMs ?? null,
         memoryUsedKb: submission.memoryUsedKb ?? null,
-        score: submission.score ?? null,
+        score: hideScore ? null : (submission.score ?? null),
         submittedAt: submission.submittedAt ? submission.submittedAt.valueOf() : null,
         user: submission.user
           ? {
