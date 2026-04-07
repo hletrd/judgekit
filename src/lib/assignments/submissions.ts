@@ -417,7 +417,7 @@ export async function getStudentAssignmentContextsForProblem(
 /**
  * Per-problem aggregation row returned from the SQL query.
  * All aggregation (attempt count, best adjusted score, latest submission)
- * is pushed to SQLite via GROUP BY + window functions so we fetch
+ * is pushed to PostgreSQL via GROUP BY + window functions so we fetch
  * O(students * problems) rows instead of O(total submissions).
  */
 type ProblemAggRow = {
@@ -427,7 +427,7 @@ type ProblemAggRow = {
   bestAdjustedScore: number | null;
   latestSubId: string | null;
   latestStatus: string | null;
-  latestSubmittedAt: number | null; // unix seconds from SQLite integer (Drizzle mode:"timestamp")
+  latestSubmittedAt: string | Date | null; // PostgreSQL timestamp
 };
 
 /**
@@ -438,7 +438,7 @@ type UserLatestRow = {
   totalAttempts: number;
   latestSubId: string | null;
   latestStatus: string | null;
-  latestSubmittedAt: number | null;
+  latestSubmittedAt: string | Date | null;
 };
 
 export async function getAssignmentStatusRows(
@@ -642,7 +642,7 @@ export async function getAssignmentStatusRows(
         latestSubmissionId: agg?.latestSubId ?? null,
         latestStatus: (agg?.latestStatus as SubmissionStatus) ?? null,
         latestSubmittedAt: agg?.latestSubmittedAt
-          ? new Date(agg.latestSubmittedAt * 1000)
+          ? new Date(agg.latestSubmittedAt)
           : null,
         isOverridden,
       };
@@ -663,7 +663,7 @@ export async function getAssignmentStatusRows(
       latestSubmissionId: userLatest?.latestSubId ?? null,
       latestStatus: (userLatest?.latestStatus as SubmissionStatus) ?? null,
       latestSubmittedAt: userLatest?.latestSubmittedAt
-        ? new Date(userLatest.latestSubmittedAt * 1000)
+        ? new Date(userLatest.latestSubmittedAt)
         : null,
       problems: problemStatuses,
     };
