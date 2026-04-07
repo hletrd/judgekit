@@ -517,13 +517,13 @@ export async function getAssignmentStatusRows(
         CASE
           WHEN s.score IS NOT NULL THEN
             CASE
-              WHEN @deadline IS NOT NULL AND @latePenalty > 0 AND @examMode != 'windowed' AND s.submitted_at IS NOT NULL AND s.submitted_at > @deadline
+              WHEN @deadline::timestamptz IS NOT NULL AND @latePenalty::double precision > 0 AND @examMode::text != 'windowed' AND s.submitted_at IS NOT NULL AND s.submitted_at > @deadline::timestamptz
               THEN ROUND(
-                ROUND(LEAST(GREATEST(s.score, 0), 100) / 100.0 * COALESCE(ap.points, 100), 2)
-                * (1.0 - @latePenalty / 100.0),
+                (ROUND((LEAST(GREATEST(s.score, 0), 100) / 100.0 * COALESCE(ap.points, 100))::numeric, 2)
+                * (1.0 - @latePenalty::double precision / 100.0))::numeric,
                 2
               )
-              ELSE ROUND(LEAST(GREATEST(s.score, 0), 100) / 100.0 * COALESCE(ap.points, 100), 2)
+              ELSE ROUND((LEAST(GREATEST(s.score, 0), 100) / 100.0 * COALESCE(ap.points, 100))::numeric, 2)
             END
           ELSE NULL
         END AS adjusted_score,
