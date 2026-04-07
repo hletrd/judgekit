@@ -11,17 +11,10 @@ import {
 /**
  * Ensure all built-in roles exist in the database.
  * Creates missing ones with default capabilities.
- * Safe to call multiple times — only inserts what's missing.
+ * Safe to call multiple times — concurrent calls are race-free via onConflictDoNothing.
  */
 export async function ensureBuiltinRoles(): Promise<void> {
-  const existingRoles = await db
-    .select({ name: roles.name })
-    .from(roles);
-  const existingNames = new Set(existingRoles.map((r) => r.name));
-
   for (const roleName of BUILTIN_ROLE_NAMES) {
-    if (existingNames.has(roleName)) continue;
-
     await db.insert(roles).values({
       id: nanoid(),
       name: roleName,
@@ -32,6 +25,6 @@ export async function ensureBuiltinRoles(): Promise<void> {
       capabilities: DEFAULT_ROLE_CAPABILITIES[roleName] as string[],
       createdAt: new Date(),
       updatedAt: new Date(),
-    });
+    }).onConflictDoNothing({ target: roles.name });
   }
 }
