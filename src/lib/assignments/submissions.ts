@@ -509,12 +509,8 @@ export async function getAssignmentStatusRows(
   //     adjusted = base
   //
   // For the "latest submission" within each (userId, problemId) group we need
-  // the row with MAX(submitted_at), tiebreak MAX(id). SQLite doesn't have
-  // FIRST_VALUE in aggregate mode, so we use a correlated subquery approach
-  // via a self-join on a ROW_NUMBER CTE — but actually the simplest approach
-  // for better-sqlite3 is a single raw SQL statement.
-  //
-  // We compute this in one CTE-based query.
+  // the row with MAX(submitted_at), tiebreak MAX(id). We use a ROW_NUMBER
+  // CTE to identify the latest row per group, then aggregate in one query.
 
   const deadlineVal = assignment.deadline ?? null;
   const latePenalty = assignment.latePenalty ?? 0;
