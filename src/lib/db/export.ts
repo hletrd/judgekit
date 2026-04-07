@@ -51,6 +51,7 @@ const TABLE_ORDER: { name: string; table: any }[] = [
   { name: "problemSets", table: schema.problemSets },
   // Level 2: FK to level 0-1
   { name: "enrollments", table: schema.enrollments },
+  { name: "groupInstructors", table: schema.groupInstructors },
   { name: "testCases", table: schema.testCases },
   { name: "problemGroupAccess", table: schema.problemGroupAccess },
   { name: "assignments", table: schema.assignments },
@@ -60,6 +61,7 @@ const TABLE_ORDER: { name: string; table: any }[] = [
   { name: "chatMessages", table: schema.chatMessages },
   // Level 3: FK to level 0-2
   { name: "assignmentProblems", table: schema.assignmentProblems },
+  { name: "recruitingInvitations", table: schema.recruitingInvitations },
   { name: "examSessions", table: schema.examSessions },
   { name: "contestAccessTokens", table: schema.contestAccessTokens },
   // Level 4: FK to level 0-3
