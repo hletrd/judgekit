@@ -393,7 +393,86 @@ if [[ -n "${SSH_PASSWORD:-}" ]]; then
     SUDO_CMD="echo '${SSH_PASSWORD}' | sudo -S"
 fi
 
+USE_TLS=false
+if remote "bash -c '${SUDO_CMD} test -f /etc/letsencrypt/live/${DOMAIN}/fullchain.pem -a -f /etc/letsencrypt/live/${DOMAIN}/privkey.pem'" 2>/dev/null; then
+    USE_TLS=true
+    info "Detected existing TLS certificate for ${DOMAIN}; generating HTTPS nginx config"
+else
+    info "No TLS certificate detected for ${DOMAIN}; generating HTTP-only nginx config"
+fi
+
 # Write nginx config to /tmp first (avoids heredoc + sudo + tee issues)
+if [[ "${USE_TLS}" == "true" ]]; then
+cat > /tmp/judgekit-nginx.conf <<NGINX_EOF
+server_tokens off;
+
+map \$http_upgrade \$connection_upgrade {
+    default upgrade;
+    '' close;
+}
+
+limit_req_zone \$binary_remote_addr zone=judgekit_login:10m rate=5r/s;
+limit_req_zone \$binary_remote_addr zone=judgekit_judge:1m rate=10r/s;
+
+server {
+    listen 80;
+    listen [::]:80;
+    server_name ${DOMAIN};
+
+    return 301 https://${DOMAIN}\$request_uri;
+}
+
+server {
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+    server_name ${DOMAIN};
+
+    ssl_certificate /etc/letsencrypt/live/${DOMAIN}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/${DOMAIN}/privkey.pem;
+    include /etc/letsencrypt/options-ssl-nginx.conf;
+    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
+
+    client_max_body_size 50M;
+
+    location /api/auth/ {
+        limit_req zone=judgekit_login burst=10 nodelay;
+        client_max_body_size 1m;
+        proxy_pass http://127.0.0.1:${APP_PORT};
+        proxy_http_version 1.1;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+        # NOTE: Do NOT set X-Forwarded-Host — it breaks Next.js 16 RSC client-side navigation
+    }
+
+    location /api/v1/judge/ {
+        limit_req zone=judgekit_judge burst=20 nodelay;
+        client_max_body_size 1m;
+        proxy_pass http://127.0.0.1:${APP_PORT};
+        proxy_http_version 1.1;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+        # NOTE: Do NOT set X-Forwarded-Host — it breaks Next.js 16 RSC client-side navigation
+    }
+
+    location / {
+        proxy_pass http://127.0.0.1:${APP_PORT};
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Connection \$connection_upgrade;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+        # NOTE: Do NOT set X-Forwarded-Host — it breaks Next.js 16 RSC client-side navigation
+        proxy_cache_bypass \$http_upgrade;
+    }
+}
+NGINX_EOF
+else
 cat > /tmp/judgekit-nginx.conf <<NGINX_EOF
 server_tokens off;
 
@@ -450,6 +529,7 @@ server {
     }
 }
 NGINX_EOF
+fi
 
 # Transfer nginx config via scp, then sudo copy into place
 remote_copy /tmp/judgekit-nginx.conf "${REMOTE_USER}@${REMOTE_HOST}:${REMOTE_DIR}/nginx-judgekit.conf"
@@ -479,6 +559,15 @@ else
     warn "Check logs: ssh ${REMOTE_USER}@${REMOTE_HOST} 'cd ${REMOTE_DIR} && docker compose -f docker-compose.production.yml logs -f'"
 fi
 
+if [[ "${USE_TLS}" == "true" ]]; then
+    HTTPS_CODE=$(curl -k -s -o /dev/null -w "%{http_code}" "https://${DOMAIN}/login" || true)
+    if [[ "${HTTPS_CODE}" =~ ^(200|302|308)$ ]]; then
+        success "HTTPS endpoint verified (HTTP ${HTTPS_CODE})"
+    else
+        warn "HTTPS endpoint returned HTTP ${HTTPS_CODE} — check TLS/nginx configuration"
+    fi
+fi
+
 # ---------------------------------------------------------------------------
 # Summary
 # ---------------------------------------------------------------------------
@@ -486,7 +575,11 @@ echo ""
 echo "==========================================================================="
 success "Deployment complete!"
 echo "==========================================================================="
-info "URL:        http://${DOMAIN}"
+if [[ "${USE_TLS}" == "true" ]]; then
+    info "URL:        https://${DOMAIN}"
+else
+    info "URL:        http://${DOMAIN}"
+fi
 info "Remote dir: ${REMOTE_DIR}"
 info "Logs:       ssh ${REMOTE_USER}@${REMOTE_HOST} 'cd ${REMOTE_DIR} && docker compose -f docker-compose.production.yml logs -f'"
 info "Seed admin: ssh ${REMOTE_USER}@${REMOTE_HOST} 'docker exec -it judgekit-app node scripts/seed.ts'"
