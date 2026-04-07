@@ -75,7 +75,8 @@ export async function getRecruitingInvitations(
     conditions.push(eq(recruitingInvitations.status, filters.status));
   }
   if (filters?.search) {
-    const pattern = `%${filters.search}%`;
+    const escaped = filters.search.replace(/[%_\\]/g, '\\$&');
+    const pattern = `%${escaped}%`;
     conditions.push(
       sql`(${recruitingInvitations.candidateName} ILIKE ${pattern} OR ${recruitingInvitations.candidateEmail} ILIKE ${pattern})`
     );
@@ -221,58 +222,68 @@ export async function redeemRecruitingToken(
     return { ok: false, error: "contestClosed" };
   }
 
-  // Transaction: create user + enroll + access token + update invitation
+  // Transaction: create user + enroll + access token + atomically claim invitation
   let userId = "";
-  await db.transaction(async (tx) => {
-    // Create temporary user
-    const uid = nanoid();
-    userId = uid;
-    const username = `recruit_${nanoid(8)}`;
-    await tx.insert(users).values({
-      id: uid,
-      username,
-      name: invitation.candidateName,
-      email: invitation.candidateEmail,
-      passwordHash: null,
-      role: "student",
-      isActive: true,
-      mustChangePassword: false,
-    });
+  try {
+    await db.transaction(async (tx) => {
+      const uid = nanoid();
+      userId = uid;
+      const username = `recruit_${nanoid(8)}`;
+      await tx.insert(users).values({
+        id: uid,
+        username,
+        name: invitation.candidateName,
+        email: invitation.candidateEmail,
+        passwordHash: null,
+        role: "student",
+        isActive: true,
+        mustChangePassword: false,
+      });
 
-    // Auto-enroll in group
-    await tx.insert(enrollments).values({
-      id: nanoid(),
-      userId: uid,
-      groupId: assignment.groupId,
-      enrolledAt: new Date(),
-    });
+      await tx.insert(enrollments).values({
+        id: nanoid(),
+        userId: uid,
+        groupId: assignment.groupId,
+        enrolledAt: new Date(),
+      });
 
-    // Create contest access token
-    await tx.insert(contestAccessTokens).values({
-      id: nanoid(),
-      assignmentId: assignment.id,
-      userId: uid,
-      redeemedAt: new Date(),
-      ipAddress: ipAddress ?? null,
-    });
-
-    // Update invitation
-    await tx
-      .update(recruitingInvitations)
-      .set({
-        status: "redeemed",
+      await tx.insert(contestAccessTokens).values({
+        id: nanoid(),
+        assignmentId: assignment.id,
         userId: uid,
         redeemedAt: new Date(),
         ipAddress: ipAddress ?? null,
-        updatedAt: new Date(),
-      })
-      .where(
-        and(
-          eq(recruitingInvitations.id, invitation.id),
-          eq(recruitingInvitations.status, "pending")
+      });
+
+      // Atomically claim — rolls back entire tx if already redeemed or expired
+      const [updated] = await tx
+        .update(recruitingInvitations)
+        .set({
+          status: "redeemed",
+          userId: uid,
+          redeemedAt: new Date(),
+          ipAddress: ipAddress ?? null,
+          updatedAt: new Date(),
+        })
+        .where(
+          and(
+            eq(recruitingInvitations.id, invitation.id),
+            eq(recruitingInvitations.status, "pending"),
+            sql`(${recruitingInvitations.expiresAt} IS NULL OR ${recruitingInvitations.expiresAt} > NOW())`
+          )
         )
-      );
-  });
+        .returning({ id: recruitingInvitations.id });
+
+      if (!updated) {
+        throw new Error("alreadyRedeemed");
+      }
+    });
+  } catch (err: any) {
+    if (err.message === "alreadyRedeemed") {
+      return { ok: false, error: "alreadyRedeemed" };
+    }
+    throw err;
+  }
 
   return {
     ok: true,
