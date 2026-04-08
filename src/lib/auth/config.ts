@@ -3,8 +3,9 @@ import type { JWT } from "next-auth/jwt";
 import Credentials from "next-auth/providers/credentials";
 import crypto from "crypto";
 import { verifyPassword, hashPassword } from "@/lib/security/password-hash";
+import { logger } from "@/lib/logger";
 import {
-  AUTH_SESSION_MAX_AGE_SECONDS,
+  getSessionMaxAgeSeconds,
   clearAuthToken,
   getTokenAuthenticatedAtSeconds,
   isTokenInvalidated,
@@ -207,7 +208,9 @@ export const authConfig: NextAuthConfig = {
                 .set({ passwordHash: newHash })
                 .where(eq(users.id, user.id))
             )
-            .catch(() => {});
+            .catch((err) => {
+              logger.error({ err, userId: user.id }, "[auth] Failed to rehash password");
+            });
         }
 
         void clearRateLimitMulti(...rateLimitKeys);
@@ -248,7 +251,7 @@ export const authConfig: NextAuthConfig = {
     }),
   ],
   trustHost: shouldTrustAuthHost(),
-  session: { strategy: "jwt", maxAge: AUTH_SESSION_MAX_AGE_SECONDS },
+  session: { strategy: "jwt", maxAge: getSessionMaxAgeSeconds() },
   pages: {
     signIn: "/login",
   },
