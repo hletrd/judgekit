@@ -1,7 +1,9 @@
+import { Children, isValidElement, type ReactNode } from "react";
 import ReactMarkdown from "react-markdown";
 import rehypeHighlight from "rehype-highlight";
 import remarkBreaks from "remark-breaks";
 import remarkGfm from "remark-gfm";
+import { CopyCodeButton } from "@/components/code/copy-code-button";
 import { cn } from "@/lib/utils";
 import { sanitizeHtml } from "@/lib/security/sanitize-html";
 
@@ -10,6 +12,22 @@ type ProblemDescriptionProps = {
   description: string;
   legacyHtmlDescription?: string | null;
 };
+
+function getCodeBlockText(children: ReactNode): string {
+  return Children.toArray(children)
+    .map((child) => {
+      if (typeof child === "string" || typeof child === "number") {
+        return String(child);
+      }
+
+      if (isValidElement<{ children?: ReactNode }>(child)) {
+        return getCodeBlockText(child.props.children);
+      }
+
+      return "";
+    })
+    .join("");
+}
 
 export function ProblemDescription({
   className,
@@ -40,6 +58,17 @@ export function ProblemDescription({
               target="_blank"
             />
           ),
+          pre: ({ children, node, ...props }) => {
+            void node;
+            const copyValue = getCodeBlockText(children).replace(/\n$/, "");
+
+            return (
+              <div className="problem-code-block">
+                {copyValue ? <CopyCodeButton value={copyValue} /> : null}
+                <pre {...props}>{children}</pre>
+              </div>
+            );
+          },
         }}
       >
         {description}

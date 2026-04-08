@@ -36,6 +36,15 @@ type SystemSettingsFormProps = {
   initialAiAssistantEnabled: boolean;
 };
 
+function isValidTimeZone(value: string) {
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone: value });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export function SystemSettingsForm({
   initialSiteTitle,
   initialSiteDescription,
@@ -72,7 +81,10 @@ export function SystemSettingsForm({
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    if (timeZone && ianaTimeZones.length > 0 && !ianaTimeZones.includes(timeZone)) {
+    const normalizedTimeZone = timeZone.trim();
+    const normalizedDefaultLanguage = defaultLanguage.trim();
+
+    if (normalizedTimeZone && !isValidTimeZone(normalizedTimeZone)) {
       toast.error(t("invalidTimeZone"));
       return;
     }
@@ -80,7 +92,14 @@ export function SystemSettingsForm({
     setIsLoading(true);
 
     try {
-      const result = await updateSystemSettings({ siteTitle, siteDescription, timeZone, platformMode, aiAssistantEnabled, defaultLanguage: defaultLanguage || undefined });
+      const result = await updateSystemSettings({
+        siteTitle,
+        siteDescription,
+        timeZone: normalizedTimeZone,
+        platformMode,
+        aiAssistantEnabled,
+        defaultLanguage: normalizedDefaultLanguage || undefined,
+      });
 
       if (!result.success) {
         toast.error(t(result.error ?? "updateError"));
