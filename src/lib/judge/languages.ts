@@ -1472,6 +1472,14 @@ export function getLanguageDisplayLabel(language: string): string {
   return def.standard ? `${def.displayName} (${def.standard})` : def.displayName;
 }
 
+function shellEscapeJudgeToken(token: string) {
+  if (/^[A-Za-z0-9_@%+=:,./-]+$/.test(token)) {
+    return token;
+  }
+
+  return `'${token.replace(/'/g, `'"'"'`)}'`;
+}
+
 export function serializeJudgeCommand(command: string[] | null | undefined) {
   if (!command || command.length === 0) {
     return null;
@@ -1481,7 +1489,7 @@ export function serializeJudgeCommand(command: string[] | null | undefined) {
     return command.slice(2).join(" ");
   }
 
-  return command.join(" ");
+  return command.map(shellEscapeJudgeToken).join(" ");
 }
 
 export function deserializeStoredJudgeCommand(command: string | null | undefined) {

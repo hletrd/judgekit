@@ -294,6 +294,12 @@ describe("judge language definitions", () => {
     ).toBe("HOME=/tmp mono /workspace/solution.exe");
   });
 
+  it("serializeJudgeCommand shell-escapes arguments that require quoting", () => {
+    expect(
+      serializeJudgeCommand(["swipl", "-q", "-g", "main,halt(0)", "-t", "halt(0)"])
+    ).toBe("swipl -q -g 'main,halt(0)' -t 'halt(0)'");
+  });
+
   it("deserializeStoredJudgeCommand wraps raw command strings for the worker", () => {
     expect(deserializeStoredJudgeCommand("python3 /workspace/solution.py")).toEqual([
       "sh",

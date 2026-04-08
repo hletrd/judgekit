@@ -22,9 +22,10 @@ async function doSync(): Promise<boolean> {
 
   for (const lang of DEFAULT_JUDGE_LANGUAGES) {
     const record = existingMap.get(lang.language);
+    const compileCmd = serializeJudgeCommand(lang.compileCommand);
+    const runCmd = serializeJudgeCommand(lang.runCommand) ?? "";
 
     if (!record) {
-      const compileCmd = serializeJudgeCommand(lang.compileCommand);
       await db.insert(languageConfigs).values({
         id: nanoid(),
         language: lang.language,
@@ -32,7 +33,7 @@ async function doSync(): Promise<boolean> {
         extension: lang.extension,
         dockerImage: lang.dockerImage,
         compiler: lang.compiler ?? null,
-        runCommand: serializeJudgeCommand(lang.runCommand) ?? "",
+        runCommand: runCmd,
         isEnabled: true,
         updatedAt: new Date(),
         ...(lang.standard ? { standard: lang.standard } : {}),
@@ -42,18 +43,14 @@ async function doSync(): Promise<boolean> {
       continue;
     }
 
-    // Back-fill empty run/compile commands from built-in definitions
-    if (!record.runCommand || !record.compileCommand) {
-      const updates: Record<string, string | Date> = { updatedAt: new Date() };
-      if (!record.runCommand) {
-        updates.runCommand = serializeJudgeCommand(lang.runCommand)!;
-      }
-      if (!record.compileCommand && lang.compileCommand) {
-        updates.compileCommand = serializeJudgeCommand(lang.compileCommand)!;
-      }
+    if (record.runCommand !== runCmd || record.compileCommand !== (compileCmd ?? null)) {
       await db
         .update(languageConfigs)
-        .set(updates)
+        .set({
+          runCommand: runCmd,
+          compileCommand: compileCmd ?? null,
+          updatedAt: new Date(),
+        })
         .where(eq(languageConfigs.language, lang.language));
       updated++;
     }
