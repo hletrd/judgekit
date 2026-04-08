@@ -67,7 +67,7 @@ export async function bulkCreateRecruitingInvitations(params: {
 
 export async function getRecruitingInvitations(
   assignmentId: string,
-  filters?: { status?: string; search?: string }
+  filters?: { status?: string; search?: string; limit?: number; offset?: number }
 ) {
   const conditions: SQL[] = [eq(recruitingInvitations.assignmentId, assignmentId)];
 
@@ -82,11 +82,16 @@ export async function getRecruitingInvitations(
     );
   }
 
+  const limit = Math.min(Math.max(filters?.limit ?? 100, 1), 500);
+  const offset = Math.max(filters?.offset ?? 0, 0);
+
   return db
     .select()
     .from(recruitingInvitations)
     .where(and(...conditions))
-    .orderBy(recruitingInvitations.createdAt);
+    .orderBy(recruitingInvitations.createdAt)
+    .limit(limit)
+    .offset(offset);
 }
 
 export async function getRecruitingInvitation(id: string) {
@@ -118,7 +123,22 @@ export async function updateRecruitingInvitation(
   const updates: Record<string, unknown> = { updatedAt: new Date() };
   if (data.expiresAt !== undefined) updates.expiresAt = data.expiresAt;
   if (data.metadata !== undefined) updates.metadata = data.metadata;
-  if (data.status !== undefined) updates.status = data.status;
+  if (data.status !== undefined) {
+    // Only allow revoking pending invitations — already-redeemed cannot be revoked
+    const result = await db
+      .update(recruitingInvitations)
+      .set({ ...updates, status: data.status })
+      .where(
+        and(
+          eq(recruitingInvitations.id, id),
+          eq(recruitingInvitations.status, "pending")
+        )
+      );
+    if ((result.rowCount ?? 0) === 0) {
+      throw new Error("invitationCannotBeRevoked");
+    }
+    return;
+  }
   await db
     .update(recruitingInvitations)
     .set(updates)
