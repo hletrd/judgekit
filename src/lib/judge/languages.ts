@@ -1115,7 +1115,7 @@ export const JUDGE_LANGUAGE_CONFIGS: Record<Language, JudgeLanguageDefinition> =
       "-c",
       "cp -r /opt/gleam-template /workspace/gleam-project && cp /workspace/solution.gleam /workspace/gleam-project/src/solution.gleam && rm -rf /workspace/gleam-project/test && cd /workspace/gleam-project && gleam build --target erlang 2>&1",
     ],
-    runCommand: ["sh", "-c", "cd /workspace/gleam-project && gleam run --target erlang"],
+    runCommand: ["sh", "-c", "cd /workspace/gleam-project && erl -pa build/dev/erlang/*/ebin -noshell -eval \"'solution@@main':run(solution).\""],
   },
   sml: {
     language: "sml",

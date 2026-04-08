@@ -236,6 +236,14 @@ describe("judge language definitions", () => {
     expect(run).toContain("/workspace/solution.exe");
   });
 
+  it("gleam: runs the compiled Erlang entrypoint directly", () => {
+    const def = getJudgeLanguageDefinition("gleam");
+    expect(def).not.toBeNull();
+    const run = serializeJudgeCommand(def?.runCommand);
+    expect(run).toContain("solution@@main");
+    expect(run).toContain("erl -pa build/dev/erlang/*/ebin");
+  });
+
   it("vbnet: uses workspace-local dotnet caches and single-worker MSBuild", () => {
     const def = getJudgeLanguageDefinition("vbnet");
     expect(def).not.toBeNull();

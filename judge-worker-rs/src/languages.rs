@@ -1039,7 +1039,11 @@ static GLEAM_COMPILE: &[&str] = &[
     "sh", "-c",
     "cp -r /opt/gleam-template /workspace/gleam-project && cp /workspace/solution.gleam /workspace/gleam-project/src/solution.gleam && rm -rf /workspace/gleam-project/test && cd /workspace/gleam-project && gleam build --target erlang 2>&1",
 ];
-static GLEAM_RUN: &[&str] = &["sh", "-c", "cd /workspace/gleam-project && gleam run --target erlang"];
+static GLEAM_RUN: &[&str] = &[
+    "sh",
+    "-c",
+    "cd /workspace/gleam-project && erl -pa build/dev/erlang/*/ebin -noshell -eval \"'solution@@main':run(solution).\"",
+];
 
 static GLEAM_CONFIG: LanguageConfig = LanguageConfig {
     extension: ".gleam",
