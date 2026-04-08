@@ -3,7 +3,7 @@ import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { db } from "@/lib/db";
-import { assignmentProblems, enrollments, languageConfigs, problems, submissions } from "@/lib/db/schema";
+import { assignmentProblems, enrollments, languageConfigs, problemGroupAccess, problems, submissions } from "@/lib/db/schema";
 import { getTranslations } from "next-intl/server";
 import { resolveCapabilities } from "@/lib/capabilities/cache";
 import { formatDateTimeInTimeZone } from "@/lib/datetime";
@@ -68,28 +68,34 @@ export async function CandidateDashboard({
             .where(eq(enrollments.userId, userId))
             .then((rows) => rows.map((r) => r.groupId));
 
-          const publicCount = await db
-            .select({ count: sql<number>`count(*)` })
+          if (userGroupIds.length === 0) {
+            return db
+              .select({ count: sql<number>`count(*)` })
+              .from(problems)
+              .where(eq(problems.visibility, "public"))
+              .then((r) => Number(r[0]?.count ?? 0));
+          }
+
+          // Use parameterized Drizzle queries instead of sql.raw() to prevent injection
+          const groupAccessible = await db
+            .select({ problemId: problemGroupAccess.problemId })
+            .from(problemGroupAccess)
+            .where(inArray(problemGroupAccess.groupId, userGroupIds));
+
+          const accessibleIds = new Set<string>();
+          const publicRows = await db
+            .select({ id: problems.id })
             .from(problems)
-            .where(eq(problems.visibility, "public"))
-            .then((r) => Number(r[0]?.count ?? 0));
+            .where(eq(problems.visibility, "public"));
+          for (const r of publicRows) accessibleIds.add(r.id);
+          for (const r of groupAccessible) accessibleIds.add(r.problemId);
+          const authoredRows = await db
+            .select({ id: problems.id })
+            .from(problems)
+            .where(eq(problems.authorId, userId));
+          for (const r of authoredRows) accessibleIds.add(r.id);
 
-          if (userGroupIds.length === 0) return publicCount;
-
-          const groupIdArray = sql.raw(`ARRAY[${userGroupIds.map((id) => `'${id.replace(/'/g, "''")}'`).join(",")}]`);
-          const distinctCount = await db.execute(sql`
-            SELECT count(*) AS count FROM (
-              SELECT id FROM problems WHERE visibility = 'public'
-              UNION
-              SELECT p.id FROM problems p
-                JOIN problem_group_access pga ON pga.problem_id = p.id
-                WHERE pga.group_id = ANY(${groupIdArray})
-              UNION
-              SELECT id FROM problems WHERE author_id = ${userId}
-            ) accessible
-          `).then((r) => Number(r.rows[0]?.count ?? 0));
-
-          return distinctCount;
+          return accessibleIds.size;
         })(),
     db
       .select({ count: sql<number>`count(*)` })
