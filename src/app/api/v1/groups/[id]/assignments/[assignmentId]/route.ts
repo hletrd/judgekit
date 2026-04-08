@@ -62,48 +62,60 @@ export const PATCH = createApiHandler({
 
     if (!canManage) return forbidden();
 
-    const assignment = await db.query.assignments.findFirst({
-      where: eq(assignments.id, assignmentId),
-      with: {
-        assignmentProblems: {
-          with: {
-            problem: {
-              columns: { id: true },
+    // Use transaction for atomic read-check-update to prevent TOCTOU races
+    const body = await req.json();
+    const allowLockedProblems = Boolean(body.allowLockedProblems);
+
+    const patchResult = await db.transaction(async (tx) => {
+      const assignment = await tx.query.assignments.findFirst({
+        where: eq(assignments.id, assignmentId),
+        with: {
+          assignmentProblems: {
+            with: {
+              problem: {
+                columns: { id: true },
+              },
             },
           },
         },
-      },
+      });
+
+      if (!assignment || assignment.groupId !== id) {
+        return { error: notFound("Assignment") };
+      }
+
+      const hasExistingSubmissions = Boolean(
+        await tx.query.submissions.findFirst({
+          where: eq(submissions.assignmentId, assignmentId),
+          columns: { id: true },
+        })
+      );
+
+      // Block problem changes during active exam-mode contests
+      if (body.problems !== undefined && assignment.examMode !== "none") {
+        const now = Date.now();
+        const startsAt = assignment.startsAt ? new Date(assignment.startsAt).getTime() : null;
+        if (startsAt && now >= startsAt) {
+          return { error: apiError("contestProblemsLockedDuringActive", 409) };
+        }
+      }
+
+      if (
+        body.problems !== undefined &&
+        hasExistingSubmissions &&
+        !(allowLockedProblems && isAdmin(user.role))
+      ) {
+        return { error: apiError("assignmentProblemsLocked", 409) };
+      }
+
+      return { assignment };
     });
 
-    if (!assignment || assignment.groupId !== id) {
-      return notFound("Assignment");
+    if ("error" in patchResult && patchResult.error) {
+      return patchResult.error;
     }
 
-    const body = await req.json();
-    const allowLockedProblems = Boolean(body.allowLockedProblems);
-    const hasExistingSubmissions = Boolean(
-      await db.query.submissions.findFirst({
-        where: eq(submissions.assignmentId, assignmentId),
-        columns: { id: true },
-      })
-    );
-
-    // Block problem changes during active exam-mode contests
-    if (body.problems !== undefined && assignment.examMode !== "none") {
-      const now = Date.now();
-      const startsAt = assignment.startsAt ? new Date(assignment.startsAt).getTime() : null;
-      if (startsAt && now >= startsAt) {
-        return apiError("contestProblemsLockedDuringActive", 409);
-      }
-    }
-
-    if (
-      body.problems !== undefined &&
-      hasExistingSubmissions &&
-      !(allowLockedProblems && isAdmin(user.role))
-    ) {
-      return apiError("assignmentProblemsLocked", 409);
-    }
+    const { assignment } = patchResult;
 
     const parsedInput = assignmentMutationSchema.safeParse({
       title: body.title ?? assignment.title,
