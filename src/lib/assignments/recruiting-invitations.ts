@@ -176,58 +176,63 @@ export async function redeemRecruitingToken(
   token: string,
   ipAddress?: string
 ): Promise<RedeemResult> {
-  const invitation = await getRecruitingInvitationByToken(token);
-  if (!invitation) return { ok: false, error: "invalidToken" };
-
-  // Already redeemed — allow re-entry
-  if (invitation.status === "redeemed" && invitation.userId) {
-    const [assignment] = await db
-      .select({ id: assignments.id, groupId: assignments.groupId })
-      .from(assignments)
-      .where(eq(assignments.id, invitation.assignmentId))
-      .limit(1);
-    if (!assignment) return { ok: false, error: "assignmentNotFound" };
-    return {
-      ok: true,
-      userId: invitation.userId,
-      assignmentId: assignment.id,
-      groupId: assignment.groupId,
-      alreadyRedeemed: true,
-    };
-  }
-
-  if (invitation.status === "revoked") return { ok: false, error: "tokenRevoked" };
-  if (invitation.status !== "pending") return { ok: false, error: "invalidToken" };
-
-  // Check expiry
-  if (invitation.expiresAt && invitation.expiresAt < new Date()) {
-    return { ok: false, error: "tokenExpired" };
-  }
-
-  // Check assignment
-  const [assignment] = await db
-    .select({
-      id: assignments.id,
-      groupId: assignments.groupId,
-      examMode: assignments.examMode,
-      deadline: assignments.deadline,
-    })
-    .from(assignments)
-    .where(eq(assignments.id, invitation.assignmentId))
-    .limit(1);
-
-  if (!assignment) return { ok: false, error: "assignmentNotFound" };
-  if (assignment.examMode === "none") return { ok: false, error: "notAContest" };
-  if (assignment.deadline && assignment.deadline < new Date()) {
-    return { ok: false, error: "contestClosed" };
-  }
-
-  // Transaction: create user + enroll + access token + atomically claim invitation
-  let userId = "";
+  // Transaction: read invitation + validate + create user + enroll + claim (atomic)
   try {
-    await db.transaction(async (tx) => {
+    return await db.transaction(async (tx) => {
+      // Read invitation inside transaction for consistent snapshot
+      const [invitation] = await tx
+        .select()
+        .from(recruitingInvitations)
+        .where(eq(recruitingInvitations.token, token))
+        .limit(1);
+
+      if (!invitation) return { ok: false as const, error: "invalidToken" };
+
+      // Already redeemed — allow re-entry
+      if (invitation.status === "redeemed" && invitation.userId) {
+        const [assignment] = await tx
+          .select({ id: assignments.id, groupId: assignments.groupId })
+          .from(assignments)
+          .where(eq(assignments.id, invitation.assignmentId))
+          .limit(1);
+        if (!assignment) return { ok: false as const, error: "assignmentNotFound" };
+        return {
+          ok: true as const,
+          userId: invitation.userId,
+          assignmentId: assignment.id,
+          groupId: assignment.groupId,
+          alreadyRedeemed: true,
+        };
+      }
+
+      if (invitation.status === "revoked") return { ok: false as const, error: "tokenRevoked" };
+      if (invitation.status !== "pending") return { ok: false as const, error: "invalidToken" };
+
+      // Check expiry
+      if (invitation.expiresAt && invitation.expiresAt < new Date()) {
+        return { ok: false as const, error: "tokenExpired" };
+      }
+
+      // Check assignment
+      const [assignment] = await tx
+        .select({
+          id: assignments.id,
+          groupId: assignments.groupId,
+          examMode: assignments.examMode,
+          deadline: assignments.deadline,
+        })
+        .from(assignments)
+        .where(eq(assignments.id, invitation.assignmentId))
+        .limit(1);
+
+      if (!assignment) return { ok: false as const, error: "assignmentNotFound" };
+      if (assignment.examMode === "none") return { ok: false as const, error: "notAContest" };
+      if (assignment.deadline && assignment.deadline < new Date()) {
+        return { ok: false as const, error: "contestClosed" };
+      }
+
+      // Create user + enroll + access token + atomically claim invitation
       const uid = nanoid();
-      userId = uid;
       const username = `recruit_${nanoid(8)}`;
       await tx.insert(users).values({
         id: uid,
@@ -237,7 +242,7 @@ export async function redeemRecruitingToken(
         passwordHash: null,
         role: "student",
         isActive: true,
-        mustChangePassword: false,
+        mustChangePassword: true,
       });
 
       await tx.insert(enrollments).values({
@@ -277,6 +282,14 @@ export async function redeemRecruitingToken(
       if (!updated) {
         throw new Error("alreadyRedeemed");
       }
+
+      return {
+        ok: true as const,
+        userId: uid,
+        assignmentId: assignment.id,
+        groupId: assignment.groupId,
+        alreadyRedeemed: false,
+      };
     });
   } catch (err: any) {
     if (err.message === "alreadyRedeemed") {
@@ -284,12 +297,4 @@ export async function redeemRecruitingToken(
     }
     throw err;
   }
-
-  return {
-    ok: true,
-    userId,
-    assignmentId: assignment.id,
-    groupId: assignment.groupId,
-    alreadyRedeemed: false,
-  };
 }
