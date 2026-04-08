@@ -1473,5 +1473,25 @@ export function getLanguageDisplayLabel(language: string): string {
 }
 
 export function serializeJudgeCommand(command: string[] | null | undefined) {
-  return command?.join(" ") ?? null;
+  if (!command || command.length === 0) {
+    return null;
+  }
+
+  if (command[0] === "sh" && command[1] === "-c") {
+    return command.slice(2).join(" ");
+  }
+
+  return command.join(" ");
+}
+
+export function deserializeStoredJudgeCommand(command: string | null | undefined) {
+  const trimmed = command?.trim();
+
+  if (!trimmed) {
+    return null;
+  }
+
+  const shellWrappedMatch = trimmed.match(/^sh\s+-c\s+([\s\S]+)$/);
+
+  return ["sh", "-c", shellWrappedMatch ? shellWrappedMatch[1] : trimmed];
 }

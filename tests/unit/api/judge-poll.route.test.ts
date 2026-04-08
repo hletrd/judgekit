@@ -115,4 +115,42 @@ describe("POST /api/v1/judge/claim", () => {
       testCases: [],
     });
   });
+
+  it("normalizes stored shell-prefixed commands so the worker does not double-wrap them", async () => {
+    dbSelectMock
+      .mockReturnValueOnce(makeSelectChain([]))
+      .mockReturnValueOnce(
+        makeSelectChain([
+          {
+            dockerImage: "judge-csharp:latest",
+            compileCommand: "sh -c HOME=/tmp mcs -optimize+ -out:/workspace/solution.exe /workspace/solution.cs",
+            runCommand: "sh -c HOME=/tmp mono /workspace/solution.exe",
+          },
+        ])
+      );
+
+    const response = await POST(
+      new NextRequest("http://localhost:3000/api/v1/judge/claim", {
+        method: "POST",
+        headers: {
+          Authorization: "Bearer test-token",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({}),
+      })
+    );
+
+    const payload = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(payload.data).toMatchObject({
+      dockerImage: "judge-csharp:latest",
+      compileCommand: [
+        "sh",
+        "-c",
+        "HOME=/tmp mcs -optimize+ -out:/workspace/solution.exe /workspace/solution.cs",
+      ],
+      runCommand: ["sh", "-c", "HOME=/tmp mono /workspace/solution.exe"],
+    });
+  });
 });

@@ -32,7 +32,7 @@ async function doSync(): Promise<boolean> {
         extension: lang.extension,
         dockerImage: lang.dockerImage,
         compiler: lang.compiler ?? null,
-        runCommand: lang.runCommand.join(" "),
+        runCommand: serializeJudgeCommand(lang.runCommand) ?? "",
         isEnabled: true,
         updatedAt: new Date(),
         ...(lang.standard ? { standard: lang.standard } : {}),
@@ -46,7 +46,7 @@ async function doSync(): Promise<boolean> {
     if (!record.runCommand || !record.compileCommand) {
       const updates: Record<string, string | Date> = { updatedAt: new Date() };
       if (!record.runCommand) {
-        updates.runCommand = lang.runCommand.join(" ");
+        updates.runCommand = serializeJudgeCommand(lang.runCommand)!;
       }
       if (!record.compileCommand && lang.compileCommand) {
         updates.compileCommand = serializeJudgeCommand(lang.compileCommand)!;

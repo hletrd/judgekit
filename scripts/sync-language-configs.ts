@@ -66,7 +66,7 @@ async function syncLanguageConfigs() {
       dockerImage: language.dockerImage,
       compiler: language.compiler ?? null,
       compileCommand: compileCommand ?? null,
-      runCommand: language.runCommand.join(" "),
+      runCommand: serializeJudgeCommand(language.runCommand) ?? "",
     };
 
     if (!existing) {

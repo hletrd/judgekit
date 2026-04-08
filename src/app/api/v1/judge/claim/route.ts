@@ -9,6 +9,7 @@ import { z } from "zod";
 import { recordAuditEvent } from "@/lib/audit/events";
 import { isJudgeAuthorized } from "@/lib/judge/auth";
 import { logger } from "@/lib/logger";
+import { deserializeStoredJudgeCommand } from "@/lib/judge/languages";
 
 import { getConfiguredSettings } from "@/lib/system-settings-config";
 
@@ -160,8 +161,8 @@ export async function POST(request: NextRequest) {
       testCases: cases,
       // Language config overrides from DB (used by worker when present)
       dockerImage: langConfig?.dockerImage?.trim() || null,
-      compileCommand: langConfig?.compileCommand?.trim() ? ["sh", "-c", langConfig.compileCommand] : null,
-      runCommand: langConfig?.runCommand?.trim() ? ["sh", "-c", langConfig.runCommand] : null,
+      compileCommand: deserializeStoredJudgeCommand(langConfig?.compileCommand),
+      runCommand: deserializeStoredJudgeCommand(langConfig?.runCommand),
     });
   } catch (error) {
     logger.error({ err: error }, "POST /api/v1/judge/claim error");

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  deserializeStoredJudgeCommand,
   getJudgeLanguageDefinition,
   isJudgeLanguage,
   serializeJudgeCommand,
@@ -285,5 +286,25 @@ describe("judge language definitions", () => {
     expect(serializeJudgeCommand(["go", "build", "-o", "/workspace/solution"])).toBe(
       "go build -o /workspace/solution"
     );
+  });
+
+  it("serializeJudgeCommand strips an existing sh -c wrapper before storing commands", () => {
+    expect(
+      serializeJudgeCommand(["sh", "-c", "HOME=/tmp mono /workspace/solution.exe"])
+    ).toBe("HOME=/tmp mono /workspace/solution.exe");
+  });
+
+  it("deserializeStoredJudgeCommand wraps raw command strings for the worker", () => {
+    expect(deserializeStoredJudgeCommand("python3 /workspace/solution.py")).toEqual([
+      "sh",
+      "-c",
+      "python3 /workspace/solution.py",
+    ]);
+  });
+
+  it("deserializeStoredJudgeCommand removes a duplicated sh -c prefix from stored commands", () => {
+    expect(
+      deserializeStoredJudgeCommand("sh -c HOME=/tmp mono /workspace/solution.exe")
+    ).toEqual(["sh", "-c", "HOME=/tmp mono /workspace/solution.exe"]);
   });
 });
