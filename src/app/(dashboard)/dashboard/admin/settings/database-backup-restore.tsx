@@ -13,6 +13,7 @@ export function DatabaseBackupRestore({ isSuperAdmin }: { isSuperAdmin: boolean 
   const [isDownloading, setIsDownloading] = useState(false);
   const [isRestoring, setIsRestoring] = useState(false);
   const [confirmRestore, setConfirmRestore] = useState(false);
+  const [restorePassword, setRestorePassword] = useState("");
   const [showPasswordPrompt, setShowPasswordPrompt] = useState(false);
   const [backupPassword, setBackupPassword] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -60,10 +61,16 @@ export function DatabaseBackupRestore({ isSuperAdmin }: { isSuperAdmin: boolean 
       return;
     }
 
+    if (!restorePassword) {
+      toast.error(t("passwordRequired"));
+      return;
+    }
+
     setIsRestoring(true);
     try {
       const formData = new FormData();
       formData.append("file", file);
+      formData.append("password", restorePassword);
 
       const response = await apiFetch("/api/v1/admin/restore", {
         method: "POST",
@@ -79,6 +86,7 @@ export function DatabaseBackupRestore({ isSuperAdmin }: { isSuperAdmin: boolean 
 
       toast.success(t("restoreSuccess"));
       setConfirmRestore(false);
+      setRestorePassword("");
       if (fileInputRef.current) fileInputRef.current.value = "";
     } catch {
       toast.error(t("restoreFailed"));
@@ -132,7 +140,7 @@ export function DatabaseBackupRestore({ isSuperAdmin }: { isSuperAdmin: boolean 
           <input
             ref={fileInputRef}
             type="file"
-            accept=".sqlite,.db"
+            accept=".json,.sqlite,.db"
             onChange={() => setConfirmRestore(false)}
             className="block w-full text-sm text-muted-foreground file:mr-4 file:py-1 file:px-3 file:rounded file:border file:border-input file:text-sm file:font-medium file:bg-background file:text-foreground hover:file:bg-accent cursor-pointer"
           />
@@ -146,13 +154,24 @@ export function DatabaseBackupRestore({ isSuperAdmin }: { isSuperAdmin: boolean 
               {t("restoreDatabase")}
             </Button>
           ) : (
-            <div className="flex items-center gap-2">
-              <Button variant="destructive" onClick={handleRestore} disabled={isRestoring}>
-                {isRestoring ? tCommon("loading") : t("confirmRestore")}
-              </Button>
-              <Button variant="outline" onClick={() => setConfirmRestore(false)} disabled={isRestoring}>
-                {tCommon("cancel")}
-              </Button>
+            <div className="space-y-2">
+              <input
+                type="password"
+                value={restorePassword}
+                onChange={(e) => setRestorePassword(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && restorePassword && handleRestore()}
+                placeholder={t("enterPassword")}
+                className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+                autoFocus
+              />
+              <div className="flex items-center gap-2">
+                <Button variant="destructive" onClick={handleRestore} disabled={isRestoring || !restorePassword}>
+                  {isRestoring ? tCommon("loading") : t("confirmRestore")}
+                </Button>
+                <Button variant="outline" onClick={() => { setConfirmRestore(false); setRestorePassword(""); }} disabled={isRestoring}>
+                  {tCommon("cancel")}
+                </Button>
+              </div>
             </div>
           )}
         </div>

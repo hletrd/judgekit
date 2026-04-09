@@ -46,6 +46,7 @@ const TABLE_MAP: Record<string, any> = {
   submissions: schema.submissions,
   antiCheatEvents: schema.antiCheatEvents,
   scoreOverrides: schema.scoreOverrides,
+  codeSnapshots: schema.codeSnapshots,
   submissionResults: schema.submissionResults,
   submissionComments: schema.submissionComments,
 };
@@ -59,7 +60,8 @@ const TIMESTAMP_COLUMNS = new Set([
   "startedAt", "personalDeadline", "expiresAt", "expires", "startsAt",
   "deadline", "lateDeadline", "freezeLeaderboardAt", "redeemedAt",
   "lastActiveAt", "tokenInvalidatedAt", "lastSeenAt", "registeredAt",
-  "lastUsedAt", "judgeClaimedAt", "uploadedAt",
+  "lastUsedAt", "judgeClaimedAt", "uploadedAt", "lastHeartbeatAt",
+  "deregisteredAt", "assignedAt", "emailVerified",
 ]);
 
 /**
@@ -69,7 +71,9 @@ const TIMESTAMP_COLUMNS = new Set([
 const BOOLEAN_COLUMNS = new Set([
   "isActive", "mustChangePassword", "isBuiltin", "isVisible", "isEnabled",
   "enableAntiCheat", "showLeaderboard", "showSubmissions",
-  "lectureMode", "aiAssistantEnabled",
+  "aiAssistantEnabled", "showCompileOutput", "showDetailedResults",
+  "showRuntimeErrors", "allowAiAssistant", "anonymousLeaderboard",
+  "showResultsToCandidate", "hideScoresFromCandidates", "enabled",
 ]);
 
 /**
@@ -77,7 +81,7 @@ const BOOLEAN_COLUMNS = new Set([
  * SQLite stores as stringified text, PG uses jsonb, MySQL uses json.
  */
 const JSON_COLUMNS = new Set([
-  "details", "capabilities", "config",
+  "details", "capabilities", "config", "labels", "metadata",
 ]);
 
 export interface ImportResult {
@@ -144,9 +148,10 @@ export async function importDatabase(data: JudgeKitExport): Promise<ImportResult
   };
 
   try {
-    // Wrap entire import in a transaction so SET CONSTRAINTS DEFERRED has effect
+    // Wrap entire import in a single transaction for atomicity.
+    // Note: FK constraints are NOT DEFERRABLE, so ordering relies on TABLE_ORDER
+    // inserting parents before children. Do not reorder TABLE_ORDER entries.
     await db.transaction(async (tx) => {
-      await tx.execute(sql`SET CONSTRAINTS ALL DEFERRED`);
 
       // Truncate all tables in reverse FK order (children first)
       const reverseOrder = getReversedTableOrder();

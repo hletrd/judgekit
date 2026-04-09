@@ -746,8 +746,7 @@ export const recruitingInvitations = pgTable(
     redeemedAt: timestamp("redeemed_at", { withTimezone: true }),
     ipAddress: text("ip_address"),
     createdBy: text("created_by")
-      .notNull()
-      .references(() => users.id),
+      .references(() => users.id, { onDelete: "set null" }),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .$defaultFn(() => new Date(Date.now())),

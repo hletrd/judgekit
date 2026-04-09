@@ -26,6 +26,12 @@ import {
   roles,
   judgeWorkers,
   files,
+  groupInstructors,
+  recruitingInvitations,
+  codeSnapshots,
+  tags,
+  problemTags,
+  apiKeys,
 } from "./schema.pg";
 
 export const usersRelations = relations(users, ({ many }) => ({
@@ -220,10 +226,12 @@ export const scoreOverridesRelations = relations(
     user: one(users, {
       fields: [scoreOverrides.userId],
       references: [users.id],
+      relationName: "scoreOverride_user",
     }),
     creator: one(users, {
       fields: [scoreOverrides.createdBy],
       references: [users.id],
+      relationName: "scoreOverride_creator",
     }),
   })
 );
@@ -298,6 +306,70 @@ export const contestAccessTokensRelations = relations(
 );
 
 export const rolesRelations = relations(roles, () => ({}));
+
+export const groupInstructorsRelations = relations(groupInstructors, ({ one }) => ({
+  group: one(groups, {
+    fields: [groupInstructors.groupId],
+    references: [groups.id],
+  }),
+  user: one(users, {
+    fields: [groupInstructors.userId],
+    references: [users.id],
+  }),
+}));
+
+export const recruitingInvitationsRelations = relations(recruitingInvitations, ({ one }) => ({
+  assignment: one(assignments, {
+    fields: [recruitingInvitations.assignmentId],
+    references: [assignments.id],
+  }),
+  user: one(users, {
+    fields: [recruitingInvitations.userId],
+    references: [users.id],
+  }),
+  creator: one(users, {
+    fields: [recruitingInvitations.createdBy],
+    references: [users.id],
+    relationName: "recruitingInvitation_creator",
+  }),
+}));
+
+export const codeSnapshotsRelations = relations(codeSnapshots, ({ one }) => ({
+  user: one(users, {
+    fields: [codeSnapshots.userId],
+    references: [users.id],
+  }),
+  problem: one(problems, {
+    fields: [codeSnapshots.problemId],
+    references: [problems.id],
+  }),
+  assignment: one(assignments, {
+    fields: [codeSnapshots.assignmentId],
+    references: [assignments.id],
+  }),
+}));
+
+export const tagsRelations = relations(tags, ({ many }) => ({
+  problemTags: many(problemTags),
+}));
+
+export const problemTagsRelations = relations(problemTags, ({ one }) => ({
+  problem: one(problems, {
+    fields: [problemTags.problemId],
+    references: [problems.id],
+  }),
+  tag: one(tags, {
+    fields: [problemTags.tagId],
+    references: [tags.id],
+  }),
+}));
+
+export const apiKeysRelations = relations(apiKeys, ({ one }) => ({
+  creator: one(users, {
+    fields: [apiKeys.createdById],
+    references: [users.id],
+  }),
+}));
 
 export const judgeWorkersRelations = relations(judgeWorkers, ({ many }) => ({
   submissions: many(submissions),

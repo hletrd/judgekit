@@ -211,6 +211,7 @@ const TABLE_ORDER: { name: string; table: any; orderColumns: string[] }[] = [
   { name: "submissions", table: schema.submissions, orderColumns: ["id"] },
   { name: "antiCheatEvents", table: schema.antiCheatEvents, orderColumns: ["id"] },
   { name: "scoreOverrides", table: schema.scoreOverrides, orderColumns: ["id"] },
+  { name: "codeSnapshots", table: schema.codeSnapshots, orderColumns: ["id"] },
   // Level 5: FK to level 0-4
   { name: "submissionResults", table: schema.submissionResults, orderColumns: ["id"] },
   { name: "submissionComments", table: schema.submissionComments, orderColumns: ["id"] },
@@ -250,7 +251,12 @@ const EXPORT_CHUNK_SIZE = 1000;
  */
 const REDACTED_COLUMNS: Record<string, Set<string>> = {
   users: new Set(["passwordHash"]),
+  sessions: new Set(["sessionToken"]),
   judgeWorkers: new Set(["secretToken"]),
+  accounts: new Set(["refresh_token", "access_token", "id_token"]),
+  apiKeys: new Set(["encryptedKey", "keyHash"]),
+  recruitingInvitations: new Set(["token"]),
+  assignments: new Set(["accessCode"]),
 };
 
 function getOrderClauses(table: any, orderColumns: string[]) {

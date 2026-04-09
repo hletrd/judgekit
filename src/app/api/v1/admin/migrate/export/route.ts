@@ -3,12 +3,19 @@ import { getApiUser, unauthorized, forbidden, csrfForbidden } from "@/lib/api/au
 import { consumeApiRateLimit } from "@/lib/security/api-rate-limit";
 import { streamDatabaseExport } from "@/lib/db/export";
 import { recordAuditEvent } from "@/lib/audit/events";
+import { verifyPassword } from "@/lib/security/password-hash";
+import { db } from "@/lib/db";
+import { users } from "@/lib/db/schema";
+import { eq } from "drizzle-orm";
 import { logger } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 
-export async function GET(request: NextRequest) {
+export async function POST(request: NextRequest) {
   try {
+    const csrfError = csrfForbidden(request);
+    if (csrfError) return csrfError;
+
     const user = await getApiUser(request);
     if (!user) return unauthorized();
     if (user.role !== "super_admin") return forbidden();
@@ -16,8 +23,31 @@ export async function GET(request: NextRequest) {
     const rateLimitResponse = await consumeApiRateLimit(request, "admin:migrate-export");
     if (rateLimitResponse) return rateLimitResponse;
 
-    const csrfError = csrfForbidden(request);
-    if (csrfError) return csrfError;
+    let body: { password?: string };
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json({ error: "invalidRequestBody" }, { status: 400 });
+    }
+    const password = body?.password;
+    if (!password || typeof password !== "string") {
+      return NextResponse.json({ error: "passwordRequired" }, { status: 400 });
+    }
+
+    const [dbUser] = await db
+      .select({ passwordHash: users.passwordHash })
+      .from(users)
+      .where(eq(users.id, user.id))
+      .limit(1);
+
+    if (!dbUser?.passwordHash) {
+      return NextResponse.json({ error: "authenticationFailed" }, { status: 403 });
+    }
+
+    const { valid } = await verifyPassword(password, dbUser.passwordHash);
+    if (!valid) {
+      return NextResponse.json({ error: "invalidPassword" }, { status: 403 });
+    }
 
     const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
     const filename = `judgekit-export-${timestamp}.json`;
