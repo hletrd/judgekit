@@ -80,7 +80,9 @@ export function ContestQuickStats({
 
   useEffect(() => {
     fetchStats();
-    const interval = setInterval(fetchStats, refreshInterval);
+    const interval = setInterval(() => {
+      if (document.visibilityState === "visible") fetchStats();
+    }, refreshInterval);
     return () => clearInterval(interval);
   }, [fetchStats, refreshInterval]);
 

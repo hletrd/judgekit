@@ -1,6 +1,6 @@
-import { sql } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { hashPassword } from "@/lib/security/password-hash";
-import { db } from "@/lib/db";
+import { db, type TransactionClient } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { canManageRole, isUserRole } from "@/lib/security/constants";
 import { getPasswordValidationError, type PasswordValidationError } from "@/lib/security/password";
@@ -11,30 +11,38 @@ import type { UserRole } from "@/types";
 /**
  * Returns true when the username is already taken by another user.
  * Pass `excludeId` to allow the current user to keep their own username.
+ * Pass `queryDb` to run inside a transaction (for TOCTOU prevention).
  */
 export async function isUsernameTaken(
   username: string,
-  excludeId?: string
+  excludeId?: string,
+  queryDb?: TransactionClient
 ): Promise<boolean> {
-  const existing = await db.query.users.findFirst({
-    where: sql`lower(${users.username}) = lower(${username})`,
-    columns: { id: true },
-  });
+  const executor = queryDb ?? db;
+  const [existing] = await executor
+    .select({ id: users.id })
+    .from(users)
+    .where(sql`lower(${users.username}) = lower(${username})`)
+    .limit(1);
   return existing !== undefined && existing.id !== excludeId;
 }
 
 /**
  * Returns true when the email is already taken by another user.
  * Pass `excludeId` to allow the current user to keep their own email.
+ * Pass `queryDb` to run inside a transaction (for TOCTOU prevention).
  */
 export async function isEmailTaken(
   email: string,
-  excludeId?: string
+  excludeId?: string,
+  queryDb?: TransactionClient
 ): Promise<boolean> {
-  const existing = await db.query.users.findFirst({
-    where: sql`lower(${users.email}) = lower(${email})`,
-    columns: { id: true },
-  });
+  const executor = queryDb ?? db;
+  const [existing] = await executor
+    .select({ id: users.id })
+    .from(users)
+    .where(sql`lower(${users.email}) = lower(${email})`)
+    .limit(1);
   return existing !== undefined && existing.id !== excludeId;
 }
 

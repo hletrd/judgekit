@@ -120,13 +120,14 @@ export const PATCH = createApiHandler({
     }
 
     const state = await getPluginState(params.id);
+    if (!state) return apiError("pluginStateLoadFailed", 500);
     return apiSuccess({
-      id: state!.id,
-      enabled: state!.enabled,
-      config: state!.config,
-      nameKey: state!.definition.nameKey,
-      descriptionKey: state!.definition.descriptionKey,
-      updatedAt: state!.updatedAt,
+      id: state.id,
+      enabled: state.enabled,
+      config: state.config,
+      nameKey: state.definition.nameKey,
+      descriptionKey: state.definition.descriptionKey,
+      updatedAt: state.updatedAt,
     });
   },
 });

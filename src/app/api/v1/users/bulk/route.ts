@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { apiError } from "@/lib/api/responses";
 import { execTransaction } from "@/lib/db";
+import { sql } from "drizzle-orm";
 import { users } from "@/lib/db/schema";
 import { forbidden, isAdmin, isInstructor, createApiHandler } from "@/lib/api/handler";
 import { recordAuditEvent } from "@/lib/audit/events";
@@ -120,10 +121,12 @@ export const POST = createApiHandler({
       }
     }
 
-    // Insert all users in a single transaction, handling unique constraint violations
+    // Insert users individually with savepoints so one failure doesn't abort the whole batch.
+    // PostgreSQL aborts a transaction on error unless a savepoint is used.
     await execTransaction(async (tx) => {
       for (const entry of validEntries) {
         try {
+          await tx.execute(sql`SAVEPOINT user_insert`);
           await tx.insert(users).values({
             id: entry.id,
             username: entry.username,
@@ -137,11 +140,13 @@ export const POST = createApiHandler({
             createdAt: new Date(),
             updatedAt: new Date(),
           });
+          await tx.execute(sql`RELEASE SAVEPOINT user_insert`);
           created.push({
             username: entry.username,
             name: entry.name,
           });
         } catch (err: unknown) {
+          await tx.execute(sql`ROLLBACK TO SAVEPOINT user_insert`);
           // PostgreSQL unique constraint violation
           const pgErr = err as { code?: string; constraint?: string };
           if (pgErr.code === "23505") {

@@ -66,27 +66,20 @@ async function doSync(): Promise<boolean> {
 export async function syncLanguageConfigsOnStartup() {
   const MAX_SYNC_RETRIES = 10;
   const MAX_BACKOFF_MS = 30_000;
-  let retryCount = 0;
 
-  try {
-    await doSync();
-  } catch {
-    // Table may not exist yet (pre-migration). Schedule retries with exponential backoff.
-    const retry = () => {
-      setTimeout(async () => {
-        retryCount++;
-        if (retryCount >= MAX_SYNC_RETRIES) {
-          console.error("[sync] Max retries exceeded, giving up");
-          return;
-        }
-        try {
-          await doSync();
-        } catch {
-          const delay = Math.min(1000 * Math.pow(2, retryCount), MAX_BACKOFF_MS);
-          setTimeout(retry, delay);
-        }
-      }, Math.min(1000 * Math.pow(2, retryCount), MAX_BACKOFF_MS));
-    };
-    retry();
+  // Single retry loop — no nested setTimeout chains
+  for (let attempt = 0; attempt <= MAX_SYNC_RETRIES; attempt++) {
+    try {
+      await doSync();
+      return; // success
+    } catch {
+      if (attempt >= MAX_SYNC_RETRIES) {
+        console.error("[sync] Max retries exceeded, giving up");
+        return;
+      }
+      // Table may not exist yet (pre-migration). Retry with exponential backoff.
+      const delay = Math.min(1000 * Math.pow(2, attempt), MAX_BACKOFF_MS);
+      await new Promise((r) => setTimeout(r, delay));
+    }
   }
 }

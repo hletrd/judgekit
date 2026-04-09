@@ -3,7 +3,7 @@ import { timingSafeEqual } from "node:crypto";
 import { apiSuccess, apiError } from "@/lib/api/responses";
 import { db } from "@/lib/db";
 import { judgeWorkers, submissions } from "@/lib/db/schema";
-import { eq, inArray } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { isJudgeAuthorized } from "@/lib/judge/auth";
 import { logger } from "@/lib/logger";
 import { z } from "zod";
@@ -60,7 +60,12 @@ export async function POST(request: NextRequest) {
       const claimed = await db
         .select({ id: submissions.id })
         .from(submissions)
-        .where(eq(submissions.judgeWorkerId, workerId));
+        .where(
+          and(
+            eq(submissions.judgeWorkerId, workerId),
+            inArray(submissions.status, ["pending", "queued", "judging"])
+          )
+        );
 
       if (claimed.length > 0) {
         const claimedIds = claimed.map((s) => s.id);

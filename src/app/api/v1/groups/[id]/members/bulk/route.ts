@@ -80,9 +80,9 @@ export const POST = createApiHandler({
         enrolledAt: now,
       }));
 
-      await db.insert(enrollments).values(rows).onConflictDoNothing();
+      const inserted = await db.insert(enrollments).values(rows).onConflictDoNothing().returning({ id: enrollments.id });
 
-      enrolled = toEnroll.length;
+      enrolled = inserted.length;
     }
 
     const skipped = skippedInvalid + skippedDuplicates;

@@ -278,7 +278,8 @@ async function _computeContestRankingInner(assignmentId: string, cutoffSec?: num
         }
 
         // IOI
-        const bestScore = Number(row.bestScore) || 0;
+        const rawScore = Number(row.bestScore);
+        const bestScore = Number.isNaN(rawScore) ? 0 : (rawScore ?? 0);
         return {
           problemId: ap.problemId,
           score: bestScore,
@@ -328,8 +329,10 @@ async function _computeContestRankingInner(assignmentId: string, cutoffSec?: num
       // Less penalty first
       if (a.totalPenalty !== b.totalPenalty) return a.totalPenalty - b.totalPenalty;
       // Earlier last AC first
-      const aLastAc = Math.max(...a.problems.filter((p) => p.solved).map((p) => p.firstAcAt ?? 0), 0);
-      const bLastAc = Math.max(...b.problems.filter((p) => p.solved).map((p) => p.firstAcAt ?? 0), 0);
+      const aSolvedTimes = a.problems.filter((p) => p.solved).map((p) => p.firstAcAt ?? 0);
+      const aLastAc = aSolvedTimes.length > 0 ? Math.max(...aSolvedTimes) : 0;
+      const bSolvedTimes = b.problems.filter((p) => p.solved).map((p) => p.firstAcAt ?? 0);
+      const bLastAc = bSolvedTimes.length > 0 ? Math.max(...bSolvedTimes) : 0;
       return aLastAc - bLastAc;
     });
   } else {

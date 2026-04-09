@@ -133,39 +133,15 @@ function validateShellCommand(cmd: string): boolean {
 }
 
 /**
- * Parse Docker RFC 3339 timestamp into nanoseconds since midnight.
+ * Parse Docker RFC 3339 timestamp into epoch milliseconds.
  * Handles format like "2024-01-15T10:30:45.123456789Z".
+ * Uses full date+time to avoid cross-midnight duration errors.
  */
-function parseTimestampNanos(s: string): number | null {
+function parseTimestampEpochMs(s: string): number | null {
   try {
-    const afterT = s.split("T")[1];
-    if (!afterT) return null;
-    const end = afterT.search(/[^0-9:.]/);
-    const timePart = end >= 0 ? afterT.slice(0, end) : afterT;
-
-    const parts = timePart.split(":");
-    if (parts.length < 3) return null;
-
-    const hours = Number.parseInt(parts[0], 10);
-    const minutes = Number.parseInt(parts[1], 10);
-    const secFrac = parts[2];
-
-    if (Number.isNaN(hours) || Number.isNaN(minutes)) return null;
-
-    let secs = 0;
-    let nanos = 0;
-    const dotIndex = secFrac.indexOf(".");
-
-    if (dotIndex >= 0) {
-      secs = Number.parseInt(secFrac.slice(0, dotIndex), 10);
-      const frac = secFrac.slice(dotIndex + 1);
-      const padded = frac.padEnd(9, "0").slice(0, 9);
-      nanos = Number.parseInt(padded, 10);
-    } else {
-      secs = Number.parseInt(secFrac, 10);
-    }
-
-    return ((hours * 3600 + minutes * 60 + secs) * 1_000_000_000) + nanos;
+    const ms = Date.parse(s);
+    if (Number.isNaN(ms)) return null;
+    return ms;
   } catch {
     return null;
   }
@@ -192,11 +168,11 @@ async function inspectContainerState(
 
     let durationMs: number | null = null;
     if (parts.length >= 3) {
-      const startNanos = parseTimestampNanos(parts[1]);
-      const endNanos = parseTimestampNanos(parts[2]);
+      const startMs = parseTimestampEpochMs(parts[1]);
+      const endMs = parseTimestampEpochMs(parts[2]);
 
-      if (startNanos !== null && endNanos !== null && endNanos >= startNanos) {
-        durationMs = Math.round((endNanos - startNanos) / 1_000_000);
+      if (startMs !== null && endMs !== null && endMs >= startMs) {
+        durationMs = endMs - startMs;
       }
     }
 
@@ -274,6 +250,8 @@ async function runDocker(opts: {
     "--security-opt=no-new-privileges",
     "--ulimit",
     "nofile=1024:1024",
+    "--user",
+    "65534:65534",
     "-v",
     workspaceVolume,
     "-w",

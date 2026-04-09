@@ -73,19 +73,26 @@ export function ProblemSubmissionForm({
     lastChangeRef.current = Date.now();
   }, [sourceCode, assignmentId]);
 
+  // Use refs for values that change frequently to avoid resetting the timer
+  const sourceCodeRef = useRef(sourceCode);
+  const languageRef = useRef(language);
+  useEffect(() => { sourceCodeRef.current = sourceCode; }, [sourceCode]);
+  useEffect(() => { languageRef.current = language; }, [language]);
+
   useEffect(() => {
     if (!assignmentId) return;
     function tick() {
       const now = Date.now();
       const sinceLastChange = now - lastChangeRef.current;
-      const changed = sourceCode !== lastSnapshotRef.current && sourceCode.trim().length > 0;
+      const code = sourceCodeRef.current;
+      const changed = code !== lastSnapshotRef.current && code.trim().length > 0;
 
       if (changed) {
-        lastSnapshotRef.current = sourceCode;
+        lastSnapshotRef.current = code;
         void apiFetch("/api/v1/code-snapshots", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ problemId, assignmentId, language, sourceCode }),
+          body: JSON.stringify({ problemId, assignmentId, language: languageRef.current, sourceCode: code }),
         }).catch(() => {});
       }
 
@@ -95,7 +102,7 @@ export function ProblemSubmissionForm({
     }
     snapshotTimerRef.current = setTimeout(tick, 10000);
     return () => { if (snapshotTimerRef.current) clearTimeout(snapshotTimerRef.current); };
-  }, [assignmentId, problemId, language, sourceCode]);
+  }, [assignmentId, problemId]);
   const [isRunning, setIsRunning] = useState(false);
   const [stdinOpen, setStdinOpen] = useState(false);
   const [stdin, setStdin] = useState("");

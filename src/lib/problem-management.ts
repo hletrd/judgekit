@@ -37,9 +37,19 @@ async function resolveTagIdsWithExecutor(
       tagIds.push(existing.id);
     } else {
       const newId = nanoid();
-      await executor.insert(tags)
-        .values({ id: newId, name: trimmed, createdBy, createdAt: new Date() });
-      tagIds.push(newId);
+      try {
+        await executor.insert(tags)
+          .values({ id: newId, name: trimmed, createdBy, createdAt: new Date() });
+        tagIds.push(newId);
+      } catch {
+        // Handle unique constraint race — re-fetch the existing tag
+        const [raced] = await executor
+          .select({ id: tags.id })
+          .from(tags)
+          .where(eq(tags.name, trimmed))
+          .limit(1);
+        if (raced) tagIds.push(raced.id);
+      }
     }
   }
   return tagIds;

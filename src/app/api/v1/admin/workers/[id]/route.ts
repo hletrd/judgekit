@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { apiSuccess, apiError } from "@/lib/api/responses";
-import { db } from "@/lib/db";
+import { db, execTransaction } from "@/lib/db";
 import { judgeWorkers, submissions } from "@/lib/db/schema";
 import { eq, and, inArray } from "drizzle-orm";
 import { forbidden } from "@/lib/api/auth";
@@ -77,23 +77,23 @@ export const DELETE = createApiHandler({
       return apiError("workerNotFound", 404);
     }
 
-    // Reclaim any in-flight submissions from this worker
-    await db.update(submissions)
-      .set({
-        status: "pending",
-        judgeClaimToken: null,
-        judgeClaimedAt: null,
-        judgeWorkerId: null,
-      })
-      .where(
-        and(
-          eq(submissions.judgeWorkerId, id),
-          inArray(submissions.status, ["queued", "judging"])
-        )
-      );
-
-    // Remove the worker record
-    await db.delete(judgeWorkers).where(eq(judgeWorkers.id, id));
+    // Atomically reclaim in-flight submissions and remove worker record
+    await execTransaction(async (tx) => {
+      await tx.update(submissions)
+        .set({
+          status: "pending",
+          judgeClaimToken: null,
+          judgeClaimedAt: null,
+          judgeWorkerId: null,
+        })
+        .where(
+          and(
+            eq(submissions.judgeWorkerId, id),
+            inArray(submissions.status, ["queued", "judging"])
+          )
+        );
+      await tx.delete(judgeWorkers).where(eq(judgeWorkers.id, id));
+    });
 
     recordAuditEvent({
       action: "judge_worker.force_removed",

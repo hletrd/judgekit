@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
@@ -43,20 +43,24 @@ export function SubmissionDetailClient(props: SubmissionDetailClientProps) {
   const [rejudging, setRejudging] = useState(false);
 
   // Notify chat widget of submission results with problem context (skip for assignments/contests)
+  const firedEventRef = useRef<string | null>(null);
   useEffect(() => {
-    if (submission && !submission.assignmentId && !["pending", "queued", "judging"].includes(submission.status)) {
-      const hasError = submission.status !== "accepted";
-      window.dispatchEvent(new CustomEvent("oj:submission-result", {
-        detail: {
-          hasError,
-          status: submission.status,
-          problemId: submission.problem?.id,
-          assignmentId: submission.assignmentId,
-          submissionId: submission.id,
-        }
-      }));
-    }
-  }, [submission]);
+    const key = `${submission.id}:${submission.status}`;
+    if (firedEventRef.current === key) return;
+    if (submission.assignmentId) return;
+    if (["pending", "queued", "judging"].includes(submission.status)) return;
+    firedEventRef.current = key;
+    const hasError = submission.status !== "accepted";
+    window.dispatchEvent(new CustomEvent("oj:submission-result", {
+      detail: {
+        hasError,
+        status: submission.status,
+        problemId: submission.problem?.id,
+        assignmentId: submission.assignmentId,
+        submissionId: submission.id,
+      }
+    }));
+  }, [submission.id, submission.status, submission.assignmentId, submission.problem?.id]);
 
   const canComment = props.capabilities.includes("submissions.comment");
   const canRejudge = props.capabilities.includes("submissions.rejudge");

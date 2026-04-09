@@ -36,13 +36,17 @@ export async function GET(request: NextRequest) {
         },
       });
     } else if (isInstructor(user.role)) {
+      // Include groups where user is primary instructor OR co-instructor/TA
+      const instructorFilter = sql`(${groups.instructorId} = ${user.id} OR EXISTS (
+        SELECT 1 FROM group_instructors gi WHERE gi.group_id = ${groups.id} AND gi.user_id = ${user.id}
+      ))`;
       const [totalRow] = await db
         .select({ count: sql<number>`count(*)` })
         .from(groups)
-        .where(eq(groups.instructorId, user.id));
+        .where(instructorFilter);
       total = Number(totalRow?.count ?? 0);
       results = await db.query.groups.findMany({
-        where: eq(groups.instructorId, user.id),
+        where: instructorFilter,
         orderBy: [desc(groups.createdAt)],
         limit,
         offset,

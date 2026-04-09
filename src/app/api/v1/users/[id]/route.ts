@@ -74,16 +74,17 @@ async function ensureUniqueIdentityFields(
   userId: string,
   username: unknown,
   normalizedEmail: string | null,
-  isAdminActor: boolean
+  isAdminActor: boolean,
+  tx?: import("@/lib/db").TransactionClient
 ) {
   if (typeof username === "string" && isAdminActor) {
-    if (await isUsernameTaken(username, userId)) {
+    if (await isUsernameTaken(username, userId, tx)) {
       return apiError("usernameInUse", 409);
     }
   }
 
   if (isAdminActor && normalizedEmail) {
-    if (await isEmailTaken(normalizedEmail, userId)) {
+    if (await isEmailTaken(normalizedEmail, userId, tx)) {
       return apiError("emailInUse", 409);
     }
   }
@@ -315,7 +316,8 @@ export const PATCH = createApiHandler({
           id,
           body.username,
           normalizedEmail,
-          isAdminActor
+          isAdminActor,
+          tx
         );
         if (uniqueIdentityError) throw uniqueIdentityError;
 
