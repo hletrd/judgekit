@@ -32,7 +32,7 @@ Last updated: 2026-03-21
 - **Test host**: amd64, deployed via `deploy-docker.sh` with server-side Docker builds. See ENV.md for hostname/credentials.
 - **Production host**: arm64 (Ampere Altra), deployed via `deploy-docker.sh` with SSH key auth. See ENV.md for hostname/credentials.
 - Both hosts run Docker Compose with `judgekit-app` and `judgekit-judge-worker` containers.
-- The judge worker runs with `privileged: true` and `/judge-workspaces:/judge-workspaces` volume mount (identity-mapped so sibling judge containers can access source files).
+- The judge worker talks to the dedicated `docker-proxy` sidecar via `DOCKER_HOST=tcp://docker-proxy:2375` and uses the `/judge-workspaces:/judge-workspaces` volume mount (identity-mapped so sibling judge containers can access source files).
 - `TMPDIR=/judge-workspaces` is set on the worker so temp files land on the shared host path.
 - The seccomp profile uses a **deny-list** approach (default allow, block dangerous syscalls like mount/ptrace/bpf). The old allowlist approach was incompatible with newer runc/kernel versions.
 - Nginx config is written via `scp` + `sudo cp` (not heredoc tee, which fails silently with sudo password prompts).
@@ -126,7 +126,7 @@ Last updated: 2026-03-21
 
 ## 2026-03-20 session changes (latest)
 
-- **Docker CLI in app container**: `Dockerfile` installs `docker-cli` (Alpine package). The `nextjs` user is added to the `docker` group (gid 987). `docker-compose.production.yml` mounts `/var/run/docker.sock` on both `app` and `judge-worker` containers. This enables the admin language management UI to build/remove Docker images without a separate privileged sidecar.
+- **Docker access narrowed to the worker lane**: `docker-proxy` is the only container with direct `/var/run/docker.sock` access. The judge worker talks to Docker through `DOCKER_HOST=tcp://docker-proxy:2375`; the Next.js app uses the worker’s authenticated internal API instead of direct daemon access.
 - **CSRF header corrected**: Mutation API routes check for `X-Requested-With: XMLHttpRequest` (not `x-csrf-token`). All admin UI fetches and E2E helpers use this header on POST/DELETE/PATCH requests.
 - **Disk usage on language admin page**: `/dashboard/admin/languages` now shows a progress bar at the top with total Docker disk usage on the host, color-coded green/yellow/red. Fetched live via the Docker images API on page load.
 - **Per-image sizes on language admin page**: Each language row shows the local image size fetched live from `GET /api/v1/admin/docker/images`. Rows where the image is not pulled show "Not built".

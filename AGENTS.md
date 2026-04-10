@@ -265,8 +265,8 @@ JudgeKit supports full contest management with two scoring models and two schedu
 - **`--no-cache` on app and worker builds**: `deploy-docker.sh` passes `--no-cache` when building `judgekit-app` and `judgekit-judge-worker` to ensure a clean build on every deploy. Language images are not rebuilt with `--no-cache` by default.
 - **DNS in Dockerfiles**: Languages that need network access during build (e.g., `cargo install`) set DNS explicitly in their Dockerfiles via `resolv.conf` override. The `--dns` flag is not used because it is incompatible with Docker BuildKit/buildx.
 - **Architecture auto-detection**: The deploy script runs `uname -m` on the remote host and sets `--platform linux/amd64` or `--platform linux/arm64` accordingly. All `docker build` commands (app, judge worker, and all language images) receive this flag.
-- **Docker CLI in the app container**: The `judgekit-app` image installs `docker-cli` (Alpine package) and the `nextjs` user is added to the `docker` group (gid 987) so it can reach the socket. The compose file mounts `/var/run/docker.sock:/var/run/docker.sock` on both the `app` and `judge-worker` containers. This enables the admin Docker image management API (`GET/POST/DELETE /api/v1/admin/docker/images`) to operate without a separate privileged sidecar.
-- **`privileged: true`** on the judge-worker container — required for Docker-in-Docker execution (the worker spawns sibling containers to run student code).
+- **Docker socket proxy**: The deployment uses a dedicated `docker-proxy` service as the only container with direct `/var/run/docker.sock` access. The **judge worker only** talks to Docker through `DOCKER_HOST=tcp://docker-proxy:2375`; the Next.js app calls the worker’s authenticated internal API for Docker image management instead of talking to the daemon directly.
+- **Judge worker Docker access**: The worker reaches Docker through `DOCKER_HOST=tcp://docker-proxy:2375` rather than a direct socket mount or `privileged: true`. This keeps Docker control on the proxy/host boundary while still allowing the worker to launch sibling judge containers.
 - **`/judge-workspaces` volume mount** — `/judge-workspaces:/judge-workspaces` is mounted on the worker container. The `TMPDIR=/judge-workspaces` env var ensures the worker writes temporary files to this shared volume. The host must have `/judge-workspaces` created before starting the stack.
 - **Compiled output path**: All compiled language Dockerfiles output binaries to `/workspace/solution` (not `/tmp/solution`). `/tmp` is an ephemeral per-container tmpfs; `/workspace` is the shared workspace bind-mounted between the worker and sibling judge containers.
 - **Groovy uses Java 21**: The `judge-groovy` image is based on `eclipse-temurin:21-jdk-jammy`. Groovy 4.0 requires Java 21 — Java 25 class file versions are incompatible with the Groovy bytecode verifier.
@@ -457,7 +457,7 @@ The primary deploy script is `deploy-docker.sh`. Pass environment variables from
 **Server-side builds:** `deploy-docker.sh` builds all Docker images directly on the remote server (not locally), avoiding architecture mismatches between dev machines and the target host. The script auto-detects the server's architecture (`amd64`/`arm64`) and sets the appropriate platform flag automatically.
 
 **Docker Compose configuration (production):**
-- The judge worker container runs with `privileged: true` to allow Docker-in-Docker execution
+- The judge worker talks to the dedicated `docker-proxy` sidecar via `DOCKER_HOST=tcp://docker-proxy:2375`
 - `/judge-workspaces:/judge-workspaces` volume is mounted on the worker container for workspace sharing; `TMPDIR=/judge-workspaces` ensures the worker writes temp files there
 - The host **must** have `/judge-workspaces` directory created before starting the stack
 

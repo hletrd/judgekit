@@ -67,7 +67,7 @@ The `dashboard-rendering-audit-and-editor-upgrades` batch is now locally verifie
 
 ## Recently closed (2026-03-20 session — latest)
 
-- **Docker CLI in app container**: `docker-cli` installed in `Dockerfile`; `nextjs` user added to `docker` group (gid 987); `/var/run/docker.sock` mounted on `app` container in `docker-compose.production.yml`. Enables admin language image build/remove without a privileged sidecar.
+- **Docker access narrowed to the worker lane**: `docker-proxy` is now the only container with direct `/var/run/docker.sock` access. The judge worker talks to Docker through `DOCKER_HOST=tcp://docker-proxy:2375`; the Next.js app uses the worker’s authenticated internal API instead of direct daemon access.
 - **CSRF header fix**: Corrected mutation route CSRF check to use `X-Requested-With: XMLHttpRequest` (was incorrectly documented as `x-csrf-token`). All admin UI fetches and E2E helpers updated accordingly.
 - **Disk usage display**: Language admin page (`/dashboard/admin/languages`) shows a color-coded progress bar for total Docker disk usage at the top of the page, fetched live via the images API.
 - **Per-image sizes**: Each language row on the admin language page shows local image size from the live Docker images API response. "Not built" shown for absent images.
@@ -128,10 +128,8 @@ The `dashboard-rendering-audit-and-editor-upgrades` batch is now locally verifie
 
 ## Still open
 
-- `P3.6` composite unique index on `problem_group_access` is still blocked pending explicit approval for the destructive `db:push` step
 - `P1.7` tutor/TA infrastructure remains open
 - `P2.4` remains open only for broader incremental adoption beyond the groups/problems/submissions slice
-- `dockerfile` column added to `language_configs` table manually (needs proper Drizzle migration)
 
 ## Safety note
 
