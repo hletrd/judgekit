@@ -22,6 +22,9 @@ type DraftState = {
 
 type DraftStoreState = DraftState & {
   selectedLanguage: string;
+  initialDrafts: Record<string, string>;
+  hydratedFallbackLanguage: string;
+  isReady: boolean;
 };
 
 type DraftStore = {
@@ -29,12 +32,13 @@ type DraftStore = {
   getServerSnapshot: () => DraftStoreState;
   subscribe: (listener: () => void) => () => void;
   updateSnapshot: (updater: (state: DraftStoreState) => DraftStoreState) => DraftStoreState;
+  replaceSnapshot: (nextState: DraftStoreState) => DraftStoreState;
 };
 
 type UseSourceDraftOptions = {
   userId: string;
   problemId: string;
-  languages: string[];
+  languages: readonly string[];
   initialLanguage: string;
 };
 
@@ -104,12 +108,20 @@ function createEmptyDraftState(): DraftState {
 function createDraftStoreState(
   state: DraftState,
   languages: readonly string[],
-  fallbackLanguage: string
+  fallbackLanguage: string,
+  options: {
+    initialDrafts?: Record<string, string>;
+    hydratedFallbackLanguage?: string;
+    isReady?: boolean;
+  } = {},
 ): DraftStoreState {
   return {
     ...state,
     selectedLanguage:
       resolveLatestLanguage(state.latestLanguage, state.drafts, languages) ?? fallbackLanguage,
+    initialDrafts: options.initialDrafts ?? {},
+    hydratedFallbackLanguage: options.hydratedFallbackLanguage ?? fallbackLanguage,
+    isReady: options.isReady ?? false,
   };
 }
 
@@ -125,16 +137,18 @@ function subscribeToHydration() {
 }
 
 function createDraftStore(
-  storageKey: string,
   languages: readonly string[],
   fallbackLanguage: string
 ): DraftStore {
   const serverSnapshot = createDraftStoreState(createEmptyDraftState(), languages, fallbackLanguage);
-  let snapshot =
-    typeof window === "undefined"
-      ? serverSnapshot
-      : createDraftStoreState(readDraftPayload(storageKey, languages), languages, fallbackLanguage);
+  let snapshot = serverSnapshot;
   const listeners = new Set<() => void>();
+
+  function notifyListeners() {
+    for (const listener of listeners) {
+      listener();
+    }
+  }
 
   return {
     getSnapshot: () => snapshot,
@@ -148,11 +162,13 @@ function createDraftStore(
     },
     updateSnapshot(updater) {
       snapshot = updater(snapshot);
+      notifyListeners();
 
-      for (const listener of listeners) {
-        listener();
-      }
-
+      return snapshot;
+    },
+    replaceSnapshot(nextState) {
+      snapshot = nextState;
+      notifyListeners();
       return snapshot;
     },
   };
@@ -202,19 +218,18 @@ function readDraftPayload(storageKey: string, languages: readonly string[]) {
 
 export function useSourceDraft({ userId, problemId, languages, initialLanguage }: UseSourceDraftOptions): UseSourceDraftResult {
   const availableLanguages = useMemo(
-    () => (languages.length > 0 ? languages : [initialLanguage]),
+    () => (languages.length > 0 ? [...languages] : [initialLanguage]),
     [initialLanguage, languages],
   );
-  const fallbackLanguage = useMemo(() => {
-    if (typeof window === "undefined") return initialLanguage ?? availableLanguages[0];
-    return getPreferredLanguage(userId, availableLanguages) ?? initialLanguage ?? availableLanguages[0];
-  }, [availableLanguages, initialLanguage, userId]);
+  const fallbackLanguage = useMemo(
+    () => initialLanguage ?? availableLanguages[0],
+    [availableLanguages, initialLanguage],
+  );
   const storageKey = useMemo(() => getStorageKey(userId, problemId), [problemId, userId]);
   const draftStore = useMemo(
-    () => createDraftStore(storageKey, availableLanguages, fallbackLanguage),
-    [availableLanguages, fallbackLanguage, storageKey],
+    () => createDraftStore(availableLanguages, fallbackLanguage),
+    [availableLanguages, fallbackLanguage],
   );
-  const initialDrafts = useMemo(() => ({ ...draftStore.getSnapshot().drafts }), [draftStore]);
 
   const hasHydrated = useSyncExternalStore(subscribeToHydration, () => true, () => false);
   const draftState = useSyncExternalStore(
@@ -222,6 +237,28 @@ export function useSourceDraft({ userId, problemId, languages, initialLanguage }
     draftStore.getSnapshot,
     draftStore.getServerSnapshot,
   );
+
+  useEffect(() => {
+    if (!hasHydrated) {
+      return;
+    }
+
+    const nextFallbackLanguage =
+      getPreferredLanguage(userId, availableLanguages) ?? initialLanguage ?? availableLanguages[0];
+    const persistedDraftState = readDraftPayload(storageKey, availableLanguages);
+    const hydratedState = createDraftStoreState(
+      persistedDraftState,
+      availableLanguages,
+      nextFallbackLanguage,
+      {
+        initialDrafts: { ...persistedDraftState.drafts },
+        hydratedFallbackLanguage: nextFallbackLanguage,
+        isReady: true,
+      },
+    );
+
+    draftStore.replaceSnapshot(hydratedState);
+  }, [availableLanguages, draftStore, hasHydrated, initialLanguage, storageKey, userId]);
 
   const persistDraftState = useCallback(
     (state: DraftState) => {
@@ -249,7 +286,7 @@ export function useSourceDraft({ userId, problemId, languages, initialLanguage }
   );
 
   useEffect(() => {
-    if (!hasHydrated) {
+    if (!hasHydrated || !draftState.isReady) {
       return;
     }
 
@@ -263,7 +300,7 @@ export function useSourceDraft({ userId, problemId, languages, initialLanguage }
   }, [draftState, hasHydrated, persistDraftState]);
 
   useEffect(() => {
-    if (!hasHydrated) {
+    if (!hasHydrated || !draftState.isReady) {
       return;
     }
 
@@ -285,7 +322,7 @@ export function useSourceDraft({ userId, problemId, languages, initialLanguage }
       document.removeEventListener("visibilitychange", handleVisibilityChange);
       flushDraftState();
     };
-  }, [draftStore, hasHydrated, persistDraftState]);
+  }, [draftState.isReady, draftStore, hasHydrated, persistDraftState]);
 
   const setLanguage = useCallback(
     (nextLanguage: string) => {
@@ -311,6 +348,7 @@ export function useSourceDraft({ userId, problemId, languages, initialLanguage }
         }
 
         return {
+          ...state,
           drafts: nextDrafts,
           latestLanguage:
             nextSourceCode.length === 0
@@ -340,34 +378,40 @@ export function useSourceDraft({ userId, problemId, languages, initialLanguage }
         );
 
         return {
+          ...state,
           drafts: nextDrafts,
           latestLanguage: nextLatestLanguage,
           selectedLanguage:
             state.selectedLanguage === targetLanguage
-              ? nextLatestLanguage ?? fallbackLanguage
+              ? nextLatestLanguage ?? state.hydratedFallbackLanguage
               : state.selectedLanguage,
         };
       });
 
       persistDraftState(getPersistedDraftState(nextState));
     },
-    [availableLanguages, draftStore, fallbackLanguage, persistDraftState],
+    [availableLanguages, draftStore, persistDraftState],
   );
 
   const clearAllDrafts = useCallback(() => {
     draftStore.updateSnapshot(() =>
-      createDraftStoreState(createEmptyDraftState(), availableLanguages, fallbackLanguage),
+      createDraftStoreState(createEmptyDraftState(), availableLanguages, draftState.hydratedFallbackLanguage, {
+        initialDrafts: {},
+        hydratedFallbackLanguage: draftState.hydratedFallbackLanguage,
+        isReady: true,
+      }),
     );
     window.localStorage.removeItem(storageKey);
-  }, [availableLanguages, draftStore, fallbackLanguage, storageKey]);
+  }, [availableLanguages, draftState.hydratedFallbackLanguage, draftStore, storageKey]);
 
   const isDirty = useMemo(() => {
+    if (!hasHydrated || !draftState.isReady) return false;
     const currentDrafts = draftState.drafts;
     const currentKeys = Object.keys(currentDrafts);
-    const initialKeys = Object.keys(initialDrafts);
+    const initialKeys = Object.keys(draftState.initialDrafts);
     if (currentKeys.length !== initialKeys.length) return true;
-    return currentKeys.some((key) => currentDrafts[key] !== initialDrafts[key]);
-  }, [draftState.drafts, initialDrafts]);
+    return currentKeys.some((key) => currentDrafts[key] !== draftState.initialDrafts[key]);
+  }, [draftState.drafts, draftState.initialDrafts, draftState.isReady, hasHydrated]);
 
   return {
     language: draftState.selectedLanguage,
