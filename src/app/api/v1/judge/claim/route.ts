@@ -18,6 +18,7 @@ const claimedSubmissionRowSchema = z.object({
   userId: z.string(),
   problemId: z.string(),
   assignmentId: z.string().nullable(),
+  previousStatus: z.string().nullable().optional(),
   claimToken: z.string().nullable(),
   language: z.string(),
   sourceCode: z.string(),
@@ -46,13 +47,12 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const workerId: string | null = typeof body?.workerId === "string" ? body.workerId : null;
 
-    // Validate that the worker exists, is online, and has capacity
+    // Validate that the worker exists and is online before attempting an
+    // atomic capacity-gated claim below.
     if (workerId) {
       const [worker] = await db
         .select({
           status: judgeWorkers.status,
-          activeTasks: judgeWorkers.activeTasks,
-          concurrency: judgeWorkers.concurrency,
         })
         .from(judgeWorkers)
         .where(eq(judgeWorkers.id, workerId))
@@ -61,26 +61,80 @@ export async function POST(request: NextRequest) {
       if (!worker || worker.status !== "online") {
         return apiError("workerNotFound", 403);
       }
-
-      if (worker.activeTasks >= worker.concurrency) {
-        return apiError("workerAtCapacity", 503);
-      }
     }
 
     const claimToken = nanoid();
     const claimCreatedAt = Date.now();
 
-    // Atomic UPDATE...RETURNING for race-free claim via raw SQL (PostgreSQL).
-    const claimedRaw = await rawQueryOne<ClaimedSubmissionRow>(
+    const staleClaimTimeoutMs = getConfiguredSettings().staleClaimTimeoutMs;
+    const claimSql = workerId
+      ? `
+        WITH worker_slot AS (
+          SELECT id
+          FROM judge_workers
+          WHERE id = @workerId
+            AND status = 'online'
+            AND active_tasks < concurrency
+          FOR UPDATE
+        ),
+        candidate AS (
+          SELECT
+            s.id,
+            s.status AS previous_status
+          FROM submissions s
+          INNER JOIN problems p ON p.id = s.problem_id
+          WHERE EXISTS (SELECT 1 FROM worker_slot)
+            AND (s.status = 'pending'
+              OR (s.status IN ('queued', 'judging')
+                  AND s.judge_claimed_at < NOW() - (@staleClaimTimeoutMs || ' milliseconds')::interval))
+            AND COALESCE(p.problem_type, 'auto') != 'manual'
+          ORDER BY s.submitted_at ASC, s.id ASC
+          LIMIT 1
+          FOR UPDATE SKIP LOCKED
+        ),
+        claimed AS (
+          UPDATE submissions
+          SET
+            status = 'queued',
+            judge_claim_token = @claimToken,
+            judge_claimed_at = to_timestamp(@claimCreatedAt::double precision / 1000),
+            judge_worker_id = @workerId
+          WHERE id = (
+            SELECT candidate.id
+            FROM candidate
+          )
+          FROM candidate
+          RETURNING
+            id,
+            user_id AS "userId",
+            problem_id AS "problemId",
+            assignment_id AS "assignmentId",
+            candidate.previous_status AS "previousStatus",
+            judge_claim_token AS "claimToken",
+            language,
+            source_code AS "sourceCode",
+            status,
+            compile_output AS "compileOutput",
+            execution_time_ms AS "executionTimeMs",
+            memory_used_kb AS "memoryUsedKb",
+            score,
+            EXTRACT(EPOCH FROM judged_at)::integer AS "judgedAt",
+            EXTRACT(EPOCH FROM submitted_at)::integer AS "submittedAt"
+        ),
+        worker_bump AS (
+          UPDATE judge_workers
+          SET active_tasks = active_tasks + 1
+          WHERE id = @workerId
+            AND EXISTS (SELECT 1 FROM claimed)
+          RETURNING id
+        )
+        SELECT * FROM claimed
       `
-        UPDATE submissions
-        SET
-          status = 'queued',
-          judge_claim_token = @claimToken,
-          judge_claimed_at = to_timestamp(@claimCreatedAt::double precision / 1000),
-          judge_worker_id = @workerId
-        WHERE id = (
-          SELECT s.id
+      : `
+        WITH candidate AS (
+          SELECT
+            s.id,
+            s.status AS previous_status
           FROM submissions s
           INNER JOIN problems p ON p.id = s.problem_id
           WHERE (s.status = 'pending'
@@ -91,11 +145,23 @@ export async function POST(request: NextRequest) {
           LIMIT 1
           FOR UPDATE SKIP LOCKED
         )
+        UPDATE submissions
+        SET
+          status = 'queued',
+          judge_claim_token = @claimToken,
+          judge_claimed_at = to_timestamp(@claimCreatedAt::double precision / 1000),
+          judge_worker_id = @workerId
+        WHERE id = (
+          SELECT candidate.id
+          FROM candidate
+        )
+        FROM candidate
         RETURNING
           id,
           user_id AS "userId",
           problem_id AS "problemId",
           assignment_id AS "assignmentId",
+          candidate.previous_status AS "previousStatus",
           judge_claim_token AS "claimToken",
           language,
           source_code AS "sourceCode",
@@ -106,20 +172,46 @@ export async function POST(request: NextRequest) {
           score,
           EXTRACT(EPOCH FROM judged_at)::integer AS "judgedAt",
           EXTRACT(EPOCH FROM submitted_at)::integer AS "submittedAt"
-      `,
-      { claimToken, claimCreatedAt, staleClaimTimeoutMs: getConfiguredSettings().staleClaimTimeoutMs, workerId }
-    );
+      `;
+
+    // Atomic claim via raw SQL (PostgreSQL). When a worker is provided, the
+    // worker row is locked and capacity is consumed inside the same statement.
+    const claimedRaw = await rawQueryOne<ClaimedSubmissionRow>(claimSql, {
+      claimToken,
+      claimCreatedAt,
+      staleClaimTimeoutMs,
+      workerId,
+    });
 
     const claimed: ClaimedSubmissionRow | undefined = claimedRaw
       ? claimedSubmissionRowSchema.parse(claimedRaw)
       : undefined;
 
     if (!claimed) {
+      if (workerId) {
+        const [worker] = await db
+          .select({
+            status: judgeWorkers.status,
+            activeTasks: judgeWorkers.activeTasks,
+            concurrency: judgeWorkers.concurrency,
+          })
+          .from(judgeWorkers)
+          .where(eq(judgeWorkers.id, workerId))
+          .limit(1);
+
+        if (!worker || worker.status !== "online") {
+          return apiError("workerNotFound", 403);
+        }
+
+        if (worker && worker.activeTasks >= worker.concurrency) {
+          return apiError("workerAtCapacity", 503);
+        }
+      }
       return apiSuccess(null);
     }
 
-    if (claimed.status !== null && claimed.status !== 'pending') {
-      logger.warn({ submissionId: claimed.id, previousStatus: claimed.status }, "[judge/claim] Reclaimed stale submission (judge_claimed_at was stale)");
+    if (claimed.previousStatus !== null && claimed.previousStatus !== undefined && claimed.previousStatus !== "pending") {
+      logger.warn({ submissionId: claimed.id, previousStatus: claimed.previousStatus }, "[judge/claim] Reclaimed stale submission (judge_claimed_at was stale)");
     }
 
     recordAuditEvent({
@@ -133,6 +225,7 @@ export async function POST(request: NextRequest) {
         assignmentId: claimed.assignmentId,
         claimTokenPresent: Boolean(claimed.claimToken),
         language: claimed.language,
+        previousStatus: claimed.previousStatus ?? null,
         problemId: claimed.problemId,
         status: claimed.status,
         workerId,

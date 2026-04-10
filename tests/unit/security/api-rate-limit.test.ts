@@ -1,6 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
 
+type SidecarCheckResult = {
+  allowed: boolean;
+  remaining: number;
+  retryAfter: number | null;
+} | null;
+
 const { getRateLimitKeyMock, dbMock, execTransactionMock, sidecarCheckMock } = vi.hoisted(() => {
   const dbMock = {
     select: vi.fn(),
@@ -14,7 +20,7 @@ const { getRateLimitKeyMock, dbMock, execTransactionMock, sidecarCheckMock } = v
     execTransactionMock: vi.fn(async (fn: (tx: typeof dbMock) => unknown) => fn(dbMock)),
     // Sidecar fast-path — default null means unreachable/unconfigured so the
     // existing DB-path tests keep their original behavior.
-    sidecarCheckMock: vi.fn(async () => null),
+    sidecarCheckMock: vi.fn<() => Promise<SidecarCheckResult>>(async () => null),
   };
 });
 

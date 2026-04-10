@@ -60,6 +60,7 @@ beforeEach(() => {
     userId: "user-1",
     problemId: "problem-1",
     assignmentId: null,
+    previousStatus: "pending",
     claimToken: "claim-token",
     language: "python",
     sourceCode: "print(1)",
@@ -151,6 +152,124 @@ describe("POST /api/v1/judge/claim", () => {
         "HOME=/tmp mcs -optimize+ -out:/workspace/solution.exe /workspace/solution.cs",
       ],
       runCommand: ["sh", "-c", "HOME=/tmp mono /workspace/solution.exe"],
+    });
+  });
+
+  it("gates worker claims behind an atomic capacity reservation", async () => {
+    dbSelectMock
+      .mockReturnValueOnce(
+        makeSelectChain([
+          {
+            status: "online",
+          },
+        ])
+      )
+      .mockReturnValueOnce(makeSelectChain([]))
+      .mockReturnValueOnce(
+        makeSelectChain([
+          {
+            dockerImage: "judge-python",
+            compileCommand: null,
+            runCommand: "python /workspace/solution.py",
+          },
+        ])
+      );
+
+    const response = await POST(
+      new NextRequest("http://localhost:3000/api/v1/judge/claim", {
+        method: "POST",
+        headers: {
+          Authorization: "Bearer test-token",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ workerId: "worker-1" }),
+      })
+    );
+
+    expect(response.status).toBe(200);
+    expect(rawQueryOneMock).toHaveBeenCalledOnce();
+    expect(rawQueryOneMock.mock.calls[0]?.[0]).toContain("WITH worker_slot AS");
+    expect(rawQueryOneMock.mock.calls[0]?.[0]).toContain("active_tasks = active_tasks + 1");
+  });
+
+  it("returns workerAtCapacity when the atomic worker reservation cannot be acquired", async () => {
+    rawQueryOneMock.mockResolvedValueOnce(null);
+    dbSelectMock
+      .mockReturnValueOnce(
+        makeSelectChain([
+          {
+            status: "online",
+          },
+        ])
+      )
+      .mockReturnValueOnce(
+        makeSelectChain([
+          {
+            status: "online",
+            activeTasks: 2,
+            concurrency: 2,
+          },
+        ])
+      );
+
+    const response = await POST(
+      new NextRequest("http://localhost:3000/api/v1/judge/claim", {
+        method: "POST",
+        headers: {
+          Authorization: "Bearer test-token",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ workerId: "worker-1" }),
+      })
+    );
+
+    expect(response.status).toBe(503);
+    await expect(response.json()).resolves.toEqual({ error: "workerAtCapacity" });
+  });
+
+  it("records the pre-claim status when reclaiming a stale submission", async () => {
+    rawQueryOneMock.mockResolvedValueOnce({
+      id: "submission-1",
+      userId: "user-1",
+      problemId: "problem-1",
+      assignmentId: null,
+      previousStatus: "judging",
+      claimToken: "claim-token",
+      language: "python",
+      sourceCode: "print(1)",
+      status: "queued",
+      compileOutput: null,
+      executionTimeMs: null,
+      memoryUsedKb: null,
+      score: null,
+      judgedAt: null,
+      submittedAt: Date.now(),
+    });
+
+    const response = await POST(
+      new NextRequest("http://localhost:3000/api/v1/judge/claim", {
+        method: "POST",
+        headers: {
+          Authorization: "Bearer test-token",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({}),
+      })
+    );
+
+    expect(response.status).toBe(200);
+    const payload = await response.json();
+    expect(recordAuditEventMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        details: expect.objectContaining({
+          previousStatus: "judging",
+          status: "queued",
+        }),
+      })
+    );
+    expect(payload.data).toMatchObject({
+      id: "submission-1",
+      claimToken: "claim-token",
     });
   });
 });
