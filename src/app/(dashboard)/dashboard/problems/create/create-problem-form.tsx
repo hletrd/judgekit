@@ -3,7 +3,6 @@
 import { useRef, useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { nanoid } from "nanoid";
 import { Plus, Trash2, X, ImageIcon, Upload } from "lucide-react";
 import JSZip from "jszip";
 import { Button } from "@/components/ui/button";
@@ -17,18 +16,15 @@ import { Badge } from "@/components/ui/badge";
 import { apiFetch } from "@/lib/api/client";
 import { toast } from "sonner";
 import { ProblemDescription } from "@/components/problem-description";
+import {
+  createEmptyProblemTestCaseDraft,
+  createInitialProblemTestCaseDrafts,
+  serializeProblemTestCaseDraftsForMutation,
+  type ProblemTestCaseDraft,
+} from "@/lib/problems/test-case-drafts";
 
 type ProblemVisibility = "public" | "private" | "hidden";
 type ProblemType = "auto" | "manual";
-
-type ProblemTestCaseDraft = {
-  _key?: string;
-  input: string;
-  expectedOutput: string;
-  isVisible: boolean;
-  _inputDirty?: boolean;
-  _outputDirty?: boolean;
-};
 
 const LARGE_TESTCASE_THRESHOLD = 5000;
 
@@ -62,15 +58,6 @@ type CreateProblemFormProps = {
   canUploadFiles?: boolean;
   forceDisableAiAssistant?: boolean;
 };
-
-function createEmptyTestCase(): ProblemTestCaseDraft {
-  return {
-    _key: nanoid(),
-    input: "",
-    expectedOutput: "",
-    isVisible: false,
-  };
-}
 
 export default function CreateProblemForm({
   mode = "create",
@@ -114,21 +101,11 @@ export default function CreateProblemForm({
   const [testCaseOverrideEnabled, setTestCaseOverrideEnabled] = useState(false);
   const [testCases, setTestCases] = useState<ProblemTestCaseDraft[]>(
     initialProblem?.testCases.length
-      ? initialProblem.testCases.map((tc) => ({ ...tc, _key: nanoid() }))
+      ? createInitialProblemTestCaseDrafts(initialProblem.testCases)
       : []
   );
   const areTestCasesEditable = !testCasesLocked || testCaseOverrideEnabled;
   const [expandedTestCases, setExpandedTestCases] = useState<Set<string>>(new Set());
-  const originalTestCasesRef = useRef<Map<number, { input: string; expectedOutput: string }>>(new Map());
-
-  // Store original test case content for change detection
-  useEffect(() => {
-    if (initialProblem?.testCases.length) {
-      const map = new Map<number, { input: string; expectedOutput: string }>();
-      initialProblem.testCases.forEach((tc, i) => map.set(i, { input: tc.input, expectedOutput: tc.expectedOutput }));
-      originalTestCasesRef.current = map;
-    }
-  }, [initialProblem]);
 
   useEffect(() => {
     if (forceDisableAiAssistant) {
@@ -185,10 +162,9 @@ export default function CreateProblemForm({
         const pair = fileMap.get(key)!;
         if (pair.input === undefined || pair.output === undefined) continue;
         imported.push({
-          _key: nanoid(),
+          ...createEmptyProblemTestCaseDraft(),
           input: pair.input,
           expectedOutput: pair.output,
-          isVisible: false,
         });
       }
 
@@ -345,7 +321,7 @@ export default function CreateProblemForm({
   }
 
   function addTestCase() {
-    setTestCases((current) => [...current, createEmptyTestCase()]);
+    setTestCases((current) => [...current, createEmptyProblemTestCaseDraft()]);
   }
 
   function removeTestCase(index: number) {
@@ -379,9 +355,10 @@ export default function CreateProblemForm({
     setIsLoading(true);
 
     try {
-      const isEditing = mode === "edit" && initialProblem;
+      const isEditing = mode === "edit" && Boolean(initialProblem);
+      const editingProblemId = initialProblem?.id;
       const parsedSeqNum = sequenceNumber ? parseInt(sequenceNumber, 10) : null;
-      const res = await apiFetch(isEditing ? `/api/v1/problems/${initialProblem.id}` : "/api/v1/problems", {
+      const res = await apiFetch(isEditing && editingProblemId ? `/api/v1/problems/${editingProblemId}` : "/api/v1/problems", {
         method: isEditing ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -403,20 +380,7 @@ export default function CreateProblemForm({
           defaultLanguage: defaultLanguage || null,
           tags: currentTags,
           ...(areTestCasesEditable
-            ? { testCases: testCases.map(({ _key, _inputDirty: _unusedInputDirty, _outputDirty: _unusedOutputDirty, ...rest }, i) => {
-                void _key;
-                void _unusedInputDirty;
-                void _unusedOutputDirty;
-                const orig = originalTestCasesRef.current.get(i);
-                if (isEditing && orig) {
-                  return {
-                    ...rest,
-                    input: orig.input === rest.input ? undefined : rest.input,
-                    expectedOutput: orig.expectedOutput === rest.expectedOutput ? undefined : rest.expectedOutput,
-                  };
-                }
-                return rest;
-              }) }
+            ? { testCases: serializeProblemTestCaseDraftsForMutation(testCases, isEditing) }
             : {}),
           ...(testCaseOverrideEnabled ? { allowLockedTestCases: true } : {}),
         }),
