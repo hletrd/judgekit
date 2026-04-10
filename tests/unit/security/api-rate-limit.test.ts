@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
 
-const { getRateLimitKeyMock, dbMock, execTransactionMock } = vi.hoisted(() => {
+const { getRateLimitKeyMock, dbMock, execTransactionMock, sidecarCheckMock } = vi.hoisted(() => {
   const dbMock = {
     select: vi.fn(),
     insert: vi.fn(),
@@ -12,11 +12,18 @@ const { getRateLimitKeyMock, dbMock, execTransactionMock } = vi.hoisted(() => {
     dbMock,
     // execTransaction runs the callback with the db mock as the transaction client
     execTransactionMock: vi.fn(async (fn: (tx: typeof dbMock) => unknown) => fn(dbMock)),
+    // Sidecar fast-path — default null means unreachable/unconfigured so the
+    // existing DB-path tests keep their original behavior.
+    sidecarCheckMock: vi.fn(async () => null),
   };
 });
 
 vi.mock("@/lib/security/rate-limit", () => ({
   getRateLimitKey: getRateLimitKeyMock,
+}));
+
+vi.mock("@/lib/security/rate-limiter-client", () => ({
+  checkRateLimit: sidecarCheckMock,
 }));
 
 vi.mock("@/lib/db", () => ({
@@ -63,6 +70,8 @@ beforeEach(() => {
       where: vi.fn(async () => undefined),
     })),
   });
+  // Default: sidecar is unreachable so the DB path always runs
+  sidecarCheckMock.mockResolvedValue(null);
 });
 
 function createRequest() {
@@ -325,5 +334,86 @@ describe("checkServerActionRateLimit", () => {
     expect(setFn).toHaveBeenCalled();
     const setArgs = (setFn.mock as unknown as { calls: Array<[Record<string, unknown>]> }).calls[0][0];
     expect(setArgs.attempts).toBe(4);
+  });
+});
+
+describe("sidecar fast-path integration", () => {
+  it("returns 429 without touching the DB when the sidecar says disallowed", async () => {
+    sidecarCheckMock.mockResolvedValueOnce({
+      allowed: false,
+      remaining: 0,
+      retryAfter: 30_000,
+    });
+    getRateLimitKeyMock.mockReturnValue("api:groups:198.51.100.8");
+
+    const response = await consumeApiRateLimit(createRequest(), "groups");
+
+    expect(response?.status).toBe(429);
+    expect(sidecarCheckMock).toHaveBeenCalledWith(
+      "api:groups:198.51.100.8",
+      2,
+      60_000,
+    );
+    // DB path must not run when the sidecar has already rejected the key
+    expect(dbMock.select).not.toHaveBeenCalled();
+    expect(dbMock.insert).not.toHaveBeenCalled();
+    expect(dbMock.update).not.toHaveBeenCalled();
+  });
+
+  it("still runs the DB path when the sidecar allows the request", async () => {
+    sidecarCheckMock.mockResolvedValueOnce({
+      allowed: true,
+      remaining: 5,
+      retryAfter: null,
+    });
+    getRateLimitKeyMock.mockReturnValue("api:groups:198.51.100.8");
+
+    const response = await consumeApiRateLimit(createRequest(), "groups");
+
+    expect(response).toBeNull();
+    // DB path is the authoritative record and must still be consulted
+    expect(dbMock.insert).toHaveBeenCalledTimes(1);
+  });
+
+  it("falls back to the DB path when the sidecar returns null (unreachable)", async () => {
+    sidecarCheckMock.mockResolvedValueOnce(null);
+    getRateLimitKeyMock.mockReturnValue("api:groups:198.51.100.8");
+    mockSelectResult({
+      key: "api:groups:198.51.100.8",
+      attempts: 2,
+      windowStartedAt: Date.now(),
+      blockedUntil: Date.now() + 60_000,
+      consecutiveBlocks: 1,
+      lastAttempt: Date.now(),
+    });
+
+    const response = await consumeApiRateLimit(createRequest(), "groups");
+
+    // DB says the key is already blocked; we must still return 429 even
+    // though the sidecar was silent. This is the "sidecar outage must not
+    // allow extra traffic" guarantee.
+    expect(response?.status).toBe(429);
+  });
+
+  it("consumeUserApiRateLimit honors the sidecar fast-path", async () => {
+    sidecarCheckMock.mockResolvedValueOnce({
+      allowed: false,
+      remaining: 0,
+      retryAfter: 12_345,
+    });
+
+    const response = await consumeUserApiRateLimit(
+      createRequest(),
+      "user-xyz",
+      "settings",
+    );
+
+    expect(response?.status).toBe(429);
+    expect(sidecarCheckMock).toHaveBeenCalledWith(
+      "api:settings:user:user-xyz",
+      2,
+      60_000,
+    );
+    expect(dbMock.insert).not.toHaveBeenCalled();
   });
 });

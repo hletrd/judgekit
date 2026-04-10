@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getRateLimitKey } from "./rate-limit";
+import { checkRateLimit as sidecarCheck } from "./rate-limiter-client";
 import { execTransaction } from "@/lib/db";
 import { rateLimits } from "@/lib/db/schema";
 import { getConfiguredSettings } from "@/lib/system-settings-config";
@@ -9,6 +10,28 @@ import { nanoid } from "nanoid";
 function getApiRateLimitConfig() {
   const s = getConfiguredSettings();
   return { max: s.apiRateLimitMax, windowMs: s.apiRateLimitWindowMs };
+}
+
+/**
+ * Fast path: ask the rate-limiter-rs sidecar before touching Postgres.
+ *
+ * Returns:
+ *   - true  → sidecar says the key is already over its limit, caller should
+ *             return 429 immediately without hitting the DB.
+ *   - false → sidecar accepted the request (incremented its counter). The
+ *             DB path still runs as the source of truth so persistence and
+ *             audit_events stay consistent even if the sidecar is wiped on
+ *             restart.
+ *   - null  → sidecar is unreachable or unconfigured. Caller must fall back
+ *             to the DB path; the sidecar MUST NEVER fail-closed here.
+ */
+async function sidecarConsume(key: string): Promise<boolean | null> {
+  const { max, windowMs } = getApiRateLimitConfig();
+  const result = await sidecarCheck(key, max, windowMs);
+  if (result === null) {
+    return null;
+  }
+  return !result.allowed;
 }
 
 /** @deprecated Use getConfiguredSettings().apiRateLimitMax */
@@ -99,6 +122,13 @@ function rateLimitedResponse() {
 /**
  * Consume one rate limit token for a mutation endpoint.
  * Returns a 429 response if rate limited, or null if allowed.
+ *
+ * Two-tier strategy:
+ *   1. sidecar pre-check — fast path, no DB round-trip if the key is already
+ *      over its limit. Saves a transaction per request under load.
+ *   2. authoritative DB check — always runs when the sidecar allowed the
+ *      request (or was unreachable). Keeps Postgres as the single source of
+ *      truth for state that survives a sidecar restart.
  */
 export async function consumeApiRateLimit(
   request: NextRequest,
@@ -108,6 +138,11 @@ export async function consumeApiRateLimit(
 
   if (hasConsumedRequestKey(request, key)) {
     return null;
+  }
+
+  const sidecarVerdict = await sidecarConsume(key);
+  if (sidecarVerdict === true) {
+    return rateLimitedResponse();
   }
 
   const limited = await atomicConsumeRateLimit(key);
@@ -123,6 +158,8 @@ export async function consumeApiRateLimit(
  * Consume one rate limit token keyed on authenticated user ID.
  * Use for authenticated API endpoints where IP-based limiting is insufficient
  * (shared IPs, VPNs). Returns a 429 response if rate limited, or null if allowed.
+ *
+ * Same two-tier strategy as {@link consumeApiRateLimit}.
  */
 export async function consumeUserApiRateLimit(
   request: NextRequest,
@@ -133,6 +170,11 @@ export async function consumeUserApiRateLimit(
 
   if (hasConsumedRequestKey(request, key)) {
     return null;
+  }
+
+  const sidecarVerdict = await sidecarConsume(key);
+  if (sidecarVerdict === true) {
+    return rateLimitedResponse();
   }
 
   const limited = await atomicConsumeRateLimit(key);

@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // Mock fetch globally
 global.fetch = vi.fn();
@@ -9,8 +9,14 @@ async function importRateLimiterClient() {
   vi.clearAllMocks();
   // Clear the global fetch mock
   (global.fetch as ReturnType<typeof vi.fn>).mockReset();
+  // The sidecar is only used when RATE_LIMITER_URL is set
+  process.env.RATE_LIMITER_URL = "http://rate-limiter-test:3001";
   return import("@/lib/security/rate-limiter-client");
 }
+
+afterEach(() => {
+  delete process.env.RATE_LIMITER_URL;
+});
 
 describe("rate-limiter-client", () => {
   describe("circuit breaker - consecutiveFailures reset", () => {
@@ -179,7 +185,7 @@ describe("rate-limiter-client", () => {
       expect(result).toEqual({ blocked: false, blockedUntil: null });
     });
 
-    it("returns default when rate limiter returns null (degraded)", async () => {
+    it("returns null when rate limiter is unreachable so caller can fall back to DB", async () => {
       const { recordRateLimitFailure } = await importRateLimiterClient();
 
       (global.fetch as ReturnType<typeof vi.fn>).mockRejectedValue(
@@ -187,8 +193,9 @@ describe("rate-limiter-client", () => {
       );
 
       const result = await recordRateLimitFailure("test-key");
-      // Should return default when callRateLimiter returns null
-      expect(result).toEqual({ blocked: false, blockedUntil: null });
+      // Must be null, not a synthetic {blocked:false} — that would silently
+      // mask sidecar outages and let attackers skip the counter.
+      expect(result).toBeNull();
     });
   });
 
@@ -209,6 +216,60 @@ describe("rate-limiter-client", () => {
           body: expect.any(String),
         })
       );
+    });
+  });
+
+  describe("checkRateLimit fallback behavior", () => {
+    it("returns null on network failure so the caller falls back to the DB path", async () => {
+      const { checkRateLimit } = await importRateLimiterClient();
+
+      (global.fetch as ReturnType<typeof vi.fn>).mockRejectedValue(
+        new Error("Network error")
+      );
+
+      // Previously this synthesized a fail-closed `{ allowed: false }`, which
+      // turned sidecar outages into self-inflicted denials of service. The
+      // contract is now: unreachable sidecar returns null and the caller
+      // decides via the authoritative DB-backed limiter.
+      await expect(checkRateLimit("test-key")).resolves.toBeNull();
+    });
+
+    it("returns a non-null result from a healthy sidecar", async () => {
+      const { checkRateLimit } = await importRateLimiterClient();
+
+      (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ allowed: true, remaining: 9, retryAfter: null }),
+      });
+
+      const result = await checkRateLimit("test-key");
+      expect(result).toEqual({ allowed: true, remaining: 9, retryAfter: null });
+    });
+  });
+
+  describe("sidecar not configured", () => {
+    it("short-circuits without touching fetch when RATE_LIMITER_URL is unset", async () => {
+      vi.resetModules();
+      vi.clearAllMocks();
+      (global.fetch as ReturnType<typeof vi.fn>).mockReset();
+      delete process.env.RATE_LIMITER_URL;
+
+      const {
+        checkRateLimit,
+        recordRateLimitFailure,
+        resetRateLimit,
+        isRateLimiterDegraded,
+      } = await import("@/lib/security/rate-limiter-client");
+
+      await expect(checkRateLimit("test-key")).resolves.toBeNull();
+      await expect(recordRateLimitFailure("test-key")).resolves.toBeNull();
+      await expect(resetRateLimit("test-key")).resolves.toBeUndefined();
+
+      // Unconfigured is not "degraded" — it just means the caller uses the
+      // DB path directly. We don't want the degraded banner to flip on a
+      // deployment that intentionally has no sidecar.
+      expect(isRateLimiterDegraded()).toBe(false);
+      expect(global.fetch).not.toHaveBeenCalled();
     });
   });
 });
