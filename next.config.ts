@@ -9,6 +9,9 @@ const nextConfig: NextConfig = {
   output: "standalone",
   poweredByHeader: false,
   productionBrowserSourceMaps: disableMinify,
+  experimental: {
+    proxyClientMaxBodySize: "100mb",
+  },
   webpack: disableMinify
     ? (config) => {
         config.optimization.minimize = false;
