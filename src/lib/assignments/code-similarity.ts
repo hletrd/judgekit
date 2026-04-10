@@ -91,7 +91,7 @@ export function normalizeSource(source: string): string {
       continue;
     }
 
-    result += current.toLowerCase();
+    result += current;
     index += 1;
   }
 

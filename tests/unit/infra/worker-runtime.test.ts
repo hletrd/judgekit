@@ -21,11 +21,26 @@ describe("judge worker runtime loops", () => {
     expect(source).toContain('println!("JudgeKit judge worker")');
   });
 
+  it("fails closed on registration errors unless unregistered mode is explicitly enabled", () => {
+    const configSource = readFileSync(join(process.cwd(), "judge-worker-rs/src/config.rs"), "utf8");
+
+    expect(configSource).toContain("JUDGE_ALLOW_UNREGISTERED_MODE");
+    expect(source).toContain("Failed to register with app server — exiting because unregistered mode is disabled");
+    expect(source).toContain("running in unregistered mode because JUDGE_ALLOW_UNREGISTERED_MODE is enabled");
+  });
+
   it("exposes internal docker-management endpoints through the runner router", () => {
     const runner = readFileSync(join(process.cwd(), "judge-worker-rs/src/runner.rs"), "utf8");
 
     expect(runner).toContain('.route("/docker/images", get(docker_images_handler))');
     expect(runner).toContain('.route("/docker/build", post(docker_build_handler))');
     expect(runner).toContain('.route("/docker/remove", post(docker_remove_handler))');
+  });
+
+  it("includes response bodies when judge claim polling fails", () => {
+    const apiSource = readFileSync(join(process.cwd(), "judge-worker-rs/src/api.rs"), "utf8");
+
+    expect(apiSource).toContain('let body = response.text().await.unwrap_or_default();');
+    expect(apiSource).toContain('Poll failed: {status} {body}');
   });
 });
