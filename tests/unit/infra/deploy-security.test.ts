@@ -25,13 +25,38 @@ describe("deployment security defaults", () => {
 
   it("hardens dedicated worker deployment artifacts", () => {
     const workerDeploy = read("scripts/deploy-worker.sh");
-    const rateLimiterService = read("scripts/rate-limiter-rs.service");
 
     expect(workerDeploy).toContain("StrictHostKeyChecking=accept-new");
     expect(workerDeploy).toContain("chmod 600 ${REMOTE_DIR}/.env");
     expect(workerDeploy).not.toContain("cat > ${REMOTE_DIR}/.env");
-    expect(rateLimiterService).toContain("RATE_LIMITER_HOST=127.0.0.1");
-    expect(rateLimiterService).toContain("RATE_LIMITER_ENABLE_RESET=0");
+  });
+
+  it("keeps the rate-limiter sidecar off the host network and disables reset", () => {
+    // The rate-limiter-rs is now a docker sidecar (Dockerfile.rate-limiter-rs
+    // + docker-compose.production.yml `rate-limiter` service) instead of a
+    // host-level systemd unit. Security invariants:
+    //   - No host port mapping → the service is only reachable via the
+    //     docker-compose network (app → rate-limiter over service DNS).
+    //   - Reset endpoint disabled or unset by default.
+    const production = read("docker-compose.production.yml");
+    const dockerfile = read("Dockerfile.rate-limiter-rs");
+
+    // Service must exist
+    expect(production).toContain("  rate-limiter:");
+    expect(production).toContain("Dockerfile.rate-limiter-rs");
+
+    // No host port publishing on the rate-limiter service (no 'ports:' inside
+    // its block). The app reaches it via `rate-limiter:3001` on the internal
+    // docker network.
+    const rateLimiterBlock = production.split(/^  [a-z].*:$/m).find((s) =>
+      s.includes("Dockerfile.rate-limiter-rs"),
+    );
+    expect(rateLimiterBlock).toBeDefined();
+    expect(rateLimiterBlock!).not.toMatch(/^\s*ports:/m);
+
+    // Reset endpoint must NOT be enabled explicitly.
+    expect(production).not.toContain("RATE_LIMITER_ENABLE_RESET=1");
+    expect(dockerfile).not.toContain("RATE_LIMITER_ENABLE_RESET=1");
   });
 
   it("documents the current single-app-instance requirement for SSE and anti-cheat coordination", () => {
