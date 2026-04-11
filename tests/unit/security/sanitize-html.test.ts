@@ -30,6 +30,18 @@ describe("OWASP XSS evasion vectors", () => {
     const sanitized = sanitizeHtml('<img src=x onerror=alert(1)>');
     expect(sanitized).not.toContain("onerror");
     expect(sanitized).not.toContain("alert(1)");
+    expect(sanitized).not.toContain('src="x"');
+  });
+
+  it("keeps root-relative image sources for first-party assets", () => {
+    const sanitized = sanitizeHtml('<img src="/api/v1/files/file-1" alt="diagram">');
+    expect(sanitized).toContain('src="/api/v1/files/file-1"');
+  });
+
+  it("strips external image sources from legacy html descriptions", () => {
+    const sanitized = sanitizeHtml('<img src="https://tracker.example/pixel.png" alt="pixel">');
+    expect(sanitized).not.toContain("tracker.example");
+    expect(sanitized).not.toContain('src="https://tracker.example/pixel.png"');
   });
 
   // 2. SVG-based XSS

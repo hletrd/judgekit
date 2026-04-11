@@ -14,6 +14,7 @@ This review still appears to contain **open work**. No later addendum in the sou
 - ✅ Revalidated at `HEAD`: `rate-limiter-rs` already ships Rust tests in `src/main.rs`, so the earlier “zero real tests” note is stale.
 - ✅ Revalidated at `HEAD`: similarity normalization already has regression tests proving comment markers inside string literals are not treated as comments.
 - ✅ Completed in this plan execution: file download authorization no longer falls back to scanning problem descriptions; access now relies on explicit `files.problemId` linkage or normal owner/manage capabilities.
+- ✅ Completed in this plan execution: legacy HTML sanitization now strips external `<img>` sources by default while preserving first-party root-relative assets, closing the review's remote tracking-image concern without removing all historical HTML rendering.
 
 ## Findings covered by this plan
 1. PostgreSQL-only runtime still documented as SQLite/MySQL-capable
@@ -109,6 +110,17 @@ Before changing code, re-check the current implementation for each numbered find
 - inventory every route/page still using hard-coded role checks
 - decide whether to convert to capabilities or keep built-in-only intentionally
 - align UI gating and server enforcement
+
+### Track 2D — Tighten legacy HTML rendering instead of trusting external media
+**Files**
+- `src/lib/security/sanitize-html.ts`
+- `src/components/problem-description.tsx`
+
+**Plan**
+- keep the current sanitized legacy HTML path only for safe inline formatting
+- strip external/tracking image sources by default
+- preserve first-party root-relative assets used by existing problem statements
+- **Status:** external `<img>` sources are now stripped by the sanitizer; full legacy-HTML deprecation remains a possible future hardening step if the risk profile changes.
 
 ## Phase 3 — Import/export, file I/O, and abort handling
 ### Track 3A — Make import failure semantics honest

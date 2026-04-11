@@ -78,6 +78,7 @@ Treat every item below as **needs revalidation against `HEAD` before code change
 **Progress**
 - ✅ Explicit file authorization has been moved off description-text scanning for the live `GET /api/v1/files/[id]` path; remaining work in this track is legacy HTML handling, secret redisclosure cleanup, and custom-role consistency.
 - ✅ API-key privilege clamping now respects custom role levels instead of silently treating unknown roles as low-rank built-ins.
+- ✅ legacy HTML sanitization now strips external `<img>` sources by default while preserving first-party root-relative file assets.
 
 ### 4. Judge/worker runtime correctness
 **Why next:** the latest code review still has critical worker/runtime findings that can corrupt verdicts or mis-measure execution.

@@ -5,6 +5,14 @@ DOMPurify.addHook("afterSanitizeAttributes", (node) => {
     node.setAttribute("rel", "noopener noreferrer");
     node.setAttribute("target", "_blank");
   }
+
+  if (node.tagName === "IMG") {
+    const src = node.getAttribute("src")?.trim() ?? "";
+    const isRootRelative = src.startsWith("/") && !src.startsWith("//");
+    if (!isRootRelative) {
+      node.removeAttribute("src");
+    }
+  }
 });
 
 const ALLOWED_TAGS = [
@@ -61,7 +69,7 @@ export function sanitizeHtml(html: string) {
     ALLOWED_ATTR,
     ALLOWED_TAGS,
     ALLOW_DATA_ATTR: false,
-    ALLOWED_URI_REGEXP: /^(?:https?|mailto):/i,
+    ALLOWED_URI_REGEXP: /^(?:(?:https?|mailto):|\/(?!\/))/i,
     ADD_ATTR: ["rel"],
   });
 }
