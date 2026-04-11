@@ -79,11 +79,36 @@ export function ContestQuickStats({
   }, [assignmentId]);
 
   useEffect(() => {
-    fetchStats();
-    const interval = setInterval(() => {
-      if (document.visibilityState === "visible") fetchStats();
-    }, refreshInterval);
-    return () => clearInterval(interval);
+    let interval: ReturnType<typeof setInterval> | null = null;
+
+    const clearRefreshInterval = () => {
+      if (interval) {
+        clearInterval(interval);
+        interval = null;
+      }
+    };
+
+    const ensurePollingState = () => {
+      if (document.visibilityState === "visible") {
+        void fetchStats();
+        if (!interval) {
+          interval = setInterval(() => {
+            void fetchStats();
+          }, refreshInterval);
+        }
+        return;
+      }
+
+      clearRefreshInterval();
+    };
+
+    ensurePollingState();
+    document.addEventListener("visibilitychange", ensurePollingState);
+
+    return () => {
+      document.removeEventListener("visibilitychange", ensurePollingState);
+      clearRefreshInterval();
+    };
   }, [fetchStats, refreshInterval]);
 
   return (

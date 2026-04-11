@@ -6,6 +6,7 @@ This is the freshest broad code review in the repo and currently has **no closur
 ## Progress updates
 - ✅ Revalidated at `HEAD`: all six Phase 1 critical findings from this review are already fixed in the current codebase (`deregister` status filter, seccomp retry logic, full-date timestamp parsing, honest import transaction note, `recruitingInvitations.createdBy` delete behavior, and boolean coercion set cleanup).
 - ✅ Completed in this plan execution: API-key privilege clamping now resolves custom-role levels through the capability cache instead of collapsing custom roles to a built-in fallback rank.
+- ✅ Completed in this plan execution: `ContestQuickStats` now stops its refresh interval while the tab is hidden and resumes immediately on visibility restore, closing the background-tab polling issue with component coverage.
 
 ## Planning policy
 Start every execution slice by revalidating the cited finding against `HEAD`; if already fixed, mark it closed in the execution log and skip implementation.
@@ -105,6 +106,7 @@ Start every execution slice by revalidating the cited finding against `HEAD`; if
 - fix crash-prone null assertions and parser handling first
 - then clean up closure/timer/polling/hydration bugs in a UI-focused pass
 - preserve existing feature behavior with targeted component tests
+- **Status:** background-tab polling issue closed for `ContestQuickStats`; remaining items in this phase are the other UI/runtime follow-ups.
 
 ## Phase 5 — Service/runtime hardening follow-ups
 ### Findings
