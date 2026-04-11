@@ -97,6 +97,7 @@ Treat every item below as **needs revalidation against `HEAD` before code change
 - ✅ legacy HTML sanitization now strips external `<img>` sources by default while preserving first-party root-relative file assets.
 - ✅ recruiting invitation APIs now authorize through `recruiting.manage_invitations` capability checks instead of built-in admin-only role gates.
 - ✅ contest invite/access-code/leaderboard/export/analytics/similarity/anti-cheat management checks now inherit the async capability/co-instructor-aware contest management helper.
+- ✅ admin audit-log and login-log APIs now authorize through `system.audit_logs` / `system.login_logs` capabilities instead of built-in admin-only role gates.
 
 ### 4. Judge/worker runtime correctness
 **Why next:** the latest code review still has critical worker/runtime findings that can corrupt verdicts or mis-measure execution.

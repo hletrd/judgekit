@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
-import { createApiHandler, isAdmin } from "@/lib/api/handler";
-import { apiSuccess, apiError } from "@/lib/api/responses";
+import { createApiHandler } from "@/lib/api/handler";
+import { apiSuccess } from "@/lib/api/responses";
 import { db } from "@/lib/db";
 import { loginEvents, users } from "@/lib/db/schema";
 import { and, desc, eq, sql, type SQL } from "drizzle-orm";
@@ -12,9 +12,8 @@ function escapeLikePattern(value: string) {
 }
 
 export const GET = createApiHandler({
-  handler: async (req: NextRequest, { user }) => {
-    if (!isAdmin(user.role)) return apiError("forbidden", 403);
-
+  auth: { capabilities: ["system.login_logs"] },
+  handler: async (req: NextRequest) => {
     const searchParams = req.nextUrl.searchParams;
     const page = Math.max(1, Math.floor(Number(searchParams.get("page") ?? "1")) || 1);
     const limit = Math.min(100, Math.max(1, Number(searchParams.get("limit") ?? "50") || 50));
