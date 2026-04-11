@@ -36,12 +36,13 @@ export const POST = createApiHandler({
     }
 
     const { userIds } = parsedInput.data;
+    const uniqueRequestedUserIds = Array.from(new Set(userIds));
 
     // Validate all users exist, are active, and have student role in a single query
     const validStudents = await db.query.users.findMany({
       where: (usersTable, { and, eq: equals, inArray: inArr }) =>
         and(
-          inArr(usersTable.id, userIds),
+          inArr(usersTable.id, uniqueRequestedUserIds),
           equals(usersTable.isActive, true),
           equals(usersTable.role, "student")
         ),
@@ -49,7 +50,6 @@ export const POST = createApiHandler({
     });
 
     const validStudentIds = new Set(validStudents.map((s) => s.id));
-    const skippedInvalid = userIds.filter((id) => !validStudentIds.has(id)).length;
 
     if (validStudents.length === 0) {
       return apiSuccess({ enrolled: 0, skipped: userIds.length });
@@ -67,7 +67,6 @@ export const POST = createApiHandler({
 
     const alreadyEnrolledIds = new Set(existingEnrollments.map((e) => e.userId));
     const toEnroll = validStudents.filter((s) => !alreadyEnrolledIds.has(s.id));
-    const skippedDuplicates = validStudents.length - toEnroll.length;
 
     let enrolled = 0;
 
@@ -85,7 +84,7 @@ export const POST = createApiHandler({
       enrolled = inserted.length;
     }
 
-    const skipped = skippedInvalid + skippedDuplicates;
+    const skipped = userIds.length - enrolled;
 
     recordAuditEvent({
       actorId: user.id,

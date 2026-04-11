@@ -12,6 +12,7 @@ This is the freshest broad code review in the repo and currently has **no closur
 - ✅ Completed in this plan execution: import timestamp/boolean/json coercion now derives from schema metadata instead of hand-maintained name lists, closing the stale-column drift issue for future schema changes.
 - ✅ Completed in this plan execution: legacy `deploy.sh` now writes the nginx config to a local temp file, copies it to the host, and installs it with `sudo cp`, eliminating the fragile remote heredoc path.
 - ✅ Completed in this plan execution: `CompilerClient` now hydrates saved language preference after mount instead of reading `localStorage` during render-time state initialization.
+- ✅ Completed in this plan execution: bulk group enrollment now reports skips from duplicate request ids, invalid ids, and insert-time conflicts based on the actual inserted row count.
 
 ## Planning policy
 Start every execution slice by revalidating the cited finding against `HEAD`; if already fixed, mark it closed in the execution log and skip implementation.
@@ -67,6 +68,7 @@ Start every execution slice by revalidating the cited finding against `HEAD`; if
 - standardize partial-success behavior for bulk endpoints
 - make worker capacity claim/deletion logic use the same authoritative state transitions
 - add concurrency regression tests rather than only happy-path tests
+- **Status:** bulk enrollment count drift is now closed; remaining items in this phase are the other transactional integrity flows that still need revalidation or fixes.
 
 ## Phase 3 — Import/schema drift and metadata completeness
 ### Findings

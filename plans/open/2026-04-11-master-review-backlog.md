@@ -29,6 +29,9 @@ Treat every item below as **needs revalidation against `HEAD` before code change
 - move check-then-act flows into single transactions / locks
 - add regression tests for concurrent uniqueness, rate-limit, invite/member, and judge-claim flows
 
+**Progress**
+- ✅ bulk group enrollment now reports skips from the actual inserted row count, including duplicate request ids and insert-time conflicts.
+
 ### 2. Import/export and schema-truth hardening
 **Why next:** multiple reviews still question whether DB import/export is correct, atomic, and aligned with schema/migrations.
 
