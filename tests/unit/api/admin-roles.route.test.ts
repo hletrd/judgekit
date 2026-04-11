@@ -40,9 +40,9 @@ vi.mock("@/lib/db", () => ({
   execTransaction: execTransactionMock,
 }));
 
-function makeRequest(body: unknown) {
-  return new NextRequest("http://localhost:3000/api/v1/admin/roles", {
-    method: "POST",
+function makeRequest(body: unknown, options?: { method?: string; url?: string }) {
+  return new NextRequest(options?.url ?? "http://localhost:3000/api/v1/admin/roles", {
+    method: options?.method ?? "POST",
     headers: {
       "Content-Type": "application/json",
       "x-requested-with": "XMLHttpRequest",
@@ -98,5 +98,48 @@ describe("POST /api/v1/admin/roles", () => {
     expect(res.status).toBe(409);
     const body = await res.json();
     expect(body.error).toBe("roleNameExists");
+  });
+});
+
+describe("DELETE /api/v1/admin/roles/[id]", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    getApiUserMock.mockResolvedValue({
+      id: "admin-1",
+      role: "admin",
+      username: "admin",
+      email: "admin@example.com",
+      name: "Admin",
+      className: null,
+      mustChangePassword: false,
+    });
+    resolveCapabilitiesMock.mockResolvedValue(new Set(["users.manage_roles"]));
+  });
+
+  it("returns 404 when the role disappears before the delete transaction locks it", async () => {
+    execTransactionMock.mockImplementation(async (fn: (tx: any) => Promise<unknown>) => {
+      const tx = {
+        select: vi.fn(() => ({
+          from: vi.fn(() => ({
+            where: vi.fn(() => ({
+              limit: vi.fn(() => ({
+                for: vi.fn().mockResolvedValue([]),
+              })),
+            })),
+          })),
+        })),
+      };
+      return fn(tx);
+    });
+
+    const { DELETE } = await import("@/app/api/v1/admin/roles/[id]/route");
+    const res = await DELETE(
+      makeRequest({}, { method: "DELETE", url: "http://localhost:3000/api/v1/admin/roles/role-1" }),
+      { params: Promise.resolve({ id: "role-1" }) }
+    );
+
+    expect(res.status).toBe(404);
+    const body = await res.json();
+    expect(body.error).toBe("notFound");
   });
 });

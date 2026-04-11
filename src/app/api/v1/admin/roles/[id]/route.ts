@@ -111,41 +111,46 @@ export const DELETE = createApiHandler({
     if (!caps.has("users.manage_roles")) return forbidden();
 
     const { id } = params;
-    const role = await db
-      .select()
-      .from(roles)
-      .where(eq(roles.id, id))
-      .then((rows) => rows[0] ?? null);
+    const txResult = await execTransaction(async (tx) => {
+      const [role] = await tx
+        .select()
+        .from(roles)
+        .where(eq(roles.id, id))
+        .limit(1)
+        .for("update");
 
-    if (!role) {
-      return apiError("notFound", 404, "role");
-    }
-
-    // Cannot delete built-in roles
-    if (role.isBuiltin) {
-      return apiError("cannotDeleteBuiltinRole", 403);
-    }
-
-    // Cannot delete role with assigned users - wrap check + delete in transaction
-    try {
-      await execTransaction(async (tx) => {
-        const [countRow] = await tx
-          .select({ count: sql<number>`count(*)` })
-          .from(users)
-          .where(eq(users.role, role.name));
-
-        if ((countRow?.count ?? 0) > 0) {
-          throw new Error("roleHasUsers");
-        }
-
-        await tx.delete(roles).where(eq(roles.id, id));
-      });
-    } catch (err: unknown) {
-      if (err instanceof Error && err.message === "roleHasUsers") {
-        return apiError("roleHasUsers", 409);
+      if (!role) {
+        return { error: "notFound" as const };
       }
-      throw err;
+
+      if (role.isBuiltin) {
+        return { error: "cannotDeleteBuiltinRole" as const };
+      }
+
+      const [countRow] = await tx
+        .select({ count: sql<number>`count(*)` })
+        .from(users)
+        .where(eq(users.role, role.name));
+
+      if ((countRow?.count ?? 0) > 0) {
+        return { error: "roleHasUsers" as const };
+      }
+
+      await tx.delete(roles).where(eq(roles.id, id));
+      return { role };
+    });
+
+    if ("error" in txResult) {
+      if (txResult.error === "notFound") {
+        return apiError("notFound", 404, "role");
+      }
+      if (txResult.error === "cannotDeleteBuiltinRole") {
+        return apiError("cannotDeleteBuiltinRole", 403);
+      }
+      return apiError("roleHasUsers", 409);
     }
+
+    const { role } = txResult;
 
     invalidateRoleCache();
 
