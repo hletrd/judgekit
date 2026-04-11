@@ -149,6 +149,7 @@ Before changing code, re-check the current implementation for each numbered find
 - wrap import batching in a single success/failure contract
 - ensure partial batch failure cannot be reported as success or committed silently
 - add fixtures covering mixed-valid/invalid batch input
+- **Status:** revalidated at `HEAD` as closed for the current implementation — import batching now aborts the wrapping transaction on batch failure instead of reporting partial success, and schema-derived coercion guards are in place.
 
 ### Track 3B — React to export client aborts
 **Files**
@@ -159,6 +160,7 @@ Before changing code, re-check the current implementation for each numbered find
 - thread `AbortSignal`/stream cancellation through the export loop
 - stop DB pagination and serialization work when the client disconnects
 - add a cancellation-focused test or harness
+- **Status:** revalidated at `HEAD` as closed for the current implementation — the export route passes `request.signal` into `streamDatabaseExport()`, and the streaming helper now listens for abort/cancel signals while respecting backpressure.
 
 ### Track 3C — Move blocking file I/O off hot request paths
 **Files**
@@ -169,6 +171,7 @@ Before changing code, re-check the current implementation for each numbered find
 - inventory synchronous disk APIs in request handlers
 - switch the hot paths to async equivalents or isolate sync work behind bounded worker code
 - keep file lifetime semantics unchanged
+- **Status:** revalidated at `HEAD` as closed for the reviewed request paths — current file routes/helpers no longer use synchronous fs APIs in the hot path, and an implementation guard now locks that expectation in.
 
 ## Phase 4 — Edge/runtime and scale correctness
 ### Track 4A — Eliminate Edge-reachable Node imports
