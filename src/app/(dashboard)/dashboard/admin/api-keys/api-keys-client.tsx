@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { useTranslations } from "next-intl";
 import {
   Card,
@@ -83,6 +83,17 @@ export function ApiKeysClient() {
   const [createdKey, setCreatedKey] = useState<CreatedKey | null>(null);
   const [createdKeyCopied, setCreatedKeyCopied] = useState(false);
   const [copiedKeyId, setCopiedKeyId] = useState<string | null>(null);
+  const createdKeyCopiedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const copiedKeyIdTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => () => {
+    if (createdKeyCopiedTimer.current) {
+      clearTimeout(createdKeyCopiedTimer.current);
+    }
+    if (copiedKeyIdTimer.current) {
+      clearTimeout(copiedKeyIdTimer.current);
+    }
+  }, []);
 
   // Create dialog state
   const [createOpen, setCreateOpen] = useState(false);
@@ -167,15 +178,19 @@ export function ApiKeysClient() {
     }
     setCreatedKeyCopied(true);
     toast.success(t("copied"));
-    setTimeout(() => setCreatedKeyCopied(false), 2000);
+    if (createdKeyCopiedTimer.current) {
+      clearTimeout(createdKeyCopiedTimer.current);
+    }
+    createdKeyCopiedTimer.current = setTimeout(() => setCreatedKeyCopied(false), 2000);
   }
 
   async function handleCopyKeyPrefix(key: ApiKey) {
+    const maskedPreview = buildMaskedApiKeyPreview(key.keyPrefix);
     try {
-      await navigator.clipboard.writeText(buildMaskedApiKeyPreview(key.keyPrefix));
+      await navigator.clipboard.writeText(maskedPreview);
     } catch {
       const textarea = document.createElement("textarea");
-      textarea.value = buildMaskedApiKeyPreview(key.keyPrefix);
+      textarea.value = maskedPreview;
       textarea.style.position = "fixed";
       textarea.style.opacity = "0";
       document.body.appendChild(textarea);
@@ -186,9 +201,12 @@ export function ApiKeysClient() {
         document.body.removeChild(textarea);
       }
     }
+    if (copiedKeyIdTimer.current) {
+      clearTimeout(copiedKeyIdTimer.current);
+    }
     setCopiedKeyId(key.id);
-    toast.success(t("copied"));
-    setTimeout(() => setCopiedKeyId(null), 2000);
+    toast.success(t("maskedKeyPreviewCopied"));
+    copiedKeyIdTimer.current = setTimeout(() => setCopiedKeyId(null), 2000);
   }
 
   async function handleToggle(key: ApiKey) {
@@ -395,7 +413,8 @@ export function ApiKeysClient() {
                             size="icon"
                             className="h-7 w-7 shrink-0"
                             onClick={() => handleCopyKeyPrefix(key)}
-                            aria-label={t("copyKey")}
+                            aria-label={t("copyMaskedKeyPreview")}
+                            title={t("copyMaskedKeyPreview")}
                           >
                             {copiedKeyId === key.id ? (
                               <Check className="h-3.5 w-3.5 text-green-500" />
