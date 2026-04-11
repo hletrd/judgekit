@@ -6,7 +6,6 @@ import { getTokenAuthenticatedAtSeconds } from "@/lib/auth/session-security";
 import { getActiveAuthUserById, getTokenUserId } from "@/lib/api/auth";
 import { getValidatedAuthSecret } from "@/lib/security/env";
 import { recordAuditEvent, buildAuditRequestContext } from "@/lib/audit/events";
-import crypto from "crypto";
 
 // In-process FIFO cache for proxy auth lookups (Map preserves insertion order;
 // eviction deletes the oldest entry first, making this FIFO rather than LRU).
@@ -16,6 +15,30 @@ import crypto from "crypto";
 const authUserCache = new Map<string, { user: Awaited<ReturnType<typeof getActiveAuthUserById>>; expiresAt: number }>();
 const AUTH_CACHE_TTL_MS = parseInt(process.env.AUTH_CACHE_TTL_MS ?? '2000', 10);
 const AUTH_CACHE_MAX_SIZE = 500;
+
+function bytesToBase64(bytes: Uint8Array) {
+  let binary = "";
+  for (const byte of bytes) {
+    binary += String.fromCharCode(byte);
+  }
+  return btoa(binary);
+}
+
+function bytesToHex(bytes: Uint8Array) {
+  return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
+function createNonce() {
+  const bytes = new Uint8Array(16);
+  globalThis.crypto.getRandomValues(bytes);
+  return bytesToBase64(bytes);
+}
+
+async function hashUserAgent(userAgent: string) {
+  const encoded = new TextEncoder().encode(userAgent);
+  const digest = await globalThis.crypto.subtle.digest("SHA-256", encoded);
+  return bytesToHex(new Uint8Array(digest)).slice(0, 16);
+}
 
 function getCachedAuthUser(cacheKey: string) {
   const cached = authUserCache.get(cacheKey);
@@ -44,7 +67,7 @@ function clearAuthSessionCookies(response: NextResponse) {
 }
 
 function createSecuredNextResponse(request: NextRequest) {
-  const nonce = crypto.randomBytes(16).toString("base64");
+  const nonce = createNonce();
   const isDev = process.env.NODE_ENV === "development";
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set("x-nonce", nonce);
@@ -125,11 +148,7 @@ export async function proxy(request: NextRequest) {
   // UA changes legitimately on browser updates, responsive mode toggles,
   // corporate proxies, and mobile networks — no hard reject for any role.
   if (token?.uaHash && activeUser) {
-    const currentUaHash = crypto
-      .createHash("sha256")
-      .update(request.headers.get("user-agent") ?? "")
-      .digest("hex")
-      .slice(0, 16);
+    const currentUaHash = await hashUserAgent(request.headers.get("user-agent") ?? "");
 
     if (token.uaHash !== currentUaHash) {
       recordAuditEvent({

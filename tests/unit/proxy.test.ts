@@ -13,9 +13,8 @@ const {
   getValidatedAuthSecretMock,
   recordAuditEventMock,
   buildAuditRequestContextMock,
-  randomUUIDMock,
-  randomBytesMock,
-  createHashMock,
+  getRandomValuesMock,
+  digestMock,
 } = vi.hoisted(() => ({
   getTokenMock: vi.fn(),
   getActiveAuthUserByIdMock: vi.fn(),
@@ -25,9 +24,8 @@ const {
   getValidatedAuthSecretMock: vi.fn(),
   recordAuditEventMock: vi.fn(),
   buildAuditRequestContextMock: vi.fn(),
-  randomUUIDMock: vi.fn(),
-  randomBytesMock: vi.fn(),
-  createHashMock: vi.fn(),
+  getRandomValuesMock: vi.fn(),
+  digestMock: vi.fn(),
 }));
 
 // ---------------------------------------------------------------------------
@@ -58,21 +56,6 @@ vi.mock("@/lib/audit/events", () => ({
   recordAuditEvent: recordAuditEventMock,
   buildAuditRequestContext: buildAuditRequestContextMock,
 }));
-
-vi.mock("crypto", () => {
-  const hashObj = {
-    update: vi.fn().mockReturnThis(),
-    digest: vi.fn().mockReturnValue("abcdef0123456789abcdef0123456789"),
-  };
-  randomBytesMock.mockReturnValue(Buffer.from("0123456789abcdef"));
-  return {
-    default: {
-      randomUUID: randomUUIDMock,
-      createHash: createHashMock.mockReturnValue(hashObj),
-      randomBytes: randomBytesMock,
-    },
-  };
-});
 
 // ---------------------------------------------------------------------------
 // Import the proxy under test AFTER mocks are in place
@@ -135,6 +118,23 @@ function isRedirectTo(response: Response, path: string) {
   return url;
 }
 
+function hexToArrayBuffer(hex: string) {
+  const bytes = new Uint8Array(hex.length / 2);
+  for (let i = 0; i < bytes.length; i++) {
+    bytes[i] = parseInt(hex.slice(i * 2, i * 2 + 2), 16);
+  }
+  return bytes.buffer;
+}
+
+function installMockWebCrypto() {
+  vi.stubGlobal("crypto", {
+    getRandomValues: getRandomValuesMock,
+    subtle: {
+      digest: digestMock,
+    },
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Setup
 // ---------------------------------------------------------------------------
@@ -152,8 +152,14 @@ beforeEach(async () => {
   getTokenAuthenticatedAtSecondsMock.mockReturnValue(null);
   shouldUseSecureAuthCookieMock.mockReturnValue(false);
   getValidatedAuthSecretMock.mockReturnValue("test-secret-that-is-at-least-32-chars");
-  randomUUIDMock.mockReturnValue("00000000-0000-0000-0000-000000000000");
   buildAuditRequestContextMock.mockReturnValue({});
+  getRandomValuesMock.mockImplementation((target: Uint8Array) => {
+    const bytes = new TextEncoder().encode("0123456789abcdef");
+    target.set(bytes.subarray(0, target.length));
+    return target;
+  });
+  digestMock.mockResolvedValue(hexToArrayBuffer("abcdef0123456789abcdef0123456789"));
+  installMockWebCrypto();
 
   // Reset NODE_ENV
   vi.stubEnv("NODE_ENV", "test");
@@ -413,8 +419,11 @@ describe("proxy", () => {
   // =========================================================================
   describe("CSP nonce injection", () => {
     it("sets Content-Security-Policy header with nonce on pass-through responses", async () => {
-      const nonceBytes = Buffer.from("test-nonce-bytes");
-      randomBytesMock.mockReturnValue(nonceBytes);
+      const nonceBytes = new TextEncoder().encode("test-nonce-bytes");
+      getRandomValuesMock.mockImplementation((target: Uint8Array) => {
+        target.set(nonceBytes.subarray(0, target.length));
+        return target;
+      });
 
       const response = await proxy(makeRequest("/login"));
 
@@ -422,7 +431,7 @@ describe("proxy", () => {
       expect(csp).toBeTruthy();
 
       // Nonce is base64-encoded random bytes
-      const expectedNonce = nonceBytes.toString("base64");
+      const expectedNonce = btoa(String.fromCharCode(...nonceBytes));
       expect(csp).toContain(`'nonce-${expectedNonce}'`);
     });
 
@@ -445,14 +454,17 @@ describe("proxy", () => {
     });
 
     it("sets x-nonce request header for downstream consumption", async () => {
-      const nonceBytes = Buffer.from("downstream-nonce-bytes");
-      randomBytesMock.mockReturnValue(nonceBytes);
+      const nonceBytes = new TextEncoder().encode("downstream-nonce-bytes");
+      getRandomValuesMock.mockImplementation((target: Uint8Array) => {
+        target.set(nonceBytes.subarray(0, target.length));
+        return target;
+      });
 
       const response = await proxy(makeRequest("/login"));
 
       // The x-nonce header is set on the request headers forwarded downstream.
       // NextResponse.next() embeds them — we verify the CSP contains the matching nonce.
-      const expectedNonce = nonceBytes.toString("base64");
+      const expectedNonce = btoa(String.fromCharCode(...nonceBytes.subarray(0, 16)));
       const csp = response.headers.get("Content-Security-Policy");
       expect(csp).toContain(expectedNonce);
     });
@@ -501,11 +513,7 @@ describe("proxy", () => {
   // =========================================================================
   describe("User-Agent hash mismatch logging", () => {
     it("records audit event when UA hash does not match token", async () => {
-      const hashObj = {
-        update: vi.fn().mockReturnThis(),
-        digest: vi.fn().mockReturnValue("different_hash_00different_hash_00"),
-      };
-      createHashMock.mockReturnValue(hashObj);
+      digestMock.mockResolvedValue(hexToArrayBuffer("fedcba9876543210fedcba9876543210"));
 
       getTokenMock.mockResolvedValue(fakeToken({ uaHash: "stored_ua_hash_0" }));
       getTokenUserIdMock.mockReturnValue("user-1");
@@ -529,11 +537,7 @@ describe("proxy", () => {
 
     it("does NOT record audit event when UA hash matches", async () => {
       const matchingHash = "abcdef0123456789";
-      const hashObj = {
-        update: vi.fn().mockReturnThis(),
-        digest: vi.fn().mockReturnValue("abcdef0123456789abcdef0123456789"),
-      };
-      createHashMock.mockReturnValue(hashObj);
+      digestMock.mockResolvedValue(hexToArrayBuffer("abcdef0123456789abcdef0123456789"));
 
       getTokenMock.mockResolvedValue(fakeToken({ uaHash: matchingHash }));
       getTokenUserIdMock.mockReturnValue("user-1");
@@ -632,8 +636,14 @@ describe("proxy", () => {
       getTokenAuthenticatedAtSecondsMock.mockReturnValue(null);
       shouldUseSecureAuthCookieMock.mockReturnValue(false);
       getValidatedAuthSecretMock.mockReturnValue("test-secret-that-is-at-least-32-chars");
-      randomUUIDMock.mockReturnValue("00000000-0000-0000-0000-000000000000");
       buildAuditRequestContextMock.mockReturnValue({});
+      getRandomValuesMock.mockImplementation((target: Uint8Array) => {
+        const bytes = new TextEncoder().encode("0123456789abcdef");
+        target.set(bytes.subarray(0, target.length));
+        return target;
+      });
+      digestMock.mockResolvedValue(hexToArrayBuffer("abcdef0123456789abcdef0123456789"));
+      installMockWebCrypto();
 
       vi.stubEnv("NODE_ENV", "test");
 

@@ -182,6 +182,7 @@ Before changing code, re-check the current implementation for each numbered find
 **Plan**
 - split Node-only helpers behind dynamic/server-only boundaries
 - add lint/test guard so Edge paths cannot import `fs`, `path`, or other Node-only APIs accidentally
+- **Status:** revalidated at `HEAD` as closed for the reviewed proxy path — `src/proxy.ts` no longer imports Node `crypto`, and its nonce / UA-hash logic now uses Web Crypto primitives with updated regression coverage.
 
 ### Track 4B — Make pagination contracts explicit
 **Files**
