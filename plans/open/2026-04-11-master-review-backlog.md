@@ -166,6 +166,7 @@ Treat every item below as **needs revalidation against `HEAD` before code change
 - ✅ `ContestQuickStats` now pauses polling while the document is hidden and resumes on visibility restore.
 - ✅ `useSourceDraft` now preserves unsaved state when parent components recreate the `languages` array with the same values.
 - ✅ `CompilerClient` now hydrates the saved language preference after mount instead of touching `localStorage` during render.
+- ✅ submission-result dispatch dedupe, stable code-snapshot timers, plugin PATCH null-safety, migrate JSON parse handling, and SSE fallback cleanup are now explicitly guarded as fixed-at-HEAD implementation patterns.
 
 ### 6. Ops/testing/documentation truth
 **Why last:** some items may be documentation-only, but they still need explicit closure so the backlog doesn't linger.
