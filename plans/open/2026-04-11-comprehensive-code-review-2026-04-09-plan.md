@@ -115,6 +115,7 @@ Before changing code, re-check the current implementation for each numbered find
 - keep only masked previews after creation
 - provide explicit CSV/download semantics for bulk-user bootstrap flows without keeping raw passwords in normal browser state
 - add component/route tests proving later fetches never include the secret value
+- **Status:** revalidated at `HEAD` as closed — admin API-key list responses/UI now keep only masked previews after creation time, the raw key is returned only on create, and user-create / bulk-user surfaces no longer return generated plaintext passwords in later fetches or success payloads.
 
 ### Track 2C — Finish custom-role consistency sweep
 **Files**

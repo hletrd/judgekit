@@ -93,8 +93,9 @@ Treat every item below as **needs revalidation against `HEAD` before code change
 - finish custom-role consistency sweep on routes and actions
 
 **Progress**
-- ✅ Explicit file authorization has been moved off description-text scanning for the live `GET /api/v1/files/[id]` path; remaining work in this track is legacy HTML handling, secret redisclosure cleanup, and custom-role consistency.
+- ✅ Explicit file authorization has been moved off description-text scanning for the live `GET /api/v1/files/[id]` path; remaining work in this track is now narrowed to any future legacy-HTML follow-up rather than known secret redisclosure or custom-role gaps.
 - ✅ API-key privilege clamping now respects custom role levels instead of silently treating unknown roles as low-rank built-ins.
+- ✅ admin API-key create/list flows and bulk-user/user-create flows now keep secrets one-time-only: later management views return masked previews/metadata only, while generated plaintext passwords are no longer re-disclosed in normal success payloads.
 - ✅ legacy HTML sanitization now strips external `<img>` sources by default while preserving first-party root-relative file assets.
 - ✅ recruiting invitation APIs now authorize through `recruiting.manage_invitations` capability checks instead of built-in admin-only role gates.
 - ✅ contest invite/access-code/leaderboard/export/analytics/similarity/anti-cheat management checks now inherit the async capability/co-instructor-aware contest management helper.
