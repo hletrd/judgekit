@@ -2,19 +2,16 @@ import { NextRequest } from "next/server";
 import { db, execTransaction } from "@/lib/db";
 import { submissions, submissionResults, assignments } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
-import { forbidden, notFound, isInstructor } from "@/lib/api/auth";
+import { forbidden, notFound } from "@/lib/api/auth";
 import { canAccessSubmission } from "@/lib/auth/permissions";
 import { recordAuditEvent } from "@/lib/audit/events";
 import { apiSuccess } from "@/lib/api/responses";
 import { createApiHandler } from "@/lib/api/handler";
 
 export const POST = createApiHandler({
+  auth: { capabilities: ["submissions.rejudge"] },
   rateLimit: "submissions.rejudge",
   handler: async (req: NextRequest, { user, params }) => {
-    if (!isInstructor(user.role)) {
-      return forbidden();
-    }
-
     const { id } = params;
 
     const submission = await db.query.submissions.findFirst({

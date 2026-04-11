@@ -6,14 +6,19 @@ import { problemSets } from "@/lib/db/schema";
 import { recordAuditEvent } from "@/lib/audit/events";
 import { updateProblemSet, deleteProblemSet } from "@/lib/problem-sets/management";
 import { problemSetMutationSchema } from "@/lib/validators/problem-sets";
-import { createApiHandler, isAdmin, forbidden, notFound } from "@/lib/api/handler";
-import { isUserRole } from "@/lib/security/constants";
+import { createApiHandler, forbidden, notFound } from "@/lib/api/handler";
 
 export const GET = createApiHandler({
-  handler: async (_req: NextRequest, { user, params }) => {
-    if (!isUserRole(user.role)) return forbidden();
-    if (!isAdmin(user.role) && user.role !== "instructor") return forbidden();
-
+  auth: {
+    capabilities: [
+      "problem_sets.create",
+      "problem_sets.edit",
+      "problem_sets.delete",
+      "problem_sets.assign_groups",
+    ],
+    requireAllCapabilities: false,
+  },
+  handler: async (_req: NextRequest, { params }) => {
     const { id } = params;
     const ps = await db.query.problemSets.findFirst({
       where: eq(problemSets.id, id),
@@ -44,11 +49,9 @@ export const GET = createApiHandler({
 });
 
 export const PATCH = createApiHandler({
+  auth: { capabilities: ["problem_sets.edit"] },
   rateLimit: "problem-sets:update",
   handler: async (req: NextRequest, { user, params }) => {
-    if (!isUserRole(user.role)) return forbidden();
-    if (!isAdmin(user.role) && user.role !== "instructor") return forbidden();
-
     const { id } = params;
     const existing = await db.query.problemSets.findFirst({
       where: eq(problemSets.id, id),
@@ -112,11 +115,9 @@ export const PATCH = createApiHandler({
 });
 
 export const DELETE = createApiHandler({
+  auth: { capabilities: ["problem_sets.delete"] },
   rateLimit: "problem-sets:delete",
   handler: async (req: NextRequest, { user, params }) => {
-    if (!isUserRole(user.role)) return forbidden();
-    if (!isAdmin(user.role) && user.role !== "instructor") return forbidden();
-
     const { id } = params;
     const existing = await db.query.problemSets.findFirst({
       where: eq(problemSets.id, id),

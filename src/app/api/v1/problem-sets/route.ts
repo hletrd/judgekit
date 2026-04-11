@@ -6,16 +6,19 @@ import { problemSets } from "@/lib/db/schema";
 import { recordAuditEvent } from "@/lib/audit/events";
 import { createProblemSet } from "@/lib/problem-sets/management";
 import { problemSetMutationSchema } from "@/lib/validators/problem-sets";
-import { createApiHandler, isAdmin, forbidden } from "@/lib/api/handler";
-import { isUserRole } from "@/lib/security/constants";
+import { createApiHandler } from "@/lib/api/handler";
 
 export const GET = createApiHandler({
-  handler: async (_req: NextRequest, { user }) => {
-    if (!isUserRole(user.role)) return forbidden();
-
-    // Admins/instructors see all; students don't access this endpoint
-    if (!isAdmin(user.role) && user.role !== "instructor") return forbidden();
-
+  auth: {
+    capabilities: [
+      "problem_sets.create",
+      "problem_sets.edit",
+      "problem_sets.delete",
+      "problem_sets.assign_groups",
+    ],
+    requireAllCapabilities: false,
+  },
+  handler: async () => {
     const allSets = await db.query.problemSets.findMany({
       orderBy: [desc(problemSets.createdAt)],
       with: {
@@ -44,11 +47,9 @@ export const GET = createApiHandler({
 });
 
 export const POST = createApiHandler({
+  auth: { capabilities: ["problem_sets.create"] },
   rateLimit: "problem-sets:create",
   handler: async (req: NextRequest, { user }) => {
-    if (!isUserRole(user.role)) return forbidden();
-    if (!isAdmin(user.role) && user.role !== "instructor") return forbidden();
-
     const body = await req.json();
     const parsed = problemSetMutationSchema.safeParse(body);
 

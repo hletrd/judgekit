@@ -9,15 +9,12 @@ import {
   removeProblemSetFromGroup,
 } from "@/lib/problem-sets/management";
 import { problemSetGroupAssignSchema } from "@/lib/validators/problem-sets";
-import { createApiHandler, isAdmin, forbidden, notFound } from "@/lib/api/handler";
-import { isUserRole } from "@/lib/security/constants";
+import { createApiHandler, forbidden, notFound } from "@/lib/api/handler";
 
 export const POST = createApiHandler({
+  auth: { capabilities: ["problem_sets.assign_groups"] },
   rateLimit: "problem-sets:assign",
   handler: async (req: NextRequest, { user, params }) => {
-    if (!isUserRole(user.role)) return forbidden();
-    if (!isAdmin(user.role) && user.role !== "instructor") return forbidden();
-
     const { id } = params;
     const existing = await db.query.problemSets.findFirst({
       where: eq(problemSets.id, id),
@@ -71,11 +68,9 @@ export const POST = createApiHandler({
 });
 
 export const DELETE = createApiHandler({
+  auth: { capabilities: ["problem_sets.assign_groups"] },
   rateLimit: "problem-sets:unassign",
   handler: async (req: NextRequest, { user, params }) => {
-    if (!isUserRole(user.role)) return forbidden();
-    if (!isAdmin(user.role) && user.role !== "instructor") return forbidden();
-
     const { id } = params;
     const existing = await db.query.problemSets.findFirst({
       where: eq(problemSets.id, id),

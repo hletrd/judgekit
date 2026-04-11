@@ -4,7 +4,7 @@ import { eq } from "drizzle-orm";
 import { recordAuditEvent } from "@/lib/audit/events";
 import { db } from "@/lib/db";
 import { submissions, submissionComments } from "@/lib/db/schema";
-import { forbidden, notFound, isInstructor } from "@/lib/api/auth";
+import { forbidden, notFound } from "@/lib/api/auth";
 import { canAccessSubmission } from "@/lib/auth/permissions";
 import { commentCreateSchema } from "@/lib/validators/comments";
 import { sanitizeHtml } from "@/lib/security/sanitize-html";
@@ -43,11 +43,10 @@ export const GET = createApiHandler({
 });
 
 export const POST = createApiHandler({
+  auth: { capabilities: ["submissions.comment"] },
   rateLimit: "comments:add",
   schema: commentCreateSchema,
   handler: async (req: NextRequest, { user, body, params }) => {
-    if (!isInstructor(user.role)) return forbidden();
-
     const { id } = params;
     if (!id) return notFound("Submission");
     const submission = await db.query.submissions.findFirst({

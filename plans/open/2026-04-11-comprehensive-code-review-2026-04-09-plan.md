@@ -18,6 +18,7 @@ This review still appears to contain **open work**. No later addendum in the sou
 - ✅ Completed in this plan execution: recruiting invitation routes now authorize via `recruiting.manage_invitations` capability checks instead of admin-only role gates, moving one more route cluster onto the capability model.
 - ✅ Completed in this plan execution: contest-management routes that used `canManageContest` now inherit the async group-resource capability/co-instructor logic instead of hard-coding admin/owner-instructor checks.
 - ✅ Completed in this plan execution: admin audit-log and login-log APIs now authorize through their existing `system.audit_logs` / `system.login_logs` capabilities instead of hard-coded admin-only gates.
+- ✅ Completed in this plan execution: problem-set routes plus submission comment/rejudge routes now authorize through `problem_sets.*` / `submissions.*` capabilities instead of built-in admin/instructor-only role gates.
 
 ## Findings covered by this plan
 1. PostgreSQL-only runtime still documented as SQLite/MySQL-capable
@@ -113,7 +114,7 @@ Before changing code, re-check the current implementation for each numbered find
 - inventory every route/page still using hard-coded role checks
 - decide whether to convert to capabilities or keep built-in-only intentionally
 - align UI gating and server enforcement
-- **Status:** recruiting invitation APIs, contest-management routes, and admin log APIs now use capability-aware checks; additional hard-coded role clusters still need inventory and conversion or explicit justification.
+- **Status:** recruiting invitation APIs, contest-management routes, admin log APIs, problem-set routes, and submission moderation routes now use capability-aware checks; additional hard-coded role clusters still need inventory and conversion or explicit justification.
 
 ### Track 2D — Tighten legacy HTML rendering instead of trusting external media
 **Files**
