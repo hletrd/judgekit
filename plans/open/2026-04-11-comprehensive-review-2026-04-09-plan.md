@@ -87,7 +87,7 @@ Use this plan for findings that are still unique after dedupe.
 - add CSRF/password reconfirmation where destructive export/import/admin flows still need it
 - replace fragile file-delete and raw-SQL helper behavior with safer primitives
 - close remaining stored-secret redisclosure and weak-key fallback paths
-- **Status:** stored-secret redisclosure is now revalidated as closed at `HEAD` for the reviewed user-management and admin API-key flows; the remaining work in this phase is the destructive-route hardening / raw-SQL cleanup items, not long-lived secret exposure.
+- **Status:** stored-secret redisclosure is now revalidated as closed at `HEAD` for the reviewed user-management and admin API-key flows, and the file-delete path now has regression coverage for the intended DB-first / best-effort-disk-cleanup ordering. The remaining work in this phase is the destructive-route hardening / raw-SQL cleanup items, not long-lived secret exposure.
 
 ### Tests
 - route authz/validation tests for image delete, migrate export, recruiting status transitions, and file delete failure ordering

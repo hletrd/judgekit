@@ -8,7 +8,11 @@ const {
   resolveCapabilitiesMock,
   getAccessibleProblemIdsMock,
   dbSelectMock,
+  dbDeleteMock,
   readUploadedFileMock,
+  deleteUploadedFileMock,
+  recordAuditEventMock,
+  loggerWarnMock,
 } = vi.hoisted(() => ({
   getApiUserMock: vi.fn(),
   csrfForbiddenMock: vi.fn(),
@@ -16,7 +20,11 @@ const {
   resolveCapabilitiesMock: vi.fn(),
   getAccessibleProblemIdsMock: vi.fn(),
   dbSelectMock: vi.fn(),
+  dbDeleteMock: vi.fn(),
   readUploadedFileMock: vi.fn(),
+  deleteUploadedFileMock: vi.fn(),
+  recordAuditEventMock: vi.fn(),
+  loggerWarnMock: vi.fn(),
 }));
 
 function makeSelectChain(rows: unknown[]) {
@@ -62,21 +70,21 @@ vi.mock("@/lib/auth/permissions", () => ({
 
 vi.mock("@/lib/files/storage", () => ({
   readUploadedFile: readUploadedFileMock,
-  deleteUploadedFile: vi.fn(),
+  deleteUploadedFile: deleteUploadedFileMock,
 }));
 
 vi.mock("@/lib/audit/events", () => ({
-  recordAuditEvent: vi.fn(),
+  recordAuditEvent: recordAuditEventMock,
 }));
 
 vi.mock("@/lib/logger", () => ({
-  logger: { error: vi.fn() },
+  logger: { error: vi.fn(), warn: loggerWarnMock },
 }));
 
 vi.mock("@/lib/db", () => ({
   db: {
     select: dbSelectMock,
-    delete: vi.fn(),
+    delete: dbDeleteMock,
   },
 }));
 
@@ -93,6 +101,15 @@ const ownerUser = {
 function makeRequest(id: string, headers?: Record<string, string>) {
   return new NextRequest(`http://localhost:3000/api/v1/files/${id}`, {
     headers,
+  });
+}
+
+function makeDeleteRequest(id: string) {
+  return new NextRequest(`http://localhost:3000/api/v1/files/${id}`, {
+    method: "DELETE",
+    headers: {
+      "X-Requested-With": "XMLHttpRequest",
+    },
   });
 }
 
@@ -269,5 +286,59 @@ describe("GET /api/v1/files/[id]", () => {
 
     expect(res.status).toBe(403);
     expect(getAccessibleProblemIdsMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("DELETE /api/v1/files/[id]", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    getApiUserMock.mockResolvedValue({
+      ...ownerUser,
+      id: "admin-1",
+      role: "admin",
+      username: "admin",
+    });
+    csrfForbiddenMock.mockReturnValue(null);
+    consumeApiRateLimitMock.mockResolvedValue(null);
+    resolveCapabilitiesMock.mockResolvedValue(new Set(["files.manage"]));
+    dbSelectMock.mockReturnValueOnce(
+      makeSelectChain([
+        {
+          id: "file-1",
+          storedName: "stored.bin",
+          originalName: "secret.txt",
+          mimeType: "text/plain",
+          uploadedBy: "user-2",
+        },
+      ])
+    );
+    dbDeleteMock.mockReturnValue({
+      where: vi.fn().mockResolvedValue(undefined),
+    });
+  });
+
+  it("returns success after deleting the DB row even when disk cleanup fails", async () => {
+    deleteUploadedFileMock.mockRejectedValue(new Error("disk failure"));
+
+    const { DELETE } = await import("@/app/api/v1/files/[id]/route");
+    const res = await DELETE(makeDeleteRequest("file-1"), {
+      params: Promise.resolve({ id: "file-1" }),
+    });
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(body.data).toEqual({ deleted: true });
+    expect(dbDeleteMock).toHaveBeenCalled();
+    expect(deleteUploadedFileMock).toHaveBeenCalledWith("stored.bin");
+    expect(recordAuditEventMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "file.deleted",
+        resourceId: "file-1",
+      })
+    );
+    expect(loggerWarnMock).toHaveBeenCalledWith(
+      expect.objectContaining({ storedName: "stored.bin" }),
+      "Failed to delete file from disk after DB delete"
+    );
   });
 });
