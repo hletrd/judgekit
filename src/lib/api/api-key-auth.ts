@@ -3,9 +3,8 @@ import { eq, and } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { apiKeys, users } from "@/lib/db/schema";
 import { authUserSelect } from "@/lib/db/selects";
-import { ROLE_LEVEL } from "@/lib/security/constants";
 import { deriveEncryptionKey, legacyEncryptionKey } from "@/lib/security/derive-key";
-import type { UserRole } from "@/types";
+import { getRoleLevel } from "@/lib/capabilities/cache";
 
 export const API_KEY_PREFIX = "jk_";
 const KEY_RANDOM_BYTES = 20; // 20 bytes = 40 hex chars → total key = "jk_" + 40 = 43 chars
@@ -93,12 +92,14 @@ export async function authenticateApiKey(authHeader: string | null) {
     .set({ lastUsedAt: new Date() })
     .where(eq(apiKeys.id, candidate.id));
 
-  // Use the lesser of the API key's declared role and the creator's current role.
-  // This prevents privilege escalation when a user is demoted after creating a key.
-  // Uses ROLE_LEVEL from constants which handles custom roles via the capability system.
-  const keyRoleRank = ROLE_LEVEL[candidate.role as UserRole] ?? 0;
-  const userRoleRank = ROLE_LEVEL[user.role as UserRole] ?? 0;
-  const effectiveRole = (keyRoleRank <= userRoleRank ? candidate.role : user.role) as UserRole;
+  // Use the lesser of the API key's declared role and the creator's current
+  // role. This must resolve custom-role levels through the capability cache,
+  // otherwise custom roles silently collapse to the built-in fallback rank.
+  const [keyRoleRank, userRoleRank] = await Promise.all([
+    getRoleLevel(candidate.role),
+    getRoleLevel(user.role),
+  ]);
+  const effectiveRole = keyRoleRank <= userRoleRank ? candidate.role : user.role;
 
   return {
     id: user.id,

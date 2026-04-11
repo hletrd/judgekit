@@ -4,7 +4,6 @@ import { db, type TransactionClient } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { canManageRole, isUserRole } from "@/lib/security/constants";
 import { getPasswordValidationError, type PasswordValidationError } from "@/lib/security/password";
-import type { UserRole } from "@/types";
 
 // ─── Uniqueness checks ────────────────────────────────────────────────────────
 
@@ -78,7 +77,7 @@ export type RoleValidationError =
  * Returns an error key on failure, or null on success.
  */
 export function validateRoleChange(
-  actorRole: UserRole,
+  actorRole: string,
   requestedRole: string,
   targetCurrentRole?: string
 ): RoleValidationError | null {

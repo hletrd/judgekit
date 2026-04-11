@@ -30,6 +30,20 @@ vi.mock("@/lib/db/selects", () => ({
   authUserSelect: {},
 }));
 
+vi.mock("@/lib/capabilities/cache", () => ({
+  getRoleLevel: vi.fn(async (role: string) => {
+    const defaultLevels: Record<string, number> = {
+      student: 0,
+      instructor: 1,
+      admin: 2,
+      super_admin: 3,
+      custom_reviewer: 1,
+      custom_admin: 2,
+    };
+    return defaultLevels[role] ?? -1;
+  }),
+}));
+
 describe("api-key-auth helpers", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -96,5 +110,47 @@ describe("api-key-auth helpers", () => {
 
     await expect(authenticateApiKey("Bearer invalid")).resolves.toBeNull();
     expect(dbSelectMock).not.toHaveBeenCalled();
+  });
+
+  it("uses custom-role levels when clamping API key privileges", async () => {
+    const { generateApiKey, authenticateApiKey } = await import("@/lib/api/api-key-auth");
+    const generated = generateApiKey();
+
+    const candidateChain = makeSelectChain([
+      {
+        id: "api-key-2",
+        createdById: "user-2",
+        role: "custom_admin",
+        expiresAt: null,
+        isActive: true,
+      },
+    ]);
+    const userChain = makeSelectChain([
+      {
+        id: "user-2",
+        username: "reviewer",
+        email: "reviewer@example.com",
+        name: "Reviewer",
+        className: null,
+        role: "custom_reviewer",
+        isActive: true,
+      },
+    ]);
+
+    dbSelectMock
+      .mockReturnValueOnce(candidateChain)
+      .mockReturnValueOnce(userChain);
+
+    const updateWhereMock = vi.fn();
+    const updateSetMock = vi.fn(() => ({ where: updateWhereMock }));
+    dbUpdateMock.mockReturnValue({ set: updateSetMock });
+
+    const user = await authenticateApiKey(`Bearer ${generated.rawKey}`);
+
+    expect(user).toMatchObject({
+      id: "user-2",
+      role: "custom_reviewer",
+      _apiKeyAuth: true,
+    });
   });
 });

@@ -3,6 +3,10 @@
 ## Source review status
 This is the freshest broad code review in the repo and currently has **no closure addendum**, so it is the highest-priority open review plan.
 
+## Progress updates
+- ✅ Revalidated at `HEAD`: all six Phase 1 critical findings from this review are already fixed in the current codebase (`deregister` status filter, seccomp retry logic, full-date timestamp parsing, honest import transaction note, `recruitingInvitations.createdBy` delete behavior, and boolean coercion set cleanup).
+- ✅ Completed in this plan execution: API-key privilege clamping now resolves custom-role levels through the capability cache instead of collapsing custom roles to a built-in fallback rank.
+
 ## Planning policy
 Start every execution slice by revalidating the cited finding against `HEAD`; if already fixed, mark it closed in the execution log and skip implementation.
 
