@@ -81,6 +81,7 @@ Before changing code, re-check the current implementation for each numbered find
 **Plan**
 - replace raw `eval`-based parsing with explicit case handling / array-safe shell logic
 - add shell-level regression coverage or at least a deterministic script harness
+- **Status:** revalidated at `HEAD` as closed for the reviewed script — `scripts/setup.sh` no longer contains raw `eval` usage, and an implementation guard now locks that expectation in.
 
 ### Track 1C — Normalize email identity rules
 **Files**
