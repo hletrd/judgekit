@@ -102,6 +102,7 @@ Treat every item below as **needs revalidation against `HEAD` before code change
 - ✅ problem-set routes and submission comment/rejudge routes now authorize through their matching capabilities instead of built-in role-only gates.
 - ✅ admin tag routes, contest quick-create, and contest code-snapshot history now authorize through existing capability flags instead of built-in admin-only role gates.
 - ✅ server-action user-management privilege checks now resolve custom role levels through the capability cache instead of the built-in-only ROLE_LEVEL map.
+- ✅ group deletion now authorizes through `groups.delete` capability instead of built-in admin/super-admin role checks.
 
 ### 4. Judge/worker runtime correctness
 **Why next:** the latest code review still has critical worker/runtime findings that can corrupt verdicts or mis-measure execution.

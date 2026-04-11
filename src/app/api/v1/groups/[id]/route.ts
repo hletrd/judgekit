@@ -144,7 +144,7 @@ export const PATCH = createApiHandler({
 });
 
 export const DELETE = createApiHandler({
-  auth: { roles: ["admin", "super_admin"] },
+  auth: { capabilities: ["groups.delete"] },
   rateLimit: "groups:delete",
   handler: async (req: NextRequest, { user, params }) => {
     const { id } = params;

@@ -9,6 +9,7 @@ const {
   getApiUserMock,
   csrfForbiddenMock,
   consumeApiRateLimitMock,
+  resolveCapabilitiesMock,
   recordAuditEventMock,
   canAccessGroupMock,
   groupsFindFirstMock,
@@ -26,6 +27,7 @@ const {
     getApiUserMock: vi.fn(),
     csrfForbiddenMock: vi.fn<() => NextResponse | null>(() => null),          // null = no CSRF error
     consumeApiRateLimitMock: vi.fn<() => NextResponse | null>(() => null),    // null = not rate-limited
+    resolveCapabilitiesMock: vi.fn(),
     recordAuditEventMock: vi.fn(),
     canAccessGroupMock: vi.fn(),
     groupsFindFirstMock: vi.fn(),
@@ -55,6 +57,10 @@ vi.mock("@/lib/audit/events", () => ({
 
 vi.mock("@/lib/security/api-rate-limit", () => ({
   consumeApiRateLimit: consumeApiRateLimitMock,
+}));
+
+vi.mock("@/lib/capabilities/cache", () => ({
+  resolveCapabilities: resolveCapabilitiesMock,
 }));
 
 vi.mock("@/lib/logger", () => ({
@@ -167,6 +173,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   csrfForbiddenMock.mockReturnValue(null);
   consumeApiRateLimitMock.mockReturnValue(null);
+  resolveCapabilitiesMock.mockResolvedValue(new Set(["groups.delete"]));
   canAccessGroupMock.mockResolvedValue(true);
   groupsFindFirstMock.mockResolvedValue(EXISTING_GROUP);
   // default: no submissions → deletion allowed
@@ -256,6 +263,7 @@ describe("DELETE /api/v1/groups/[id] — authorization guards", () => {
 
   it("returns 403 for a student role", async () => {
     getApiUserMock.mockResolvedValue(STUDENT_USER);
+    resolveCapabilitiesMock.mockResolvedValue(new Set());
 
     const res = await DELETE(makeRequest(), { params: PARAMS });
     expect(res.status).toBe(403);
@@ -265,6 +273,7 @@ describe("DELETE /api/v1/groups/[id] — authorization guards", () => {
 
   it("returns 403 for an instructor role", async () => {
     getApiUserMock.mockResolvedValue(INSTRUCTOR_USER);
+    resolveCapabilitiesMock.mockResolvedValue(new Set());
 
     const res = await DELETE(makeRequest(), { params: PARAMS });
     expect(res.status).toBe(403);
@@ -274,6 +283,7 @@ describe("DELETE /api/v1/groups/[id] — authorization guards", () => {
 
   it("allows an admin to proceed past the role check", async () => {
     getApiUserMock.mockResolvedValue(ADMIN_USER);
+    resolveCapabilitiesMock.mockResolvedValue(new Set(["groups.delete"]));
 
     const res = await DELETE(makeRequest(), { params: PARAMS });
     // Should not be 401 or 403 — group exists and no submissions
@@ -283,6 +293,7 @@ describe("DELETE /api/v1/groups/[id] — authorization guards", () => {
 
   it("allows a super_admin to proceed past the role check", async () => {
     getApiUserMock.mockResolvedValue(SUPER_ADMIN_USER);
+    resolveCapabilitiesMock.mockResolvedValue(new Set(["groups.delete"]));
 
     const res = await DELETE(makeRequest(), { params: PARAMS });
     expect(res.status).not.toBe(401);
@@ -297,6 +308,7 @@ describe("DELETE /api/v1/groups/[id] — CSRF and rate-limit guards", () => {
       NextResponse.json({ error: "forbidden" }, { status: 403 })
     );
     getApiUserMock.mockResolvedValue(ADMIN_USER);
+    resolveCapabilitiesMock.mockResolvedValue(new Set(["groups.delete"]));
 
     const res = await DELETE(makeRequest(), { params: PARAMS });
     expect(res.status).toBe(403);
@@ -307,6 +319,7 @@ describe("DELETE /api/v1/groups/[id] — CSRF and rate-limit guards", () => {
       NextResponse.json({ error: "rateLimited" }, { status: 429 })
     );
     getApiUserMock.mockResolvedValue(ADMIN_USER);
+    resolveCapabilitiesMock.mockResolvedValue(new Set(["groups.delete"]));
 
     const res = await DELETE(makeRequest(), { params: PARAMS });
     expect(res.status).toBe(429);
@@ -317,6 +330,7 @@ describe("DELETE /api/v1/groups/[id] — CSRF and rate-limit guards", () => {
 describe("DELETE /api/v1/groups/[id] — group existence check", () => {
   it("returns 404 when the group does not exist", async () => {
     getApiUserMock.mockResolvedValue(ADMIN_USER);
+    resolveCapabilitiesMock.mockResolvedValue(new Set(["groups.delete"]));
     mockSubmissionCount(0, false); // group doesn't exist
 
     const res = await DELETE(makeRequest(), { params: PARAMS });
@@ -331,6 +345,7 @@ describe("DELETE /api/v1/groups/[id] — group existence check", () => {
 describe("DELETE /api/v1/groups/[id] — deletion guard: active submissions", () => {
   it("returns 409 when the group has assignments with submissions", async () => {
     getApiUserMock.mockResolvedValue(ADMIN_USER);
+    resolveCapabilitiesMock.mockResolvedValue(new Set(["groups.delete"]));
     mockSubmissionCount(3);
 
     const res = await DELETE(makeRequest(), { params: PARAMS });
@@ -341,6 +356,7 @@ describe("DELETE /api/v1/groups/[id] — deletion guard: active submissions", ()
 
   it("returns 409 even with a single submission", async () => {
     getApiUserMock.mockResolvedValue(ADMIN_USER);
+    resolveCapabilitiesMock.mockResolvedValue(new Set(["groups.delete"]));
     mockSubmissionCount(1);
 
     const res = await DELETE(makeRequest(), { params: PARAMS });
@@ -349,6 +365,7 @@ describe("DELETE /api/v1/groups/[id] — deletion guard: active submissions", ()
 
   it("allows deletion when there are assignments but zero submissions", async () => {
     getApiUserMock.mockResolvedValue(ADMIN_USER);
+    resolveCapabilitiesMock.mockResolvedValue(new Set(["groups.delete"]));
     mockSubmissionCount(0);
 
     const res = await DELETE(makeRequest(), { params: PARAMS });
@@ -360,6 +377,7 @@ describe("DELETE /api/v1/groups/[id] — deletion guard: active submissions", ()
 describe("DELETE /api/v1/groups/[id] — successful deletion", () => {
   it("returns 200 with the deleted group id", async () => {
     getApiUserMock.mockResolvedValue(ADMIN_USER);
+    resolveCapabilitiesMock.mockResolvedValue(new Set(["groups.delete"]));
 
     const res = await DELETE(makeRequest(), { params: PARAMS });
     expect(res.status).toBe(200);
@@ -369,6 +387,7 @@ describe("DELETE /api/v1/groups/[id] — successful deletion", () => {
 
   it("calls db.delete on the groups table with the correct id", async () => {
     getApiUserMock.mockResolvedValue(ADMIN_USER);
+    resolveCapabilitiesMock.mockResolvedValue(new Set(["groups.delete"]));
     const whereFn = vi.fn().mockResolvedValue(undefined);
     dbDeleteMock.mockReturnValue({ where: whereFn });
 
@@ -380,6 +399,7 @@ describe("DELETE /api/v1/groups/[id] — successful deletion", () => {
 
   it("records an audit event after successful deletion", async () => {
     getApiUserMock.mockResolvedValue(ADMIN_USER);
+    resolveCapabilitiesMock.mockResolvedValue(new Set(["groups.delete"]));
 
     await DELETE(makeRequest(), { params: PARAMS });
 
@@ -398,6 +418,7 @@ describe("DELETE /api/v1/groups/[id] — successful deletion", () => {
 
   it("includes the group archived status in the audit event details", async () => {
     getApiUserMock.mockResolvedValue(SUPER_ADMIN_USER);
+    resolveCapabilitiesMock.mockResolvedValue(new Set(["groups.delete"]));
 
     await DELETE(makeRequest(), { params: PARAMS });
 
@@ -410,6 +431,7 @@ describe("DELETE /api/v1/groups/[id] — successful deletion", () => {
 
   it("does NOT record an audit event when deletion is blocked", async () => {
     getApiUserMock.mockResolvedValue(ADMIN_USER);
+    resolveCapabilitiesMock.mockResolvedValue(new Set(["groups.delete"]));
     mockSubmissionCount(5);
 
     await DELETE(makeRequest(), { params: PARAMS });
