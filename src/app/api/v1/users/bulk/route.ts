@@ -3,17 +3,20 @@ import { apiError } from "@/lib/api/responses";
 import { execTransaction } from "@/lib/db";
 import { sql } from "drizzle-orm";
 import { users } from "@/lib/db/schema";
-import { forbidden, isAdmin, isInstructor, createApiHandler } from "@/lib/api/handler";
+import { forbidden, isInstructor, createApiHandler } from "@/lib/api/handler";
 import { recordAuditEvent } from "@/lib/audit/events";
 import { nanoid } from "nanoid";
 import { bulkUserCreateSchema } from "@/lib/validators/bulk-users";
 import { validateAndHashPassword, validateRoleChange } from "@/lib/users/core";
+import { resolveCapabilities } from "@/lib/capabilities/cache";
 import pLimit from "p-limit";
 
 export const POST = createApiHandler({
   rateLimit: "users:bulk-create",
   handler: async (req: NextRequest, { user }) => {
-    if (!isAdmin(user.role) && !isInstructor(user.role)) return forbidden();
+    const caps = await resolveCapabilities(user.role);
+    const canBulkCreate = caps.has("users.create") || user.role === "instructor";
+    if (!canBulkCreate) return forbidden();
 
     const body = await req.json();
     const parsed = bulkUserCreateSchema.safeParse(body);
@@ -35,7 +38,7 @@ export const POST = createApiHandler({
     }
 
     // Instructors can only bulk-create students
-    if (isInstructor(user.role) && !isAdmin(user.role)) {
+    if (isInstructor(user.role) && !caps.has("users.create")) {
       for (const entry of userList) {
         if (entry.role && entry.role !== "student") {
           return apiError("unauthorized", 403);

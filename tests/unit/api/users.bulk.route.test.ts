@@ -6,11 +6,13 @@ const {
   recordAuditEventMock,
   execTransactionMock,
   validateAndHashPasswordMock,
+  resolveCapabilitiesMock,
 } = vi.hoisted(() => ({
   getApiUserMock: vi.fn(),
   recordAuditEventMock: vi.fn(),
   execTransactionMock: vi.fn(),
   validateAndHashPasswordMock: vi.fn(),
+  resolveCapabilitiesMock: vi.fn(),
 }));
 
 vi.mock("@/lib/api/handler", () => ({
@@ -47,6 +49,10 @@ vi.mock("@/lib/users/core", () => ({
   validateAndHashPassword: validateAndHashPasswordMock,
 }));
 
+vi.mock("@/lib/capabilities/cache", () => ({
+  resolveCapabilities: resolveCapabilitiesMock,
+}));
+
 function makeRequest(body: unknown) {
   return new NextRequest("http://localhost:3000/api/v1/users/bulk", {
     method: "POST",
@@ -67,6 +73,7 @@ describe("POST /api/v1/users/bulk", () => {
       className: null,
       mustChangePassword: false,
     });
+    resolveCapabilitiesMock.mockResolvedValue(new Set(["users.create"]));
     validateAndHashPasswordMock.mockResolvedValue({ hash: "hashed" });
     execTransactionMock.mockImplementation(async (callback: (tx: {
       execute: (query: unknown) => Promise<void>;
@@ -102,5 +109,25 @@ describe("POST /api/v1/users/bulk", () => {
     expect(res.status).toBe(201);
     expect(body.created[0]).toMatchObject({ username: "student1", name: "Student One" });
     expect(body.created[0].generatedPassword).toBeUndefined();
+  });
+
+  it("allows a custom role with users.create to bulk create users", async () => {
+    getApiUserMock.mockResolvedValue({
+      id: "custom-1",
+      role: "custom_creator",
+      username: "custom",
+      email: "custom@example.com",
+      name: "Custom",
+      className: null,
+      mustChangePassword: false,
+    });
+    resolveCapabilitiesMock.mockResolvedValue(new Set(["users.create"]));
+
+    const { POST } = await import("@/app/api/v1/users/bulk/route");
+    const res = await POST(makeRequest({
+      users: [{ username: "student2", name: "Student Two", password: "StrongPass123!" }],
+    }));
+
+    expect(res.status).toBe(201);
   });
 });
