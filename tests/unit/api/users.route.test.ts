@@ -395,6 +395,40 @@ describe("POST /api/v1/users", () => {
     expect(body.error).toBe("emailInUse");
   });
 
+  it("maps insert-time unique username races to 409 instead of leaking a 500", async () => {
+    getApiUserMock.mockResolvedValue(adminUser);
+    dbSelectMock.mockReset();
+
+    dbSelectMock
+      .mockReturnValueOnce(makeSelectChain([]))
+      .mockReturnValueOnce(makeSelectChain([]));
+
+    const insertChain = {
+      values: vi.fn().mockReturnValue({
+        returning: vi.fn().mockRejectedValue({
+          code: "23505",
+          constraint: "users_username_unique",
+        }),
+      }),
+    };
+    dbInsertMock.mockReturnValue(insertChain);
+
+    const req = makeRequest("http://localhost:3000/api/v1/users", {
+      method: "POST",
+      body: {
+        username: "racy-user",
+        name: "Race User",
+        role: "student",
+      },
+    });
+
+    const res = await POST(req);
+    const body = await res.json();
+
+    expect(res.status).toBe(409);
+    expect(body.error).toBe("usernameInUse");
+  });
+
   it("rejects non-admin with 403", async () => {
     getApiUserMock.mockResolvedValue(studentUser);
 

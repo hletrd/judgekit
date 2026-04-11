@@ -130,11 +130,20 @@ export const POST = createApiHandler({
       });
       created = result[0];
     } catch (err: unknown) {
+      const pgErr = err as { code?: string; constraint?: string };
       if (err instanceof Error && err.message === "usernameInUse") {
         return apiError("usernameInUse", 409);
       }
       if (err instanceof Error && err.message === "emailInUse") {
         return apiError("emailInUse", 409);
+      }
+      if (pgErr.code === "23505") {
+        if (pgErr.constraint?.includes("username")) {
+          return apiError("usernameInUse", 409);
+        }
+        if (pgErr.constraint?.includes("email")) {
+          return apiError("emailInUse", 409);
+        }
       }
       throw err;
     }
