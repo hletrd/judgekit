@@ -16,6 +16,7 @@ This is the freshest broad code review in the repo and currently has **no closur
 - ✅ Completed in this plan execution: dead-letter pruning in the judge worker now uses async `tokio::fs` instead of blocking `std::fs` inside the async executor path, with a regression test for pruning behavior.
 - ✅ Completed in this plan execution: `relations.pg.ts` now includes the missing user/group/problem/assignment/file/tag relations that the review flagged as absent, with an implementation guard test.
 - ✅ Completed in this plan execution: assignment problem-lock enforcement is now rechecked inside `updateAssignmentWithProblems` so submissions that arrive after the route preflight cannot slip through the transaction boundary.
+- ✅ Completed in this plan execution: tag creation now only swallows insert-time unique races and rethrows any other insert failure instead of masking unrelated errors as if they were benign TOCTOU conflicts.
 
 ## Planning policy
 Start every execution slice by revalidating the cited finding against `HEAD`; if already fixed, mark it closed in the execution log and skip implementation.
@@ -71,7 +72,7 @@ Start every execution slice by revalidating the cited finding against `HEAD`; if
 - standardize partial-success behavior for bulk endpoints
 - make worker capacity claim/deletion logic use the same authoritative state transitions
 - add concurrency regression tests rather than only happy-path tests
-- **Status:** bulk enrollment count drift and assignment PATCH lock revalidation are now closed; remaining items in this phase are the other transactional integrity flows that still need revalidation or fixes.
+- **Status:** bulk enrollment count drift, assignment PATCH lock revalidation, and tag-create race handling are now closed; remaining items in this phase are the other transactional integrity flows that still need revalidation or fixes.
 
 ## Phase 3 — Import/schema drift and metadata completeness
 ### Findings

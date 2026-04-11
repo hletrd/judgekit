@@ -149,14 +149,21 @@ async function resolveTagIdsWithExecutor(
         await executor.insert(tags)
           .values({ id: newId, name: trimmed, createdBy, createdAt: new Date() });
         tagIds.push(newId);
-      } catch {
+      } catch (error) {
+        const pgErr = error as { code?: string };
+        if (pgErr.code !== "23505") {
+          throw error;
+        }
         // Handle unique constraint race — re-fetch the existing tag
         const [raced] = await executor
           .select({ id: tags.id })
           .from(tags)
           .where(eq(tags.name, trimmed))
           .limit(1);
-        if (raced) tagIds.push(raced.id);
+        if (!raced) {
+          throw error;
+        }
+        tagIds.push(raced.id);
       }
     }
   }
