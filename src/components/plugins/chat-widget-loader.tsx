@@ -1,11 +1,11 @@
 import { isPluginEnabled } from "@/lib/plugins/data";
 import { getPluginDefinition } from "@/lib/plugins/registry";
-import { isAiAssistantEnabled } from "@/lib/system-settings";
+import { isAiAssistantEnabledForContext } from "@/lib/platform-mode-context";
 
-export async function ChatWidgetLoader() {
+export async function ChatWidgetLoader({ userId }: { userId: string }) {
   const [enabled, aiEnabled] = await Promise.all([
     isPluginEnabled("chat-widget"),
-    isAiAssistantEnabled(),
+    isAiAssistantEnabledForContext({ userId }),
   ]);
 
   if (!enabled || !aiEnabled) return null;

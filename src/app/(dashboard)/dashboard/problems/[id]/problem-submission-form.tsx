@@ -150,7 +150,7 @@ export function ProblemSubmissionForm({
       const response = await apiFetch("/api/v1/compiler/run", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ language, sourceCode, stdin }),
+        body: JSON.stringify({ language, sourceCode, stdin, assignmentId }),
       });
       const payload = await response.json();
       if (!response.ok) {

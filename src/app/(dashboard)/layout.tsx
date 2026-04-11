@@ -83,7 +83,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
           </main>
         </SidebarInset>
         <Toaster />
-        <ChatWidgetLoader />
+        <ChatWidgetLoader userId={session.user.id} />
         <LectureToolbar />
       </SidebarProvider>
     </LectureModeProvider>

@@ -8,8 +8,8 @@ import { z } from "zod";
 import { isJudgeLanguage, getJudgeLanguageDefinition, serializeJudgeCommand } from "@/lib/judge/languages";
 import { executeCompilerRun } from "@/lib/compiler/execute";
 import { resolveCapabilities } from "@/lib/capabilities";
-import { getResolvedPlatformMode } from "@/lib/system-settings";
 import { getPlatformModePolicy } from "@/lib/platform-mode";
+import { getEffectivePlatformMode } from "@/lib/platform-mode-context";
 
 const MAX_SOURCE_CODE_LENGTH = 64 * 1024; // 64KB
 const MAX_STDIN_LENGTH = 64 * 1024; // 64KB
@@ -18,6 +18,7 @@ const compilerRunSchema = z.object({
   language: z.string().min(1),
   sourceCode: z.string().min(1).max(MAX_SOURCE_CODE_LENGTH),
   stdin: z.string().max(MAX_STDIN_LENGTH).default(""),
+  assignmentId: z.string().max(100).nullish(),
 });
 
 export const POST = createApiHandler({
@@ -25,7 +26,10 @@ export const POST = createApiHandler({
   rateLimit: "compiler:run",
   schema: compilerRunSchema,
   handler: async (_req, { user, body }) => {
-    const platformMode = await getResolvedPlatformMode();
+    const platformMode = await getEffectivePlatformMode({
+      userId: user.id,
+      assignmentId: body.assignmentId ?? null,
+    });
     if (getPlatformModePolicy(platformMode).restrictStandaloneCompiler) {
       return apiError("compilerDisabledInCurrentMode", 403);
     }

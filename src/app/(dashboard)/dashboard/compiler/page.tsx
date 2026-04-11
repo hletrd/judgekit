@@ -6,16 +6,15 @@ import { eq } from "drizzle-orm";
 import { getJudgeLanguageDefinition } from "@/lib/judge/languages";
 import { auth } from "@/lib/auth";
 import { CompilerClient } from "./compiler-client";
-import { getResolvedPlatformMode } from "@/lib/system-settings";
 import { getPlatformModePolicy } from "@/lib/platform-mode";
-import { getRecruitingAccessContext } from "@/lib/recruiting/access";
+import { getEffectivePlatformMode } from "@/lib/platform-mode-context";
 
 export default async function CompilerPage() {
   const session = await auth();
   const t = await getTranslations("compiler");
-  const { effectivePlatformMode } = session?.user
-    ? await getRecruitingAccessContext(session.user.id)
-    : { effectivePlatformMode: await getResolvedPlatformMode() };
+  const effectivePlatformMode = await getEffectivePlatformMode({
+    userId: session?.user?.id ?? null,
+  });
 
   if (getPlatformModePolicy(effectivePlatformMode).restrictStandaloneCompiler) {
     redirect("/dashboard");

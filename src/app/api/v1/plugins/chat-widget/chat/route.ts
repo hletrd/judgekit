@@ -7,11 +7,11 @@ import { isPluginEnabled, getPluginState } from "@/lib/plugins/data";
 import { getProvider, type ChatMessage } from "@/lib/plugins/chat-widget/providers";
 import { AGENT_TOOLS, executeTool, type AgentContext } from "@/lib/plugins/chat-widget/tools";
 import { checkServerActionRateLimit } from "@/lib/security/api-rate-limit";
-import { isAiAssistantEnabled } from "@/lib/system-settings";
 import { db } from "@/lib/db";
 import { problems, chatMessages } from "@/lib/db/schema";
 import { logger } from "@/lib/logger";
 import { nanoid } from "nanoid";
+import { isAiAssistantEnabledForContext } from "@/lib/platform-mode-context";
 
 const MAX_TOOL_ITERATIONS = 5;
 
@@ -202,7 +202,10 @@ export const POST = createApiHandler({
     }
 
     // Check global AI assistant toggle
-    const globalEnabled = await isAiAssistantEnabled();
+    const globalEnabled = await isAiAssistantEnabledForContext({
+      userId: session.user.id,
+      assignmentId: context?.assignmentId ?? null,
+    });
     if (!globalEnabled) {
       return NextResponse.json({ error: "aiDisabled" }, { status: 403 });
     }

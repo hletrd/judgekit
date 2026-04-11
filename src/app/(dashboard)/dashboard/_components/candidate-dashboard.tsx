@@ -7,8 +7,9 @@ import { assignmentProblems, enrollments, languageConfigs, problemGroupAccess, p
 import { getTranslations } from "next-intl/server";
 import { resolveCapabilities } from "@/lib/capabilities/cache";
 import { formatDateTimeInTimeZone } from "@/lib/datetime";
-import { getResolvedPlatformMode, getResolvedSystemSettings } from "@/lib/system-settings";
+import { getResolvedSystemSettings } from "@/lib/system-settings";
 import { getLocale } from "next-intl/server";
+import { getEffectivePlatformMode } from "@/lib/platform-mode-context";
 
 type CandidateDashboardProps = {
   userId: string;
@@ -37,7 +38,7 @@ export async function CandidateDashboard({
     ? inArray(submissions.assignmentId, assignmentIds)
     : undefined;
 
-  const isRecruitingMode = (await getResolvedPlatformMode()) === "recruiting";
+  const isRecruitingMode = (await getEffectivePlatformMode({ userId })) === "recruiting";
 
   const [accessibleProblemCount, submissionCountRows, enabledLanguagesRows, recentSubmissions] = await Promise.all([
     canViewAll

@@ -3,7 +3,7 @@ import { db } from "@/lib/db";
 import { submissions, submissionComments, users } from "@/lib/db/schema";
 import { isPluginEnabled, getPluginState } from "@/lib/plugins/data";
 import { getProvider } from "@/lib/plugins/chat-widget/providers";
-import { getResolvedPlatformMode, getPlatformModePolicy, isAiAssistantEnabled } from "@/lib/system-settings";
+import { isAiAssistantEnabledForContext } from "@/lib/platform-mode-context";
 import { logger } from "@/lib/logger";
 
 /**
@@ -12,11 +12,30 @@ import { logger } from "@/lib/logger";
  */
 export async function triggerAutoCodeReview(submissionId: string): Promise<void> {
   try {
-    const platformMode = await getResolvedPlatformMode();
-    if (getPlatformModePolicy(platformMode).restrictAiByDefault) return;
+    const submission = await db.query.submissions.findFirst({
+      where: eq(submissions.id, submissionId),
+      columns: {
+        id: true,
+        userId: true,
+        sourceCode: true,
+        language: true,
+        executionTimeMs: true,
+        memoryUsedKb: true,
+        assignmentId: true,
+      },
+      with: {
+        problem: {
+          columns: { title: true, description: true, allowAiAssistant: true },
+        },
+      },
+    });
 
-    // Check if AI is globally enabled
-    const globalEnabled = await isAiAssistantEnabled();
+    if (!submission || !submission.sourceCode) return;
+
+    const globalEnabled = await isAiAssistantEnabledForContext({
+      userId: submission.userId,
+      assignmentId: submission.assignmentId,
+    });
     if (!globalEnabled) return;
 
     // Check if chat-widget plugin is enabled and configured
@@ -56,26 +75,6 @@ export async function triggerAutoCodeReview(submissionId: string): Promise<void>
     }
 
     if (!apiKey) return;
-
-    // Fetch submission with source code and problem info in a single query
-    const submission = await db.query.submissions.findFirst({
-      where: eq(submissions.id, submissionId),
-      columns: {
-        id: true,
-        userId: true,
-        sourceCode: true,
-        language: true,
-        executionTimeMs: true,
-        memoryUsedKb: true,
-      },
-      with: {
-        problem: {
-          columns: { title: true, description: true, allowAiAssistant: true },
-        },
-      },
-    });
-
-    if (!submission || !submission.sourceCode) return;
 
     const problemTitle = submission.problem?.title ?? "Unknown";
     const problemDescription = submission.problem?.description ?? "";

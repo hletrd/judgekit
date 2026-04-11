@@ -10,8 +10,12 @@ const {
   isPluginEnabledMock,
   getPluginStateMock,
   checkServerActionRateLimitMock,
-  isAiAssistantEnabledMock,
+  isAiAssistantEnabledForContextMock,
+  getResolvedPlatformModeMock,
+  getSystemSettingsMock,
   problemsFindFirstMock,
+  recruitingInvitationFindFirstMock,
+  assignmentsFindFirstMock,
   dbInsertMock,
   getProviderMock,
   executeToolMock,
@@ -25,8 +29,12 @@ const {
   isPluginEnabledMock: vi.fn(),
   getPluginStateMock: vi.fn(),
   checkServerActionRateLimitMock: vi.fn(),
-  isAiAssistantEnabledMock: vi.fn(),
+  isAiAssistantEnabledForContextMock: vi.fn(),
+  getResolvedPlatformModeMock: vi.fn(),
+  getSystemSettingsMock: vi.fn(),
   problemsFindFirstMock: vi.fn(),
+  recruitingInvitationFindFirstMock: vi.fn(),
+  assignmentsFindFirstMock: vi.fn(),
   dbInsertMock: vi.fn(),
   getProviderMock: vi.fn(),
   executeToolMock: vi.fn(),
@@ -58,7 +66,13 @@ vi.mock("@/lib/security/api-rate-limit", () => ({
 }));
 
 vi.mock("@/lib/system-settings", () => ({
-  isAiAssistantEnabled: isAiAssistantEnabledMock,
+  getResolvedPlatformMode: getResolvedPlatformModeMock,
+  getSystemSettings: getSystemSettingsMock,
+  isAiAssistantEnabled: vi.fn(),
+}));
+
+vi.mock("@/lib/platform-mode-context", () => ({
+  isAiAssistantEnabledForContext: isAiAssistantEnabledForContextMock,
 }));
 
 vi.mock("@/lib/plugins/chat-widget/providers", () => ({
@@ -88,6 +102,8 @@ vi.mock("@/lib/db", () => ({
   db: {
     query: {
       problems: { findFirst: problemsFindFirstMock },
+      recruitingInvitations: { findFirst: recruitingInvitationFindFirstMock },
+      assignments: { findFirst: assignmentsFindFirstMock },
     },
     insert: vi.fn(() => ({ values: dbInsertMock })),
   },
@@ -173,8 +189,12 @@ beforeEach(() => {
   isPluginEnabledMock.mockResolvedValue(true);
   getPluginStateMock.mockResolvedValue({ config: PLUGIN_CONFIG });
   checkServerActionRateLimitMock.mockReturnValue(null); // not rate limited
-  isAiAssistantEnabledMock.mockResolvedValue(true);
+  isAiAssistantEnabledForContextMock.mockResolvedValue(true);
+  getResolvedPlatformModeMock.mockResolvedValue("homework");
+  getSystemSettingsMock.mockResolvedValue({ aiAssistantEnabled: true });
   problemsFindFirstMock.mockResolvedValue(null);
+  recruitingInvitationFindFirstMock.mockResolvedValue(null);
+  assignmentsFindFirstMock.mockResolvedValue(null);
   dbInsertMock.mockResolvedValue(undefined);
 
   // Default: stream provider (no problem context → simple streaming path)
@@ -262,12 +282,16 @@ describe("POST /api/v1/plugins/chat-widget/chat", () => {
   });
 
   it("returns 403 when global AI assistant is disabled", async () => {
-    isAiAssistantEnabledMock.mockResolvedValue(false);
+    isAiAssistantEnabledForContextMock.mockResolvedValue(false);
 
     const res = await chatPOST(makeChatRequest(VALID_CHAT_BODY));
     expect(res.status).toBe(403);
     const body = await res.json();
     expect(body.error).toBe("aiDisabled");
+    expect(isAiAssistantEnabledForContextMock).toHaveBeenCalledWith({
+      userId: "student-1",
+      assignmentId: null,
+    });
   });
 
   it("returns 403 when AI is disabled for the specific problem", async () => {

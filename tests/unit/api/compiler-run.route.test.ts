@@ -5,12 +5,12 @@ const {
   getApiUserMock,
   consumeApiRateLimitMock,
   resolveCapabilitiesMock,
-  getResolvedPlatformModeMock,
+  getEffectivePlatformModeMock,
 } = vi.hoisted(() => ({
   getApiUserMock: vi.fn(),
   consumeApiRateLimitMock: vi.fn(),
   resolveCapabilitiesMock: vi.fn(),
-  getResolvedPlatformModeMock: vi.fn(),
+  getEffectivePlatformModeMock: vi.fn(),
 }));
 
 vi.mock("@/lib/api/auth", () => ({
@@ -38,8 +38,8 @@ vi.mock("@/lib/capabilities", () => ({
   resolveCapabilities: resolveCapabilitiesMock,
 }));
 
-vi.mock("@/lib/system-settings", () => ({
-  getResolvedPlatformMode: getResolvedPlatformModeMock,
+vi.mock("@/lib/platform-mode-context", () => ({
+  getEffectivePlatformMode: getEffectivePlatformModeMock,
 }));
 
 vi.mock("@/lib/db", () => ({
@@ -77,11 +77,11 @@ describe("POST /api/v1/compiler/run", () => {
     });
     consumeApiRateLimitMock.mockResolvedValue(null);
     resolveCapabilitiesMock.mockResolvedValue(new Set(["content.submit_solutions"]));
-    getResolvedPlatformModeMock.mockResolvedValue("homework");
+    getEffectivePlatformModeMock.mockResolvedValue("homework");
   });
 
-  it("blocks standalone compiler in exam mode", async () => {
-    getResolvedPlatformModeMock.mockResolvedValue("exam");
+  it("blocks standalone compiler in recruiting mode even when the global site is permissive", async () => {
+    getEffectivePlatformModeMock.mockResolvedValue("recruiting");
     const { POST } = await import("@/app/api/v1/compiler/run/route");
 
     const request = new NextRequest("http://localhost:3000/api/v1/compiler/run", {
@@ -94,11 +94,16 @@ describe("POST /api/v1/compiler/run", () => {
         language: "python",
         sourceCode: "print(1)",
         stdin: "",
+        assignmentId: "assignment-1",
       }),
     });
 
     const response = await POST(request);
     expect(response.status).toBe(403);
     await expect(response.json()).resolves.toEqual({ error: "compilerDisabledInCurrentMode" });
+    expect(getEffectivePlatformModeMock).toHaveBeenCalledWith({
+      userId: "student-1",
+      assignmentId: "assignment-1",
+    });
   });
 });
