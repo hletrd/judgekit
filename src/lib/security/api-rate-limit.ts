@@ -112,10 +112,16 @@ async function atomicConsumeRateLimit(key: string): Promise<boolean> {
   });
 }
 
-function rateLimitedResponse() {
+function rateLimitedResponse(windowMs?: number) {
+  const retryAfter = windowMs ? Math.ceil(windowMs / 1000) : 60;
   return NextResponse.json(
     { error: "rateLimited" },
-    { status: 429, headers: { "Retry-After": "60" } }
+    { status: 429, headers: {
+      "Retry-After": String(retryAfter),
+      "X-RateLimit-Limit": String(getApiRateLimitConfig().max),
+      "X-RateLimit-Remaining": "0",
+      "X-RateLimit-Reset": String(Math.ceil((Date.now() + (windowMs ?? 60_000)) / 1000)),
+    } }
   );
 }
 
@@ -140,14 +146,16 @@ export async function consumeApiRateLimit(
     return null;
   }
 
+  const { windowMs } = getApiRateLimitConfig();
+
   const sidecarVerdict = await sidecarConsume(key);
   if (sidecarVerdict === true) {
-    return rateLimitedResponse();
+    return rateLimitedResponse(windowMs);
   }
 
   const limited = await atomicConsumeRateLimit(key);
   if (limited) {
-    return rateLimitedResponse();
+    return rateLimitedResponse(windowMs);
   }
 
   rememberRequestKey(request, key);
@@ -172,14 +180,16 @@ export async function consumeUserApiRateLimit(
     return null;
   }
 
+  const { windowMs } = getApiRateLimitConfig();
+
   const sidecarVerdict = await sidecarConsume(key);
   if (sidecarVerdict === true) {
-    return rateLimitedResponse();
+    return rateLimitedResponse(windowMs);
   }
 
   const limited = await atomicConsumeRateLimit(key);
   if (limited) {
-    return rateLimitedResponse();
+    return rateLimitedResponse(windowMs);
   }
 
   rememberRequestKey(request, key);
