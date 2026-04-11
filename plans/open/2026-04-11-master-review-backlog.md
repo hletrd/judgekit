@@ -101,6 +101,7 @@ Treat every item below as **needs revalidation against `HEAD` before code change
 - ✅ admin API-key create/list flows and bulk-user/user-create flows now keep secrets one-time-only: later management views return masked previews/metadata only, while generated plaintext passwords are no longer re-disclosed in normal success payloads.
 - ✅ file deletion is now locked to the intended DB-first / best-effort-disk-cleanup behavior by a focused route regression test.
 - ✅ role create/update/delete routes now have explicit regression coverage for role-cache invalidation after successful mutations.
+- ✅ backup/export/import/restore routes now have explicit route-level password-reconfirmation coverage for their destructive paths.
 - ✅ legacy HTML sanitization now strips external `<img>` sources by default while preserving first-party root-relative file assets.
 - ✅ recruiting invitation APIs now authorize through `recruiting.manage_invitations` capability checks instead of built-in admin-only role gates.
 - ✅ contest invite/access-code/leaderboard/export/analytics/similarity/anti-cheat management checks now inherit the async capability/co-instructor-aware contest management helper.
