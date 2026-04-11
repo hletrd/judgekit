@@ -4,8 +4,15 @@
 This review still appears to contain **open work**. No later addendum in the source file marks it as fully remediated.
 
 ## Progress updates
-- ✅ Revalidated at `HEAD`: the old hard `50`-member truncation finding is no longer reproducible in `GET /api/v1/groups/[id]`; the route now returns the full enrollment relation, though pagination-contract cleanup may still be worth a follow-up if large groups become expensive.
+- ✅ Revalidated at `HEAD`: PostgreSQL-only runtime/support docs are already aligned; the earlier SQLite/MySQL runtime-support finding is closed by current docs and the migration helper now explicitly labels the SQLite flow as legacy/unsupported.
+- ✅ Completed in this plan execution: `GET /api/v1/groups/[id]` now returns explicit `enrollmentsMeta` (`totalCount`, `returnedCount`, `isComplete`) so the embedded enrollment payload is no longer an ambiguous preview-vs-full-list contract.
+- ✅ Revalidated at `HEAD`: stored admin API keys are no longer re-disclosed by the management GET route or table UX; only the one-time creation dialog returns the raw key and later views stay masked.
+- ✅ Revalidated at `HEAD`: bulk user creation no longer returns or renders generated passwords; the API now returns only created usernames/names plus failure reasons.
 - ✅ Revalidated at `HEAD`: `scripts/setup.sh` no longer uses raw `eval`, so the setup-wizard injection finding is already closed.
+- ✅ Revalidated at `HEAD`: `importDatabase()` is wrapped in a single transaction, so partial-commit-on-error behavior from the review is no longer reproducible.
+- ✅ Revalidated at `HEAD`: file storage request paths now use async `node:fs/promises` helpers rather than blocking synchronous disk I/O.
+- ✅ Revalidated at `HEAD`: `rate-limiter-rs` already ships Rust tests in `src/main.rs`, so the earlier “zero real tests” note is stale.
+- ✅ Revalidated at `HEAD`: similarity normalization already has regression tests proving comment markers inside string literals are not treated as comments.
 - ✅ Completed in this plan execution: file download authorization no longer falls back to scanning problem descriptions; access now relies on explicit `files.problemId` linkage or normal owner/manage capabilities.
 
 ## Findings covered by this plan
@@ -151,6 +158,7 @@ Before changing code, re-check the current implementation for each numbered find
 **Plan**
 - either paginate enrollments properly with metadata or rename the embedded field to a preview contract
 - update consumer tests accordingly
+- **Status:** done for the current route contract — explicit `enrollmentsMeta` now accompanies the embedded list so consumers can tell whether they received a full set or a preview.
 
 ### Track 4C — Add missing guardrails/tests
 **Files**

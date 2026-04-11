@@ -10,6 +10,7 @@ const {
   csrfForbiddenMock,
   consumeApiRateLimitMock,
   recordAuditEventMock,
+  canAccessGroupMock,
   groupsFindFirstMock,
   dbDeleteMock,
   dbSelectMock,
@@ -26,6 +27,7 @@ const {
     csrfForbiddenMock: vi.fn<() => NextResponse | null>(() => null),          // null = no CSRF error
     consumeApiRateLimitMock: vi.fn<() => NextResponse | null>(() => null),    // null = not rate-limited
     recordAuditEventMock: vi.fn(),
+    canAccessGroupMock: vi.fn(),
     groupsFindFirstMock: vi.fn(),
     dbDeleteMock,
     dbSelectMock,
@@ -83,7 +85,7 @@ vi.mock("@/lib/db", () => ({
 
 // canAccessGroup is only used by GET/PATCH — stub it anyway so the module resolves
 vi.mock("@/lib/auth/permissions", () => ({
-  canAccessGroup: vi.fn().mockResolvedValue(true),
+  canAccessGroup: canAccessGroupMock,
 }));
 
 // updateGroupSchema is used by PATCH — stub so the module resolves cleanly
@@ -97,7 +99,7 @@ vi.mock("@/lib/validators/groups", () => ({
 // Import the route AFTER mocks are installed
 // ---------------------------------------------------------------------------
 
-import { DELETE } from "@/app/api/v1/groups/[id]/route";
+import { DELETE, GET } from "@/app/api/v1/groups/[id]/route";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -165,12 +167,80 @@ beforeEach(() => {
   vi.clearAllMocks();
   csrfForbiddenMock.mockReturnValue(null);
   consumeApiRateLimitMock.mockReturnValue(null);
+  canAccessGroupMock.mockResolvedValue(true);
   groupsFindFirstMock.mockResolvedValue(EXISTING_GROUP);
   // default: no submissions → deletion allowed
   mockSubmissionCount(0);
   // default db.delete chain
   const whereFn = vi.fn().mockResolvedValue(undefined);
   dbDeleteMock.mockReturnValue({ where: whereFn });
+});
+
+// ---------------------------------------------------------------------------
+describe("GET /api/v1/groups/[id] — enrollment contract", () => {
+  it("returns explicit enrollment metadata so the payload is not ambiguous", async () => {
+    getApiUserMock.mockResolvedValue(ADMIN_USER);
+    groupsFindFirstMock
+      .mockResolvedValueOnce({ id: EXISTING_GROUP.id })
+      .mockResolvedValueOnce({
+        ...EXISTING_GROUP,
+        instructor: {
+          id: "instructor-1",
+          name: "Instructor",
+          email: "instructor@example.com",
+        },
+        enrollments: [
+          {
+            id: "enrollment-1",
+            userId: "student-1",
+            groupId: EXISTING_GROUP.id,
+            enrolledAt: new Date("2026-04-01T00:00:00Z"),
+            user: {
+              id: "student-1",
+              name: "Student One",
+              email: "student1@example.com",
+            },
+          },
+          {
+            id: "enrollment-2",
+            userId: "student-2",
+            groupId: EXISTING_GROUP.id,
+            enrolledAt: new Date("2026-04-02T00:00:00Z"),
+            user: {
+              id: "student-2",
+              name: "Student Two",
+              email: "student2@example.com",
+            },
+          },
+        ],
+      });
+    dbSelectMock.mockReturnValueOnce({
+      from: vi.fn(() => ({
+        where: vi.fn().mockResolvedValue([{ count: 2 }]),
+      })),
+    });
+
+    const res = await GET(makeRequest("GET"), { params: PARAMS });
+
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.data.enrollmentsMeta).toEqual({
+      totalCount: 2,
+      returnedCount: 2,
+      isComplete: true,
+    });
+    expect(body.data.membersTruncated).toBe(false);
+  });
+
+  it("returns 403 when the caller cannot access the group", async () => {
+    getApiUserMock.mockResolvedValue(STUDENT_USER);
+    groupsFindFirstMock.mockResolvedValueOnce({ id: EXISTING_GROUP.id });
+    canAccessGroupMock.mockResolvedValueOnce(false);
+
+    const res = await GET(makeRequest("GET"), { params: PARAMS });
+
+    expect(res.status).toBe(403);
+  });
 });
 
 // ---------------------------------------------------------------------------

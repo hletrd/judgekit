@@ -115,6 +115,12 @@ Treat every item below as **needs revalidation against `HEAD` before code change
 - remove `eval` from setup wizard
 - move blocking sync I/O off request paths where practical
 
+**Progress**
+- ✅ `scripts/setup.sh` no longer uses raw `eval`.
+- ✅ file storage hot paths already use async `node:fs/promises` helpers.
+- ✅ the earlier similarity-normalization complaint about comment markers inside string literals is already covered by regression tests and not reproducible at `HEAD`.
+- ✅ `GET /api/v1/groups/[id]` now publishes explicit enrollment metadata so consumers can distinguish a full list from a preview payload.
+
 ### 6. Ops/testing/documentation truth
 **Why last:** some items may be documentation-only, but they still need explicit closure so the backlog doesn't linger.
 
@@ -133,6 +139,10 @@ Treat every item below as **needs revalidation against `HEAD` before code change
 - make runtime support claims match reality
 - add missing sidecar tests
 - document or enforce unsupported multi-replica behavior
+
+**Progress**
+- ✅ runtime support docs already describe the active runtime as PostgreSQL-only with SQLite/MySQL retained only for historical migration context.
+- ✅ `rate-limiter-rs` already has real Rust tests; the old “0 tests” finding is stale.
 
 ## Recommended execution order
 1. Transactionality / TOCTOU

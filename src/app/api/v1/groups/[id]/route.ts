@@ -64,13 +64,20 @@ export const GET = createApiHandler({
       .from(enrollments)
       .where(eq(enrollments.groupId, id));
     const memberCount = Number(memberCountResult[0]?.count ?? 0);
+    const returnedEnrollmentCount = group.enrollments.length;
+    const enrollmentsMeta = {
+      totalCount: memberCount,
+      returnedCount: returnedEnrollmentCount,
+      isComplete: returnedEnrollmentCount >= memberCount,
+    };
 
     const canViewEmails = isAdmin(user.role) || group.instructorId === user.id;
 
     return apiSuccess({
       ...group,
       memberCount,
-      membersTruncated: memberCount > group.enrollments.length,
+      membersTruncated: !enrollmentsMeta.isComplete,
+      enrollmentsMeta,
       instructor: group.instructor
         ? {
             ...group.instructor,
