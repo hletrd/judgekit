@@ -7,6 +7,7 @@ This review still appears to contain **open work**. It is broad and overlaps wit
 - ✅ Completed in this plan execution: admin role creation now treats insert-time unique violations as `roleNameExists` instead of surfacing a raw 500, closing the concurrent create race on custom role names.
 - ✅ Completed in this plan execution: user creation now maps insert-time unique username/email races to the same conflict responses as the preflight checks instead of leaking a raw 500.
 - ✅ Completed in this plan execution: user updates now also translate insert-time username/email unique races into stable conflict responses instead of leaking a raw 500.
+- ✅ Revalidated at `HEAD`: password rehash is awaited, recruiting-token auth is rate-limited through the same atomic limiter path, and submission creation already holds an advisory lock for the submission-rate limit check.
 
 ## Critical / high themes to address
 - auth and rate-limit races
@@ -38,7 +39,7 @@ Use this plan for findings that are still unique after dedupe.
 - make rate-limit check/consume flows atomic with row locking or a single transactional primitive
 - use the same atomic pattern for recruiting-token auth
 - collapse uniqueness checks and writes into the same transaction for user create/update flows
-- **Status:** password rehash and atomic rate-limit checks were already fixed at `HEAD`; user create/update conflict handling is now robust against insert-time uniqueness races, while any remaining auth/identity concurrency gaps still need revalidation.
+- **Status:** password rehash, submission-rate limiting, and atomic login/recruit-token checks were already fixed at `HEAD`; user create/update conflict handling is now robust against insert-time uniqueness races, while any remaining auth/identity concurrency gaps still need revalidation.
 
 ### Tests
 - concurrent auth attempts

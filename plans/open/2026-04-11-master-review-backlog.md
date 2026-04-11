@@ -36,6 +36,7 @@ Treat every item below as **needs revalidation against `HEAD` before code change
 - ✅ user creation now maps insert-time unique username/email races to stable conflict responses instead of leaking raw database 500s.
 - ✅ user updates now map insert-time unique username/email races to stable conflict responses instead of leaking raw database 500s.
 - ✅ worker force-removal now locks and reads the worker row inside the final transaction instead of depending on a stale pre-transaction lookup.
+- ✅ atomic login/recruit-token throttling and submission-rate limiting were already fixed at `HEAD` and revalidated during plan execution.
 - ✅ tag creation now only retries on real unique-constraint races instead of masking arbitrary insert failures.
 
 ### 2. Import/export and schema-truth hardening
@@ -115,6 +116,7 @@ Treat every item below as **needs revalidation against `HEAD` before code change
 - ✅ the polling worker executor now derives compile timeouts from submission limits instead of using a dead constant.
 - ✅ judge-worker dead-letter pruning now uses async filesystem calls instead of blocking `std::fs` in the async executor path.
 - ✅ Docker image validation helpers are now centralized in `judge-worker-rs/src/validation.rs` instead of being duplicated inside the runner.
+- ✅ runner extension validation, code-similarity panic handling, and empty-run-command protection were revalidated as already fixed at `HEAD`.
 
 ### 5. Client/UI correctness and long-tail request-path cleanup
 **Why later:** important, but lower blast radius than integrity/security work.
