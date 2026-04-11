@@ -1356,6 +1356,7 @@
       "delete": "Delete",
       "deleteSuccess": "API key deleted",
       "deleteFailed": "Failed to delete API key",
+      "fetchFailed": "Failed to load API keys.",
       "toggleFailed": "Failed to update API key",
       "viewKey": "View Key",
       "viewKeyTitle": "API Key",

@@ -93,7 +93,7 @@ export function ApiKeysClient() {
     if (copiedKeyIdTimer.current) {
       clearTimeout(copiedKeyIdTimer.current);
     }
-  }, []);
+  }, [t]);
 
   // Create dialog state
   const [createOpen, setCreateOpen] = useState(false);
@@ -101,6 +101,7 @@ export function ApiKeysClient() {
   const [createRole, setCreateRole] = useState("admin");
   const [createExpiry, setCreateExpiry] = useState("none");
   const [creating, setCreating] = useState(false);
+  const fetchFailedMessage = t("fetchFailed");
   const roleLabels: Record<string, string> = {
     super_admin: "Super Admin",
     admin: "Admin",
@@ -121,11 +122,15 @@ export function ApiKeysClient() {
       if (res.ok) {
         const json = await res.json();
         setKeys(json.data ?? []);
+      } else {
+        toast.error(fetchFailedMessage);
       }
+    } catch {
+      toast.error(fetchFailedMessage);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [fetchFailedMessage]);
 
   useEffect(() => {
     fetchKeys();

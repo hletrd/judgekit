@@ -1356,6 +1356,7 @@
       "delete": "삭제",
       "deleteSuccess": "API 키를 삭제했습니다",
       "deleteFailed": "API 키를 삭제하지 못했습니다",
+      "fetchFailed": "API 키를 불러오지 못했습니다",
       "toggleFailed": "API 키를 변경하지 못했습니다",
       "viewKey": "키 보기",
       "viewKeyTitle": "API 키",
