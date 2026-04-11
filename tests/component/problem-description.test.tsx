@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ProblemDescription } from "@/components/problem-description";
@@ -78,5 +80,11 @@ describe("ProblemDescription", () => {
     const wrapper = container.firstChild as HTMLElement;
     expect(wrapper.style.getPropertyValue("--problem-code-background")).toBe("#1e1e1e");
     expect(wrapper.style.getPropertyValue("--problem-code-foreground")).toBe("#d4d4d4");
+  });
+
+  it("keeps enough top padding for the floating code-copy button", () => {
+    const css = readFileSync(resolve(process.cwd(), "src/app/globals.css"), "utf8");
+
+    expect(css).toMatch(/\.problem-description pre\s*\{[\s\S]*padding:\s*2\.75rem 1\.1rem 1rem;/);
   });
 });
