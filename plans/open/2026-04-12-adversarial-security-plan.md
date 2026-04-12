@@ -46,7 +46,7 @@ If any of these change before implementation starts, update the plan first.
 ## Phase 1 — Eliminate replayable recruiting-token login
 ### Track 1A — Make the invite URL claim-only
 **Severity:** HIGH
-**Status (2026-04-12):** Partially implemented. Redeemed invite URLs no longer create sessions again, and same-session candidates now resume without replaying the token. A stronger cross-device re-entry/reset flow is still open for a future slice.
+**Status (2026-04-12):** ✅ Implemented. The invite URL is claim-only, first claim now creates a resume code, and redeemed links require either the existing authenticated session or that resume code instead of raw token replay.
 
 **Files**
 - recruiting invitation/token redemption/auth surfaces
@@ -86,6 +86,11 @@ If any of these change before implementation starts, update the plan first.
 **Acceptance criteria**
 - recruiting candidates cannot enumerate peers through leaderboards or rankings
 - route-level enforcement blocks direct URL navigation
+
+**Progress**
+- ✅ leaderboard API returns 403 for recruiting candidates
+- ✅ recruiting candidates no longer see the shared contest leaderboard
+- ✅ direct navigation to per-problem rankings redirects recruiting candidates back to the problem page
 
 **Tests**
 - Playwright coverage for candidate contest/problem/ranking paths

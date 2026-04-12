@@ -1,26 +1,36 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { signIn, signOut } from "next-auth/react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 export function RecruitStartForm({
   token,
   assignmentId,
   isReentry,
   resumeWithCurrentSession,
+  requireResumeCode,
+  resumeMode,
 }: {
   token: string;
   assignmentId: string;
   isReentry: boolean;
   resumeWithCurrentSession: boolean;
+  requireResumeCode: boolean;
+  resumeMode: "setup" | "resume";
 }) {
   const t = useTranslations("recruit");
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [resumeCode, setResumeCode] = useState("");
+  const resumeLabel = useMemo(
+    () => (resumeMode === "resume" ? t("resumeCodeLabel") : t("resumeCodeSetupLabel")),
+    [resumeMode, t]
+  );
 
   async function handleStart() {
     setLoading(true);
@@ -33,11 +43,18 @@ export function RecruitStartForm({
         return;
       }
 
+      const normalizedResumeCode = resumeCode.trim();
+      if (requireResumeCode && !normalizedResumeCode) {
+        setError(t("resumeCodeMissing"));
+        return;
+      }
+
       // Sign out any existing session first
       await signOut({ redirect: false }).catch(() => {});
 
       const result = await signIn("credentials", {
         recruitToken: token,
+        recruitResumeCode: requireResumeCode ? normalizedResumeCode : undefined,
         redirect: false,
       });
 
@@ -45,7 +62,7 @@ export function RecruitStartForm({
         router.push(`/dashboard/contests/${assignmentId}`);
         router.refresh();
       } else {
-        setError(t("startFailed"));
+        setError(resumeMode === "resume" ? t("resumeCodeInvalid") : t("startFailed"));
       }
     } catch {
       setError(t("startFailed"));
@@ -56,6 +73,25 @@ export function RecruitStartForm({
 
   return (
     <div className="space-y-3">
+      {requireResumeCode && (
+        <div className="space-y-2 text-left">
+          <label className="block text-sm font-medium" htmlFor="recruit-resume-code">
+            {resumeLabel}
+          </label>
+          <Input
+            id="recruit-resume-code"
+            type="password"
+            value={resumeCode}
+            onChange={(event) => setResumeCode(event.target.value)}
+            placeholder={t("resumeCodePlaceholder")}
+            autoComplete="off"
+            disabled={loading}
+          />
+          <p className="text-xs text-muted-foreground">
+            {resumeMode === "resume" ? t("resumeCodeResumeHint") : t("resumeCodeSetupHint")}
+          </p>
+        </div>
+      )}
       <Button
         className="w-full"
         size="lg"

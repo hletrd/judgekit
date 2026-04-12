@@ -102,8 +102,9 @@ export default async function RecruitPage({
     invitation.userId &&
     session?.user?.id === invitation.userId
   );
+  const supportsResumeCode = Boolean(isRedeemed && invitation.metadata?.resumeCodeHash);
 
-  if (isRedeemed && !resumeWithCurrentSession) {
+  if (isRedeemed && !resumeWithCurrentSession && !supportsResumeCode) {
     return (
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
@@ -200,12 +201,19 @@ export default async function RecruitPage({
               {t("resumeSessionOnlyNotice")}
             </div>
           )}
+          {!resumeWithCurrentSession && supportsResumeCode && (
+            <div className="rounded-lg border border-sky-200 bg-sky-50 dark:border-sky-900 dark:bg-sky-950/30 p-3 text-sm text-sky-800 dark:text-sky-200">
+              {t("resumeCodeNotice")}
+            </div>
+          )}
         </div>
         <RecruitStartForm
           token={token}
           assignmentId={assignment.id}
           isReentry={!!isRedeemed}
           resumeWithCurrentSession={resumeWithCurrentSession}
+          requireResumeCode={!resumeWithCurrentSession}
+          resumeMode={isRedeemed ? "resume" : "setup"}
         />
       </CardContent>
     </Card>

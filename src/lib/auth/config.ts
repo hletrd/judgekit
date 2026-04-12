@@ -132,6 +132,7 @@ export const authConfig: NextAuthConfig = {
         username: { label: "Username or Email", type: "text" },
         password: { label: "Password", type: "password" },
         recruitToken: { label: "Recruiting Token", type: "text" },
+        recruitResumeCode: { label: "Recruiting Resume Code", type: "password" },
       },
       async authorize(credentials, request) {
         // Recruiting token auth — bypass password flow
@@ -146,7 +147,13 @@ export const authConfig: NextAuthConfig = {
             return null;
           }
 
-          const result = await authorizeRecruitingToken(credentials.recruitToken, request);
+          const result = await authorizeRecruitingToken(
+            credentials.recruitToken,
+            typeof credentials?.recruitResumeCode === "string" && credentials.recruitResumeCode.length > 0
+              ? credentials.recruitResumeCode
+              : undefined,
+            request
+          );
 
           if (!result) {
             recordLoginEvent({

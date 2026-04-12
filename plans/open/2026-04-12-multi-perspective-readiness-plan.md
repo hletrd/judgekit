@@ -111,7 +111,7 @@ The assistant is useful, but it carries unresolved governance debt: stored chat 
 ## Workstream E — Job applicant / candidate hardening
 **Problem**
 The candidate flow exists, but it still feels like a contest/classroom system wearing a recruiting skin. Identity and privacy are the weakest points.
-**Status (2026-04-12):** In progress. The invite link no longer reauthenticates redeemed candidates, and same-session resume is preserved. Privacy/isolation work and stronger cross-device re-entry are still open.
+**Status (2026-04-12):** ✅ Substantially implemented. Recruiting invite links are claim-only, candidates create/use a resume code for new-session recovery, same-session resume remains intact, and candidate-facing standings/rankings are now blocked.
 
 **Representative files**
 - `src/lib/assignments/recruiting-invitations.ts`

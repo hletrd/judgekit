@@ -33,9 +33,11 @@ vi.mock("next-intl/server", () => ({
       startAssessment: "Start Assessment",
       claimed: "Assessment already claimed",
       claimedDescription:
-        "This invitation has already been used. Continue from your existing assessment session on this device, or contact the organizer to reset access.",
+        "This invitation has already been used. Continue from your existing assessment session on this device, or enter your resume code to continue from a new session. If you no longer have it, contact the organizer to reset access.",
       resumeSessionOnlyNotice:
-        "For security, this invite link can no longer sign you in again. Continue with your current assessment session instead.",
+        "For security, this invite link can no longer sign you in again. Continue with your current assessment session or use your resume code on a new session.",
+      resumeCodeNotice:
+        "This invite link can no longer sign you in by itself. Enter the resume code you created when you first started the assessment.",
     };
 
     if (key === "welcome") {
@@ -74,16 +76,22 @@ vi.mock("@/app/(auth)/recruit/[token]/recruit-start-form", () => ({
     assignmentId,
     isReentry,
     resumeWithCurrentSession,
+    requireResumeCode,
+    resumeMode,
   }: {
     assignmentId: string;
     isReentry: boolean;
     resumeWithCurrentSession: boolean;
+    requireResumeCode: boolean;
+    resumeMode: "setup" | "resume";
   }) => (
     <div
       data-testid="recruit-start-form"
       data-assignment-id={assignmentId}
       data-reentry={String(isReentry)}
       data-resume={String(resumeWithCurrentSession)}
+      data-require-resume-code={String(requireResumeCode)}
+      data-resume-mode={resumeMode}
     />
   ),
 }));
@@ -112,7 +120,7 @@ describe("RecruitPage", () => {
     authMock.mockResolvedValue(null);
   });
 
-  it("renders the token-claim start flow for pending invitations", async () => {
+  it("requires a resume code when claiming an invite for the first time", async () => {
     getRecruitingInvitationByTokenMock.mockResolvedValue({
       id: "invite-1",
       status: "pending",
@@ -120,6 +128,7 @@ describe("RecruitPage", () => {
       candidateName: "Candidate One",
       expiresAt: null,
       userId: null,
+      metadata: {},
     });
     mockSelectQueue(
       [
@@ -137,12 +146,11 @@ describe("RecruitPage", () => {
     render(await RecruitPage({ params: Promise.resolve({ token: "invite-token" }) }));
 
     expect(screen.getByText("Welcome, Candidate One")).toBeInTheDocument();
-    expect(screen.getByText("Recruiting Assignment")).toBeInTheDocument();
-    expect(screen.getByTestId("recruit-start-form")).toHaveAttribute("data-reentry", "false");
-    expect(screen.getByTestId("recruit-start-form")).toHaveAttribute("data-resume", "false");
+    expect(screen.getByTestId("recruit-start-form")).toHaveAttribute("data-require-resume-code", "true");
+    expect(screen.getByTestId("recruit-start-form")).toHaveAttribute("data-resume-mode", "setup");
   });
 
-  it("blocks replayed invite URLs when the candidate does not have the claimed session", async () => {
+  it("blocks replayed invite URLs when the candidate has neither the claimed session nor a resume code", async () => {
     getRecruitingInvitationByTokenMock.mockResolvedValue({
       id: "invite-2",
       status: "redeemed",
@@ -150,25 +158,20 @@ describe("RecruitPage", () => {
       candidateName: "Candidate Two",
       expiresAt: null,
       userId: "user-2",
+      metadata: {},
     });
 
     render(await RecruitPage({ params: Promise.resolve({ token: "invite-token" }) }));
 
     expect(screen.getByText("Assessment already claimed")).toBeInTheDocument();
     expect(
-      screen.getByText(/Continue from your existing assessment session on this device/i)
+      screen.getByText(/enter your resume code to continue from a new session/i)
     ).toBeInTheDocument();
     expect(screen.queryByTestId("recruit-start-form")).not.toBeInTheDocument();
-    expect(screen.queryByText("Welcome, Candidate Two")).not.toBeInTheDocument();
     expect(dbSelectMock).not.toHaveBeenCalled();
   });
 
-  it("lets the claimed candidate continue with their current session", async () => {
-    authMock.mockResolvedValue({
-      user: {
-        id: "user-3",
-      },
-    });
+  it("prompts for a resume code when the invite was already claimed elsewhere", async () => {
     getRecruitingInvitationByTokenMock.mockResolvedValue({
       id: "invite-3",
       status: "redeemed",
@@ -176,6 +179,7 @@ describe("RecruitPage", () => {
       candidateName: "Candidate Three",
       expiresAt: null,
       userId: "user-3",
+      metadata: { resumeCodeHash: "argon-hash" },
     });
     mockSelectQueue(
       [
@@ -192,9 +196,45 @@ describe("RecruitPage", () => {
 
     render(await RecruitPage({ params: Promise.resolve({ token: "invite-token" }) }));
 
-    expect(screen.getByText("Welcome, Candidate Three")).toBeInTheDocument();
-    expect(screen.getByText(/invite link can no longer sign you in again/i)).toBeInTheDocument();
+    expect(screen.getByText(/Enter the resume code you created when you first started the assessment/i)).toBeInTheDocument();
     expect(screen.getByTestId("recruit-start-form")).toHaveAttribute("data-reentry", "true");
+    expect(screen.getByTestId("recruit-start-form")).toHaveAttribute("data-resume", "false");
+    expect(screen.getByTestId("recruit-start-form")).toHaveAttribute("data-require-resume-code", "true");
+    expect(screen.getByTestId("recruit-start-form")).toHaveAttribute("data-resume-mode", "resume");
+  });
+
+  it("lets the claimed candidate continue with their current session without entering the resume code again", async () => {
+    authMock.mockResolvedValue({
+      user: {
+        id: "user-4",
+      },
+    });
+    getRecruitingInvitationByTokenMock.mockResolvedValue({
+      id: "invite-4",
+      status: "redeemed",
+      assignmentId: "assignment-4",
+      candidateName: "Candidate Four",
+      expiresAt: null,
+      userId: "user-4",
+      metadata: { resumeCodeHash: "argon-hash" },
+    });
+    mockSelectQueue(
+      [
+        {
+          id: "assignment-4",
+          title: "Current Session Assessment",
+          description: "Assessment details",
+          examDurationMinutes: 60,
+          deadline: null,
+        },
+      ],
+      [{ count: 1 }]
+    );
+
+    render(await RecruitPage({ params: Promise.resolve({ token: "invite-token" }) }));
+
+    expect(screen.getByText(/current assessment session/i)).toBeInTheDocument();
     expect(screen.getByTestId("recruit-start-form")).toHaveAttribute("data-resume", "true");
+    expect(screen.getByTestId("recruit-start-form")).toHaveAttribute("data-require-resume-code", "false");
   });
 });

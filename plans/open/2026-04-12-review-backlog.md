@@ -14,7 +14,7 @@ After comparing the full review set against the archived remediation plans:
 
 ### 1. Recruiting identity and re-entry hardening
 **Why first:** this is the highest-impact issue for hiring trust.
-**Progress (2026-04-12):** In progress. The invite URL is now claim-only at the auth/page layer, and redeemed links only allow same-session resume instead of token replay. Stronger cross-device recovery remains open.
+**Progress (2026-04-12):** ✅ Implemented. The invite URL is now claim-only, first claim requires creating a resume code, and redeemed links can only continue via the current authenticated session or the candidate's resume code.
 
 **Feeds from reviews**
 - multi-perspective review: “recruiting identity is too weak for serious hiring use”
@@ -50,6 +50,11 @@ After comparing the full review set against the archived remediation plans:
 - recruiting candidates cannot see shared standings or per-problem rankings
 - route-level enforcement, not button-only hiding
 - candidate-visible surfaces become private-by-default
+
+**Progress**
+- ✅ recruiting candidates are blocked from the contest leaderboard API
+- ✅ recruiting candidates no longer see the shared leaderboard on contest detail pages
+- ✅ recruiting candidates cannot reach per-problem rankings even via direct URL navigation
 
 ### 3. Sensitive-data retention, pruning, and access governance
 **Why next:** the product now spans student, candidate, and high-stakes contexts, so governance debt becomes launch debt.
