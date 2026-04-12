@@ -88,15 +88,17 @@ docker compose -f docker-compose.worker.yml up -d
 The dedicated worker compose file includes a local `docker-proxy` sidecar. The judge worker reaches Docker through `DOCKER_HOST=tcp://docker-proxy:2375` instead of mounting `/var/run/docker.sock` directly, which narrows direct daemon exposure. The worker container itself no longer needs `SYS_ADMIN` or AppArmor overrides to do that.
 
 > **Important:** this horizontal scaling guidance applies to **judge workers**.
-> The main Next.js app currently keeps SSE connection tracking and anti-cheat
-> heartbeat deduplication in process-local memory. The current runtime only
-> supports those routes when the deployment explicitly stays single-instance:
-> set `APP_INSTANCE_COUNT=1` (or `REALTIME_SINGLE_INSTANCE_ACK=1` when replica
-> count cannot be surfaced). `REALTIME_COORDINATION_BACKEND` is currently
-> reserved for future shared-state support and does **not** enable Redis or
-> PostgreSQL-backed coordination yet. App-server replication therefore still
-> requires additional shared-state work (or a carefully validated
-> sticky-session design) before it is safe.
+> The main Next.js app now supports two realtime modes for the routes that need
+> shared coordination:
+> - process-local single-instance mode (`APP_INSTANCE_COUNT=1` or
+>   `REALTIME_SINGLE_INSTANCE_ACK=1`)
+> - PostgreSQL-backed shared coordination mode
+>   (`REALTIME_COORDINATION_BACKEND=postgresql`) for SSE connection-cap
+>   enforcement and anti-cheat heartbeat deduplication
+>
+> `redis` remains unsupported. App-server replication still requires validated
+> sticky-session/load-balancer behavior before it is safe to rely on
+> multi-instance operation for serious contest or exam use.
 
 ### Deploy script
 

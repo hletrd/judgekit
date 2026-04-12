@@ -13,7 +13,7 @@ This guide explains the current operational truth for recruiting assessments, ex
 ## Reasons for continued caution
 1. Recruiting identity and candidate privacy need stronger enforcement than a generic classroom flow.
 2. Anti-cheat telemetry is useful, but it is not equivalent to proctoring.
-3. Realtime contest/exam coordination still assumes a single web app instance unless stronger shared coordination is implemented and verified.
+3. Realtime contest/exam coordination now supports a PostgreSQL-backed coordination path for SSE connection caps and heartbeat deduplication, but still needs broader scaling/load proof before high-stakes rollout.
 4. The judge worker remains a privileged trust boundary and must be operated as such.
 
 ## Required operator checks before any high-stakes pilot

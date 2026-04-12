@@ -10,7 +10,7 @@ import { antiCheatEvents, users } from "@/lib/db/schema";
 import { eq, and, desc, sql } from "drizzle-orm";
 import { getContestAssignment, canManageContest } from "@/lib/assignments/contests";
 import { LRUCache } from "lru-cache";
-import { getUnsupportedRealtimeGuard } from "@/lib/realtime/realtime-coordination";
+import { getUnsupportedRealtimeGuard, shouldRecordSharedHeartbeat, usesSharedRealtimeCoordination } from "@/lib/realtime/realtime-coordination";
 
 /** last heartbeat insert time per "assignmentId:userId" — only insert once per 60s */
 const lastHeartbeatTime = new LRUCache<string, number>({ max: 10_000, ttl: 120_000 });
@@ -76,13 +76,22 @@ export const POST = createApiHandler({
     const { eventType, details: rawDetails } = body;
     const details = rawDetails ? JSON.stringify({ message: rawDetails }) : null;
 
-    // Heartbeat events: only insert a DB row once per 60 seconds to reduce churn
+    // Heartbeat events: only insert a DB row once per 60 seconds to reduce churn.
     if (eventType === "heartbeat") {
-      const heartbeatKey = `${assignmentId}:${user.id}`;
-      const nowMs = Date.now();
-      const last = lastHeartbeatTime.get(heartbeatKey) ?? 0;
-      if (nowMs - last >= 60_000) {
-        lastHeartbeatTime.set(heartbeatKey, nowMs);
+      let shouldRecord = false;
+      if (usesSharedRealtimeCoordination()) {
+        shouldRecord = await shouldRecordSharedHeartbeat({ assignmentId, userId: user.id });
+      } else {
+        const heartbeatKey = `${assignmentId}:${user.id}`;
+        const nowMs = Date.now();
+        const last = lastHeartbeatTime.get(heartbeatKey) ?? 0;
+        if (nowMs - last >= 60_000) {
+          lastHeartbeatTime.set(heartbeatKey, nowMs);
+          shouldRecord = true;
+        }
+      }
+
+      if (shouldRecord) {
         await db.insert(antiCheatEvents)
           .values({
             id: nanoid(),

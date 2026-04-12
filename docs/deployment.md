@@ -157,18 +157,18 @@ docker compose -f docker-compose.worker.yml up -d
 - Force-remove stale workers to reclaim their in-flight submissions
 
 > **Important app-scaling limitation:** remote/dedicated judge workers are safe
-> to scale horizontally, but the **web app is currently expected to run as a
-> single instance** for `/api/v1/submissions/[id]/events` SSE connection caps
-> and `/api/v1/contests/[assignmentId]/anti-cheat` heartbeat deduplication.
-> The app now enforces this at runtime whenever the deployment declaration is
-> incompatible with the current process-local implementation:
-> - `APP_INSTANCE_COUNT>1` without real shared coordination will return 503
-> - production deployments must declare `APP_INSTANCE_COUNT=1` (or
->   `REALTIME_SINGLE_INSTANCE_ACK=1`) before using these routes
-> - `REALTIME_COORDINATION_BACKEND` is currently reserved for future shared
->   coordination support and should stay unset/`none`
-> Before adding multiple app replicas, implement real shared-state coordination
-> rather than relying on the placeholder backend setting alone.
+> to scale horizontally. For the **web app**, the realtime-sensitive routes now
+> support two modes:
+> - **process-local mode** — declare `APP_INSTANCE_COUNT=1` (or
+>   `REALTIME_SINGLE_INSTANCE_ACK=1`) and keep the web tier single-instance
+> - **shared PostgreSQL mode** — set `REALTIME_COORDINATION_BACKEND=postgresql`
+>   so `/api/v1/submissions/[id]/events` and
+>   `/api/v1/contests/[assignmentId]/anti-cheat` use the database for SSE
+>   connection-cap coordination and heartbeat deduplication
+>
+> `redis` remains unsupported. Before adding multiple app replicas for
+> higher-stakes use, validate sticky-session / load-balancer behavior and the
+> PostgreSQL coordination path under realistic load.
 
 See [Judge Workers](judge-workers.md) for full architecture and API reference.
 

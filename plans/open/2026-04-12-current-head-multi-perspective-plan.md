@@ -52,6 +52,10 @@ The product is still honestly not ready for formal exams or serious public conte
 - there is a concrete technical path from current single-instance assumptions to supported high-stakes deployment behavior
 - the docs and runtime behavior stay truthful while the work is incomplete
 
+**Progress**
+- ✅ a PostgreSQL-backed coordination path now exists for the realtime-sensitive routes most directly called out in the review
+- ✅ deployment and worker docs now describe the supported process-local vs shared-coordination modes explicitly
+
 ## Workstream C — Exam-integrity model beyond telemetry
 **Problem**
 The product is correct to describe anti-cheat as telemetry, but that also means there is still no exam-grade integrity model.

@@ -59,22 +59,20 @@ describe("deployment security defaults", () => {
     expect(dockerfile).not.toContain("RATE_LIMITER_ENABLE_RESET=1");
   });
 
-  it("documents the current single-app-instance requirement for SSE and anti-cheat coordination", () => {
+  it("documents both process-local and postgresql-backed realtime coordination modes", () => {
     const readme = read("README.md");
     const deploymentGuide = read("docs/deployment.md");
     const workersGuide = read("docs/judge-workers.md");
 
-    expect(readme).toContain("single app instance");
-    expect(readme).toContain("REALTIME_SINGLE_INSTANCE_ACK");
-    expect(readme).toContain("reserved");
-    expect(deploymentGuide).toContain("single instance");
-    expect(workersGuide).toContain("process-local memory");
-    expect(deploymentGuide).toContain("APP_INSTANCE_COUNT");
+    expect(readme).toContain("process-local mode");
+    expect(readme).toContain("shared PostgreSQL mode");
+    expect(readme).toContain("REALTIME_COORDINATION_BACKEND=postgresql");
+    expect(deploymentGuide).toContain("shared PostgreSQL mode");
     expect(deploymentGuide).toContain("REALTIME_SINGLE_INSTANCE_ACK");
-    expect(deploymentGuide).toContain("REALTIME_COORDINATION_BACKEND");
-    expect(workersGuide).toContain("APP_INSTANCE_COUNT");
-    expect(workersGuide).toContain("REALTIME_SINGLE_INSTANCE_ACK");
-    expect(workersGuide).toContain("REALTIME_COORDINATION_BACKEND");
+    expect(deploymentGuide).toContain("REALTIME_COORDINATION_BACKEND=postgresql");
+    expect(workersGuide).toContain("PostgreSQL-backed shared coordination mode");
+    expect(workersGuide).toContain("APP_INSTANCE_COUNT=1");
+    expect(workersGuide).toContain("REALTIME_COORDINATION_BACKEND=postgresql");
   });
 
   it("keeps Docker daemon access out of the app container in deployment compose files", () => {

@@ -215,16 +215,18 @@ Or use the deploy script:
 
 Monitor workers at `/dashboard/admin/workers`.
 
-> **App-instance scaling note:** judge workers can scale horizontally, but the
-> Next.js app currently assumes a **single app instance** for contest SSE
-> connection caps and anti-cheat heartbeat deduplication. Do not run multiple
-> app replicas behind a load balancer unless you first add shared coordination
-> (for example Redis/PostgreSQL-backed connection and heartbeat state) or prove
-> an equivalent sticky-session design for those routes. For the current
-> process-local implementation, declare `APP_INSTANCE_COUNT=1` (or
-> `REALTIME_SINGLE_INSTANCE_ACK=1` when replica count cannot be surfaced).
-> `REALTIME_COORDINATION_BACKEND` is currently reserved for future shared-state
-> support and must stay unset/`none`.
+> **App-instance scaling note:** judge workers can scale horizontally. The
+> Next.js app now supports two realtime modes for the routes that previously
+> required a single instance:
+> - **process-local mode** — declare `APP_INSTANCE_COUNT=1` (or
+>   `REALTIME_SINGLE_INSTANCE_ACK=1`) and keep the web tier single-instance
+> - **shared PostgreSQL mode** — set `REALTIME_COORDINATION_BACKEND=postgresql`
+>   so SSE connection-cap enforcement and anti-cheat heartbeat deduplication use
+>   the database instead of process-local memory
+>
+> `redis` remains unsupported. Before claiming exam-grade or public-contest
+> readiness, still validate sticky-session / load-balancer behavior and broader
+> realtime scaling under the PostgreSQL-backed path.
 
 ### Prerequisites
 

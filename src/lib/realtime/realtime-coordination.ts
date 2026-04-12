@@ -1,7 +1,14 @@
+import { and, eq, gte, lt, sql } from "drizzle-orm";
+import { db } from "@/lib/db";
+import { rateLimits } from "@/lib/db/schema";
 import { logger } from "@/lib/logger";
 
 let hasWarnedSingleInstanceOnly = false;
 const TRUE_VALUES = /^(1|true|yes|on)$/i;
+const POSTGRES_BACKEND = "postgresql";
+const UNSUPPORTED_BACKENDS = new Set(["redis"]);
+const SSE_KEY_PREFIX = "realtime:sse:user:";
+const HEARTBEAT_KEY_PREFIX = "realtime:heartbeat:";
 
 function parseReplicaCount(value: string | undefined) {
   if (!value) return null;
@@ -14,15 +21,15 @@ export function getRealtimeCoordinationStatus() {
   const replicaCount = parseReplicaCount(
     process.env.APP_INSTANCE_COUNT || process.env.WEB_CONCURRENCY,
   );
-  const hasSharedCoordination = false;
+  const hasSharedCoordination = backend === POSTGRES_BACKEND;
   const isProductionLike = process.env.NODE_ENV === "production";
   const explicitSingleInstanceAck = TRUE_VALUES.test(
     process.env.REALTIME_SINGLE_INSTANCE_ACK || "",
   );
   const declaredSingleInstance = replicaCount === 1 || explicitSingleInstanceAck;
-  const backendConfigUnsupported = backend !== "none";
+  const backendConfigUnsupported = UNSUPPORTED_BACKENDS.has(backend);
   const deploymentDeclarationMissing =
-    isProductionLike && !declaredSingleInstance && replicaCount === null && !backendConfigUnsupported;
+    isProductionLike && !declaredSingleInstance && replicaCount === null && !backendConfigUnsupported && !hasSharedCoordination;
   const multiInstanceRequested = replicaCount !== null && replicaCount > 1;
 
   return {
@@ -35,6 +42,145 @@ export function getRealtimeCoordinationStatus() {
     requiresSingleInstanceGuard:
       !hasSharedCoordination && (backendConfigUnsupported || deploymentDeclarationMissing || multiInstanceRequested),
   };
+}
+
+export function usesSharedRealtimeCoordination() {
+  return getRealtimeCoordinationStatus().hasSharedCoordination;
+}
+
+export function getRealtimeConnectionKey(userId: string, connectionId: string) {
+  return `${SSE_KEY_PREFIX}${userId}:${connectionId}`;
+}
+
+function getSsePrefixPattern() {
+  return `${SSE_KEY_PREFIX}%`;
+}
+
+function getSseUserPattern(userId: string) {
+  return `${SSE_KEY_PREFIX}${userId}:%`;
+}
+
+function getHeartbeatKey(assignmentId: string, userId: string) {
+  return `${HEARTBEAT_KEY_PREFIX}${assignmentId}:${userId}`;
+}
+
+async function withPgAdvisoryLock<T>(lockKey: string, fn: (tx: Parameters<Parameters<typeof db.transaction>[0]>[0]) => Promise<T>) {
+  return db.transaction(async (tx) => {
+    await tx.execute(sql`SELECT pg_advisory_xact_lock(('x' || md5(${lockKey}))::bit(64)::bigint)`);
+    return fn(tx);
+  });
+}
+
+export async function acquireSharedSseConnectionSlot({
+  userId,
+  connectionId,
+  maxGlobalConnections,
+  maxUserConnections,
+  timeoutMs,
+}: {
+  userId: string;
+  connectionId: string;
+  maxGlobalConnections: number;
+  maxUserConnections: number;
+  timeoutMs: number;
+}) {
+  const key = getRealtimeConnectionKey(userId, connectionId);
+  const nowMs = Date.now();
+  const expiresAt = nowMs + timeoutMs + 30_000;
+
+  return withPgAdvisoryLock("realtime:sse:acquire", async (tx) => {
+    await tx.delete(rateLimits).where(
+      and(
+        sql`${rateLimits.key} LIKE ${getSsePrefixPattern()}`,
+        lt(rateLimits.blockedUntil, nowMs),
+      )
+    );
+
+    const [counts] = await tx
+      .select({
+        total: sql<number>`count(*)`,
+        userTotal: sql<number>`count(*) filter (where ${rateLimits.key} like ${getSseUserPattern(userId)})`,
+      })
+      .from(rateLimits)
+      .where(
+        and(
+          sql`${rateLimits.key} LIKE ${getSsePrefixPattern()}`,
+          gte(rateLimits.blockedUntil, nowMs),
+        )
+      );
+
+    if (Number(counts?.total ?? 0) >= maxGlobalConnections) {
+      return { ok: false as const, reason: "serverBusy" as const };
+    }
+
+    if (Number(counts?.userTotal ?? 0) >= maxUserConnections) {
+      return { ok: false as const, reason: "tooManyConnections" as const };
+    }
+
+    await tx.insert(rateLimits).values({
+      key,
+      attempts: 1,
+      windowStartedAt: nowMs,
+      blockedUntil: expiresAt,
+      consecutiveBlocks: 0,
+      lastAttempt: nowMs,
+      createdAt: nowMs,
+    });
+
+    return { ok: true as const, key };
+  });
+}
+
+export async function releaseSharedSseConnectionSlot(connectionKey: string) {
+  await db.delete(rateLimits).where(eq(rateLimits.key, connectionKey));
+}
+
+export async function shouldRecordSharedHeartbeat({
+  assignmentId,
+  userId,
+  minIntervalMs = 60_000,
+}: {
+  assignmentId: string;
+  userId: string;
+  minIntervalMs?: number;
+}) {
+  const key = getHeartbeatKey(assignmentId, userId);
+  const nowMs = Date.now();
+
+  return withPgAdvisoryLock(key, async (tx) => {
+    const [existing] = await tx
+      .select({ lastAttempt: rateLimits.lastAttempt })
+      .from(rateLimits)
+      .where(eq(rateLimits.key, key))
+      .limit(1);
+
+    if (existing && nowMs - existing.lastAttempt < minIntervalMs) {
+      return false;
+    }
+
+    if (existing) {
+      await tx
+        .update(rateLimits)
+        .set({
+          lastAttempt: nowMs,
+          blockedUntil: nowMs + minIntervalMs,
+          windowStartedAt: nowMs,
+        })
+        .where(eq(rateLimits.key, key));
+    } else {
+      await tx.insert(rateLimits).values({
+        key,
+        attempts: 1,
+        windowStartedAt: nowMs,
+        blockedUntil: nowMs + minIntervalMs,
+        consecutiveBlocks: 0,
+        lastAttempt: nowMs,
+        createdAt: nowMs,
+      });
+    }
+
+    return true;
+  });
 }
 
 export function warnIfSingleInstanceRealtimeOnly(routeName: string) {
@@ -74,7 +220,7 @@ export function getUnsupportedRealtimeGuard(routeName: string) {
     return {
       error: "unsupportedRealtimeBackendConfig",
       message:
-        "REALTIME_COORDINATION_BACKEND is reserved until shared realtime coordination is implemented. Unset it and keep APP_INSTANCE_COUNT=1 (or REALTIME_SINGLE_INSTANCE_ACK=1).",
+        "REALTIME_COORDINATION_BACKEND currently supports only postgresql shared coordination. Unset it or set it to postgresql and keep the database reachable.",
     };
   }
 

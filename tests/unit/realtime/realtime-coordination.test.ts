@@ -19,6 +19,7 @@ describe("realtime coordination guard", () => {
     vi.resetModules();
     vi.clearAllMocks();
     vi.stubEnv("NODE_ENV", "test");
+    vi.stubEnv("DATABASE_URL", "postgres://judgekit:judgekit@localhost:5432/judgekit_test");
     delete process.env.APP_INSTANCE_COUNT;
     delete process.env.WEB_CONCURRENCY;
     delete process.env.REALTIME_COORDINATION_BACKEND;
@@ -48,7 +49,19 @@ describe("realtime coordination guard", () => {
     expect(loggerErrorMock).toHaveBeenCalledTimes(1);
   });
 
-  it("rejects unimplemented shared-backend configuration instead of treating it as real coordination", async () => {
+  it("allows multi-instance mode when the postgresql shared coordination backend is declared", async () => {
+    process.env.APP_INSTANCE_COUNT = "2";
+    process.env.REALTIME_COORDINATION_BACKEND = "postgresql";
+
+    const { getUnsupportedRealtimeGuard, usesSharedRealtimeCoordination } = await import("@/lib/realtime/realtime-coordination");
+    const guard = getUnsupportedRealtimeGuard("/api/v1/submissions/[id]/events");
+
+    expect(guard).toBeNull();
+    expect(usesSharedRealtimeCoordination()).toBe(true);
+    expect(loggerErrorMock).not.toHaveBeenCalled();
+  });
+
+  it("rejects unsupported shared-backend configuration values", async () => {
     process.env.APP_INSTANCE_COUNT = "1";
     process.env.REALTIME_COORDINATION_BACKEND = "redis";
 
@@ -58,7 +71,7 @@ describe("realtime coordination guard", () => {
     expect(guard).toEqual({
       error: "unsupportedRealtimeBackendConfig",
       message:
-        "REALTIME_COORDINATION_BACKEND is reserved until shared realtime coordination is implemented. Unset it and keep APP_INSTANCE_COUNT=1 (or REALTIME_SINGLE_INSTANCE_ACK=1).",
+        "REALTIME_COORDINATION_BACKEND currently supports only postgresql shared coordination. Unset it or set it to postgresql and keep the database reachable.",
     });
     expect(loggerErrorMock).toHaveBeenCalledTimes(1);
   });

@@ -11,7 +11,7 @@ import { IN_PROGRESS_JUDGE_STATUSES } from "@/lib/judge/verdict";
 import { logger } from "@/lib/logger";
 import { consumeApiRateLimit } from "@/lib/security/api-rate-limit";
 import { getConfiguredSettings } from "@/lib/system-settings-config";
-import { getUnsupportedRealtimeGuard } from "@/lib/realtime/realtime-coordination";
+import { acquireSharedSseConnectionSlot, getRealtimeConnectionKey, getUnsupportedRealtimeGuard, releaseSharedSseConnectionSlot, usesSharedRealtimeCoordination } from "@/lib/realtime/realtime-coordination";
 
 // ---------------------------------------------------------------------------
 // Connection tracking via Set<connectionId> to avoid TOCTOU races.
@@ -62,7 +62,7 @@ globalThis.__sseCleanupTimer = setInterval(() => {
   const staleThreshold = Math.min(getConfiguredSettings().sseTimeoutMs + 30_000, 2 * 60 * 60 * 1000);
   for (const [connId, info] of connectionInfoMap) {
     if (now - info.createdAt > staleThreshold) {
-      removeConnection(connId);
+      removeConnection(connId)
     }
   }
 }, CLEANUP_INTERVAL_MS);
@@ -164,21 +164,33 @@ export async function GET(
     const rateLimitResponse = await consumeApiRateLimit(request, "submissions:events");
     if (rateLimitResponse) return rateLimitResponse;
 
-    if (activeConnectionSet.size >= MAX_GLOBAL_SSE_CONNECTIONS) {
-      return apiError("serverBusy", 503);
-    }
-
-    // Enforce per-user SSE connection cap
+    // Enforce global/per-user SSE connection caps.
     const sseConfig = getConfiguredSettings();
     const userId = user.id;
-    if (countUserConnections(userId) >= sseConfig.maxSseConnectionsPerUser) {
-      return apiError("tooManyConnections", 429);
-    }
-
-    // Register connection IMMEDIATELY after cap checks, BEFORE any awaits,
-    // to close the TOCTOU window where concurrent requests could bypass caps.
     const connId = generateConnectionId(userId);
-    addConnection(connId, userId);
+    const useSharedCoordination = usesSharedRealtimeCoordination();
+    const sharedConnectionKey = getRealtimeConnectionKey(userId, connId);
+
+    if (useSharedCoordination) {
+      const sharedResult = await acquireSharedSseConnectionSlot({
+        userId,
+        connectionId: connId,
+        maxGlobalConnections: MAX_GLOBAL_SSE_CONNECTIONS,
+        maxUserConnections: sseConfig.maxSseConnectionsPerUser,
+        timeoutMs: sseConfig.sseTimeoutMs,
+      });
+      if (!sharedResult.ok) {
+        return apiError(sharedResult.reason, sharedResult.reason === "serverBusy" ? 503 : 429);
+      }
+    } else {
+      if (activeConnectionSet.size >= MAX_GLOBAL_SSE_CONNECTIONS) {
+        return apiError("serverBusy", 503);
+      }
+      if (countUserConnections(userId) >= sseConfig.maxSseConnectionsPerUser) {
+        return apiError("tooManyConnections", 429);
+      }
+      addConnection(connId, userId);
+    }
 
     const { id } = await params;
 
@@ -193,13 +205,17 @@ export async function GET(
     });
 
     if (!submission) {
-      removeConnection(connId);
+      if (useSharedCoordination) { await releaseSharedSseConnectionSlot(sharedConnectionKey); } else { removeConnection(connId); }
       return notFound("Submission");
     }
 
     const hasAccess = await canAccessSubmission(submission, user.id, user.role);
     if (!hasAccess) {
-      removeConnection(connId);
+      if (useSharedCoordination) {
+        await releaseSharedSseConnectionSlot(sharedConnectionKey);
+      } else {
+        removeConnection(connId);
+      }
       return forbidden();
     }
 
@@ -230,7 +246,11 @@ export async function GET(
           closed = true;
           unsubscribeFromPoll(id, onPollResult);
           clearTimeout(timeoutTimer);
-          removeConnection(connId);
+          if (useSharedCoordination) {
+            void releaseSharedSseConnectionSlot(sharedConnectionKey);
+          } else {
+            removeConnection(connId);
+          }
           try {
             controller.close();
           } catch {

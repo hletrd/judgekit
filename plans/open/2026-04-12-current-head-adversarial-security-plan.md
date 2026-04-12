@@ -63,6 +63,9 @@ Formal exams and serious contests still depend on single-instance assumptions th
 **Acceptance criteria**
 - there is a credible path from current architecture to supported high-stakes event integrity
 
+**Progress**
+- ✅ the realtime-sensitive routes now support a PostgreSQL-backed shared-coordination mode instead of treating shared coordination as entirely hypothetical
+
 ## Phase 3 — Anti-cheat evidence model
 **Severity:** MEDIUM
 
