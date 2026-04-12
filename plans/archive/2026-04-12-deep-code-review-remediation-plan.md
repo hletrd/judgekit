@@ -1,13 +1,13 @@
 # Implementation plan — `.context/reviews/deep-code-review-2026-04-12.md`
 
 ## Source review status
-This plan is newly created from the deep whole-project review dated 2026-04-12.
+This plan was fully implemented at `HEAD` on 2026-04-12 and is archived for reference.
 
 ## Planning scope
 This document addresses all issues listed in:
 - `.context/reviews/deep-code-review-2026-04-12.md`
 
-**Planning-only note:** this artifact defines the remediation strategy and verification shape. It does **not** implement the fixes.
+**Historical note:** this artifact originated as the remediation plan for the 2026-04-12 deep review and is now archived after implementation.
 
 ## Findings covered by this plan
 1. Admin Docker pull/remove routes bypass the stricter trusted-registry allowlist.
