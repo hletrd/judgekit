@@ -69,6 +69,11 @@ After comparing the full review set against the archived remediation plans:
 - automated pruning where the platform stores sensitive records
 - explicit access boundaries and user-facing notice text
 
+**Progress**
+- ✅ published `docs/privacy-retention.md` with retention windows and handling rules for audit logs, AI chat logs, anti-cheat events, recruiting records, and submissions
+- ✅ added runtime pruning for AI chat logs (30 days) and anti-cheat events (180 days), complementing the existing 90-day audit-log pruning
+- ✅ surfaced chat-log retention and access notices directly on the admin chat-log page
+
 ### 4. Assessment-mode model and operator clarity
 **Why next:** hidden or overly implicit mode behavior creates product and security mistakes.
 

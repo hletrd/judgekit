@@ -96,6 +96,11 @@ The assistant is useful, but it carries unresolved governance debt: stored chat 
 - stored chat data has a bounded lifecycle
 - candidate/student notice text exists where needed
 
+**Progress**
+- ✅ published `docs/privacy-retention.md` with current platform retention windows and operator rules
+- ✅ automated pruning now covers AI chat logs and anti-cheat events in addition to existing audit-log pruning
+- ✅ admin chat-log UI now displays retention and access-boundary guidance inline
+
 ## Workstream E — Job applicant / candidate hardening
 **Problem**
 The candidate flow exists, but it still feels like a contest/classroom system wearing a recruiting skin. Identity and privacy are the weakest points.

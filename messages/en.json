@@ -1582,7 +1582,9 @@
       "viewChatLogs": "View Chat Logs",
       "noLogs": "No chat logs yet.",
       "noMessages": "No messages in this conversation.",
-      "loggingNotice": "Messages may be stored and reviewed by authorized staff to improve support and investigate misuse."
+      "loggingNotice": "Messages may be stored and reviewed by authorized staff to improve support and investigate misuse.",
+      "chatLogsRetentionNotice": "Chat transcripts are automatically pruned after {days} days unless they are exported through other review workflows.",
+      "chatLogsAccessNotice": "Only authorized staff with chat-log access should review transcripts, and only for support, safety, or assessment-governance reasons."
     }
   },
   "rankings": {
@@ -2096,6 +2098,9 @@
     "continueAssessment": "Continue Assessment",
     "starting": "Starting...",
     "startFailed": "Couldn't start. Try again.",
+    "claimed": "Assessment already claimed",
+    "claimedDescription": "This invitation has already been used. Continue from your existing assessment session on this device, or contact the organizer to reset access.",
+    "resumeSessionOnlyNotice": "For security, this invite link can no longer sign you in again. Continue with your current assessment session instead.",
     "invalidToken": "Invalid link",
     "invalidTokenDescription": "This link is invalid or has been revoked.",
     "expired": "Link expired",

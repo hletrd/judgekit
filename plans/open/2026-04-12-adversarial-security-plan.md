@@ -111,6 +111,11 @@ If any of these change before implementation starts, update the plan first.
 - pruning exists for any currently unbounded high-sensitivity store
 - recruiting and exam contexts have explicit privacy language
 
+**Progress**
+- ✅ published `docs/privacy-retention.md` with the current retention windows and operator handling rules
+- ✅ AI chat logs and anti-cheat events are now pruned automatically in the app runtime
+- ✅ admin chat-log surfaces now disclose retention and access expectations inline
+
 **Tests / verification**
 - targeted tests for any new pruning helpers/jobs
 - route tests for tightened access control if capabilities/filters change
