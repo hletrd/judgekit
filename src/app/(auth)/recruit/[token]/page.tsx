@@ -202,8 +202,9 @@ export default async function RecruitPage({
             </div>
           )}
           {!resumeWithCurrentSession && supportsResumeCode && (
-            <div className="rounded-lg border border-sky-200 bg-sky-50 dark:border-sky-900 dark:bg-sky-950/30 p-3 text-sm text-sky-800 dark:text-sky-200">
-              {t("resumeCodeNotice")}
+            <div className="rounded-lg border border-sky-200 bg-sky-50 dark:border-sky-900 dark:bg-sky-950/30 p-3 text-sm text-sky-800 dark:text-sky-200 space-y-1">
+              <p>{t("resumeCodeNotice")}</p>
+              <p>{t("accountPasswordLoginNotice")}</p>
             </div>
           )}
         </div>

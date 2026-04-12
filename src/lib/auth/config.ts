@@ -133,6 +133,7 @@ export const authConfig: NextAuthConfig = {
         password: { label: "Password", type: "password" },
         recruitToken: { label: "Recruiting Token", type: "text" },
         recruitResumeCode: { label: "Recruiting Resume Code", type: "password" },
+        recruitAccountPassword: { label: "Recruiting Account Password", type: "password" },
       },
       async authorize(credentials, request) {
         // Recruiting token auth — bypass password flow
@@ -151,6 +152,9 @@ export const authConfig: NextAuthConfig = {
             credentials.recruitToken,
             typeof credentials?.recruitResumeCode === "string" && credentials.recruitResumeCode.length > 0
               ? credentials.recruitResumeCode
+              : undefined,
+            typeof credentials?.recruitAccountPassword === "string" && credentials.recruitAccountPassword.length > 0
+              ? credentials.recruitAccountPassword
               : undefined,
             request
           );

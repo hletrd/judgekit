@@ -2,7 +2,7 @@ import { z } from "zod";
 
 export const createRecruitingInvitationSchema = z.object({
   candidateName: z.string().min(1).max(255),
-  candidateEmail: z.string().email().max(255).optional(),
+  candidateEmail: z.string().email().max(255),
   metadata: z.record(z.string(), z.string()).optional().default({}),
   expiresAt: z.string().datetime().nullable().optional(),
 });

@@ -38,6 +38,8 @@ vi.mock("next-intl/server", () => ({
         "For security, this invite link can no longer sign you in again. Continue with your current assessment session or use your resume code on a new session.",
       resumeCodeNotice:
         "This invite link can no longer sign you in by itself. Enter the resume code you created when you first started the assessment.",
+      accountPasswordLoginNotice:
+        "After your first start, you can sign in later with your recruiting email and account password through the normal login page.",
     };
 
     if (key === "welcome") {
@@ -197,6 +199,7 @@ describe("RecruitPage", () => {
     render(await RecruitPage({ params: Promise.resolve({ token: "invite-token" }) }));
 
     expect(screen.getByText(/Enter the resume code you created when you first started the assessment/i)).toBeInTheDocument();
+    expect(screen.getByText(/sign in later with your recruiting email and account password/i)).toBeInTheDocument();
     expect(screen.getByTestId("recruit-start-form")).toHaveAttribute("data-reentry", "true");
     expect(screen.getByTestId("recruit-start-form")).toHaveAttribute("data-resume", "false");
     expect(screen.getByTestId("recruit-start-form")).toHaveAttribute("data-require-resume-code", "true");

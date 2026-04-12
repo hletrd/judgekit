@@ -31,10 +31,11 @@ type AuthenticatedLoginUser = AuthUserRecord & {
 export async function authorizeRecruitingToken(
   token: string,
   resumeCode: string | undefined,
+  accountPassword: string | undefined,
   request: Request
 ): Promise<AuthenticatedLoginUser | null> {
   const ipAddress = extractClientIp(request.headers);
-  const result = await redeemRecruitingToken(token, ipAddress ?? undefined, resumeCode);
+  const result = await redeemRecruitingToken(token, ipAddress ?? undefined, resumeCode, accountPassword);
 
   if (!result.ok) return null;
 

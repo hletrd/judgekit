@@ -29,6 +29,9 @@ After re-reading the full review set against the current codebase and archived r
 - explicit operator workflow for verified recovery/reset
 - tests for identity/recovery edge cases
 
+**Progress**
+- ✅ recruiting candidates now create a real account password on first claim, and recruiting accounts persist the candidate email for later standard sign-in
+
 ### 2. High-stakes realtime / scaling architecture
 **Why next:** this is still the core NO-GO reason for exams and serious contests.
 

@@ -1818,7 +1818,7 @@
       "candidateName": "Candidate Name",
       "candidateNamePlaceholder": "e.g. John Doe",
       "candidateEmail": "Email",
-      "candidateEmailPlaceholder": "e.g. john@example.com",
+      "candidateEmailPlaceholder": "candidate@example.com",
       "metadata": "Additional Information",
       "metadataKey": "Field Name",
       "metadataValue": "Value",
@@ -2138,6 +2138,11 @@
     "resumeCodeSetupHint": "Create a private code you can use if you need to resume the assessment from a new session or device.",
     "resumeCodeResumeHint": "Enter the resume code you created when you first started the assessment.",
     "resumeCodeMissing": "Enter your resume code to continue.",
-    "resumeCodeInvalid": "The resume code is incorrect. Try again or contact the organizer."
+    "resumeCodeInvalid": "The resume code is incorrect. Try again or contact the organizer.",
+    "accountPasswordLabel": "Account password",
+    "accountPasswordPlaceholder": "Create your account password",
+    "accountPasswordHint": "Use this password to sign in later with your recruiting email through the normal login page.",
+    "accountPasswordMissing": "Create an account password to continue.",
+    "accountPasswordLoginNotice": "After your first start, you can sign in later with your recruiting email and account password through the normal login page."
   }
 }

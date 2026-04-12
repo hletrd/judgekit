@@ -34,6 +34,9 @@ The invite-link + resume-code model is materially better than before, but it sti
 - candidate recovery no longer relies only on shared secrets under candidate/admin control
 - recruiting re-entry has a stronger identity assurance story than the current resume-code-only flow
 
+**Progress**
+- ✅ first-claim recruiting flows now create a real account password and persist the candidate email for later standard sign-in
+
 ## Workstream B — Exam / contest architecture truth
 **Problem**
 The product is still honestly not ready for formal exams or serious public contests because the current realtime coordination story is not strong enough.

@@ -45,6 +45,9 @@ The current recruiting model is no longer obviously unsafe, but it still does no
 - external recruiting no longer depends only on shared secrets like invite URLs + resume codes
 - recovery/reset workflows reduce impersonation risk rather than merely moving it
 
+**Progress**
+- ✅ first-claim recruiting flows now create a real account password and persist the candidate email for later standard sign-in
+
 ## Phase 2 — High-stakes event integrity architecture
 **Severity:** MEDIUM
 

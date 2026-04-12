@@ -1,6 +1,7 @@
 import { randomBytes } from "crypto";
 import { nanoid } from "nanoid";
 import { hashPassword, verifyPassword } from "@/lib/security/password-hash";
+import { getPasswordValidationError } from "@/lib/security/password";
 import { db } from "@/lib/db";
 import {
   assignments,
@@ -225,7 +226,8 @@ type RedeemResult =
 export async function redeemRecruitingToken(
   token: string,
   ipAddress?: string,
-  resumeCode?: string
+  resumeCode?: string,
+  accountPassword?: string
 ): Promise<RedeemResult> {
   // Transaction: read invitation + validate + create user + enroll + claim (atomic)
   try {
@@ -297,20 +299,29 @@ export async function redeemRecruitingToken(
       }
 
       if (!resumeCode) return { ok: false as const, error: "resumeCodeRequired" };
+      if (!accountPassword) return { ok: false as const, error: "accountPasswordRequired" };
       const resumeCodeHash = await hashPassword(resumeCode);
 
       // Create user + enroll + access token + atomically claim invitation
       const uid = nanoid();
       const username = `recruit_${nanoid(8)}`;
+      const passwordValidationError = getPasswordValidationError(accountPassword, {
+        username,
+        email: invitation.candidateEmail ?? null,
+      });
+      if (passwordValidationError) {
+        return { ok: false as const, error: passwordValidationError };
+      }
+      const accountPasswordHash = await hashPassword(accountPassword);
       await tx.insert(users).values({
         id: uid,
         username,
         name: invitation.candidateName,
-        email: null,
-        passwordHash: null,
+        email: invitation.candidateEmail ?? null,
+        passwordHash: accountPasswordHash,
         role: "student",
         isActive: true,
-        mustChangePassword: true,
+        mustChangePassword: false,
       });
 
       await tx.insert(enrollments).values({

@@ -387,7 +387,7 @@ export function RecruitingInvitationsPanel({ assignmentId }: { assignmentId: str
                 <Button variant="outline" onClick={() => setCreateOpen(false)}>
                   {t("cancel")}
                 </Button>
-                <Button onClick={handleCreate} disabled={creating || !createName.trim()}>
+                <Button onClick={handleCreate} disabled={creating || !createName.trim() || !createEmail.trim()}>
                   {t("create")}
                 </Button>
               </DialogFooter>

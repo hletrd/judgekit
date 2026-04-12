@@ -27,6 +27,7 @@ export function RecruitStartForm({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [resumeCode, setResumeCode] = useState("");
+  const [accountPassword, setAccountPassword] = useState("");
   const resumeLabel = useMemo(
     () => (resumeMode === "resume" ? t("resumeCodeLabel") : t("resumeCodeSetupLabel")),
     [resumeMode, t]
@@ -44,8 +45,13 @@ export function RecruitStartForm({
       }
 
       const normalizedResumeCode = resumeCode.trim();
+      const normalizedAccountPassword = accountPassword.trim();
       if (requireResumeCode && !normalizedResumeCode) {
         setError(t("resumeCodeMissing"));
+        return;
+      }
+      if (resumeMode === "setup" && !normalizedAccountPassword) {
+        setError(t("accountPasswordMissing"));
         return;
       }
 
@@ -55,6 +61,7 @@ export function RecruitStartForm({
       const result = await signIn("credentials", {
         recruitToken: token,
         recruitResumeCode: requireResumeCode ? normalizedResumeCode : undefined,
+        recruitAccountPassword: resumeMode === "setup" ? normalizedAccountPassword : undefined,
         redirect: false,
       });
 
@@ -90,6 +97,23 @@ export function RecruitStartForm({
           <p className="text-xs text-muted-foreground">
             {resumeMode === "resume" ? t("resumeCodeResumeHint") : t("resumeCodeSetupHint")}
           </p>
+        </div>
+      )}
+      {resumeMode === "setup" && (
+        <div className="space-y-2 text-left">
+          <label className="block text-sm font-medium" htmlFor="recruit-account-password">
+            {t("accountPasswordLabel")}
+          </label>
+          <Input
+            id="recruit-account-password"
+            type="password"
+            value={accountPassword}
+            onChange={(event) => setAccountPassword(event.target.value)}
+            placeholder={t("accountPasswordPlaceholder")}
+            autoComplete="new-password"
+            disabled={loading}
+          />
+          <p className="text-xs text-muted-foreground">{t("accountPasswordHint")}</p>
         </div>
       )}
       <Button

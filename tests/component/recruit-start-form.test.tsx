@@ -26,6 +26,10 @@ vi.mock("next-intl", () => ({
       startFailed: "Couldn't start. Try again.",
       resumeCodeLabel: "Resume code",
       resumeCodeSetupLabel: "Create a resume code",
+      accountPasswordLabel: "Account password",
+      accountPasswordPlaceholder: "Create your account password",
+      accountPasswordHint: "Use this password to sign in later with your recruiting email through the normal login page.",
+      accountPasswordMissing: "Create an account password to continue.",
       resumeCodePlaceholder: "Enter your resume code",
       resumeCodeSetupHint: "Create a private code you can use later.",
       resumeCodeResumeHint: "Enter the code you created earlier.",
@@ -63,6 +67,7 @@ describe("RecruitStartForm", () => {
     );
 
     await user.type(screen.getByLabelText("Create a resume code"), "resume-secret");
+    await user.type(screen.getByLabelText("Account password"), "account-password");
     await user.click(screen.getByRole("button", { name: "Start Assessment" }));
 
     await waitFor(() => {
@@ -70,6 +75,7 @@ describe("RecruitStartForm", () => {
       expect(signInMock).toHaveBeenCalledWith("credentials", {
         recruitToken: "invite-token",
         recruitResumeCode: "resume-secret",
+        recruitAccountPassword: "account-password",
         redirect: false,
       });
       expect(pushMock).toHaveBeenCalledWith("/dashboard/contests/assignment-1");
@@ -98,6 +104,7 @@ describe("RecruitStartForm", () => {
       expect(signInMock).toHaveBeenCalledWith("credentials", {
         recruitToken: "invite-token",
         recruitResumeCode: "resume-secret",
+        recruitAccountPassword: undefined,
         redirect: false,
       });
       expect(pushMock).toHaveBeenCalledWith("/dashboard/contests/assignment-2");
