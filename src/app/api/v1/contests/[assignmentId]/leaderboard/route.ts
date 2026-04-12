@@ -34,6 +34,10 @@ export const GET = createApiHandler({
     // Access check
     const isInstructorView = await canManageContest(user, assignment);
 
+    if (recruitingAccess.isRecruitingCandidate && !isInstructorView) {
+      return apiError("forbidden", 403);
+    }
+
     if (!isInstructorView) {
       // Student: must be enrolled or have access token
       const hasAccess = await rawQueryOne(

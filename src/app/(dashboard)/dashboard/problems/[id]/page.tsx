@@ -72,7 +72,7 @@ export default async function ProblemDetailPage({
   const tRankings = await getTranslations("rankings");
   const locale = await getLocale();
   const recruitingAccess = await getRecruitingAccessContext(session.user.id);
-  const effectivePlatformMode = recruitingAccess.effectivePlatformMode;
+  const isRecruitingCandidate = recruitingAccess.isRecruitingCandidate;
   const resolvedSettings = await getResolvedSystemSettings({
     siteTitle: tCommon("appName"),
     siteDescription: tCommon("appDescription"),
@@ -221,7 +221,7 @@ export default async function ProblemDetailPage({
             <h2 className="text-3xl font-bold">{problem.title}</h2>
           </div>
           <div className="flex flex-wrap gap-2">
-            {effectivePlatformMode !== "recruiting" && (
+            {!isRecruitingCandidate && (
               <Link href={`/dashboard/problems/${problem.id}/rankings`}>
                 <Button variant="outline" size="sm">
                   <Trophy className="size-4 mr-1" />

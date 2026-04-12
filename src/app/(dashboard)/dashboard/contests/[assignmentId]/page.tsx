@@ -49,6 +49,7 @@ import { RecruiterCandidatesPanel } from "@/components/contest/recruiter-candida
 import { RecruitingInvitationsPanel } from "@/components/contest/recruiting-invitations-panel";
 import AssignmentFormDialog, { type AssignmentEditorValue } from "../../groups/[id]/assignment-form-dialog";
 import { AssignmentDeleteButton } from "../../groups/[id]/assignment-delete-button";
+import { getRecruitingAccessContext } from "@/lib/recruiting/access";
 
 const STATUS_FILTER_VALUES = [
   "all",
@@ -179,6 +180,9 @@ export default async function ContestDetailPage({
     role,
     groupId
   );
+
+  const recruitingAccess = await getRecruitingAccessContext(session.user.id);
+  const isRecruitingCandidate = recruitingAccess.isRecruitingCandidate;
 
   const sortedProblems = [...assignment.assignmentProblems].sort(
     (left, right) => (left.sortOrder ?? 0) - (right.sortOrder ?? 0)
@@ -370,7 +374,9 @@ export default async function ContestDetailPage({
               }}
               problemStatuses={studentProblemStatuses}
             />
-            <LeaderboardTable assignmentId={assignmentId} currentUserId={session.user.id} />
+            {!isRecruitingCandidate && (
+              <LeaderboardTable assignmentId={assignmentId} currentUserId={session.user.id} />
+            )}
 
             {/* My Submissions */}
             <Card>

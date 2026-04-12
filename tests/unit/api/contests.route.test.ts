@@ -482,6 +482,13 @@ describe("GET /api/v1/contests/[assignmentId]/leaderboard", () => {
     vi.clearAllMocks();
     getApiUserMock.mockResolvedValue(ADMIN_USER);
     consumeApiRateLimitMock.mockReturnValue(null);
+    canManageContestMock.mockImplementation((user, assignment) => user.role === "admin" || assignment.instructorId === user.id);
+    getRecruitingAccessContextMock.mockResolvedValue({
+      assignmentIds: [],
+      problemIds: [],
+      isRecruitingCandidate: false,
+      effectivePlatformMode: "homework",
+    });
     rawQueryOneMock.mockResolvedValue({
       groupId: "g-1",
       instructorId: "inst-1",
@@ -523,6 +530,22 @@ describe("GET /api/v1/contests/[assignmentId]/leaderboard", () => {
       .mockResolvedValueOnce(null);
     const res = await leaderboardGET(makeLeaderboardRequest(), { params: PARAMS() });
     expect(res.status).toBe(403);
+  });
+
+  it("returns 403 when a recruiting candidate requests the leaderboard", async () => {
+    getApiUserMock.mockResolvedValue(STUDENT_USER);
+    getRecruitingAccessContextMock.mockResolvedValueOnce({
+      assignmentIds: ["assign-1"],
+      problemIds: ["p-1"],
+      isRecruitingCandidate: true,
+      effectivePlatformMode: "recruiting",
+    });
+
+    const res = await leaderboardGET(makeLeaderboardRequest(), { params: PARAMS() });
+
+    expect(res.status).toBe(403);
+    expect(rawQueryOneMock).toHaveBeenCalledTimes(1);
+    expect(computeLeaderboardMock).not.toHaveBeenCalled();
   });
 
   it("returns leaderboard for admin with full userId in entries", async () => {

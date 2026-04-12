@@ -19,6 +19,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft } from "lucide-react";
 import { getLanguageDisplayLabel } from "@/lib/judge/languages";
+import { getRecruitingAccessContext } from "@/lib/recruiting/access";
 
 export default async function ProblemRankingsPage({
   params,
@@ -43,6 +44,9 @@ export default async function ProblemRankingsPage({
     session.user.role
   );
   if (!hasAccess) redirect("/dashboard/problems");
+
+  const recruitingAccess = await getRecruitingAccessContext(session.user.id);
+  if (recruitingAccess.isRecruitingCandidate) redirect(`/dashboard/problems/${id}`);
 
   const t = await getTranslations("rankings");
 

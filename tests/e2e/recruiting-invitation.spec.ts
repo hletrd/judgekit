@@ -89,6 +89,17 @@ test("recruiting invitation candidates are scoped to their contest only", async 
   });
 
   await expect(candidatePage.locator('a[href="/dashboard/groups"]')).toHaveCount(0);
+  await expect(candidatePage.getByRole("columnheader", { name: /rank|순위/i })).toHaveCount(0);
+
+  const leaderboardResponse = await candidatePage.evaluate(async (contestId) => {
+    const response = await fetch(`/api/v1/contests/${contestId}/leaderboard`);
+    return {
+      status: response.status,
+      body: await response.json().catch(() => null),
+    };
+  }, assignmentId);
+  expect(leaderboardResponse.status).toBe(403);
+
 
   await candidatePage.goto(`${BASE_URL}/dashboard/contests`, { waitUntil: "networkidle" });
   await expect(candidatePage).toHaveURL(/\/dashboard\/contests$/);
@@ -98,6 +109,11 @@ test("recruiting invitation candidates are scoped to their contest only", async 
   await expect(candidatePage).toHaveURL(/\/dashboard\/problems$/);
   await expect(candidatePage.getByText(`[E2E] Recruit Allowed ${suffix}`)).toBeVisible();
   await expect(candidatePage.getByText(`[E2E] Recruit Blocked ${suffix}`)).toHaveCount(0);
+
+  await candidatePage.goto(`${BASE_URL}/dashboard/problems/${allowedProblemId}/rankings`, {
+    waitUntil: "networkidle",
+  });
+  await expect(candidatePage).toHaveURL(new RegExp(`/dashboard/problems/${allowedProblemId}(?:\\?.*)?$`));
 
   await candidatePage.goto(`${BASE_URL}/dashboard/problems/${blockedProblemId}`, {
     waitUntil: "networkidle",
