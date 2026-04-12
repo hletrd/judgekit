@@ -1,0 +1,54 @@
+# Review status and archival note — 2026-04-12
+
+This note records which review lines already remain covered by archived plan artifacts so they do not get reopened accidentally.
+
+## Already implemented / archived review lines
+
+### `.context/reviews/comprehensive-code-review-2026-04-09.md`
+- **Status:** archived as implemented
+- **Evidence:** `plans/archive/2026-04-11-comprehensive-code-review-2026-04-09-plan.md` records the associated backlog as completed at `HEAD`.
+
+### `.context/reviews/comprehensive-code-review-2026-04-10.md`
+- **Status:** archived as implemented
+- **Evidence:** `plans/archive/2026-04-11-comprehensive-code-review-2026-04-10-plan.md` records the associated backlog as completed at `HEAD`.
+
+### `.context/reviews/comprehensive-review-2026-04-09.md`
+- **Status:** archived as implemented
+- **Evidence:** `plans/archive/2026-04-11-comprehensive-review-2026-04-09-plan.md` records the associated backlog as completed at `HEAD`.
+
+### `.context/reviews/comprehensive-security-review-2026-04-10.md`
+- **Status:** archived as implemented
+- **Evidence:** the source review includes a remediation addendum saying all actionable findings were addressed in the working tree.
+
+### `.context/reviews/deep-code-review-2026-04-12.md`
+- **Status:** archived as implemented
+- **Evidence:** `plans/archive/2026-04-12-deep-code-review-remediation-plan.md` records the review findings as completed at `HEAD`.
+
+### `.context/reviews/deep-code-review-2026-04-12-post-remediation.md`
+- **Status:** archived as implemented
+- **Evidence:** `plans/archive/2026-04-12-post-remediation-review-plan.md` records the remaining post-remediation backlog as completed at `HEAD`.
+
+## Superseded review lines
+
+### `.context/reviews/comprehensive-code-review-2026-04-07.md`
+- **Status:** archived as superseded
+- **Reason:** later 2026-04-09 / 2026-04-10 reviews revisit the same surfaces with fresher evidence and were themselves planned/executed.
+
+### `.context/reviews/comprehensive-code-review-2026-04-09-worktree.md`
+- **Status:** archived as implemented/superseded
+- **Reason:** its concrete findings already map to completed remediation work and no fresh open plan is needed.
+
+### `.context/reviews/comprehensive-security-review-2026-04-09.md`
+- **Status:** archived as superseded
+- **Reason:** the 2026-04-10 security review is the fresher authoritative security artifact and already includes closure evidence.
+
+### `.context/reviews/_archive/*`
+- **Status:** historical review context only
+- **Reason:** retained for reference, not for new implementation planning.
+
+## Open review lines after this pass
+Only the following review artifacts still require fresh planning after comparing the full current set against archived plan evidence:
+- `.context/reviews/multi-perspective-review-2026-04-12.md`
+- `.context/reviews/adversarial-security-review-2026-04-12.md`
+
+Their actionable planning artifacts now live under `plans/open/`.

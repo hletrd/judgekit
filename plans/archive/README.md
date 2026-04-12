@@ -4,9 +4,10 @@ This folder keeps **completed or historical planning artifacts**.
 
 ## Contents
 - Copies of finished `.omx/plans/*.md` artifacts for reference
-- `2026-04-11-implemented-or-superseded-reviews.md` — why certain review files are not getting new implementation plans
+- archived implementation plans whose associated review backlogs were fully burned down
+- review-status notes explaining why certain review files are implemented or superseded rather than reopened
 
-### Copied OMX plan artifacts
+### Copied OMX / historical plan artifacts
 - `2026-04-04-assessment-hardening-and-release-plan.md`
 - `2026-04-04-phase-0-detailed-checklist.md`
 - `prd-2026-04-09-review-remediation.md`
@@ -17,6 +18,10 @@ This folder keeps **completed or historical planning artifacts**.
 - `2026-04-11-master-review-backlog.md`
 - `2026-04-12-deep-code-review-remediation-plan.md`
 - `2026-04-12-post-remediation-review-plan.md`
+
+### Review-status notes
+- `2026-04-11-implemented-or-superseded-reviews.md`
+- `2026-04-12-review-status.md`
 
 ## Why copied instead of moved
 `.omx/plans/` is part of the OMX runtime/state surface. These files were copied here so the repo has a stable, user-facing archive without mutating runtime history.

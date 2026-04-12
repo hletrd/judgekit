@@ -1,36 +1,44 @@
-# Review planning index — 2026-04-11
+# Review planning index — 2026-04-12
 
 This directory contains **planning only**. No implementation is included here.
 
 ## Goal
-- read the repository review artifacts under `.context/reviews/`
-- identify what still looks actionable vs already implemented/superseded
-- write implementation plans for the reviews that still need work
-- archive older completed plan artifacts for reference
+- read the review artifacts under `.context/reviews/`
+- separate already-implemented or superseded review lines from still-open criticism
+- keep finished plan artifacts in `plans/archive/`
+- keep only the currently actionable planning backlog in `plans/open/`
+
+## Directory layout
+- `plans/open/` — currently actionable implementation plans
+- `plans/archive/` — finished or historical plan artifacts plus review-status notes
 
 ## Status legend
-- **Open plan** — no later closure evidence was found; execution should start by revalidating the findings against `HEAD`
-- **Archived (implemented)** — later repo evidence says the review's actionable items were already fixed
-- **Archived (superseded)** — older review is covered by later reviews or already archived upstream
+- **Open plan** — still actionable; execution should start by revalidating the cited files against `HEAD`
+- **Archived (implemented)** — later repo evidence or archived plan artifacts show the review line was already completed
+- **Archived (superseded)** — an older review is covered by later review/plan artifacts and should not get a fresh implementation plan
+- **Historical** — old review/archive context retained for reference only
 
-## Review inventory and plan mapping
+## Current review inventory and plan mapping
 
 | Review artifact | Status | Plan / archive note | Why |
 | --- | --- | --- | --- |
-| `.context/reviews/comprehensive-code-review-2026-04-10.md` | Open plan | `plans/open/2026-04-11-comprehensive-code-review-2026-04-10-plan.md` | Latest broad code review; no later addendum closes it |
-| `.context/reviews/comprehensive-review-2026-04-09.md` | Open plan | `plans/open/2026-04-11-comprehensive-review-2026-04-09-plan.md` | Still contains unclosed race/auth/access-control backlog |
-| `.context/reviews/comprehensive-code-review-2026-04-09.md` | Open plan | `plans/open/2026-04-11-comprehensive-code-review-2026-04-09-plan.md` | Still contains unclosed data/export/auth/runtime truth backlog |
-| `.context/reviews/comprehensive-security-review-2026-04-10.md` | Archived (implemented) | `plans/archive/2026-04-11-implemented-or-superseded-reviews.md` | The review itself has a remediation addendum saying all actionable findings were addressed |
-| `.context/reviews/comprehensive-code-review-2026-04-09-worktree.md` | Archived (implemented) | `plans/archive/2026-04-11-implemented-or-superseded-reviews.md` | The 2026-04-09/10 remediation notes match its findings (backup/import, code snapshots, capability drift, compiler workspace, docs) |
-| `.context/reviews/comprehensive-security-review-2026-04-09.md` | Archived (superseded) | `plans/archive/2026-04-11-implemented-or-superseded-reviews.md` | Superseded by the fresher 2026-04-10 security review plus addendum |
-| `.context/reviews/comprehensive-code-review-2026-04-07.md` | Archived (superseded) | `plans/archive/2026-04-11-implemented-or-superseded-reviews.md` | Older broad review; later 2026-04-09/10 reviews cover the same surfaces in more detail |
-| `.context/reviews/_archive/*` | Archived (historical) | source archive | Already archived by the repo |
+| `.context/reviews/comprehensive-code-review-2026-04-07.md` | Archived (superseded) | `plans/archive/2026-04-12-review-status.md` | Older broad review; later 2026-04-09/10 reviews plus archived remediation plans cover the same surfaces with fresher evidence |
+| `.context/reviews/comprehensive-code-review-2026-04-09-worktree.md` | Archived (implemented) | `plans/archive/2026-04-12-review-status.md` | Its concrete findings were already remediated and previously archived |
+| `.context/reviews/comprehensive-code-review-2026-04-09.md` | Archived (implemented) | `plans/archive/2026-04-11-comprehensive-code-review-2026-04-09-plan.md` | Archived plan records completion at `HEAD` |
+| `.context/reviews/comprehensive-code-review-2026-04-10.md` | Archived (implemented) | `plans/archive/2026-04-11-comprehensive-code-review-2026-04-10-plan.md` | Archived plan records completion at `HEAD` |
+| `.context/reviews/comprehensive-review-2026-04-09.md` | Archived (implemented) | `plans/archive/2026-04-11-comprehensive-review-2026-04-09-plan.md` | Archived plan records completion at `HEAD` |
+| `.context/reviews/comprehensive-security-review-2026-04-09.md` | Archived (superseded) | `plans/archive/2026-04-12-review-status.md` | Superseded by the fresher 2026-04-10 security review and later remediation evidence |
+| `.context/reviews/comprehensive-security-review-2026-04-10.md` | Archived (implemented) | `plans/archive/2026-04-12-review-status.md` | The review itself includes a remediation addendum saying actionable findings were addressed |
+| `.context/reviews/deep-code-review-2026-04-12.md` | Archived (implemented) | `plans/archive/2026-04-12-deep-code-review-remediation-plan.md` | Archived remediation plan records completion |
+| `.context/reviews/deep-code-review-2026-04-12-post-remediation.md` | Archived (implemented) | `plans/archive/2026-04-12-post-remediation-review-plan.md` | Archived follow-up plan records completion |
+| `.context/reviews/multi-perspective-review-2026-04-12.md` | Open plan | `plans/open/2026-04-12-multi-perspective-readiness-plan.md` | New product/readiness review; still-open recruiting/privacy/high-stakes boundary critiques |
+| `.context/reviews/adversarial-security-review-2026-04-12.md` | Open plan | `plans/open/2026-04-12-adversarial-security-plan.md` | New attacker-minded review; still-open identity/privacy/integrity hardening work |
+| `.context/reviews/_archive/*` | Historical | source archive | Already archived review context only |
 
-## New planning artifacts
-- `plans/open/2026-04-11-master-review-backlog.md` — deduped execution backlog across the still-open reviews
-- `plans/open/2026-04-11-comprehensive-code-review-2026-04-09-plan.md`
-- `plans/open/2026-04-11-comprehensive-review-2026-04-09-plan.md`
-- `plans/open/2026-04-11-comprehensive-code-review-2026-04-10-plan.md`
+## Currently actionable plan set
+- `plans/open/2026-04-12-review-backlog.md` — deduped shared backlog across the currently open reviews
+- `plans/open/2026-04-12-multi-perspective-readiness-plan.md` — role/product/readiness response plan
+- `plans/open/2026-04-12-adversarial-security-plan.md` — security/attacker response plan
 
-## Archived plan artifacts
-Historical completed plan artifacts were copied from `.omx/plans/` into `plans/archive/` so they can be referenced without touching OMX runtime state.
+## Archival note
+The older plan artifacts were **already archived** when their associated workstreams were closed. No additional historical implementation plans needed moving during this pass; instead, the review-status mapping was refreshed in `plans/archive/2026-04-12-review-status.md` and only the new still-open review lines received fresh plans.
