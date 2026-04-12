@@ -28,7 +28,8 @@ This document defines the current default handling expectations for sensitive op
 - audit-log pruning is automated in the app runtime
 - AI chat-log pruning is automated in the app runtime
 - anti-cheat event pruning is automated in the app runtime
-- longer-lived recruiting/submission records are policy-bounded today; if a deployment needs stricter deletion or archival flows, add a dedicated retention/export workflow before high-stakes rollout
+- recruiting invitation records older than 365 days are pruned automatically once they are terminal (redeemed/revoked) or long-expired pending invites
+- submissions and grading records remain policy-bounded today; if a deployment needs stricter deletion or archival flows, add a dedicated retention/export workflow before high-stakes rollout
 
 ## Operator rules
 1. Grant chat-log access only to staff who actually need it.
