@@ -1592,7 +1592,8 @@
       "noMessages": "No messages in this conversation.",
       "loggingNotice": "Messages may be stored and reviewed by authorized staff to improve support and investigate misuse.",
       "chatLogsRetentionNotice": "Chat transcripts are automatically pruned after {days} days unless they are exported through other review workflows.",
-      "chatLogsAccessNotice": "Only authorized staff with chat-log access should review transcripts, and only for support, safety, or assessment-governance reasons."
+      "chatLogsAccessNotice": "Only authorized staff with chat-log access should review transcripts, and only for support, safety, or assessment-governance reasons.",
+      "chatLogsAuditNotice": "Chat-log session views are audit logged."
     }
   },
   "rankings": {

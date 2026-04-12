@@ -5,6 +5,7 @@ import { chatMessages, users } from "@/lib/db/schema";
 import { forbidden } from "@/lib/api/auth";
 import { createApiHandler } from "@/lib/api/handler";
 import { resolveCapabilities } from "@/lib/capabilities/cache";
+import { recordAuditEvent } from "@/lib/audit/events";
 
 export const GET = createApiHandler({
   handler: async (req: NextRequest, { user }) => {
@@ -26,6 +27,17 @@ export const GET = createApiHandler({
         with: {
           user: { columns: { id: true, name: true, username: true } },
         },
+      });
+      recordAuditEvent({
+        actorId: user.id,
+        actorRole: user.role,
+        action: "chat_log.session_viewed",
+        resourceType: "chat_session",
+        resourceId: sessionId,
+        resourceLabel: sessionId,
+        summary: `Viewed chat transcript for session ${sessionId}`,
+        details: { sessionId },
+        request: req,
       });
       return NextResponse.json({ messages });
     }
@@ -64,6 +76,20 @@ export const GET = createApiHandler({
       .select({ total: sql<number>`count(distinct ${chatMessages.sessionId})` })
       .from(chatMessages)
       .where(whereClause);
+
+    recordAuditEvent({
+      actorId: user.id,
+      actorRole: user.role,
+      action: "chat_log.list_viewed",
+      resourceType: "chat_log",
+      resourceId: userId ?? null,
+      resourceLabel: userId ?? "all",
+      summary: userId
+        ? `Viewed chat-log sessions filtered to user ${userId}`
+        : "Viewed chat-log session index",
+      details: { userId, page, limit },
+      request: req,
+    });
 
     return NextResponse.json({ sessions, total: Number(total), page, limit });
   },

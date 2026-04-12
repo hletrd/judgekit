@@ -23,6 +23,7 @@ export default async function ChatLogsPage() {
         <div className="rounded-lg border border-dashed px-3 py-2 text-xs text-muted-foreground">
           <p>{t("chatLogsRetentionNotice", { days: DATA_RETENTION_DAYS.chatMessages })}</p>
           <p className="mt-1">{t("chatLogsAccessNotice")}</p>
+          <p className="mt-1">{t("chatLogsAuditNotice")}</p>
         </div>
       </div>
       <ChatLogsClient />

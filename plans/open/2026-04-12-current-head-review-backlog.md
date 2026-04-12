@@ -91,6 +91,7 @@ After re-reading the full review set against the current codebase and archived r
 
 **Progress**
 - ✅ retention windows are now environment-configurable instead of being hard-coded only in the application source
+- ✅ admin chat-log listing and transcript access are now audit logged to improve privileged-access accountability
 
 ### 5. Instructor/admin usability beyond power-user workflows
 **Why later:** important, but not the main security/integrity blocker.

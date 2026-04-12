@@ -41,3 +41,5 @@ This document defines the current default handling expectations for sensitive op
 2. Do not use anti-cheat telemetry as standalone proof.
 3. For recruiting use, disclose that submissions, timing/progress metadata, and integrity telemetry may be reviewed.
 4. Re-check this policy before any exam or public contest launch.
+
+5. Chat-log session and transcript review should be treated as a privileged action and is audit-logged.

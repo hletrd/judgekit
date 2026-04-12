@@ -111,6 +111,7 @@ Retention is now bounded, but privileged transcript access and deletion-policy f
 
 **Progress**
 - ✅ retention windows are now configurable per deployment instead of being fixed application constants only
+- ✅ privileged chat-log session and transcript access are now audit logged
 
 ## Phase 5 — Worker-boundary operational containment
 **Severity:** MEDIUM

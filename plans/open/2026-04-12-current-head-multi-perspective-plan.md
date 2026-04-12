@@ -101,6 +101,7 @@ The system now prunes several data classes, but the current 365-day defaults may
 
 **Progress**
 - ✅ the default retention windows can now be overridden per deployment through explicit environment variables
+- ✅ chat-log list and transcript access now create audit events so privileged review is more accountable
 
 ## Workstream E — Instructor/admin workflow simplification
 **Problem**
