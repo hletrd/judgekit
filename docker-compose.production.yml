@@ -18,16 +18,21 @@ services:
     image: postgres:18-alpine
     container_name: judgekit-db
     restart: unless-stopped
+    # Postgres memory tuning is configurable per-target via .env.production.
+    # Defaults below suit hosts with 6+ GB RAM. For small instances (e.g.
+    # 4GB), set PG_SHARED_BUFFERS=128MB, PG_EFFECTIVE_CACHE_SIZE=512MB,
+    # PG_MAINTENANCE_WORK_MEM=64MB in .env.production so the values survive
+    # resyncs from deploy-docker.sh.
     command:
       - "postgres"
       - "-c"
-      - "shared_buffers=512MB"
+      - "shared_buffers=${PG_SHARED_BUFFERS:-512MB}"
       - "-c"
-      - "effective_cache_size=2GB"
+      - "effective_cache_size=${PG_EFFECTIVE_CACHE_SIZE:-2GB}"
       - "-c"
-      - "work_mem=8MB"
+      - "work_mem=${PG_WORK_MEM:-8MB}"
       - "-c"
-      - "maintenance_work_mem=128MB"
+      - "maintenance_work_mem=${PG_MAINTENANCE_WORK_MEM:-128MB}"
       - "-c"
       - "random_page_cost=2"
       - "-c"
