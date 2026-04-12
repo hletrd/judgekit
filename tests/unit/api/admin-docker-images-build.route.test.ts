@@ -97,6 +97,28 @@ describe("POST /api/v1/admin/docker/images/build", () => {
     expect(existsSyncMock).not.toHaveBeenCalled();
   });
 
+  it("rejects trusted-registry judge images because build only supports local Dockerfiles", async () => {
+    process.env.TRUSTED_DOCKER_REGISTRIES = "registry.example.com/";
+    dbSelectMock.mockReturnValue({
+      from: vi.fn(() => ({
+        where: vi.fn(() => ({
+          limit: vi.fn().mockResolvedValue([
+            { language: "python", dockerImage: "registry.example.com/team/judge-python:1.0" },
+          ]),
+        })),
+      })),
+    });
+
+    const { POST } = await import("@/app/api/v1/admin/docker/images/build/route");
+    const res = await POST(makeRequest({ language: "python" }));
+    const body = await res.json();
+
+    expect(res.status).toBe(400);
+    expect(body.error).toBe("imageTagMustBeLocalJudge");
+    expect(existsSyncMock).not.toHaveBeenCalled();
+    delete process.env.TRUSTED_DOCKER_REGISTRIES;
+  });
+
   it("returns 404 when the expected Dockerfile is missing", async () => {
     dbSelectMock.mockReturnValue({
       from: vi.fn(() => ({

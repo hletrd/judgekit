@@ -6,6 +6,7 @@ import { createApiHandler } from "@/lib/api/handler";
 import { apiSuccess } from "@/lib/api/responses";
 import { listDockerImages, inspectDockerImage, pullDockerImage, removeDockerImage, getDiskUsage } from "@/lib/docker/client";
 import { recordAuditEvent } from "@/lib/audit/events";
+import { isAllowedJudgeDockerImage } from "@/lib/judge/docker-image-validation";
 
 /** Check if Docker images are stale (Dockerfile modified after image was built) */
 async function getStaleImages(images: { repository: string; tag: string }[]): Promise<Set<string>> {
@@ -66,9 +67,8 @@ const pullSchema = z.object({
 export const POST = createApiHandler({
   auth: { capabilities: ["system.settings"] },
   schema: pullSchema,
-  handler: async (_req: NextRequest, { body }) => {
-    // Only allow images with the judge- prefix to prevent supply chain attacks
-    if (!body.imageTag.startsWith("judge-") && !body.imageTag.includes("/judge-")) {
+  handler: async (req: NextRequest, { body, user }) => {
+    if (!isAllowedJudgeDockerImage(body.imageTag)) {
       return NextResponse.json(
         { error: "imageTagMustStartWithJudge", message: "Only judge-* images are allowed" },
         { status: 400 }
@@ -81,6 +81,15 @@ export const POST = createApiHandler({
         { status: 500 }
       );
     }
+    recordAuditEvent({
+      actorId: user.id,
+      actorRole: user.role,
+      action: "docker_image.pulled",
+      resourceType: "docker_image",
+      resourceId: body.imageTag,
+      summary: `Pulled Docker image ${body.imageTag}`,
+      request: req,
+    });
     return apiSuccess({ pulled: body.imageTag });
   },
 });
@@ -93,8 +102,7 @@ export const DELETE = createApiHandler({
   auth: { capabilities: ["system.settings"] },
   schema: deleteSchema,
   handler: async (req: NextRequest, { body, user }) => {
-    // Only allow removal of judge-* images (same restriction as POST pull)
-    if (!body.imageTag.startsWith("judge-") && !body.imageTag.includes("/judge-")) {
+    if (!isAllowedJudgeDockerImage(body.imageTag)) {
       return NextResponse.json(
         { error: "imageTagMustStartWithJudge", message: "Only judge-* images can be removed" },
         { status: 400 }

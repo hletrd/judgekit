@@ -9,7 +9,7 @@ import { recordAuditEvent } from "@/lib/audit/events";
 import { db } from "@/lib/db";
 import { languageConfigs } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
-import { isAllowedJudgeDockerImage } from "@/lib/judge/docker-image-validation";
+import { isAllowedJudgeDockerImage, isLocalJudgeDockerImage } from "@/lib/judge/docker-image-validation";
 
 const buildSchema = z.object({
   language: z.string().min(1).max(64),
@@ -33,6 +33,12 @@ export const POST = createApiHandler({
     if (!isAllowedJudgeDockerImage(langConfig.dockerImage)) {
       return NextResponse.json(
         { error: "imageTagMustStartWithJudge", message: "Only judge-* images are allowed" },
+        { status: 400 }
+      );
+    }
+    if (!isLocalJudgeDockerImage(langConfig.dockerImage)) {
+      return NextResponse.json(
+        { error: "imageTagMustBeLocalJudge", message: "Only local judge-* images can be built" },
         { status: 400 }
       );
     }
