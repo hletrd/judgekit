@@ -37,16 +37,11 @@ This directory contains **planning only**. No implementation is included here.
 | `.context/reviews/multi-perspective-review-2026-04-12-current-head.md` | Archived (accepted current posture) | `plans/archive/2026-04-12-current-head-multi-perspective-plan.md` | Current-HEAD follow-up gaps were explicitly accepted for now by the user/owner on 2026-04-13 |
 | `.context/reviews/adversarial-security-review-2026-04-12-current-head.md` | Archived (implemented/revalidated) | `plans/archive/2026-04-13-current-head-remediation-plan.md` | Repository-local follow-up gaps were closed or reduced to explicit external prerequisites during the 2026-04-13 remediation pass |
 | `.context/reviews/comprehensive-code-review-2026-04-13-current-head.md` | Archived (implemented/revalidated) | `plans/archive/2026-04-13-current-head-remediation-plan.md` | Its actionable repository-local findings were implemented during the 2026-04-13 remediation pass |
-| `.context/reviews/comprehensive-code-review-2026-04-13-e1051e9.md` | Open plan | `plans/open/2026-04-13-e1051e9-master-review-backlog.md` + child plans | Latest full review against `e1051e9`; still-open repository-local findings remain and need fresh implementation planning |
+| `.context/reviews/comprehensive-code-review-2026-04-13-e1051e9.md` | Archived (implemented) | `plans/archive/2026-04-13-e1051e9-master-review-backlog.md` and sibling archive plans | All repository-local findings from the latest comprehensive review were implemented in subsequent commits through `f9f1650` |
 | `.context/reviews/_archive/*` | Historical | source archive | Already archived review context only |
 
 ## Currently actionable plan set
-- `plans/open/2026-04-13-e1051e9-master-review-backlog.md`
-- `plans/open/2026-04-13-e1051e9-contest-integrity-plan.md`
-- `plans/open/2026-04-13-e1051e9-role-and-authorization-consistency-plan.md`
-- `plans/open/2026-04-13-e1051e9-access-code-and-chat-scope-plan.md`
-- `plans/open/2026-04-13-e1051e9-select-contract-plan.md`
+- none
 
 ## Archival note for this pass
-No additional active plan files needed moving into `plans/archive/` during this planning pass.
-All previously completed review plans were already archived before this run; this pass adds a new open plan set for the latest comprehensive review only.
+The latest open remediation plans were moved from `plans/open/` to `plans/archive/` after the associated repository-local review findings were implemented and verified.
