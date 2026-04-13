@@ -24,7 +24,7 @@ import {
 } from "@/lib/assignments/submissions";
 import { canManageGroupResourcesAsync } from "@/lib/assignments/management";
 import { canAccessGroup } from "@/lib/auth/permissions";
-import { assertUserRole } from "@/lib/security/constants";
+import { resolveCapabilities } from "@/lib/capabilities/cache";
 import { db } from "@/lib/db";
 import { assignments, problems, submissions } from "@/lib/db/schema";
 import { getResolvedSystemTimeZone } from "@/lib/system-settings";
@@ -132,7 +132,9 @@ export default async function ContestDetailPage({
     getTranslations("contests.mySubmissions"),
   ]);
 
-  const role = assertUserRole(session.user.role as string);
+  const role = session.user.role;
+  const roleCapabilities = await resolveCapabilities(role);
+  const canOverrideLockedProblems = roleCapabilities.has("groups.view_all");
 
   const assignment = await db.query.assignments.findFirst({
     where: eq(assignments.id, assignmentId),
@@ -583,9 +585,7 @@ export default async function ContestDetailPage({
               groupId={groupId}
               availableProblems={availableProblemOptions}
               initialAssignment={contestEditorValue}
-              allowProblemOverride={
-                session.user.role === "admin" || session.user.role === "super_admin"
-              }
+              allowProblemOverride={canOverrideLockedProblems}
             />
             <ExportButton assignmentId={assignmentId} />
             <AssignmentDeleteButton

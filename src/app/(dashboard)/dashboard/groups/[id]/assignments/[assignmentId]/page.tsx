@@ -12,7 +12,6 @@ import {
 } from "@/lib/assignments/submissions";
 import { canAccessGroup } from "@/lib/auth/permissions";
 import { canManageGroupResourcesAsync } from "@/lib/assignments/management";
-import { assertUserRole } from "@/lib/security/constants";
 import { db } from "@/lib/db";
 import { assignments } from "@/lib/db/schema";
 import { getResolvedSystemTimeZone } from "@/lib/system-settings";
@@ -88,7 +87,7 @@ export default async function GroupAssignmentDetailPage({
     getTranslations("groups.assignmentDetail"),
   ]);
 
-  const role = assertUserRole(session.user.role as string);
+  const role = session.user.role;
   const canViewBoard = await canViewAssignmentSubmissions(assignmentId, session.user.id, role);
   const hasGroupAccess = await canAccessGroup(groupId, session.user.id, role);
 

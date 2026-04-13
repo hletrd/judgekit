@@ -15,7 +15,6 @@ import {
   validateAndHashPassword,
   validateRoleChangeAsync,
 } from "@/lib/users/core";
-import { assertUserRole, isUserRole } from "@/lib/security/constants";
 import { adminUpdateUserSchema, userCreateSchema } from "@/lib/validators/profile";
 import { isTrustedServerActionOrigin } from "@/lib/security/server-actions";
 import { checkServerActionRateLimit } from "@/lib/security/api-rate-limit";
@@ -253,9 +252,6 @@ export async function editUser(userId: string, data: ManagedUserInput): Promise<
     const roleError = await validateRoleChangeAsync(actorRole, requestedRole, targetUser.role);
     if (roleError === "invalidRole") return { success: false, error: "updateUserFailed" };
     if (roleError) return { success: false, error: roleError };
-    if (!isUserRole(requestedRole)) return { success: false, error: "updateUserFailed" };
-    const validatedRole = assertUserRole(requestedRole);
-
     // Prevent password reset for users of equal or higher privilege
     if (data.password && targetUser.role) {
       const [actorLevel, targetLevel] = await Promise.all([
@@ -284,11 +280,11 @@ export async function editUser(userId: string, data: ManagedUserInput): Promise<
       email: normalizedEmail,
       name: data.name,
       className: normalizedClassName,
-      role: validatedRole,
+      role: requestedRole,
     };
 
     const shouldInvalidateExistingSessions =
-      validatedRole !== targetUser.role || Boolean(data.password);
+      requestedRole !== targetUser.role || Boolean(data.password);
 
     if (passwordHash) {
       updates.passwordHash = passwordHash;
@@ -343,7 +339,7 @@ export async function editUser(userId: string, data: ManagedUserInput): Promise<
         changedFields: Object.keys(updates).filter((key) => key !== "passwordHash"),
         invalidatedExistingSessions: shouldInvalidateExistingSessions,
         resetPassword: Boolean(data.password),
-        role: validatedRole,
+        role: requestedRole,
       },
       context: auditContext,
     });
@@ -392,9 +388,6 @@ export async function createUser(data: ManagedUserInput): Promise<UserManagement
     const roleError = await validateRoleChangeAsync(actorRole, requestedRole);
     if (roleError === "invalidRole") return { success: false, error: "createUserFailed" };
     if (roleError) return { success: false, error: roleError };
-    if (!isUserRole(requestedRole)) return { success: false, error: "createUserFailed" };
-    const validatedRole = assertUserRole(requestedRole);
-
     const id = nanoid();
     let passwordHash: string;
     if (data.password) {
@@ -424,7 +417,7 @@ export async function createUser(data: ManagedUserInput): Promise<UserManagement
           email: normalizedEmail,
           name: data.name,
           className: normalizedClassName,
-          role: validatedRole,
+          role: requestedRole,
           passwordHash,
           isActive: true,
           mustChangePassword: true, // force new user to change password on first login
@@ -461,7 +454,7 @@ export async function createUser(data: ManagedUserInput): Promise<UserManagement
       resourceLabel: data.username,
       summary: `Created user @${data.username}`,
       details: {
-        role: validatedRole,
+        role: requestedRole,
         usedGeneratedPassword: !data.password,
       },
       context: auditContext,

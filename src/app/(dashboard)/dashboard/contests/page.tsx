@@ -5,7 +5,6 @@ import { redirect } from "next/navigation";
 import { resolveCapabilities } from "@/lib/capabilities/cache";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { assertUserRole } from "@/lib/security/constants";
 import { getContestsForUser, getContestStatus } from "@/lib/assignments/contests";
 import type { ContestStatus } from "@/lib/assignments/contests";
 import { formatDateTimeInTimeZone } from "@/lib/datetime";
@@ -81,7 +80,7 @@ export default async function ContestsPage({
     getResolvedSystemTimeZone(),
   ]);
 
-  const role = assertUserRole(session.user.role as string);
+  const role = session.user.role;
   const caps = await resolveCapabilities(session.user.role);
   const { isRecruitingCandidate, effectivePlatformMode } = await getRecruitingAccessContext(session.user.id);
   if (

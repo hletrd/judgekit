@@ -710,6 +710,29 @@ describe("editUser", () => {
     expect(result).toEqual({ success: true });
   });
 
+  it("allows a valid custom requested role during user update", async () => {
+    const { editUser } = await import("@/lib/actions/user-management");
+    setupAuthorizedAdmin();
+    mocks.validateRoleChangeAsync.mockResolvedValue(null);
+    mocks.dbQueryUsersFindFirst.mockResolvedValue({
+      id: "user-1",
+      username: "target",
+      role: "student",
+    });
+    mocks.isUsernameTaken.mockResolvedValue(false);
+    mocks.isEmailTaken.mockResolvedValue(false);
+
+    const result = await editUser("user-1", {
+      ...defaultUserInput,
+      role: "custom_reviewer",
+    });
+
+    expect(result).toEqual({ success: true });
+    expect(mocks.dbUpdateSet).toHaveBeenCalledWith(
+      expect.objectContaining({ role: "custom_reviewer" })
+    );
+  });
+
   it("updates user with password change and invalidates sessions", async () => {
     const { editUser } = await import("@/lib/actions/user-management");
     setupAuthorizedAdmin();
@@ -838,6 +861,28 @@ describe("createUser", () => {
       password: undefined,
     });
     expect(result).toEqual({ success: true });
+  });
+
+  it("allows a valid custom requested role during user creation", async () => {
+    const { createUser } = await import("@/lib/actions/user-management");
+    setupAuthorizedAdmin();
+    mocks.validateRoleChangeAsync.mockResolvedValue(null);
+    mocks.isUsernameTaken.mockResolvedValue(false);
+    mocks.isEmailTaken.mockResolvedValue(false);
+    mocks.nanoid.mockReturnValue("new-id");
+    mocks.generateSecurePassword.mockReturnValue("gen-password-abc");
+    mocks.hashPassword.mockResolvedValue("hashed-gen-password");
+
+    const result = await createUser({
+      ...defaultUserInput,
+      role: "custom_reviewer",
+      password: undefined,
+    });
+
+    expect(result).toEqual({ success: true });
+    expect(mocks.dbInsertValues).toHaveBeenCalledWith(
+      expect.objectContaining({ role: "custom_reviewer" })
+    );
   });
 
   it("returns usernameAndNameRequired for empty username", async () => {

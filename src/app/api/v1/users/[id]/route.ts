@@ -7,9 +7,6 @@ import { eq } from "drizzle-orm";
 import { forbidden, notFound, createApiHandler } from "@/lib/api/handler";
 import type { AuthUser } from "@/lib/api/handler";
 import { recordAuditEvent } from "@/lib/audit/events";
-import {
-  isUserRole,
-} from "@/lib/security/constants";
 import { getRoleLevel, resolveCapabilities } from "@/lib/capabilities/cache";
 import { safeUserSelect } from "@/lib/db/selects";
 import { updateProfileSchema, adminUpdateUserSchema } from "@/lib/validators/profile";
@@ -26,7 +23,7 @@ const adminPatchUserSchema = z.object({
   username: z.string().min(1).max(50).optional(),
   email: z.string().email().optional().nullable(),
   className: z.string().max(100).optional().nullable(),
-  role: z.enum(["student", "instructor", "admin", "super_admin"]).optional(),
+  role: z.string().min(1).max(100).optional(),
   isActive: z.boolean().optional(),
   mustChangePassword: z.boolean().optional(),
   password: z.string().min(1).optional(),
@@ -183,7 +180,7 @@ async function applyRoleUpdate(
     return forbidden();
   }
 
-  if (typeof body.role !== "string" || !isUserRole(body.role)) {
+  if (typeof body.role !== "string") {
     return apiError("invalidRole", 400);
   }
 

@@ -8,9 +8,16 @@ vi.mock("@/lib/db/queries", () => ({
 const { canManageGroupResourcesAsyncMock } = vi.hoisted(() => ({
   canManageGroupResourcesAsyncMock: vi.fn(),
 }));
+const { resolveCapabilitiesMock } = vi.hoisted(() => ({
+  resolveCapabilitiesMock: vi.fn(),
+}));
 
 vi.mock("@/lib/assignments/management", () => ({
   canManageGroupResourcesAsync: canManageGroupResourcesAsyncMock,
+}));
+
+vi.mock("@/lib/capabilities/cache", () => ({
+  resolveCapabilities: resolveCapabilitiesMock,
 }));
 
 vi.mock("@/lib/db", () => ({
@@ -28,7 +35,7 @@ vi.mock("@/lib/logger", () => ({
 }));
 import { computeIcpcPenalty } from "@/lib/assignments/contest-scoring";
 import { generateAccessCode } from "@/lib/assignments/access-codes";
-import { canManageContest } from "@/lib/assignments/contests";
+import { canManageContest, getContestsForUser } from "@/lib/assignments/contests";
 import {
   normalizeSource,
   jaccardSimilarity,
@@ -122,6 +129,21 @@ describe("canManageContest", () => {
         }
       )
     ).resolves.toBe(true);
+  });
+});
+
+describe("getContestsForUser", () => {
+  it("uses the owned-contests query for a custom role with assignment visibility", async () => {
+    const { rawQueryAll } = await import("@/lib/db/queries");
+    resolveCapabilitiesMock.mockResolvedValue(new Set(["assignments.view_status"]));
+    vi.mocked(rawQueryAll).mockResolvedValue([]);
+
+    await getContestsForUser("custom-1", "custom_manager");
+
+    expect(rawQueryAll).toHaveBeenCalledWith(
+      expect.stringContaining("group_instructors gi"),
+      { userId: "custom-1" }
+    );
   });
 });
 

@@ -4,7 +4,6 @@ import { getLocale, getTranslations } from "next-intl/server";
 import { and, desc, eq } from "drizzle-orm";
 import { notFound, redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
-import { assertUserRole } from "@/lib/security/constants";
 import { canViewAssignmentSubmissions } from "@/lib/assignments/submissions";
 import { db } from "@/lib/db";
 import {
@@ -58,7 +57,7 @@ export default async function ParticipantAuditPage({
     getResolvedSystemTimeZone(),
   ]);
 
-  const role = assertUserRole(session.user.role as string);
+  const role = session.user.role;
 
   const canView = await canViewAssignmentSubmissions(
     assignmentId,

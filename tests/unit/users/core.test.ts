@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => {
     hashPassword: vi.fn<() => Promise<string>>(),
     getPasswordValidationError: vi.fn<() => string | null>(),
     isUserRole: vi.fn<(v: string) => boolean>(),
+    isValidRole: vi.fn<() => Promise<boolean>>(),
     canManageRole: vi.fn<() => boolean>(),
     canManageRoleAsync: vi.fn<() => Promise<boolean>>(),
     eq: vi.fn((_field: unknown, value: unknown) => ({ _eq: value })),
@@ -50,6 +51,10 @@ vi.mock("@/lib/security/constants", () => ({
   canManageRoleAsync: mocks.canManageRoleAsync,
 }));
 
+vi.mock("@/lib/capabilities/cache", () => ({
+  isValidRole: mocks.isValidRole,
+}));
+
 vi.mock("@/lib/security/password", () => ({
   getPasswordValidationError: mocks.getPasswordValidationError,
 }));
@@ -58,6 +63,7 @@ vi.mock("@/lib/security/password", () => ({
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mocks.isValidRole.mockResolvedValue(false);
   mocks.dbSelectMock.mockImplementation(() => ({
     from: vi.fn(() => ({
       where: vi.fn(() => ({
@@ -267,12 +273,22 @@ describe("validateRoleChange", () => {
 });
 
 describe("validateRoleChangeAsync", () => {
-  it("returns null for a valid custom-role assignment", async () => {
+  it("returns null for a valid built-in assignment", async () => {
     const { validateRoleChangeAsync } = await import("@/lib/users/core");
     mocks.isUserRole.mockReturnValue(true);
     mocks.canManageRoleAsync.mockResolvedValue(true);
 
     const result = await validateRoleChangeAsync("custom_editor", "student");
+    expect(result).toBeNull();
+  });
+
+  it("returns null for a valid custom-role assignment", async () => {
+    const { validateRoleChangeAsync } = await import("@/lib/users/core");
+    mocks.isUserRole.mockReturnValue(false);
+    mocks.isValidRole.mockResolvedValue(true);
+    mocks.canManageRoleAsync.mockResolvedValue(true);
+
+    const result = await validateRoleChangeAsync("super_admin", "custom_reviewer");
     expect(result).toBeNull();
   });
 

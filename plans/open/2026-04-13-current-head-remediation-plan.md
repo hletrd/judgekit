@@ -21,7 +21,12 @@ The earlier 2026-04-13 acceptance note is now superseded by a newer user directi
 - capability-aware paths are used where custom roles are expected
 
 **Progress**
-- ⏳ not started
+- ✅ completed 2026-04-13
+- user create/update API routes now validate custom roles at runtime instead of hard-coding the built-in enum only
+- user-management server actions now persist validated custom roles instead of forcing built-in-only assertions
+- affected contest/group dashboard pages no longer crash on custom-role sessions because the built-in-only `assertUserRole(...)` path was removed
+- contest discovery now uses capability-aware branching for custom roles and includes co-instructor-backed ownership lookup
+- coverage: targeted user/core, user route, user-management action, contest helper, and implementation-guard tests
 
 ## Workstream B — Chat transcript integrity and admin chat-log correctness
 **Targets**

@@ -10,8 +10,8 @@ import { nanoid } from "nanoid";
 import { hashPassword } from "@/lib/security/password-hash";
 import { generateSecurePassword } from "@/lib/auth/generated-password";
 import { safeUserSelect } from "@/lib/db/selects";
-import { assertUserRole, isUserRole } from "@/lib/security/constants";
-import { resolveCapabilities } from "@/lib/capabilities/cache";
+import { isUserRole } from "@/lib/security/constants";
+import { isValidRole, resolveCapabilities } from "@/lib/capabilities/cache";
 import { userCreateSchema } from "@/lib/validators/profile";
 import { parsePagination } from "@/lib/api/pagination";
 import {
@@ -29,11 +29,11 @@ export const GET = createApiHandler({
     const { page, limit, offset } = parsePagination(searchParams);
     const role = searchParams.get("role");
 
-    if (role && !isUserRole(role)) {
+    if (role && !isUserRole(role) && !(await isValidRole(role))) {
       return apiError("invalidRole", 400);
     }
 
-    const whereClause = role ? eq(users.role, assertUserRole(role)) : undefined;
+    const whereClause = role ? eq(users.role, role) : undefined;
 
     const [totalRow] = await db
       .select({ count: sql<number>`count(*)` })
@@ -124,7 +124,7 @@ export const POST = createApiHandler({
           name,
           className: normalizedClassName,
           passwordHash,
-          role: assertUserRole(requestedRole),
+          role: requestedRole,
           isActive: true,
           mustChangePassword: true,
           createdAt: new Date(),

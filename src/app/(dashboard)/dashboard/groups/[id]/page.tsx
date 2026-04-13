@@ -16,7 +16,7 @@ import {
   getManageableProblemsForGroup,
 } from "@/lib/assignments/management";
 import { canAccessGroup } from "@/lib/auth/permissions";
-import { assertUserRole } from "@/lib/security/constants";
+import { resolveCapabilities } from "@/lib/capabilities/cache";
 import AssignmentFormDialog, { type AssignmentEditorValue } from "./assignment-form-dialog";
 import { AssignmentDeleteButton } from "./assignment-delete-button";
 import { GroupMembersManager } from "./group-members-manager";
@@ -72,7 +72,9 @@ export default async function GroupDetailPage({ params }: { params: Promise<{ id
     getLocale(),
     getResolvedSystemTimeZone(),
   ]);
-  const role = assertUserRole(session.user.role as string);
+  const role = session.user.role;
+  const roleCapabilities = await resolveCapabilities(role);
+  const canOverrideLockedProblems = roleCapabilities.has("groups.view_all");
 
   const group = await db.query.groups.findFirst({
     where: eq(groups.id, groupId),
@@ -272,9 +274,7 @@ export default async function GroupDetailPage({ params }: { params: Promise<{ id
             <AssignmentFormDialog
               groupId={groupId}
               availableProblems={availableProblemOptions}
-              allowProblemOverride={
-                session.user.role === "admin" || session.user.role === "super_admin"
-              }
+              allowProblemOverride={canOverrideLockedProblems}
             />
           )}
         </CardHeader>
@@ -354,9 +354,7 @@ export default async function GroupDetailPage({ params }: { params: Promise<{ id
                             groupId={groupId}
                             availableProblems={availableProblemOptions}
                             initialAssignment={editorValue}
-                            allowProblemOverride={
-                              session.user.role === "admin" || session.user.role === "super_admin"
-                            }
+                            allowProblemOverride={canOverrideLockedProblems}
                           />
                           <AssignmentDeleteButton
                             groupId={groupId}

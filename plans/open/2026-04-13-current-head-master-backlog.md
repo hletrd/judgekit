@@ -16,7 +16,8 @@ The 2026-04-12 current-head follow-up plans were previously archived as **accept
 - user CRUD still rejects custom roles in multiple API/server-action flows
 - page-level contest/group entrypoints still cast sessions to built-in-only roles
 - contest/group access helpers still branch on built-in roles in places
-- **Status:** open
+- **Status:** completed 2026-04-13
+- **Progress note:** user CRUD now accepts validated custom-role names in the API/server-action flows, built-in-only page assertions were removed from the affected contest/group pages, and contest discovery now uses capability-aware branching for custom roles.
 
 ### 2. Chat transcript integrity and admin review correctness
 - client can suppress or forge logged chat history

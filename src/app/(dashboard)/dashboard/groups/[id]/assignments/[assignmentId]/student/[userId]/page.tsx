@@ -4,7 +4,6 @@ import { getLocale, getTranslations } from "next-intl/server";
 import { and, desc, eq } from "drizzle-orm";
 import { notFound, redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
-import { assertUserRole } from "@/lib/security/constants";
 import { canViewAssignmentSubmissions } from "@/lib/assignments/submissions";
 import { db } from "@/lib/db";
 import {
@@ -41,7 +40,7 @@ export default async function StudentSubmissionsPage({
   if (!session?.user) redirect("/login");
 
   const { id: groupId, assignmentId, userId } = await params;
-  const role = assertUserRole(session.user.role as string);
+  const role = session.user.role;
   const currentUserId = session.user.id;
 
   // Allow access if: instructor/admin can view assignment submissions, OR student is viewing their own

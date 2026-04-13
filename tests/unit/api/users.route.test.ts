@@ -300,6 +300,8 @@ describe("GET /api/v1/users", () => {
 
   it("rejects invalid role filter with 400", async () => {
     getApiUserMock.mockResolvedValue(adminUser);
+    const { isValidRole } = await import("@/lib/capabilities/cache");
+    vi.mocked(isValidRole).mockResolvedValueOnce(false);
 
     const req = makeRequest(
       "http://localhost:3000/api/v1/users?role=hacker"
@@ -499,6 +501,38 @@ describe("POST /api/v1/users", () => {
     const res = await POST(req);
 
     expect(res.status).toBe(201);
+  });
+
+  it("allows assigning a valid custom role when the actor can manage it", async () => {
+    getApiUserMock.mockResolvedValue(adminUser);
+    validateRoleChangeAsyncMock.mockResolvedValue(null);
+
+    dbSelectMock.mockReset();
+    dbSelectMock
+      .mockReturnValueOnce(makeSelectChain([]))
+      .mockReturnValueOnce(makeSelectChain([]))
+      .mockReturnValueOnce(makeSelectChain([{ ...safeUser, role: "custom_reviewer" }]));
+
+    dbInsertMock.mockReturnValue({
+      values: vi.fn().mockReturnValue({
+        returning: vi.fn().mockResolvedValue([{ ...safeUser, role: "custom_reviewer" }]),
+      }),
+    });
+
+    const req = makeRequest("http://localhost:3000/api/v1/users", {
+      method: "POST",
+      body: {
+        username: "customreviewer",
+        name: "Custom Reviewer",
+        role: "custom_reviewer",
+      },
+    });
+
+    const res = await POST(req);
+    const body = await res.json();
+
+    expect(res.status).toBe(201);
+    expect(body.data.user.role).toBe("custom_reviewer");
   });
 
   it("rejects missing CSRF with 403", async () => {
@@ -703,6 +737,31 @@ describe("PATCH /api/v1/users/[id]", () => {
     const res = await PATCH(req, makeCtx("student-id"));
 
     expect(res.status).toBe(200);
+  });
+
+  it("allows assigning a valid custom role on update", async () => {
+    getApiUserMock.mockResolvedValue(adminUser);
+    validateRoleChangeAsyncMock.mockResolvedValue(null);
+
+    const updatedUser = { ...safeUser, role: "custom_reviewer" };
+    dbSelectMock
+      .mockReturnValueOnce(makeSelectChain([safeUser]))
+      .mockReturnValueOnce(makeSelectChain([updatedUser]));
+
+    dbUpdateMock.mockReturnValue({
+      set: vi.fn(() => ({ where: vi.fn().mockResolvedValue(undefined) })),
+    });
+
+    const req = makeRequest(
+      "http://localhost:3000/api/v1/users/student-id",
+      { method: "PATCH", body: { role: "custom_reviewer" } }
+    );
+
+    const res = await PATCH(req, makeCtx("student-id"));
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(body.data.role).toBe("custom_reviewer");
   });
 
   it("allows a custom role with users.edit to reset a lower-level user's password", async () => {

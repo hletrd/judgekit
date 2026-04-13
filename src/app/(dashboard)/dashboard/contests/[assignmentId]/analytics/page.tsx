@@ -3,7 +3,6 @@ import { ArrowLeft } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 import { eq } from "drizzle-orm";
 import { auth } from "@/lib/auth";
-import { assertUserRole } from "@/lib/security/constants";
 import { db } from "@/lib/db";
 import { assignments } from "@/lib/db/schema";
 import { canViewAssignmentSubmissions } from "@/lib/assignments/submissions";
@@ -25,7 +24,7 @@ export default async function ContestAnalyticsPage({
     getTranslations("common"),
   ]);
 
-  const role = assertUserRole(session.user.role as string);
+  const role = session.user.role;
 
   const assignment = await db.query.assignments.findFirst({
     where: eq(assignments.id, assignmentId),

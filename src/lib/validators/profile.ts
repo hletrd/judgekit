@@ -54,7 +54,10 @@ export const userCreateSchema = adminUpdateUserSchema.extend({
       .regex(/^[a-zA-Z0-9_-]+$/, "usernameInvalidChars")
       .toLowerCase()
   ),
-  role: z.preprocess(trimString, z.enum(["student", "instructor", "admin", "super_admin"], { message: "invalidRole" })),
+  role: z.preprocess(
+    trimString,
+    z.string().min(1, "invalidRole").max(100, "invalidRole")
+  ),
   password: z.string().optional(),
 });
 

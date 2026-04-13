@@ -1,6 +1,7 @@
 import { canManageGroupResourcesAsync } from "@/lib/assignments/management";
 import { rawQueryOne, rawQueryAll } from "@/lib/db/queries";
-import type { UserRole, ExamMode, ScoringModel } from "@/types";
+import type { ExamMode, ScoringModel } from "@/types";
+import { resolveCapabilities } from "@/lib/capabilities/cache";
 
 export type ContestEntry = {
   id: string;
@@ -117,9 +118,22 @@ const ORDER_BY = `
 
 export async function getContestsForUser(
   userId: string,
-  role: UserRole
+  role: string
 ): Promise<ContestEntry[]> {
-  if (role === "super_admin" || role === "admin") {
+  const caps = await resolveCapabilities(role);
+  const canViewAllContests =
+    role === "super_admin" ||
+    role === "admin" ||
+    caps.has("groups.view_all") ||
+    caps.has("submissions.view_all");
+  const canManageOwnedContests =
+    role === "instructor" ||
+    caps.has("assignments.view_status") ||
+    caps.has("contests.view_analytics") ||
+    caps.has("anti_cheat.view_events") ||
+    caps.has("recruiting.manage_invitations");
+
+  if (canViewAllContests) {
     const rows = await rawQueryAll<RawContestRow>(
       `${BASE_SELECT}
        LEFT JOIN exam_sessions es ON es.assignment_id = a.id AND es.user_id = @userId
@@ -130,12 +144,18 @@ export async function getContestsForUser(
     return rows.map(mapRow);
   }
 
-  if (role === "instructor") {
+  if (canManageOwnedContests) {
     const rows = await rawQueryAll<RawContestRow>(
       `${BASE_SELECT}
        LEFT JOIN exam_sessions es ON es.assignment_id = a.id AND es.user_id = @userId
        WHERE a.exam_mode != 'none'
-         AND g.instructor_id = @userId
+         AND (
+           g.instructor_id = @userId
+           OR EXISTS (
+             SELECT 1 FROM group_instructors gi
+             WHERE gi.group_id = a.group_id AND gi.user_id = @userId
+           )
+         )
        ${ORDER_BY}`,
       { userId }
     );

@@ -3,6 +3,7 @@ import { hashPassword } from "@/lib/security/password-hash";
 import { db, type TransactionClient } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { canManageRole, canManageRoleAsync, isUserRole } from "@/lib/security/constants";
+import { isValidRole } from "@/lib/capabilities/cache";
 import { getPasswordValidationError, type PasswordValidationError } from "@/lib/security/password";
 
 // ─── Uniqueness checks ────────────────────────────────────────────────────────
@@ -101,7 +102,7 @@ export async function validateRoleChangeAsync(
   requestedRole: string,
   targetCurrentRole?: string
 ): Promise<RoleValidationError | null> {
-  if (!isUserRole(requestedRole)) {
+  if (!isUserRole(requestedRole) && !(await isValidRole(requestedRole))) {
     return "invalidRole";
   }
 
