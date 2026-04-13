@@ -132,6 +132,7 @@ After re-reading the full review set against the current codebase and archived r
 
 **Progress**
 - ✅ published `docs/judge-worker-incident-runbook.md` and linked it from the high-stakes/readiness surfaces
+- ✅ worker inventory and stats reads are now audit logged, and the workers page warns admins that access is audited
 
 ## Recommended execution order
 1. High-assurance recruiting identity

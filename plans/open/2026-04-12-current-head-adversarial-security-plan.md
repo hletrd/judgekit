@@ -136,6 +136,7 @@ The judge worker remains the highest-consequence technical boundary in the syste
 
 **Progress**
 - ✅ published `docs/judge-worker-incident-runbook.md` to give operators a dedicated response guide for the privileged worker boundary
+- ✅ worker inventory and stats reads are now audit logged to improve accountability around privileged operational visibility
 
 ## Phase 6 — Verification environment reliability
 **Severity:** LOW

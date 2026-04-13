@@ -6,6 +6,7 @@ import { desc } from "drizzle-orm";
 import { forbidden } from "@/lib/api/auth";
 import { resolveCapabilities } from "@/lib/capabilities/cache";
 import { createApiHandler } from "@/lib/api/handler";
+import { recordAuditEvent } from "@/lib/audit/events";
 
 export const GET = createApiHandler({
   handler: async (req: NextRequest, { user }) => {
@@ -31,6 +32,17 @@ export const GET = createApiHandler({
       })
       .from(judgeWorkers)
       .orderBy(desc(judgeWorkers.registeredAt));
+
+    recordAuditEvent({
+      actorId: user.id,
+      actorRole: user.role,
+      action: "worker_inventory.viewed",
+      resourceType: "worker",
+      resourceId: null,
+      resourceLabel: "all",
+      summary: "Viewed judge worker inventory",
+      request: req,
+    });
 
     return apiSuccess(workers);
   },

@@ -6,6 +6,7 @@ import { eq, sql, inArray } from "drizzle-orm";
 import { forbidden } from "@/lib/api/auth";
 import { resolveCapabilities } from "@/lib/capabilities/cache";
 import { createApiHandler } from "@/lib/api/handler";
+import { recordAuditEvent } from "@/lib/audit/events";
 
 export const GET = createApiHandler({
   handler: async (req: NextRequest, { user }) => {
@@ -41,6 +42,17 @@ export const GET = createApiHandler({
       .from(judgeWorkers)
       .where(eq(judgeWorkers.status, "online"))
       .then((rows) => rows[0]?.total ?? 0);
+
+    recordAuditEvent({
+      actorId: user.id,
+      actorRole: user.role,
+      action: "worker_stats.viewed",
+      resourceType: "worker_stats",
+      resourceId: null,
+      resourceLabel: "summary",
+      summary: "Viewed judge worker stats summary",
+      request: req,
+    });
 
     return apiSuccess({
       workersOnline: online,

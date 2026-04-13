@@ -1316,7 +1316,8 @@
       "addWorkerScript": "방법 2: 배포 스크립트",
       "addWorkerNote": "<your-judge-auth-token>을 .env.production 파일의 JUDGE_AUTH_TOKEN으로 교체하세요. 워커가 시작되면 이 목록에 표시됩니다.",
       "copied": "클립보드에 복사됨",
-      "aliasPlaceholder": "별칭..."
+      "aliasPlaceholder": "별칭...",
+      "auditNotice": "워커 목록 및 통계 열람은 감사 로그에 기록됩니다."
     },
     "apiKeys": {
       "title": "API 키",
