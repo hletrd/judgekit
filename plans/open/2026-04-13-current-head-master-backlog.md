@@ -31,7 +31,8 @@ The 2026-04-12 current-head follow-up plans were previously archived as **accept
 - production upload blobs are not persisted across container replacement
 - shipped docker-proxy permissions do not match documented admin image-management behavior
 - current-head high-stakes/runtime posture docs/env examples need truth sync
-- **Status:** open
+- **Status:** in progress
+- **Progress note:** the shared SSE terminal path now releases coordination slots correctly, production compose now persists `/app/data`, and production/dedicated-worker docker-proxy configs now expose the image/build surfaces expected by the admin image-management flow. Docs/env truth-sync remains open.
 
 ### 4. Similarity-engine parity
 - TS fallback and Rust sidecar normalize code differently

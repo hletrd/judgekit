@@ -67,8 +67,8 @@ services:
     restart: unless-stopped
     environment:
       - CONTAINERS=1
-      - IMAGES=0
-      - BUILD=0
+      - IMAGES=1
+      - BUILD=1
       - POST=1
       - DELETE=1
       - LOG_LEVEL=warning
@@ -86,6 +86,8 @@ services:
       - "127.0.0.1:3100:3000"
     env_file:
       - .env.production
+    volumes:
+      - judgekit-app-data:/app/data
     environment:
       - DB_DIALECT=postgresql
       - DATABASE_URL=postgres://judgekit:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@db:5432/judgekit
@@ -178,6 +180,8 @@ services:
 
 volumes:
   judgekit-pgdata:
+    driver: local
+  judgekit-app-data:
     driver: local
   judgekit-dead-letter:
     driver: local

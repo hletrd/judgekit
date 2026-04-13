@@ -86,4 +86,16 @@ describe("deployment security defaults", () => {
     expect(dockerfile).not.toContain("docker-cli");
     expect(dockerfile).not.toContain("addgroup nextjs docker");
   });
+
+  it("keeps upload persistence and docker-proxy capabilities aligned with the admin deployment contract", () => {
+    const production = read("docker-compose.production.yml");
+    const workerCompose = read("docker-compose.worker.yml");
+
+    expect(production).toContain("judgekit-app-data:/app/data");
+    expect(production).toContain("judgekit-app-data:");
+    expect(production).toContain("- IMAGES=1");
+    expect(production).toContain("- BUILD=1");
+    expect(workerCompose).toContain("- IMAGES=1");
+    expect(workerCompose).toContain("- BUILD=1");
+  });
 });

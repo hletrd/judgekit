@@ -230,7 +230,11 @@ export async function GET(
         ? stripSourceCode(fullSubmission)
         : fullSubmission;
       const body = `event: result\ndata: ${JSON.stringify(sanitized)}\n\n`;
-      removeConnection(connId);
+      if (useSharedCoordination) {
+        await releaseSharedSseConnectionSlot(sharedConnectionKey);
+      } else {
+        removeConnection(connId);
+      }
       return new Response(body, {
         headers: sseHeaders(),
       });

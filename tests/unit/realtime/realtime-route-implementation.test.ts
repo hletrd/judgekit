@@ -22,6 +22,14 @@ describe("realtime route implementation guards", () => {
     expect(source).toContain('releaseSharedSseConnectionSlot(sharedConnectionKey)');
   });
 
+  it("releases shared connection slots even on the one-shot terminal-submission path", () => {
+    const source = read("src/app/api/v1/submissions/[id]/events/route.ts");
+
+    expect(source).toContain("if (useSharedCoordination) {");
+    expect(source).toContain("await releaseSharedSseConnectionSlot(sharedConnectionKey);");
+    expect(source).toContain("const body = `event: result");
+  });
+
   it("checks the multi-instance guard in the anti-cheat route", () => {
     const source = read("src/app/api/v1/contests/[assignmentId]/anti-cheat/route.ts");
 

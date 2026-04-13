@@ -61,7 +61,12 @@ The earlier 2026-04-13 acceptance note is now superseded by a newer user directi
 - docs/env examples match actual runtime contract
 
 **Progress**
-- ⏳ not started
+- 🚧 in progress
+- fixed the shared-coordination leak on the terminal submission SSE path
+- production compose now mounts a dedicated app-data volume so uploaded files survive container replacement
+- production and dedicated-worker docker-proxy configs now enable image/build endpoints expected by the admin image-management surfaces
+- coverage: targeted realtime implementation-guard and deploy-security tests
+- remaining: finish the docs/env truth-sync for the current runtime contract
 
 ## Workstream D — Similarity engine parity
 **Targets**
