@@ -9,7 +9,7 @@ import { redirect, notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { canAccessProblem } from "@/lib/auth/permissions";
 import {
-  getStudentAssignmentContextsForProblem,
+  getRequiredAssignmentContextsForProblem,
   validateAssignmentSubmission,
 } from "@/lib/assignments/submissions";
 import { formatRelativeTimeFromNow } from "@/lib/datetime";
@@ -199,10 +199,11 @@ export default async function ProblemDetailPage({
           isSubmissionBlocked,
         }
       : null;
-  } else if (session.user.role === "student") {
-    const availableAssignments = await getStudentAssignmentContextsForProblem(
+  } else {
+    const availableAssignments = await getRequiredAssignmentContextsForProblem(
       problem.id,
-      session.user.id
+      session.user.id,
+      session.user.role
     );
 
     if (availableAssignments.length === 1) {

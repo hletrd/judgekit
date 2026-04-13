@@ -7,7 +7,7 @@ import { and, desc, eq, lt, sql } from "drizzle-orm";
 import { recordAuditEvent } from "@/lib/audit/events";
 import { canAccessProblem } from "@/lib/auth/permissions";
 import {
-  getStudentAssignmentContextsForProblem,
+  getRequiredAssignmentContextsForProblem,
   validateAssignmentSubmission,
 } from "@/lib/assignments/submissions";
 import {
@@ -174,8 +174,12 @@ export const POST = createApiHandler({
       return apiError("languageNotSupported", 400);
     }
 
-    if (!normalizedAssignmentId && user.role === "student") {
-      const assignmentContexts = await getStudentAssignmentContextsForProblem(problemId, user.id);
+    if (!normalizedAssignmentId) {
+      const assignmentContexts = await getRequiredAssignmentContextsForProblem(
+        problemId,
+        user.id,
+        user.role
+      );
 
       if (assignmentContexts.length > 0) {
         return apiError("assignmentContextRequired", 409);

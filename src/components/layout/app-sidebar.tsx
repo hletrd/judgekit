@@ -181,14 +181,20 @@ export function AppSidebar({ user, siteTitle, platformMode, capabilities = [] }:
   const capsSet = new Set(capabilities);
   const hideStandaloneCompiler = getPlatformModePolicy(platformMode).restrictStandaloneCompiler;
 
-  const isAdmin = user.role === "admin" || user.role === "super_admin" || user.role === "instructor";
+  const canBypassModeRestrictions =
+    user.role === "admin"
+    || user.role === "super_admin"
+    || user.role === "instructor"
+    || capsSet.has("groups.view_all")
+    || capsSet.has("submissions.view_all")
+    || capsSet.has("assignments.view_status");
 
   function filterItems(items: NavItem[]) {
     return items.filter((item) => {
-      if (item.hiddenInModes?.includes(platformMode) && !isAdmin) {
+      if (item.hiddenInModes?.includes(platformMode) && !canBypassModeRestrictions) {
         return false;
       }
-      if (hideStandaloneCompiler && item.href === "/dashboard/compiler" && !isAdmin) {
+      if (hideStandaloneCompiler && item.href === "/dashboard/compiler" && !canBypassModeRestrictions) {
         return false;
       }
       return !item.capability || capsSet.has(item.capability);

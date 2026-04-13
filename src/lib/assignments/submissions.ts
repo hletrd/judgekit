@@ -15,6 +15,7 @@ import {
 import { and, asc, eq, inArray } from "drizzle-orm";
 import type { SubmissionStatus } from "@/types";
 import { isAdmin } from "@/lib/api/auth";
+import { resolveCapabilities } from "@/lib/capabilities/cache";
 import { getRecruitingAccessContext } from "@/lib/recruiting/access";
 
 type AssignmentValidationError =
@@ -415,6 +416,27 @@ export async function getStudentAssignmentContextsForProblem(
         : eq(assignmentProblems.problemId, problemId)
     )
     .orderBy(asc(assignments.deadline), asc(assignments.title));
+}
+
+export async function getRequiredAssignmentContextsForProblem(
+  problemId: string,
+  userId: string,
+  role: string
+): Promise<StudentAssignmentProblemContext[]> {
+  if (isAdmin(role) || role === "instructor") {
+    return [];
+  }
+
+  const caps = await resolveCapabilities(role);
+  if (
+    caps.has("submissions.view_all")
+    || caps.has("assignments.view_status")
+    || caps.has("groups.view_all")
+  ) {
+    return [];
+  }
+
+  return getStudentAssignmentContextsForProblem(problemId, userId);
 }
 
 /**

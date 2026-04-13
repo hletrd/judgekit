@@ -6,7 +6,7 @@ import { createApiHandler } from "@/lib/api/handler";
 import { apiError, apiSuccess } from "@/lib/api/responses";
 import { canAccessProblem } from "@/lib/auth/permissions";
 import {
-  getStudentAssignmentContextsForProblem,
+  getRequiredAssignmentContextsForProblem,
   validateAssignmentSubmission,
 } from "@/lib/assignments/submissions";
 
@@ -23,10 +23,11 @@ export const POST = createApiHandler({
   handler: async (_req: NextRequest, { user, body }) => {
     const normalizedAssignmentId = body.assignmentId ?? null;
 
-    if (!normalizedAssignmentId && user.role === "student") {
-      const assignmentContexts = await getStudentAssignmentContextsForProblem(
+    if (!normalizedAssignmentId) {
+      const assignmentContexts = await getRequiredAssignmentContextsForProblem(
         body.problemId,
-        user.id
+        user.id,
+        user.role
       );
 
       if (assignmentContexts.length > 0) {
