@@ -3,7 +3,7 @@ import { LRUCache } from "lru-cache";
 import { createApiHandler } from "@/lib/api/handler";
 import { apiSuccess, apiError } from "@/lib/api/responses";
 import { computeContestAnalytics } from "@/lib/assignments/contest-analytics";
-import { canManageContest } from "@/lib/assignments/contests";
+import { canViewAssignmentSubmissions } from "@/lib/assignments/submissions";
 import { rawQueryOne } from "@/lib/db/queries";
 
 type ContestAnalytics = Awaited<ReturnType<typeof computeContestAnalytics>>;
@@ -30,7 +30,7 @@ export const GET = createApiHandler({
       return apiError("notFound", 404);
     }
 
-    const canView = await canManageContest(user, assignment);
+    const canView = await canViewAssignmentSubmissions(assignmentId, user.id, user.role);
 
     if (!canView) {
       return apiError("forbidden", 403);
