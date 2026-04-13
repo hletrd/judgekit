@@ -14,6 +14,7 @@ interface AntiCheatMonitorProps {
 const STORAGE_KEY = "judgekit_anticheat_pending";
 const MAX_RETRIES = 3;
 const RETRY_BASE_DELAY_MS = 1000;
+const HEARTBEAT_INTERVAL_MS = 30_000;
 
 interface PendingEvent {
   eventType: string;
@@ -50,7 +51,7 @@ export function AntiCheatMonitor({
 }: AntiCheatMonitorProps) {
   const t = useTranslations("contests.antiCheat");
   const resolvedWarningMessage = warningMessage ?? t("warningTabSwitch");
-  const lastEventRef = useRef<number>(0);
+  const lastEventRef = useRef<Record<string, number>>({});
   const MIN_INTERVAL_MS = 1000;
   const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -90,8 +91,9 @@ export function AntiCheatMonitor({
   const reportEvent = useCallback(
     async (eventType: string, details?: Record<string, unknown>) => {
       const now = Date.now();
-      if (now - lastEventRef.current < MIN_INTERVAL_MS) return;
-      lastEventRef.current = now;
+      const lastEventAt = lastEventRef.current[eventType] ?? 0;
+      if (now - lastEventAt < MIN_INTERVAL_MS) return;
+      lastEventRef.current[eventType] = now;
 
       const event: PendingEvent = {
         eventType,
@@ -125,10 +127,27 @@ export function AntiCheatMonitor({
   useEffect(() => {
     if (!enabled) return;
 
+    void reportEvent("heartbeat");
+
+    const heartbeatTimer = setInterval(() => {
+      if (document.visibilityState === "visible") {
+        void reportEvent("heartbeat");
+      }
+    }, HEARTBEAT_INTERVAL_MS);
+
+    return () => clearInterval(heartbeatTimer);
+  }, [enabled, reportEvent]);
+
+  useEffect(() => {
+    if (!enabled) return;
+
     function handleVisibilityChange() {
       if (document.hidden) {
         void reportEvent("tab_switch");
         toast.warning(resolvedWarningMessage);
+      } else {
+        void flushPendingEvents();
+        void reportEvent("heartbeat");
       }
     }
 
@@ -152,11 +171,17 @@ export function AntiCheatMonitor({
       void reportEvent("contextmenu");
     }
 
+    function handleOnline() {
+      void flushPendingEvents();
+      void reportEvent("heartbeat");
+    }
+
     document.addEventListener("visibilitychange", handleVisibilityChange);
     window.addEventListener("blur", handleBlur);
     document.addEventListener("copy", handleCopy);
     document.addEventListener("paste", handlePaste);
     document.addEventListener("contextmenu", handleContextMenu);
+    window.addEventListener("online", handleOnline);
 
     return () => {
       document.removeEventListener("visibilitychange", handleVisibilityChange);
@@ -164,12 +189,13 @@ export function AntiCheatMonitor({
       document.removeEventListener("copy", handleCopy);
       document.removeEventListener("paste", handlePaste);
       document.removeEventListener("contextmenu", handleContextMenu);
+      window.removeEventListener("online", handleOnline);
       if (retryTimerRef.current) {
         clearTimeout(retryTimerRef.current);
         retryTimerRef.current = null;
       }
     };
-  }, [enabled, reportEvent, resolvedWarningMessage]);
+  }, [enabled, flushPendingEvents, reportEvent, resolvedWarningMessage]);
 
   return null;
 }
