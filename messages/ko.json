@@ -33,6 +33,7 @@
     "optional": "선택 사항",
     "copy": "복사",
     "copied": "복사됨",
+    "confirm": "확인",
     "done": "완료",
     "close": "닫기",
     "contestEnded": "이 대회는 종료되었습니다. 더 이상 제출할 수 없습니다.",
@@ -993,6 +994,8 @@
       "downloadBackup": "백업 다운로드",
       "backupSuccess": "백업이 다운로드되었습니다.",
       "backupFailed": "백업 다운로드에 실패했습니다.",
+      "passwordRequired": "비밀번호를 입력해 주세요.",
+      "enterPassword": "비밀번호를 입력하세요",
       "restoreTitle": "데이터베이스 복원",
       "restoreWarning": "데이터베이스를 복원하면 현재 모든 데이터가 교체됩니다. 복원 전 자동 백업이 저장됩니다. 복원 후 애플리케이션을 재시작해야 할 수 있습니다. 최고 관리자만 복원할 수 있습니다.",
       "restoreDatabase": "파일에서 복원...",
@@ -2145,6 +2148,7 @@
     "accountPasswordHint": "처음 시작한 뒤에는 일반 로그인 페이지에서 채용용 이메일과 이 비밀번호로 다시 로그인할 수 있습니다.",
     "accountPasswordMissing": "계속하려면 계정 비밀번호를 만드세요.",
     "accountPasswordLoginNotice": "처음 시작한 뒤에는 일반 로그인 페이지에서 채용용 이메일과 계정 비밀번호로 다시 로그인할 수 있습니다.",
+    "resumeSessionOnlyNotice": "이 초대 링크는 현재 로그인한 계정에 이미 연결되어 있습니다. 이 세션으로 계속 진행해 평가를 안전하게 이어가세요.",
     "goToLogin": "로그인으로 이동"
   }
 }

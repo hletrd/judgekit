@@ -49,6 +49,7 @@ The 2026-04-12 current-head follow-up plans were previously archived as **accept
 - instructor/admin workflow simplification where still actionable
 - **Status:** completed 2026-04-13
 - **Progress note:** repository-local hardening from the current-head multi-perspective/adversarial plans has been revalidated against the current codebase. Remaining higher-assurance demands now sit outside this repository pass (for example, future mailbox/passkey identity factors or real load/failover rehearsal infrastructure) rather than as missing local code changes.
+- **UI/i18n follow-up:** a literal-key audit across all `src/app` + `src/components` translation calls now has implementation coverage, and the missing database-backup/recruit-session keys discovered during the deploy follow-up were added to both locale bundles.
 
 ## Execution ordering
 1. Plan/doc reopening

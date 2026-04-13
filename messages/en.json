@@ -33,6 +33,7 @@
     "optional": "Optional",
     "copy": "Copy",
     "copied": "Copied",
+    "confirm": "Confirm",
     "done": "Done",
     "close": "Close",
     "contestEnded": "This contest has ended. Submissions are no longer accepted.",
@@ -993,6 +994,8 @@
       "downloadBackup": "Download Backup",
       "backupSuccess": "Backup downloaded.",
       "backupFailed": "Failed to download backup.",
+      "passwordRequired": "Password is required.",
+      "enterPassword": "Enter your password",
       "restoreTitle": "Restore Database",
       "restoreWarning": "Restoring a database will replace ALL current data. A pre-restore backup will be saved automatically. The application may need to be restarted after restore. Only super administrators can restore.",
       "restoreDatabase": "Restore from File...",
@@ -2145,6 +2148,7 @@
     "accountPasswordHint": "Use this password to sign in later with your recruiting email through the normal login page.",
     "accountPasswordMissing": "Create an account password to continue.",
     "accountPasswordLoginNotice": "After your first start, you can sign in later with your recruiting email and account password through the normal login page.",
+    "resumeSessionOnlyNotice": "This invitation is already linked to your current signed-in account. Continue with this session to resume the assessment safely.",
     "goToLogin": "Go to login"
   }
 }
