@@ -15,19 +15,17 @@ import { getUnsupportedRealtimeGuard, shouldRecordSharedHeartbeat, usesSharedRea
 /** last heartbeat insert time per "assignmentId:userId" — only insert once per 60s */
 const lastHeartbeatTime = new LRUCache<string, number>({ max: 10_000, ttl: 120_000 });
 
-const VALID_EVENT_TYPES = [
+export const CLIENT_EVENT_TYPES = [
   "tab_switch",
   "copy",
   "paste",
   "blur",
   "contextmenu",
-  "ip_change",
-  "code_similarity",
   "heartbeat",
 ] as const;
 
 const antiCheatEventSchema = z.object({
-  eventType: z.enum(VALID_EVENT_TYPES),
+  eventType: z.enum(CLIENT_EVENT_TYPES),
   details: z.string().max(500).optional(),
 });
 
