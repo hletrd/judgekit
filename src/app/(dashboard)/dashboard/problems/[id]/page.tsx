@@ -16,6 +16,7 @@ import { formatRelativeTimeFromNow } from "@/lib/datetime";
 import { ProblemDescription } from "@/components/problem-description";
 import { getResolvedSystemSettings } from "@/lib/system-settings";
 import { CountdownTimer } from "@/components/exam/countdown-timer";
+import { AntiCheatMonitor } from "@/components/exam/anti-cheat-monitor";
 import { ProblemSubmissionForm } from "./problem-submission-form";
 import { ProblemLectureWrapper } from "./problem-lecture-wrapper";
 import Link from "next/link";
@@ -125,10 +126,11 @@ export default async function ProblemDetailPage({
         title: string;
         deadline: Date | null;
         lateDeadline: Date | null;
-        examMode: string;
-        personalDeadline: Date | null;
-        isSubmissionBlocked?: boolean;
-      }
+      examMode: string;
+      personalDeadline: Date | null;
+      enableAntiCheat: boolean;
+      isSubmissionBlocked?: boolean;
+    }
     | null = null;
   let assignmentChoices: Array<{
     assignmentId: string;
@@ -140,7 +142,15 @@ export default async function ProblemDetailPage({
   if (normalizedAssignmentId) {
     const assignment = await db.query.assignments.findFirst({
       where: (assignments, { eq }) => eq(assignments.id, normalizedAssignmentId),
-      columns: { id: true, title: true, deadline: true, lateDeadline: true, startsAt: true, examMode: true },
+      columns: {
+        id: true,
+        title: true,
+        deadline: true,
+        lateDeadline: true,
+        startsAt: true,
+        examMode: true,
+        enableAntiCheat: true,
+      },
     });
 
     // Block access before contest start for non-admin users
@@ -185,6 +195,7 @@ export default async function ProblemDetailPage({
           lateDeadline: assignment.lateDeadline ?? null,
           examMode: assignment.examMode ?? "none",
           personalDeadline,
+          enableAntiCheat: Boolean(assignment.enableAntiCheat),
           isSubmissionBlocked,
         }
       : null;
@@ -207,7 +218,10 @@ export default async function ProblemDetailPage({
   }
 
   const problemPanel = (
-    <div className="space-y-5">
+      <div className="space-y-5">
+      {assignmentContext?.enableAntiCheat ? (
+        <AntiCheatMonitor assignmentId={assignmentContext.id} enabled />
+      ) : null}
       <div>
         <div className="mb-2 flex flex-wrap items-start justify-between gap-3">
           <div>
