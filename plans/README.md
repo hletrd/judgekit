@@ -1,4 +1,4 @@
-# Review planning index — 2026-04-12
+# Review planning index — 2026-04-13
 
 This directory contains **planning only**. No implementation is included here.
 
@@ -36,13 +36,17 @@ This directory contains **planning only**. No implementation is included here.
 | `.context/reviews/adversarial-security-review-2026-04-12.md` | Archived (implemented) | `plans/archive/2026-04-12-adversarial-security-plan.md` | The 2026-04-12 adversarial-security remediation slices were implemented and pushed on 2026-04-12 |
 | `.context/reviews/multi-perspective-review-2026-04-12-current-head.md` | Archived (accepted current posture) | `plans/archive/2026-04-12-current-head-multi-perspective-plan.md` | Current-HEAD follow-up gaps were explicitly accepted for now by the user/owner on 2026-04-13 |
 | `.context/reviews/adversarial-security-review-2026-04-12-current-head.md` | Archived (implemented/revalidated) | `plans/archive/2026-04-13-current-head-remediation-plan.md` | Repository-local follow-up gaps were closed or reduced to explicit external prerequisites during the 2026-04-13 remediation pass |
-| `.context/reviews/comprehensive-code-review-2026-04-13-current-head.md` | Archived (implemented/revalidated) | `plans/archive/2026-04-13-current-head-remediation-plan.md` | Its actionable repository-local findings were implemented during the 2026-04-13 Ralph remediation pass |
+| `.context/reviews/comprehensive-code-review-2026-04-13-current-head.md` | Archived (implemented/revalidated) | `plans/archive/2026-04-13-current-head-remediation-plan.md` | Its actionable repository-local findings were implemented during the 2026-04-13 remediation pass |
+| `.context/reviews/comprehensive-code-review-2026-04-13-e1051e9.md` | Open plan | `plans/open/2026-04-13-e1051e9-master-review-backlog.md` + child plans | Latest full review against `e1051e9`; still-open repository-local findings remain and need fresh implementation planning |
 | `.context/reviews/_archive/*` | Historical | source archive | Already archived review context only |
 
 ## Currently actionable plan set
-- No active open review plans remain after the 2026-04-13 remediation pass.
+- `plans/open/2026-04-13-e1051e9-master-review-backlog.md`
+- `plans/open/2026-04-13-e1051e9-contest-integrity-plan.md`
+- `plans/open/2026-04-13-e1051e9-role-and-authorization-consistency-plan.md`
+- `plans/open/2026-04-13-e1051e9-access-code-and-chat-scope-plan.md`
+- `plans/open/2026-04-13-e1051e9-select-contract-plan.md`
 
-The earlier 2026-04-13 acceptance note was superseded by a newer user directive to resume implementation on the current-head review set. That reopened work has now been completed for the repository-local issues; the remaining high-assurance gaps are explicitly documented as external prerequisites rather than missing local code.
-
-## Archival note
-The older plan artifacts were **already archived** when their associated workstreams were closed. No additional historical implementation plans needed moving during this pass; instead, the review-status mapping was refreshed in `plans/archive/2026-04-12-review-status.md` and only the new still-open review lines received fresh plans.
+## Archival note for this pass
+No additional active plan files needed moving into `plans/archive/` during this planning pass.
+All previously completed review plans were already archived before this run; this pass adds a new open plan set for the latest comprehensive review only.
