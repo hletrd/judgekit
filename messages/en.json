@@ -1875,7 +1875,16 @@
       "resumeCodeRevealTitle": "New resume code for {name}",
       "resumeCodeRevealHint": "Share this code securely. It is shown here only so you can deliver it to the candidate.",
       "copyResumeCode": "Copy resume code",
-      "resumeCodeCopied": "Resume code copied"
+      "resumeCodeCopied": "Resume code copied",
+      "resetAccountPassword": "Reset account password",
+      "resetAccountPasswordConfirmTitle": "Reset recruiting account password?",
+      "resetAccountPasswordConfirm": "Generate a fresh temporary account password for {name}. Existing recruiting sessions will be invalidated.",
+      "accountPasswordResetSuccess": "A fresh temporary account password was generated and copied.",
+      "accountPasswordResetError": "Could not reset the account password.",
+      "accountPasswordRevealTitle": "New account password for {name}",
+      "accountPasswordRevealHint": "Share this password securely. It is shown here only so you can deliver it to the candidate.",
+      "copyAccountPassword": "Copy account password",
+      "accountPasswordCopied": "Account password copied"
     },
     "codeTimeline": {
       "title": "Code timeline — {name}",

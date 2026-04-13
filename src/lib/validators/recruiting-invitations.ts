@@ -12,6 +12,7 @@ export const updateRecruitingInvitationSchema = z.object({
   metadata: z.record(z.string(), z.string()).optional(),
   status: z.enum(["revoked"]).optional(),
   resetResumeCode: z.literal(true).optional(),
+  resetAccountPassword: z.literal(true).optional(),
 });
 
 export const bulkCreateRecruitingInvitationsSchema = z.object({

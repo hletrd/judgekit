@@ -6,6 +6,7 @@ import {
   updateRecruitingInvitation,
   deleteRecruitingInvitation,
   resetRecruitingInvitationResumeCode,
+  resetRecruitingInvitationAccountPassword,
 } from "@/lib/assignments/recruiting-invitations";
 import { updateRecruitingInvitationSchema } from "@/lib/validators/recruiting-invitations";
 import { recordAuditEvent } from "@/lib/audit/events";
@@ -26,6 +27,27 @@ export const PATCH = createApiHandler({
   handler: async (req: NextRequest, { user, params, body }) => {
     const invitation = await getRecruitingInvitation(params.invitationId);
     if (!invitation) return apiError("notFound", 404, "RecruitingInvitation");
+
+    if (body.resetAccountPassword) {
+      if (invitation.status !== "redeemed") {
+        return apiError("accountPasswordResetRequiresRedeemed", 400);
+      }
+
+      const temporaryPassword = await resetRecruitingInvitationAccountPassword(params.invitationId);
+
+      recordAuditEvent({
+        actorId: user.id,
+        actorRole: user.role,
+        action: "recruiting_invitation.account_password_reset",
+        resourceType: "recruiting_invitation",
+        resourceId: params.invitationId,
+        resourceLabel: invitation.candidateName,
+        summary: `Reset recruiting account password for "${invitation.candidateName}"`,
+        request: req,
+      });
+
+      return apiSuccess({ id: params.invitationId, temporaryPassword });
+    }
 
     if (body.resetResumeCode) {
       if (invitation.status !== "redeemed") {

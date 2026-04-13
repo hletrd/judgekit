@@ -176,6 +176,29 @@ export async function resetRecruitingInvitationResumeCode(id: string) {
   return resumeCode;
 }
 
+
+export async function resetRecruitingInvitationAccountPassword(id: string) {
+  const invitation = await getRecruitingInvitation(id);
+  if (!invitation || invitation.status !== "redeemed" || !invitation.userId) {
+    throw new Error("accountPasswordResetRequiresRedeemed");
+  }
+
+  const temporaryPassword = `Recruit-${nanoid(16)}`;
+  const passwordHash = await hashPassword(temporaryPassword);
+
+  await db
+    .update(users)
+    .set({
+      passwordHash,
+      mustChangePassword: false,
+      tokenInvalidatedAt: new Date(),
+      updatedAt: new Date(),
+    })
+    .where(eq(users.id, invitation.userId));
+
+  return temporaryPassword;
+}
+
 export async function deleteRecruitingInvitation(id: string) {
   await db
     .delete(recruitingInvitations)

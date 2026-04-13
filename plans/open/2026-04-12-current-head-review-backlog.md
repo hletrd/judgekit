@@ -31,6 +31,7 @@ After re-reading the full review set against the current codebase and archived r
 
 **Progress**
 - ✅ recruiting candidates now create a real account password on first claim, and recruiting accounts persist the candidate email for later standard sign-in
+- ✅ admins can now rotate recruiting account passwords for redeemed candidates without re-enabling invite-link authentication
 
 ### 2. High-stakes realtime / scaling architecture
 **Why next:** this is still the core NO-GO reason for exams and serious contests.

@@ -36,6 +36,7 @@ The invite-link + resume-code model is materially better than before, but it sti
 
 **Progress**
 - ✅ first-claim recruiting flows now create a real account password and persist the candidate email for later standard sign-in
+- ✅ admins can now reset recruiting account passwords for redeemed candidates through the recruiting invitation workflow
 
 ## Workstream B — Exam / contest architecture truth
 **Problem**

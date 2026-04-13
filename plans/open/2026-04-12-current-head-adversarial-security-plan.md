@@ -47,6 +47,7 @@ The current recruiting model is no longer obviously unsafe, but it still does no
 
 **Progress**
 - ✅ first-claim recruiting flows now create a real account password and persist the candidate email for later standard sign-in
+- ✅ redeemed recruiting accounts now have a dedicated admin password-reset path instead of relying only on resume-code resets
 
 ## Phase 2 — High-stakes event integrity architecture
 **Severity:** MEDIUM

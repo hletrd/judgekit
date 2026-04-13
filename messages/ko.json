@@ -1875,7 +1875,16 @@
       "resumeCodeRevealTitle": "{name} 후보자의 새 재개 코드",
       "resumeCodeRevealHint": "이 코드는 여기서만 보여준다는 전제로 안전하게 전달하세요.",
       "copyResumeCode": "재개 코드 복사",
-      "resumeCodeCopied": "재개 코드가 복사되었습니다."
+      "resumeCodeCopied": "재개 코드가 복사되었습니다.",
+      "resetAccountPassword": "계정 비밀번호 재설정",
+      "resetAccountPasswordConfirmTitle": "채용 계정 비밀번호를 재설정할까요?",
+      "resetAccountPasswordConfirm": "{name} 후보자의 새 임시 계정 비밀번호를 발급합니다. 기존 채용 세션은 무효화됩니다.",
+      "accountPasswordResetSuccess": "새 임시 계정 비밀번호가 생성되어 복사되었습니다.",
+      "accountPasswordResetError": "계정 비밀번호를 재설정하지 못했습니다.",
+      "accountPasswordRevealTitle": "{name} 후보자의 새 계정 비밀번호",
+      "accountPasswordRevealHint": "이 비밀번호는 여기서만 보여주므로 안전하게 전달하세요.",
+      "copyAccountPassword": "계정 비밀번호 복사",
+      "accountPasswordCopied": "계정 비밀번호가 복사되었습니다."
     },
     "codeTimeline": {
       "title": "{name}의 코드 타임라인",
