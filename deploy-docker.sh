@@ -622,6 +622,21 @@ server {
         # NOTE: Do NOT set X-Forwarded-Host — it breaks Next.js 16 RSC client-side navigation
     }
 
+    # Final judge result reports can legitimately exceed 1 MiB because the
+    # worker includes per-test outputs in the JSON payload. Keep the wider
+    # body limit scoped to the report endpoint instead of the whole judge API.
+    location = /api/v1/judge/poll {
+        limit_req zone=judgekit_judge burst=20 nodelay;
+        client_max_body_size 50M;
+        proxy_pass http://127.0.0.1:${APP_PORT};
+        proxy_http_version 1.1;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$remote_addr;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+        # NOTE: Do NOT set X-Forwarded-Host — it breaks Next.js 16 RSC client-side navigation
+    }
+
     location /api/v1/judge/ {
         limit_req zone=judgekit_judge burst=20 nodelay;
         client_max_body_size 1m;
@@ -670,6 +685,21 @@ server {
     location /api/auth/ {
         limit_req zone=judgekit_login burst=10 nodelay;
         client_max_body_size 1m;
+        proxy_pass http://127.0.0.1:${APP_PORT};
+        proxy_http_version 1.1;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$remote_addr;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+        # NOTE: Do NOT set X-Forwarded-Host — it breaks Next.js 16 RSC client-side navigation
+    }
+
+    # Final judge result reports can legitimately exceed 1 MiB because the
+    # worker includes per-test outputs in the JSON payload. Keep the wider
+    # body limit scoped to the report endpoint instead of the whole judge API.
+    location = /api/v1/judge/poll {
+        limit_req zone=judgekit_judge burst=20 nodelay;
+        client_max_body_size 50M;
         proxy_pass http://127.0.0.1:${APP_PORT};
         proxy_http_version 1.1;
         proxy_set_header Host \$host;
