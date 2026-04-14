@@ -57,31 +57,39 @@ Open review lines folded here:
 - shared judge token / worker trust-boundary hardening follow-up
 
 ### 3. Verification, E2E, and readiness evidence hardening
-**Plan:** `plans/open/2026-04-14-verification-and-readiness-plan.md`
+**Plan:** `plans/archive/2026-04-14-verification-and-readiness-plan.md`
+**Status:** implemented and archived
 
-Open review lines folded here:
-- CI not running integration/component/coverage suites
-- remote Playwright running only a small safe allowlist
-- student-submission E2E passing without a real submission/judging path
-- worker/admin E2E depth still too shallow for lifecycle confidence
-- source-grep “implementation tests” overstating runtime confidence
-- integration README drifting from the actual PostgreSQL harness
-- high-stakes readiness docs claiming more evidence than the test harness currently proves
-- remaining env/README/runtime-truth synchronization tasks
+Implemented:
+- CI now runs integration, component, and coverage-threshold enforcement
+- Playwright has explicit smoke/full profiles via `PLAYWRIGHT_PROFILE`
+- Source-grep test inventory documented with baseline count and categorization
+- Integration README corrected to describe PostgreSQL harness
+- High-stakes validation matrix updated with concrete evidence expectations and CI lane
+- Release readiness checklist updated with data governance gates
+
+Deferred to external operational prerequisites:
+- Student-submission E2E depth (requires live judge worker in CI)
+- Worker lifecycle E2E (requires multi-instance test infrastructure)
+- Load/failover validation (requires staging environment)
 
 ### 4. Privacy, governance, and high-stakes hardening
-**Plan:** `plans/open/2026-04-14-privacy-governance-and-high-stakes-plan.md`
+**Plan:** `plans/archive/2026-04-14-privacy-governance-and-high-stakes-plan.md`
+**Status:** implemented and archived
 
-Open review lines folded here:
-- anti-cheat details double-encoding
-- partial/aborted assistant outputs being persisted as if complete
-- backup/export streams containing live sensitive secrets
-- privileged staff access to chat transcripts still needing tighter governance/break-glass handling
-- recruiting-token validation leaking candidate/assignment metadata
-- higher-assurance recruiting identity/re-entry still missing
-- retention/export/legal-hold policy configurability
-- anti-cheat telemetry vs proof guardrails for high-stakes use
-- instructor/admin “power-user only” UX criticism that still needs concrete simplification work
+Implemented:
+- Anti-cheat detail double-encoding fixed (stores raw details directly)
+- Chat completion status tracked (complete/partial/error distinction)
+- Sanitized export mode (redacts passwords, tokens, keys) separated from full-fidelity backup
+- Recruiting validation response minimized (uniform valid/invalid, no metadata leakage)
+- Legal hold mechanism (`DATA_RETENTION_LEGAL_HOLD`) suspends automatic pruning
+- Transcript access audit enhanced with break-glass trail
+- Anti-cheat monitoring description added to i18n (en/ko) disclaiming telemetry as non-proof
+- Data retention policy and transcript access policy docs created
+
+Deferred to external operational prerequisites:
+- Higher-assurance recruiting identity/re-entry (requires product decision on auth factor)
+- Instructor/admin UX simplification (requires design pass)
 
 ## Recommended execution order
 1. Authorization / trusted-context hardening
