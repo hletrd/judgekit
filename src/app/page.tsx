@@ -8,16 +8,17 @@ function pick(defaultVal: string, override?: string): string {
 }
 
 export default async function HomePage() {
-  const [tCommon, tAuth, tShell, locale, settings] = await Promise.all([
+  const [tCommon, tAuth, tShell, locale] = await Promise.all([
     getTranslations("common"),
     getTranslations("auth"),
     getTranslations("publicShell"),
     getLocale(),
-    getResolvedSystemSettings({
-      siteTitle: tCommon("appName"),
-      siteDescription: tCommon("appDescription"),
-    }),
   ]);
+
+  const settings = await getResolvedSystemSettings({
+    siteTitle: tCommon("appName"),
+    siteDescription: tCommon("appDescription"),
+  });
 
   const o = settings.homePageContent?.[locale];
 
