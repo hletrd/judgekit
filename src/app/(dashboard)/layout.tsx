@@ -11,7 +11,7 @@ import { LectureToolbar } from "@/components/lecture/lecture-toolbar";
 import { updatePreferences } from "@/lib/actions/update-preferences";
 
 import { Toaster } from "@/components/ui/sonner";
-import { Badge } from "@/components/ui/badge";
+
 import { getResolvedSystemSettings, isAiAssistantEnabled } from "@/lib/system-settings";
 import { ChatWidgetLoader } from "@/components/plugins/chat-widget-loader";
 import { resolveCapabilities } from "@/lib/capabilities/cache";
@@ -70,14 +70,6 @@ export default async function DashboardLayout({ children }: { children: React.Re
             <SidebarTrigger />
             <div className="min-w-0 flex-1">
               <span className="block truncate text-sm font-semibold">{settings.siteTitle}</span>
-              <div className="mt-0.5 flex items-center gap-2">
-                <Badge variant="outline" className="text-[10px] uppercase tracking-wide">
-                  {t(`platformModes.${effectivePlatformMode}`)}
-                </Badge>
-                <span className="sr-only">
-                  {t(`platformModes.${effectivePlatformMode}`)}
-                </span>
-              </div>
             </div>
             <div className="ml-auto flex items-center gap-1">
               {canUseLectureMode && <LectureModeToggle />}
