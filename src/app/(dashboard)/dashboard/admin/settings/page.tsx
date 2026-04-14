@@ -376,6 +376,7 @@ export default async function AdminSettingsPage() {
       ),
     },
   ];
+  return (
     <div className="space-y-6">
       <div>
         <h2 className="text-2xl font-bold">{t("title")}</h2>
