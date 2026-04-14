@@ -132,7 +132,6 @@ export async function updateSystemSettings(
       platformMode: platformMode ?? DEFAULT_PLATFORM_MODE,
       aiAssistantEnabled: aiAssistantEnabled ?? true,
       defaultLanguage: defaultLanguage ?? null,
-      homePageContent: homePageContent ?? null,
       ...configValues,
     },
     context: auditContext,
