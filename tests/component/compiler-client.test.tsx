@@ -1,6 +1,10 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { CompilerClient } from "@/app/(dashboard)/dashboard/compiler/compiler-client";
+
+const { apiFetchMock } = vi.hoisted(() => ({
+  apiFetchMock: vi.fn(),
+}));
 
 vi.mock("next-intl", () => ({
   useTranslations: () => (key: string, values?: Record<string, string>) =>
@@ -29,7 +33,7 @@ vi.mock("@/components/language-selector", () => ({
 }));
 
 vi.mock("@/lib/api/client", () => ({
-  apiFetch: vi.fn(),
+  apiFetch: apiFetchMock,
 }));
 
 describe("CompilerClient", () => {
@@ -40,6 +44,8 @@ describe("CompilerClient", () => {
 
   beforeEach(() => {
     window.localStorage.clear();
+    apiFetchMock.mockReset();
+    Element.prototype.scrollIntoView = vi.fn();
   });
 
   it("hydrates the saved compiler language after mount", async () => {
@@ -57,6 +63,41 @@ describe("CompilerClient", () => {
     await waitFor(() => {
       expect(screen.getByTestId("language-selector")).toHaveTextContent("javascript");
       expect(screen.getByTestId("code-editor")).toHaveAttribute("data-language", "javascript");
+    });
+  });
+
+  it("uses a custom run endpoint when provided", async () => {
+    apiFetchMock.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        data: {
+          stdout: "3\\n",
+          stderr: "",
+          exitCode: 0,
+          executionTimeMs: 5,
+          timedOut: false,
+          compileOutput: null,
+        },
+      }),
+    });
+
+    render(
+      <CompilerClient
+        languages={languages}
+        title="Compiler"
+        description="Run code"
+        preferredLanguage="python"
+        runEndpoint="/api/v1/playground/run"
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /run code/i }));
+
+    await waitFor(() => {
+      expect(apiFetchMock).toHaveBeenCalledWith(
+        "/api/v1/playground/run",
+        expect.objectContaining({ method: "POST" })
+      );
     });
   });
 });

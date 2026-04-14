@@ -313,6 +313,7 @@ export default async function GroupDetailPage({ params }: { params: Promise<{ id
                       problemId: problem.problemId,
                       points: problem.points ?? 100,
                     })),
+                  visibility: assignment.visibility ?? "private",
                 };
 
                 return (

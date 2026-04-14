@@ -64,6 +64,20 @@
       "when": 1775835847355,
       "tag": "0008_pg_schema_drift_cleanup",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1776110396798,
+      "tag": "0009_contest_visibility",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1776114142800,
+      "tag": "0010_discussion_threads",
+      "breakpoints": true
     }
   ]
 }

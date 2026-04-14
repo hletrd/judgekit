@@ -762,7 +762,12 @@
       "examSessionInProgress": "진행 중",
       "examSessionCompleted": "완료",
       "examTimesUp": "시간 종료"
-    }
+    },
+    "assignmentVisibilityLabel": "대회 공개 범위",
+    "assignmentVisibilityPrivate": "비공개 대회",
+    "assignmentVisibilityPublic": "공개 대회",
+    "assignmentVisibilityDescription_private": "등록된 참가자와 운영자만 볼 수 있습니다. 게스트는 공개 대회 카탈로그에서 볼 수 없습니다.",
+    "assignmentVisibilityDescription_public": "공개 대회 카탈로그에 표시됩니다. 참가 및 시작은 계속 로그인이 필요합니다."
   },
   "admin": {
     "users": {
@@ -1991,7 +1996,8 @@
       "antiCheat": "부정행위 방지",
       "files": "파일",
       "system": "시스템",
-      "content": "콘텐츠"
+      "content": "콘텐츠",
+      "community": "커뮤니티"
     },
     "items": {
       "users": {
@@ -2059,6 +2065,9 @@
       "content": {
         "submit_solutions": "솔루션 제출",
         "view_own_submissions": "내 제출 조회"
+      },
+      "community": {
+        "moderate": "토론 관리"
       }
     },
     "languages": {
@@ -2175,5 +2184,228 @@
     "accountPasswordLoginNotice": "처음 시작한 뒤에는 일반 로그인 페이지에서 채용용 이메일과 계정 비밀번호로 다시 로그인할 수 있습니다.",
     "resumeSessionOnlyNotice": "이 초대 링크는 현재 로그인한 계정에 이미 연결되어 있습니다. 이 세션으로 계속 진행해 평가를 안전하게 이어가세요.",
     "goToLogin": "로그인으로 이동"
+  },
+  "publicShell": {
+    "nav": {
+      "practice": "연습",
+      "playground": "플레이그라운드",
+      "contests": "대회",
+      "community": "커뮤니티",
+      "workspace": "워크스페이스"
+    },
+    "home": {
+      "eyebrow": "공개 우선 전환 단계",
+      "title": "JudgeKit의 새로운 구조를 준비하고 있습니다.",
+      "description": "JudgeKit은 단일 대시보드 중심 구조에서 공개 탐색, 개인 워크스페이스, 운영 제어 영역으로 더 명확하게 분리된 구조로 전환 중입니다. 이번 단계에서는 새로운 계층과 진입점을 먼저 도입합니다.",
+      "primaryCta": "워크스페이스 열기",
+      "secondaryCta": "로그인",
+      "cards": {
+        "practice": {
+          "title": "연습",
+          "description": "공개 연습 영역을 준비하고 있으며, 이후 공개 문제 탐색이 이어집니다."
+        },
+        "playground": {
+          "title": "플레이그라운드",
+          "description": "비로그인 사용자를 위한 ideone 스타일의 빠른 코드 실행 환경이 다음 핵심 단계로 예정되어 있습니다."
+        },
+        "contests": {
+          "title": "대회",
+          "description": "대회 탐색은 공개 읽기와 비공개 참여 흐름을 분리하는 방향으로 재구성됩니다."
+        },
+        "community": {
+          "title": "커뮤니티",
+          "description": "일반 게시판과 문제별 토론이 제품의 핵심 영역으로 추가될 예정입니다."
+        }
+      }
+    },
+    "practice": {
+      "title": "연습 영역 미리보기",
+      "description": "공개 연습 탐색은 다음 단계에서 도입됩니다. 이번 단계에서는 새로운 정보 구조를 먼저 마련합니다.",
+      "note": "1단계에서는 공개 경로와 계층 구조를 먼저 만듭니다. 공개 문제 탐색과 게스트 접근 정책은 다음 단계에서 구현됩니다.",
+      "primaryCta": "워크스페이스 열기",
+      "secondaryCta": "로그인",
+      "catalogTitle": "공개 문제 카탈로그",
+      "catalogDescription": "공개해도 안전한 문제를 둘러볼 수 있습니다. 비로그인 사용자도 문제를 읽고 플레이그라운드로 이동할 수 있습니다.",
+      "noProblems": "아직 공개된 문제가 없습니다.",
+      "openProblem": "문제 열기",
+      "unknownAuthor": "알 수 없는 작성자",
+      "authoredBy": "작성자: {name}",
+      "timeLimit": "시간 제한: {value}ms",
+      "memoryLimit": "메모리 제한: {value}MB",
+      "tryInPlayground": "플레이그라운드에서 실행",
+      "signInToSubmit": "로그인 후 제출",
+      "discussion": {
+        "title": "문제 토론",
+        "description": "이 문제에 대한 접근 방법을 논의하고 궁금한 점을 질문할 수 있습니다.",
+        "empty": "이 문제에는 아직 토론 스레드가 없습니다.",
+        "openThread": "토론 열기",
+        "form": {
+          "titleLabel": "토론 제목",
+          "contentLabel": "질문 또는 주제",
+          "submitLabel": "토론 시작",
+          "success": "토론이 생성되었습니다",
+          "signIn": "이 문제를 토론하려면 로그인하세요"
+        }
+      }
+    },
+    "playground": {
+      "title": "공개 플레이그라운드",
+      "description": "로그인 없이도 간단한 코드를 실행할 수 있는 게스트 안전 환경입니다.",
+      "note": "이제 빠른 테스트를 위한 게스트 플레이그라운드 실행이 가능합니다. 채점 제출과 대회 참여는 계속 인증이 필요합니다.",
+      "primaryCta": "워크스페이스 열기",
+      "secondaryCta": "로그인",
+      "liveTitle": "공개 플레이그라운드",
+      "liveDescription": "온라인 스크래치 컴파일러처럼 stdin/stdout 기반의 빠른 실험을 실행할 수 있습니다. 채점 제출이나 대회 참여가 필요할 때만 로그인하면 됩니다."
+    },
+    "contests": {
+      "title": "대회 카탈로그 미리보기",
+      "description": "대회 탐색은 공개 읽기, 보호된 참여 구조로 재설계되고 있습니다.",
+      "note": "1단계에서는 공개 경로를 먼저 마련합니다. 공개 대회 탐색과 참가/시작 경계는 다음 단계에서 구현됩니다.",
+      "primaryCta": "워크스페이스 열기",
+      "secondaryCta": "로그인",
+      "catalogTitle": "공개 대회 카탈로그",
+      "catalogDescription": "명시적으로 공개로 설정된 대회를 둘러볼 수 있습니다. 비로그인 사용자도 참가 전에 개요를 안전하게 확인할 수 있습니다.",
+      "noContests": "아직 공개된 대회가 없습니다.",
+      "openContest": "대회 열기",
+      "hostedBy": "{name} 주최",
+      "startsAt": "시작: {value}",
+      "deadline": "마감: {value}",
+      "notScheduled": "미정",
+      "noDeadline": "마감 없음",
+      "problemCount": "전체 문제 {count}개",
+      "publicProblemCount": "공개 문제 {count}개",
+      "publicProblemsTitle": "공개 문제 세트",
+      "noPublicProblems": "이 대회에는 아직 공개된 문제가 없습니다.",
+      "signInToJoin": "로그인 후 참가",
+      "openWorkspace": "워크스페이스 열기",
+      "status": {
+        "upcoming": "예정",
+        "open": "진행 가능",
+        "inProgress": "진행 중",
+        "expired": "만료",
+        "closed": "종료"
+      }
+    },
+    "community": {
+      "title": "커뮤니티 미리보기",
+      "description": "JudgeKit은 일반 게시판과 문제별 토론 기능을 핵심 표면으로 추가할 예정입니다.",
+      "note": "1단계에서는 공개 커뮤니티 경로를 먼저 확보합니다. 스레드, 답글, 운영 기능은 이후 단계에서 추가됩니다.",
+      "primaryCta": "워크스페이스 열기",
+      "secondaryCta": "로그인",
+      "liveTitle": "커뮤니티 게시판",
+      "liveDescription": "질문을 올리고 힌트를 나누며 플랫폼 전반의 토론을 확인할 수 있습니다. 게스트는 읽을 수 있고, 로그인 사용자는 스레드와 답글을 작성할 수 있습니다.",
+      "empty": "아직 스레드가 없습니다. 첫 토론을 시작해 보세요.",
+      "openThread": "스레드 열기",
+      "unknownAuthor": "알 수 없는 작성자",
+      "scopeGeneral": "일반 토론",
+      "scopeProblem": "문제 토론",
+      "repliesTitle": "답글",
+      "noReplies": "아직 답글이 없습니다.",
+      "form": {
+        "titleLabel": "스레드 제목",
+        "contentLabel": "질문 또는 주제",
+        "submitLabel": "스레드 만들기",
+        "success": "스레드가 생성되었습니다",
+        "signIn": "스레드를 작성하려면 로그인하세요"
+      },
+      "reply": {
+        "contentLabel": "답글",
+        "submitLabel": "답글 등록",
+        "success": "답글이 등록되었습니다",
+        "signIn": "답글을 작성하려면 로그인하세요"
+      },
+      "pinned": "고정됨",
+      "locked": "잠김",
+      "replyCount": "답글 {count}개",
+      "moderation": {
+        "pin": "스레드 고정",
+        "unpin": "고정 해제",
+        "lock": "스레드 잠금",
+        "unlock": "잠금 해제",
+        "deleteThread": "스레드 삭제",
+        "deletePost": "답글 삭제",
+        "success": "토론 상태가 업데이트되었습니다",
+        "deleteSuccess": "토론이 삭제되었습니다",
+        "replyDeleteSuccess": "답글이 삭제되었습니다"
+      }
+    }
+  },
+  "workspaceShell": {
+    "sectionLabel": "워크스페이스",
+    "title": "워크스페이스 홈",
+    "description": "새 워크스페이스 셸이 이제 인증 사용자용 기본 진입점입니다. 기존 기능 페이지는 계층 구조가 완전히 전환될 때까지 계속 사용할 수 있습니다.",
+    "openLink": "열기",
+    "nav": {
+      "home": "워크스페이스 홈",
+      "homeDescription": "새 인증 진입점으로 워크스페이스 셸을 사용합니다.",
+      "problemsDescription": "전환 기간 동안 기존 문제 흐름을 이어서 사용합니다.",
+      "contestsDescription": "새 워크스페이스 셸에서 기존 대회 흐름으로 이동합니다.",
+      "submissionsDescription": "제출 기록과 결과를 확인합니다.",
+      "profileDescription": "프로필과 환경설정을 관리합니다.",
+      "discussions": "내 토론",
+      "discussionsDescription": "내가 작성했거나 참여한 토론을 다시 확인합니다."
+    },
+    "cards": {
+      "problems": "현재 문제 풀이 흐름으로 이동합니다.",
+      "contests": "기존 대회 경험으로 계속 이동합니다.",
+      "submissions": "제출 기록과 상태를 확인합니다.",
+      "profile": "계정과 에디터 환경설정을 관리합니다.",
+      "discussions": "내가 시작했거나 참여한 토론 스레드를 확인합니다."
+    },
+    "controlCard": {
+      "title": "컨트롤 센터",
+      "description": "교수자나 상위 권한 역할은 여기서 새 제어 셸로 이동할 수 있으며, 기존 운영 경로도 계속 사용 가능합니다.",
+      "link": "컨트롤 센터 열기"
+    },
+    "discussions": {
+      "title": "내 토론",
+      "description": "내가 시작했거나 답글을 남긴 토론을 여기에서 다시 확인할 수 있습니다.",
+      "empty": "아직 참여한 토론이 없습니다.",
+      "openThread": "스레드 열기",
+      "authored": "내가 시작함",
+      "participated": "내가 답글 작성"
+    }
+  },
+  "controlShell": {
+    "sectionLabel": "제어",
+    "title": "컨트롤 센터",
+    "description": "컨트롤 셸은 교수, 운영, 관리 기능의 새 진입점입니다. 기존 운영 경로는 계층 전환이 끝날 때까지 계속 유지됩니다.",
+    "openLink": "열기",
+    "nav": {
+      "home": "컨트롤 홈",
+      "homeDescription": "새 운영 진입점으로 컨트롤 셸을 사용합니다.",
+      "groupsDescription": "기존 그룹/수업 관리 도구를 엽니다.",
+      "usersDescription": "사용자, 역할, 감사 관련 관리 화면을 엽니다.",
+      "languagesDescription": "언어 및 워커 설정 도구를 엽니다.",
+      "settingsDescription": "핵심 시스템 설정과 운영 제어를 엽니다.",
+      "discussions": "토론 관리",
+      "discussionsDescription": "공개 토론 스레드를 검토하고 고정, 잠금, 삭제할 수 있습니다."
+    },
+    "cards": {
+      "groups": "기존 그룹 및 수업 관리 흐름으로 이동합니다.",
+      "users": "사용자, 역할, 관리 도구를 엽니다.",
+      "settings": "컨트롤 계층이 도입되는 동안 시스템 설정을 엽니다.",
+      "discussions": "토론 관리 큐를 열어 공개 스레드를 관리합니다."
+    },
+    "moderation": {
+      "title": "토론 관리",
+      "description": "공개 토론 스레드를 검토하고 범위/상태별로 필터링한 뒤 관리 작업을 수행합니다.",
+      "empty": "현재 필터에 맞는 토론 스레드가 없습니다.",
+      "openThread": "스레드 열기",
+      "unknownAuthor": "알 수 없는 작성자",
+      "problemMeta": "{title} · 답글 {replies}개",
+      "generalMeta": "답글 {replies}개",
+      "scope": {
+        "all": "전체 범위",
+        "general": "일반",
+        "problem": "문제"
+      },
+      "state": {
+        "all": "전체 상태",
+        "open": "열림",
+        "locked": "잠김",
+        "pinned": "고정됨"
+      }
+    }
   }
 }

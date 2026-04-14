@@ -32,6 +32,8 @@ import {
   tags,
   problemTags,
   apiKeys,
+  discussionThreads,
+  discussionPosts,
 } from "./schema.pg";
 
 export const usersRelations = relations(users, ({ many }) => ({
@@ -53,6 +55,8 @@ export const usersRelations = relations(users, ({ many }) => ({
   }),
   createdProblemSets: many(problemSets),
   chatMessages: many(chatMessages),
+  discussionThreads: many(discussionThreads),
+  discussionPosts: many(discussionPosts),
   examSessions: many(examSessions),
   contestAccessTokens: many(contestAccessTokens),
   antiCheatEvents: many(antiCheatEvents),
@@ -130,6 +134,7 @@ export const problemsRelations = relations(problems, ({ one, many }) => ({
   problemSetProblems: many(problemSetProblems),
   problemTags: many(problemTags),
   codeSnapshots: many(codeSnapshots),
+  discussionThreads: many(discussionThreads),
 }));
 
 export const testCasesRelations = relations(testCases, ({ one, many }) => ({
@@ -296,6 +301,29 @@ export const problemSetGroupAccessRelations = relations(
 export const chatMessagesRelations = relations(chatMessages, ({ one }) => ({
   user: one(users, {
     fields: [chatMessages.userId],
+    references: [users.id],
+  }),
+}));
+
+export const discussionThreadsRelations = relations(discussionThreads, ({ one, many }) => ({
+  problem: one(problems, {
+    fields: [discussionThreads.problemId],
+    references: [problems.id],
+  }),
+  author: one(users, {
+    fields: [discussionThreads.authorId],
+    references: [users.id],
+  }),
+  posts: many(discussionPosts),
+}));
+
+export const discussionPostsRelations = relations(discussionPosts, ({ one }) => ({
+  thread: one(discussionThreads, {
+    fields: [discussionPosts.threadId],
+    references: [discussionThreads.id],
+  }),
+  author: one(users, {
+    fields: [discussionPosts.authorId],
     references: [users.id],
   }),
 }));

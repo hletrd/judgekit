@@ -125,10 +125,18 @@ export async function proxy(request: NextRequest) {
   const isChangePasswordPage = pathname === "/change-password";
   const isApiRoute = pathname.startsWith("/api/v1");
   const isPublicLanguagesRoute = pathname === "/api/v1/languages";
+  const isPublicPlaygroundRunRoute = pathname === "/api/v1/playground/run";
   const isJudgeWorkerRoute = pathname.startsWith("/api/v1/judge/");
+  const hasPathPrefix = (prefix: string) =>
+    pathname === prefix || pathname.startsWith(`${prefix}/`);
+  const isWorkspaceRoute = hasPathPrefix("/workspace");
+  const isControlRoute = hasPathPrefix("/control");
+  const isDashboardCompatibilityRoute = hasPathPrefix("/dashboard");
   const isProtectedRoute =
-    pathname.startsWith("/dashboard") ||
-    (isApiRoute && !isJudgeWorkerRoute && !isPublicLanguagesRoute);
+    isWorkspaceRoute ||
+    isControlRoute ||
+    isDashboardCompatibilityRoute ||
+    (isApiRoute && !isJudgeWorkerRoute && !isPublicLanguagesRoute && !isPublicPlaygroundRunRoute);
   const shouldRefreshAuthState = Boolean(token) && (isProtectedRoute || isChangePasswordPage || isAuthPage);
   let activeUser: Awaited<ReturnType<typeof getActiveAuthUserById>> = null;
   if (shouldRefreshAuthState) {
@@ -206,5 +214,18 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/dashboard/:path*", "/api/v1/:path*", "/login", "/change-password", "/", "/recruit/:path*"],
+  matcher: [
+    "/",
+    "/workspace/:path*",
+    "/control/:path*",
+    "/dashboard/:path*",
+    "/practice/:path*",
+    "/playground/:path*",
+    "/contests/:path*",
+    "/community/:path*",
+    "/api/v1/:path*",
+    "/login",
+    "/change-password",
+    "/recruit/:path*",
+  ],
 };

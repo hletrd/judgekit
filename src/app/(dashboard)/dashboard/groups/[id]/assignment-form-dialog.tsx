@@ -44,6 +44,7 @@ export type AssignmentEditorValue = {
   hasSubmissions: boolean;
   problems: AssignmentProblemDraft[];
   examMode?: "none" | "scheduled" | "windowed";
+  visibility?: "private" | "public";
   examDurationMinutes?: number | null;
   scoringModel?: "ioi" | "icpc";
   freezeLeaderboardAt?: number | null;
@@ -111,6 +112,7 @@ export default function AssignmentFormDialog({
   );
   const [latePenalty, setLatePenalty] = useState(initialAssignment?.latePenalty ?? 0);
   const [examMode, setExamMode] = useState<"none" | "scheduled" | "windowed">(initialAssignment?.examMode ?? "none");
+  const [visibility, setVisibility] = useState<"private" | "public">(initialAssignment?.visibility ?? "private");
   const [examDurationMinutes, setExamDurationMinutes] = useState<number | null>(initialAssignment?.examDurationMinutes ?? null);
   const [scoringModel, setScoringModel] = useState<"ioi" | "icpc">(initialAssignment?.scoringModel ?? "ioi");
   const [freezeLeaderboardAt, setFreezeLeaderboardAt] = useState(formatDateTimeInput(initialAssignment?.freezeLeaderboardAt ?? null));
@@ -130,6 +132,10 @@ export default function AssignmentFormDialog({
     ioi: t("scoringModelIoi"),
     icpc: t("scoringModelIcpc"),
   };
+  const assignmentVisibilityLabels: Record<string, string> = {
+    private: t("assignmentVisibilityPrivate"),
+    public: t("assignmentVisibilityPublic"),
+  };
 
   function resetState() {
     setTitle(initialAssignment?.title ?? "");
@@ -139,6 +145,7 @@ export default function AssignmentFormDialog({
     setLateDeadline(formatDateTimeInput(initialAssignment?.lateDeadline ?? null));
     setLatePenalty(initialAssignment?.latePenalty ?? 0);
     setExamMode(initialAssignment?.examMode ?? "none");
+    setVisibility(initialAssignment?.visibility ?? "private");
     setExamDurationMinutes(initialAssignment?.examDurationMinutes ?? null);
     setScoringModel(initialAssignment?.scoringModel ?? "ioi");
     setFreezeLeaderboardAt(formatDateTimeInput(initialAssignment?.freezeLeaderboardAt ?? null));
@@ -227,6 +234,7 @@ export default function AssignmentFormDialog({
             lateDeadline: parseDateTimeInput(lateDeadline),
             latePenalty,
             examMode,
+            visibility,
             examDurationMinutes: examMode === "windowed" ? examDurationMinutes : null,
             scoringModel: examMode !== "none" ? scoringModel : "ioi",
             freezeLeaderboardAt: examMode !== "none" ? parseDateTimeInput(freezeLeaderboardAt) : null,
@@ -416,6 +424,26 @@ export default function AssignmentFormDialog({
 
             {examMode !== "none" && (
               <>
+                <div className="space-y-2">
+                  <Label>{t("assignmentVisibilityLabel")}</Label>
+                  <Select
+                    value={visibility}
+                    onValueChange={(value) => setVisibility(value as "private" | "public")}
+                    disabled={isLoading}
+                  >
+                    <SelectTrigger>
+                      <SelectValue>{assignmentVisibilityLabels[visibility] || visibility}</SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="private" label={t("assignmentVisibilityPrivate")}>{t("assignmentVisibilityPrivate")}</SelectItem>
+                      <SelectItem value="public" label={t("assignmentVisibilityPublic")}>{t("assignmentVisibilityPublic")}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-sm text-muted-foreground">
+                    {t(`assignmentVisibilityDescription_${visibility}`)}
+                  </p>
+                </div>
+
                 <div className="space-y-2">
                   <Label>{t("scoringModelLabel")}</Label>
                   <Select

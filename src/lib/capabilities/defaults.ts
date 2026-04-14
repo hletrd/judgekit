@@ -45,6 +45,8 @@ const INSTRUCTOR_CAPABILITIES: readonly Capability[] = [
   "contests.view_analytics",
   "contests.view_leaderboard_full",
   "contests.export",
+  // Community
+  "community.moderate",
   // Recruiting
   "recruiting.manage_invitations",
   // Anti-Cheat

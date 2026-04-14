@@ -143,6 +143,7 @@ export const PATCH = createApiHandler({
             : null,
       latePenalty: body.latePenalty ?? assignment.latePenalty ?? 0,
       examMode: body.examMode ?? assignment.examMode ?? "none",
+      visibility: body.visibility ?? assignment.visibility ?? "private",
       examDurationMinutes: body.examDurationMinutes !== undefined ? body.examDurationMinutes : assignment.examDurationMinutes ?? null,
       scoringModel: body.scoringModel ?? assignment.scoringModel ?? "ioi",
       enableAntiCheat: body.enableAntiCheat ?? assignment.enableAntiCheat ?? false,

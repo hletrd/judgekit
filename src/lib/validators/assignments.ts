@@ -29,6 +29,7 @@ export const assignmentMutationSchema = z
       .max(100, "assignmentLatePenaltyInvalid")
       .default(0),
     examMode: z.enum(["none", "scheduled", "windowed"]).default("none"),
+    visibility: z.enum(["private", "public"]).default("private"),
     examDurationMinutes: z.number().int().min(1).max(1440).nullable().optional(),
     scoringModel: z.enum(["ioi", "icpc"]).default("ioi"),
     freezeLeaderboardAt: z.number().int().nullable().optional(),

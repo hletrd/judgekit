@@ -13,7 +13,7 @@ import {
 import { sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { generateSubmissionId } from "@/lib/submissions/id";
-import type { ExamMode, PlatformMode, ScoringModel } from "@/types";
+import type { AssignmentVisibility, ExamMode, PlatformMode, ScoringModel } from "@/types";
 
 export const users = pgTable(
   "users",
@@ -329,6 +329,7 @@ export const assignments = pgTable(
     lateDeadline: timestamp("late_deadline", { withTimezone: true }),
     latePenalty: doublePrecision("late_penalty").default(0),
     examMode: text("exam_mode").$type<ExamMode>().notNull().default("none"),
+    visibility: text("visibility").$type<AssignmentVisibility>().notNull().default("private"),
     examDurationMinutes: integer("exam_duration_minutes"),
     scoringModel: text("scoring_model").$type<ScoringModel>().notNull().default("ioi"),
     accessCode: text("access_code"),
@@ -725,6 +726,58 @@ export const chatMessages = pgTable("chat_messages", {
     .notNull()
     .$defaultFn(() => new Date(Date.now())),
 });
+
+export const discussionThreads = pgTable(
+  "discussion_threads",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => nanoid()),
+    scopeType: text("scope_type").notNull(),
+    problemId: text("problem_id").references(() => problems.id, { onDelete: "cascade" }),
+    authorId: text("author_id").references(() => users.id, { onDelete: "set null" }),
+    title: text("title").notNull(),
+    content: text("content").notNull(),
+    lockedAt: timestamp("locked_at", { withTimezone: true }),
+    pinnedAt: timestamp("pinned_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .$defaultFn(() => new Date(Date.now())),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .$defaultFn(() => new Date(Date.now())),
+  },
+  (table) => [
+    index("dt_scope_idx").on(table.scopeType),
+    index("dt_problem_idx").on(table.problemId),
+    index("dt_updated_at_idx").on(table.updatedAt),
+  ]
+);
+
+export const discussionPosts = pgTable(
+  "discussion_posts",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => nanoid()),
+    threadId: text("thread_id")
+      .notNull()
+      .references(() => discussionThreads.id, { onDelete: "cascade" }),
+    authorId: text("author_id").references(() => users.id, { onDelete: "set null" }),
+    content: text("content").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .$defaultFn(() => new Date(Date.now())),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .$defaultFn(() => new Date(Date.now())),
+  },
+  (table) => [
+    index("dp_thread_idx").on(table.threadId),
+    index("dp_author_idx").on(table.authorId),
+    index("dp_created_at_idx").on(table.createdAt),
+  ]
+);
 
 export const recruitingInvitations = pgTable(
   "recruiting_invitations",

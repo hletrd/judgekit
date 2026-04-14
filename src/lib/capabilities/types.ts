@@ -52,6 +52,9 @@ export const ALL_CAPABILITIES = [
   "contests.view_leaderboard_full",
   "contests.export",
 
+  // Community
+  "community.moderate",
+
   // Recruiting
   "recruiting.manage_invitations",
 
@@ -145,6 +148,10 @@ export const CAPABILITY_GROUPS = {
       "contests.view_leaderboard_full",
       "contests.export",
     ],
+  },
+  community: {
+    labelKey: "capabilities.groups.community",
+    capabilities: ["community.moderate"],
   },
   recruiting: {
     labelKey: "capabilities.groups.recruiting",

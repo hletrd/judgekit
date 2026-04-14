@@ -41,6 +41,7 @@ type CompilerClientProps = {
   title: string;
   description: string;
   preferredLanguage?: string | null;
+  runEndpoint?: string;
 };
 
 const DEFAULT_CODE: Record<string, string> = {
@@ -100,7 +101,7 @@ function TruncatedOutput({ content, className }: { content: string; className?: 
   );
 }
 
-export function CompilerClient({ languages, title, description, preferredLanguage }: CompilerClientProps) {
+export function CompilerClient({ languages, title, description, preferredLanguage, runEndpoint = "/api/v1/compiler/run" }: CompilerClientProps) {
   const t = useTranslations("compiler");
   const initialLanguage = resolveInitialCompilerLanguage(languages, preferredLanguage);
 
@@ -179,7 +180,7 @@ export function CompilerClient({ languages, title, description, preferredLanguag
     abortControllerRef.current = abortController;
 
     try {
-      const res = await apiFetch("/api/v1/compiler/run", {
+      const res = await apiFetch(runEndpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ language, sourceCode, stdin }),
@@ -215,7 +216,7 @@ export function CompilerClient({ languages, title, description, preferredLanguag
       abortControllerRef.current = null;
       setIsRunning(false);
     }
-  }, [language, sourceCode, stdin, t]);
+  }, [language, runEndpoint, sourceCode, stdin, t]);
 
   // Keyboard shortcut: Ctrl/Cmd+Enter to run
   useEffect(() => {

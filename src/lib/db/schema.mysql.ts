@@ -13,7 +13,7 @@ import {
 } from "drizzle-orm/mysql-core";
 import { nanoid } from "nanoid";
 import { generateSubmissionId } from "@/lib/submissions/id";
-import type { ExamMode, PlatformMode, ScoringModel } from "@/types";
+import type { AssignmentVisibility, ExamMode, PlatformMode, ScoringModel } from "@/types";
 
 export const users = mysqlTable("users", {
   id: varchar("id", { length: 36 })
@@ -309,6 +309,7 @@ export const assignments = mysqlTable(
     lateDeadline: timestamp("late_deadline"),
     latePenalty: double("late_penalty").default(0),
     examMode: varchar("exam_mode", { length: 255 }).$type<ExamMode>().notNull().default("none"),
+    visibility: varchar("visibility", { length: 255 }).$type<AssignmentVisibility>().notNull().default("private"),
     examDurationMinutes: int("exam_duration_minutes"),
     scoringModel: varchar("scoring_model", { length: 255 }).$type<ScoringModel>().notNull().default("ioi"),
     accessCode: varchar("access_code", { length: 255 }),
@@ -701,6 +702,58 @@ export const chatMessages = mysqlTable("chat_messages", {
     .notNull()
     .$defaultFn(() => new Date(Date.now())),
 });
+
+export const discussionThreads = mysqlTable(
+  "discussion_threads",
+  {
+    id: varchar("id", { length: 36 })
+      .primaryKey()
+      .$defaultFn(() => nanoid()),
+    scopeType: varchar("scope_type", { length: 32 }).notNull(),
+    problemId: varchar("problem_id", { length: 36 }).references(() => problems.id, { onDelete: "cascade" }),
+    authorId: varchar("author_id", { length: 36 }).references(() => users.id, { onDelete: "set null" }),
+    title: text("title").notNull(),
+    content: text("content").notNull(),
+    lockedAt: timestamp("locked_at"),
+    pinnedAt: timestamp("pinned_at"),
+    createdAt: timestamp("created_at")
+      .notNull()
+      .$defaultFn(() => new Date(Date.now())),
+    updatedAt: timestamp("updated_at")
+      .notNull()
+      .$defaultFn(() => new Date(Date.now())),
+  },
+  (table) => [
+    index("dt_scope_idx").on(table.scopeType),
+    index("dt_problem_idx").on(table.problemId),
+    index("dt_updated_at_idx").on(table.updatedAt),
+  ]
+);
+
+export const discussionPosts = mysqlTable(
+  "discussion_posts",
+  {
+    id: varchar("id", { length: 36 })
+      .primaryKey()
+      .$defaultFn(() => nanoid()),
+    threadId: varchar("thread_id", { length: 36 })
+      .notNull()
+      .references(() => discussionThreads.id, { onDelete: "cascade" }),
+    authorId: varchar("author_id", { length: 36 }).references(() => users.id, { onDelete: "set null" }),
+    content: text("content").notNull(),
+    createdAt: timestamp("created_at")
+      .notNull()
+      .$defaultFn(() => new Date(Date.now())),
+    updatedAt: timestamp("updated_at")
+      .notNull()
+      .$defaultFn(() => new Date(Date.now())),
+  },
+  (table) => [
+    index("dp_thread_idx").on(table.threadId),
+    index("dp_author_idx").on(table.authorId),
+    index("dp_created_at_idx").on(table.createdAt),
+  ]
+);
 
 export const recruitingInvitations = mysqlTable(
   "recruiting_invitations",

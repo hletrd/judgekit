@@ -27,6 +27,7 @@ describe("assignmentMutationSchema", () => {
     expect(parsed.title).toBe("Homework 1");
     expect(parsed.description).toBe("Introductory exercises");
     expect(parsed.problems[0]?.problemId).toBe("problem-1");
+    expect(parsed.visibility).toBe("private");
   });
 
   it("rejects duplicate problems", () => {

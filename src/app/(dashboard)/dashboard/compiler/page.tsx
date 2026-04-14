@@ -1,10 +1,7 @@
 import { getTranslations } from "next-intl/server";
 import { redirect } from "next/navigation";
-import { db } from "@/lib/db";
-import { languageConfigs } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
-import { getJudgeLanguageDefinition } from "@/lib/judge/languages";
 import { auth } from "@/lib/auth";
+import { getEnabledCompilerLanguages } from "@/lib/compiler/catalog";
 import { CompilerClient } from "./compiler-client";
 import { getPlatformModePolicy } from "@/lib/platform-mode";
 import { getEffectivePlatformMode } from "@/lib/platform-mode-context";
@@ -20,31 +17,9 @@ export default async function CompilerPage() {
     redirect("/dashboard");
   }
 
-  const languages = (await db
-    .select({
-      id: languageConfigs.id,
-      language: languageConfigs.language,
-      displayName: languageConfigs.displayName,
-      standard: languageConfigs.standard,
-      extension: languageConfigs.extension,
-    })
-    .from(languageConfigs)
-    .where(eq(languageConfigs.isEnabled, true)))
-    .flatMap((lang) => {
-      const definition = getJudgeLanguageDefinition(lang.language);
-      if (!definition) return [];
-      return [{
-        ...lang,
-        displayName: definition.displayName,
-        standard: definition.standard,
-        extension: definition.extension,
-      }];
-    });
+  const languages = await getEnabledCompilerLanguages();
 
-  // CRITICAL FIX: Handle empty languages list
   if (languages.length === 0) {
-    // In production, show an error page
-    // In development, redirect to languages admin for quick setup
     if (process.env.NODE_ENV === "development") {
       redirect("/dashboard/admin/languages?no-enabled-languages=true");
     }
@@ -60,5 +35,12 @@ export default async function CompilerPage() {
     );
   }
 
-  return <CompilerClient languages={languages} title={t("title")} description={t("description")} preferredLanguage={session?.user?.preferredLanguage ?? null} />;
+  return (
+    <CompilerClient
+      languages={languages}
+      title={t("title")}
+      description={t("description")}
+      preferredLanguage={session?.user?.preferredLanguage ?? null}
+    />
+  );
 }

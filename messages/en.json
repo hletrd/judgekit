@@ -762,7 +762,12 @@
       "examSessionInProgress": "In progress",
       "examSessionCompleted": "Completed",
       "examTimesUp": "Time's up"
-    }
+    },
+    "assignmentVisibilityLabel": "Contest visibility",
+    "assignmentVisibilityPrivate": "Private contest",
+    "assignmentVisibilityPublic": "Public contest",
+    "assignmentVisibilityDescription_private": "Visible only to enrolled participants and staff. Guests cannot browse it from the public contest catalog.",
+    "assignmentVisibilityDescription_public": "Visible in the public contest catalog. Joining and starting still require authentication."
   },
   "admin": {
     "users": {
@@ -1991,7 +1996,8 @@
       "antiCheat": "Anti-Cheat",
       "files": "Files",
       "system": "System",
-      "content": "Content"
+      "content": "Content",
+      "community": "Community"
     },
     "items": {
       "users": {
@@ -2059,6 +2065,9 @@
       "content": {
         "submit_solutions": "Submit solutions",
         "view_own_submissions": "View own submissions"
+      },
+      "community": {
+        "moderate": "Moderate discussions"
       }
     },
     "languages": {
@@ -2175,5 +2184,228 @@
     "accountPasswordLoginNotice": "After your first start, you can sign in later with your recruiting email and account password through the normal login page.",
     "resumeSessionOnlyNotice": "This invitation is already linked to your current signed-in account. Continue with this session to resume the assessment safely.",
     "goToLogin": "Go to login"
+  },
+  "publicShell": {
+    "nav": {
+      "practice": "Practice",
+      "playground": "Playground",
+      "contests": "Contests",
+      "community": "Community",
+      "workspace": "Workspace"
+    },
+    "home": {
+      "eyebrow": "Public-first phase",
+      "title": "A new JudgeKit structure is underway.",
+      "description": "JudgeKit is moving from a single dashboard-first shell to a clearer split between public discovery, personal workspace, and staff control surfaces. This phase introduces the new hierarchy and entry points.",
+      "primaryCta": "Open workspace",
+      "secondaryCta": "Sign in",
+      "cards": {
+        "practice": {
+          "title": "Practice",
+          "description": "Browse the upcoming public practice surface and prepare for public problem discovery."
+        },
+        "playground": {
+          "title": "Playground",
+          "description": "Guest compiler access is planned as the next major milestone, with ideone-style quick code runs."
+        },
+        "contests": {
+          "title": "Contests",
+          "description": "Contest discovery is being separated from private participation flows so public visitors can explore safely."
+        },
+        "community": {
+          "title": "Community",
+          "description": "A general forum and per-problem discussion system are planned as first-class product surfaces."
+        }
+      }
+    },
+    "practice": {
+      "title": "Practice surface preview",
+      "description": "Public practice browsing will be introduced in the next phase. This entry point establishes the new information architecture now.",
+      "note": "Phase 1 creates the public route and hierarchy. Public problem discovery and guest-safe access rules come next.",
+      "primaryCta": "Open workspace",
+      "secondaryCta": "Sign in",
+      "catalogTitle": "Public problem catalog",
+      "catalogDescription": "Browse problems that are already safe to expose publicly. Guests can read the statement and jump into the playground without signing in.",
+      "noProblems": "No public problems are available yet.",
+      "openProblem": "Open problem",
+      "unknownAuthor": "Unknown author",
+      "authoredBy": "Author: {name}",
+      "timeLimit": "Time limit: {value}ms",
+      "memoryLimit": "Memory limit: {value}MB",
+      "tryInPlayground": "Try in playground",
+      "signInToSubmit": "Sign in to submit",
+      "discussion": {
+        "title": "Problem discussion",
+        "description": "Discuss approaches and ask clarifying questions about this problem.",
+        "empty": "No discussion threads yet for this problem.",
+        "openThread": "Open discussion",
+        "form": {
+          "titleLabel": "Discussion title",
+          "contentLabel": "Question or topic",
+          "submitLabel": "Start discussion",
+          "success": "Discussion created",
+          "signIn": "Sign in to discuss this problem"
+        }
+      }
+    },
+    "playground": {
+      "title": "Public playground",
+      "description": "Run simple code in a guest-safe environment without signing in.",
+      "note": "Guest playground execution is now enabled for quick testing. Judged submissions and contest participation still require authentication.",
+      "primaryCta": "Open workspace",
+      "secondaryCta": "Sign in",
+      "liveTitle": "Public playground",
+      "liveDescription": "Run quick experiments with stdin/stdout just like an online scratch compiler. Sign in only when you need judged submissions or contest participation."
+    },
+    "contests": {
+      "title": "Contest catalog preview",
+      "description": "Contest discovery is being redesigned into a public-read, protected-write flow.",
+      "note": "Phase 1 establishes the public route. Public contest browsing and join/start boundaries will be implemented in the next phase.",
+      "primaryCta": "Open workspace",
+      "secondaryCta": "Sign in",
+      "catalogTitle": "Public contest catalog",
+      "catalogDescription": "Browse contests that are explicitly marked as public. Guests can review the overview safely before signing in to participate.",
+      "noContests": "No public contests are available yet.",
+      "openContest": "Open contest",
+      "hostedBy": "Hosted by {name}",
+      "startsAt": "Starts: {value}",
+      "deadline": "Deadline: {value}",
+      "notScheduled": "Not scheduled",
+      "noDeadline": "No deadline",
+      "problemCount": "{count} total problems",
+      "publicProblemCount": "{count} public problems",
+      "publicProblemsTitle": "Public problem set",
+      "noPublicProblems": "This contest does not expose any public problems yet.",
+      "signInToJoin": "Sign in to join",
+      "openWorkspace": "Open workspace",
+      "status": {
+        "upcoming": "Upcoming",
+        "open": "Open",
+        "inProgress": "In progress",
+        "expired": "Expired",
+        "closed": "Closed"
+      }
+    },
+    "community": {
+      "title": "Community preview",
+      "description": "JudgeKit is gaining a general BBS and per-problem discussions as first-class surfaces.",
+      "note": "Phase 1 reserves the public community route. Forum threads, replies, and moderation arrive in later phases.",
+      "primaryCta": "Open workspace",
+      "secondaryCta": "Sign in",
+      "liveTitle": "Community board",
+      "liveDescription": "Ask questions, share hints, and follow platform-wide discussions. Guests can read everything; signed-in users can start threads and reply.",
+      "empty": "No threads yet. Start the first discussion.",
+      "openThread": "Open thread",
+      "unknownAuthor": "Unknown author",
+      "scopeGeneral": "General discussion",
+      "scopeProblem": "Problem discussion",
+      "repliesTitle": "Replies",
+      "noReplies": "No replies yet.",
+      "form": {
+        "titleLabel": "Thread title",
+        "contentLabel": "Question or topic",
+        "submitLabel": "Create thread",
+        "success": "Thread created",
+        "signIn": "Sign in to create a thread"
+      },
+      "reply": {
+        "contentLabel": "Reply",
+        "submitLabel": "Post reply",
+        "success": "Reply posted",
+        "signIn": "Sign in to reply"
+      },
+      "pinned": "Pinned",
+      "locked": "Locked",
+      "replyCount": "{count} replies",
+      "moderation": {
+        "pin": "Pin thread",
+        "unpin": "Unpin thread",
+        "lock": "Lock thread",
+        "unlock": "Unlock thread",
+        "deleteThread": "Delete thread",
+        "deletePost": "Delete reply",
+        "success": "Discussion updated",
+        "deleteSuccess": "Discussion removed",
+        "replyDeleteSuccess": "Reply removed"
+      }
+    }
+  },
+  "workspaceShell": {
+    "sectionLabel": "Workspace",
+    "title": "Workspace home",
+    "description": "The new workspace shell is now the preferred authenticated entry point. Existing feature pages remain available while the hierarchy transitions away from the old dashboard-first model.",
+    "openLink": "Open",
+    "nav": {
+      "home": "Workspace home",
+      "homeDescription": "Use the new workspace shell as your authenticated starting point.",
+      "problemsDescription": "Continue into the existing problem workflows during the migration.",
+      "contestsDescription": "Open your current contest flows from the new workspace shell.",
+      "submissionsDescription": "Review your current submission history and results.",
+      "profileDescription": "Manage your profile and preferences.",
+      "discussions": "My discussions",
+      "discussionsDescription": "Review your own threads and recent discussion activity."
+    },
+    "cards": {
+      "problems": "Jump to the current problem workflows.",
+      "contests": "Continue into the current contest experience.",
+      "submissions": "Open your submission history and statuses.",
+      "profile": "Manage your account and editor preferences.",
+      "discussions": "Open your authored and participated discussion threads."
+    },
+    "controlCard": {
+      "title": "Control center",
+      "description": "Staff and elevated roles can enter the new control shell from here while legacy routes remain available.",
+      "link": "Open control center"
+    },
+    "discussions": {
+      "title": "My discussions",
+      "description": "Threads you started or replied to appear here so you can jump back into ongoing conversations.",
+      "empty": "You have not participated in any discussions yet.",
+      "openThread": "Open thread",
+      "authored": "Started by you",
+      "participated": "You replied here"
+    }
+  },
+  "controlShell": {
+    "sectionLabel": "Control",
+    "title": "Control center",
+    "description": "The control shell is the new home for teaching, moderation, and administration surfaces. Existing staff routes remain active while the hierarchy is migrated.",
+    "openLink": "Open",
+    "nav": {
+      "home": "Control home",
+      "homeDescription": "Use the control shell as the new operational entry point.",
+      "groupsDescription": "Open existing teaching and group management tools.",
+      "usersDescription": "Open users, roles, and audit-facing administration.",
+      "languagesDescription": "Open language and worker configuration tools.",
+      "settingsDescription": "Open core system settings and operational controls.",
+      "discussions": "Discussion moderation",
+      "discussionsDescription": "Review, pin, lock, and remove public discussion threads."
+    },
+    "cards": {
+      "groups": "Continue into the current teaching and group management flows.",
+      "users": "Open user, role, and administrative management tools.",
+      "settings": "Open system-level settings while the control hierarchy is introduced.",
+      "discussions": "Open the discussion moderation queue and manage public-facing threads."
+    },
+    "moderation": {
+      "title": "Discussion moderation",
+      "description": "Review public discussion threads, filter by scope or moderation state, and apply moderation actions.",
+      "empty": "No discussion threads match the current filters.",
+      "openThread": "Open thread",
+      "unknownAuthor": "Unknown author",
+      "problemMeta": "{title} · {replies} replies",
+      "generalMeta": "{replies} replies",
+      "scope": {
+        "all": "All scopes",
+        "general": "General",
+        "problem": "Problem"
+      },
+      "state": {
+        "all": "All states",
+        "open": "Open",
+        "locked": "Locked",
+        "pinned": "Pinned"
+      }
+    }
   }
 }

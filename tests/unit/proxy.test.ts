@@ -176,10 +176,17 @@ describe("proxy", () => {
   // Config / matcher
   // =========================================================================
   describe("config.matcher", () => {
-    it("matches dashboard, api/v1, login, and change-password routes", () => {
+    it("matches public shells, protected shells, api/v1, login, and change-password routes", () => {
       expect(config.matcher).toEqual(
         expect.arrayContaining([
+          "/",
+          "/workspace/:path*",
+          "/control/:path*",
           "/dashboard/:path*",
+          "/practice/:path*",
+          "/playground/:path*",
+          "/contests/:path*",
+          "/community/:path*",
           "/api/v1/:path*",
           "/login",
           "/change-password",
@@ -192,6 +199,16 @@ describe("proxy", () => {
   // Public / bypass routes
   // =========================================================================
   describe("public routes", () => {
+    it("allows unauthenticated access to the new public shell routes", async () => {
+      const routes = ["/", "/practice", "/playground", "/contests", "/community"];
+
+      for (const route of routes) {
+        const response = await proxy(makeRequest(route));
+        expect(response.status).toBe(200);
+        expect(response.headers.get("Content-Security-Policy")).toBeTruthy();
+      }
+    });
+
     it("allows unauthenticated access to /api/v1/judge/* routes (judge worker bypass)", async () => {
       const response = await proxy(makeRequest("/api/v1/judge/poll"));
 
@@ -201,6 +218,26 @@ describe("proxy", () => {
 
     it("allows unauthenticated access to /api/v1/languages (public languages route)", async () => {
       const response = await proxy(makeRequest("/api/v1/languages"));
+
+      expect(response.status).toBe(200);
+      expect(response.headers.get("Content-Security-Policy")).toBeTruthy();
+    });
+
+    it("allows unauthenticated access to /api/v1/playground/run (public playground route)", async () => {
+      const request = new NextRequest("http://localhost:3000/api/v1/playground/run", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Requested-With": "XMLHttpRequest",
+        },
+        body: JSON.stringify({
+          language: "python",
+          sourceCode: "print(1)",
+          stdin: "",
+        }),
+      });
+
+      const response = await proxy(request);
 
       expect(response.status).toBe(200);
       expect(response.headers.get("Content-Security-Policy")).toBeTruthy();
@@ -305,6 +342,33 @@ describe("proxy", () => {
       const cookieNames = setCookieHeader.map((c: string) => c.split("=")[0]);
       expect(cookieNames).toContain("authjs.session-token");
       expect(cookieNames).toContain("__Secure-authjs.session-token");
+    });
+  });
+
+  describe("protected workspace and control routes", () => {
+    it("redirects unauthenticated users from /workspace to /login with callbackUrl", async () => {
+      const response = await proxy(makeRequest("/workspace"));
+
+      const redirectUrl = isRedirectTo(response, "/login");
+      expect(redirectUrl.searchParams.get("callbackUrl")).toBe("/workspace");
+    });
+
+    it("redirects unauthenticated users from /control to /login with callbackUrl", async () => {
+      const response = await proxy(makeRequest("/control"));
+
+      const redirectUrl = isRedirectTo(response, "/login");
+      expect(redirectUrl.searchParams.get("callbackUrl")).toBe("/control");
+    });
+
+    it("allows authenticated active users to access /workspace", async () => {
+      getTokenMock.mockResolvedValue(fakeToken());
+      getTokenUserIdMock.mockReturnValue("user-1");
+      getTokenAuthenticatedAtSecondsMock.mockReturnValue(Math.trunc(Date.now() / 1000));
+      getActiveAuthUserByIdMock.mockResolvedValue(activeUser());
+
+      const response = await proxy(makeRequest("/workspace"));
+
+      expect(response.status).toBe(200);
     });
   });
 

@@ -39,6 +39,8 @@ const TABLE_MAP: Record<string, any> = {
   problemSetGroupAccess: schema.problemSetGroupAccess,
   problemTags: schema.problemTags,
   chatMessages: schema.chatMessages,
+  discussionThreads: schema.discussionThreads,
+  discussionPosts: schema.discussionPosts,
   assignmentProblems: schema.assignmentProblems,
   recruitingInvitations: schema.recruitingInvitations,
   examSessions: schema.examSessions,

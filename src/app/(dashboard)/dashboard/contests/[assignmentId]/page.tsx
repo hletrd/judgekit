@@ -500,6 +500,7 @@ export default async function ContestDetailPage({
       points: p.points ?? 100,
     })),
     examMode: assignment.examMode as "none" | "scheduled" | "windowed",
+    visibility: assignment.visibility ?? "private",
     examDurationMinutes: assignment.examDurationMinutes ?? null,
     scoringModel: assignment.scoringModel as "ioi" | "icpc",
     freezeLeaderboardAt: assignment.freezeLeaderboardAt ? new Date(assignment.freezeLeaderboardAt).valueOf() : null,

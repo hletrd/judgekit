@@ -202,7 +202,9 @@ const TABLE_ORDER: { name: string; table: any; orderColumns: string[] }[] = [
   { name: "problemSetGroupAccess", table: schema.problemSetGroupAccess, orderColumns: ["id"] },
   { name: "problemTags", table: schema.problemTags, orderColumns: ["id"] },
   { name: "chatMessages", table: schema.chatMessages, orderColumns: ["id"] },
+  { name: "discussionThreads", table: schema.discussionThreads, orderColumns: ["id"] },
   // Level 3: FK to level 0-2
+  { name: "discussionPosts", table: schema.discussionPosts, orderColumns: ["id"] },
   { name: "assignmentProblems", table: schema.assignmentProblems, orderColumns: ["id"] },
   { name: "recruitingInvitations", table: schema.recruitingInvitations, orderColumns: ["id"] },
   { name: "examSessions", table: schema.examSessions, orderColumns: ["id"] },

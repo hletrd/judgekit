@@ -1,0 +1,68 @@
+import Link from "next/link";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+
+type ThreadListItem = {
+  id: string;
+  title: string;
+  content: string;
+  authorName: string;
+  replyCountLabel: string;
+  locked: boolean;
+  pinned: boolean;
+  href: string;
+};
+
+type DiscussionThreadListProps = {
+  title: string;
+  description?: string;
+  emptyLabel: string;
+  openLabel: string;
+  pinnedLabel: string;
+  lockedLabel: string;
+  threads: ThreadListItem[];
+};
+
+function summarize(text: string) {
+  return text.replace(/\s+/g, " ").trim().slice(0, 220);
+}
+
+export function DiscussionThreadList({ title, description, emptyLabel, openLabel, pinnedLabel, lockedLabel, threads }: DiscussionThreadListProps) {
+  return (
+    <div className="space-y-4">
+      <div>
+        <h2 className="text-2xl font-semibold tracking-tight">{title}</h2>
+        {description ? <p className="mt-2 text-sm text-muted-foreground">{description}</p> : null}
+      </div>
+      {threads.length === 0 ? (
+        <Card>
+          <CardContent className="py-6 text-sm text-muted-foreground">{emptyLabel}</CardContent>
+        </Card>
+      ) : (
+        <div className="space-y-4">
+          {threads.map((thread) => (
+            <Card key={thread.id}>
+              <CardHeader>
+                <div className="flex flex-wrap gap-2">
+                  {thread.pinned ? <Badge variant="secondary">{pinnedLabel}</Badge> : null}
+                  {thread.locked ? <Badge variant="outline">{lockedLabel}</Badge> : null}
+                </div>
+                <CardTitle>{thread.title}</CardTitle>
+                <CardDescription>{thread.authorName}</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <p className="text-sm text-muted-foreground">{summarize(thread.content)}</p>
+                <div className="flex items-center justify-between gap-4 text-xs text-muted-foreground">
+                  <span>{thread.replyCountLabel}</span>
+                  <Link href={thread.href} className="font-medium text-primary hover:underline">
+                    {openLabel}
+                  </Link>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}

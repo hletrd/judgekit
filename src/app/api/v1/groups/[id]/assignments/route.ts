@@ -95,6 +95,7 @@ export async function POST(
       lateDeadline: body.lateDeadline ?? null,
       latePenalty: body.latePenalty ?? 0,
       examMode: body.examMode ?? "none",
+      visibility: body.visibility ?? "private",
       examDurationMinutes: body.examDurationMinutes ?? null,
       scoringModel: body.scoringModel ?? "ioi",
       enableAntiCheat: body.enableAntiCheat ?? false,
