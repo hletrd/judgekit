@@ -23,6 +23,16 @@ export const DATA_RETENTION_DAYS = {
 
 export type DataRetentionKey = keyof typeof DATA_RETENTION_DAYS;
 
+/**
+ * When true, all automatic data pruning is suspended.  Set via the
+ * `DATA_RETENTION_LEGAL_HOLD` environment variable.  Intended for
+ * litigation holds, regulatory investigations, or any scenario where
+ * data must not be deleted until the hold is lifted.
+ */
+export const DATA_RETENTION_LEGAL_HOLD =
+  process.env.DATA_RETENTION_LEGAL_HOLD === "true" ||
+  process.env.DATA_RETENTION_LEGAL_HOLD === "1";
+
 export function getRetentionCutoff(days: number, now = Date.now()) {
   return new Date(now - days * 24 * 60 * 60 * 1000);
 }

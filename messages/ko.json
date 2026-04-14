@@ -674,6 +674,7 @@
     "freezeLeaderboardLabel": "리더보드 동결 시점",
     "freezeLeaderboardDescription": "이 시점 이후 사용자에게 동결된 순위가 표시됩니다. 관리자는 실시간 데이터를 볼 수 있습니다.",
     "enableAntiCheatLabel": "부정행위 모니터링 활성화",
+    "enableAntiCheatDescription": "브라우저 포커스 변경, 복사/붙여넣기 등의 신호를 검토 보조 자료로 기록합니다. 이는 저신뢰 텔레메트리로, 감독이나 부정행위 증거가 아닙니다. 공식 시험의 경우 별도의 운영 통제를 추가하세요.",
     "examDurationRequired": "개별 시험 모드에서는 시험 시간이 필요합니다.",
     "examWindowRequired": "개별 시험 모드에서는 시작 일시와 마감 일시가 모두 필요합니다.",
     "examScheduleRequired": "정규 시험 모드에서는 시작 일시와 마감 일시가 모두 필요합니다.",

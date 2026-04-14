@@ -36,41 +36,28 @@ export async function POST(req: Request) {
     .where(eq(recruitingInvitations.token, body.token))
     .limit(1);
 
-  if (!invitation) {
-    return NextResponse.json({ data: { valid: false, reason: "notFound" } });
-  }
+  // Return a uniform invalid response for any failure case to avoid
+  // leaking invitation status, expiration metadata, or assignment details
+  // to anonymous callers.
+  const invalid = () => NextResponse.json({ data: { valid: false } });
 
-  if (invitation.status === "revoked") {
-    return NextResponse.json({ data: { valid: false, reason: "revoked" } });
-  }
-
-  if (invitation.expiresAt && invitation.expiresAt < new Date()) {
-    return NextResponse.json({ data: { valid: false, reason: "expired" } });
-  }
+  if (!invitation) return invalid();
+  if (invitation.status === "revoked") return invalid();
+  if (invitation.expiresAt && invitation.expiresAt < new Date()) return invalid();
 
   const [assignment] = await db
     .select({
-      title: assignments.title,
-      examDurationMinutes: assignments.examDurationMinutes,
+      id: assignments.id,
       deadline: assignments.deadline,
     })
     .from(assignments)
     .where(eq(assignments.id, invitation.assignmentId))
     .limit(1);
 
-  if (!assignment) {
-    return NextResponse.json({ data: { valid: false, reason: "assignmentNotFound" } });
-  }
-
-  if (assignment.deadline && assignment.deadline < new Date()) {
-    return NextResponse.json({ data: { valid: false, reason: "contestClosed" } });
-  }
+  if (!assignment) return invalid();
+  if (assignment.deadline && assignment.deadline < new Date()) return invalid();
 
   return NextResponse.json({
-    data: {
-      valid: true,
-      status: invitation.status,
-      expiresAt: invitation.expiresAt,
-    },
+    data: { valid: true },
   });
 }

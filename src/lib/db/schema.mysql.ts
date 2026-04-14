@@ -695,6 +695,7 @@ export const chatMessages = mysqlTable("chat_messages", {
   sessionId: varchar("session_id", { length: 255 }).notNull(),
   role: varchar("role", { length: 255 }).notNull(), // "user" | "assistant" | "system"
   content: text("content").notNull(),
+  completionStatus: varchar("completion_status", { length: 32 }),
   problemId: varchar("problem_id", { length: 36 }),
   model: varchar("model", { length: 255 }),
   provider: varchar("provider", { length: 255 }),

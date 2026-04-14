@@ -677,6 +677,7 @@
     "freezeLeaderboardLabel": "Freeze Leaderboard At",
     "freezeLeaderboardDescription": "Students see frozen standings after this time. Instructors see live data.",
     "enableAntiCheatLabel": "Enable anti-cheat monitoring",
+    "enableAntiCheatDescription": "Logs browser focus changes, copy/paste, and similar signals as review aids. This is low-confidence telemetry — not proctoring or proof of misconduct. For formal exams, add separate operational controls.",
     "examBadgeScheduled": "Scheduled Exam",
     "examBadgeWindowed": "Windowed Exam ({duration} min)",
     "examStartButton": "Start Exam",

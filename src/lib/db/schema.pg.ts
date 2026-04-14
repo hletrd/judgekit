@@ -719,6 +719,8 @@ export const chatMessages = pgTable("chat_messages", {
   sessionId: text("session_id").notNull(),
   role: text("role").notNull(), // "user" | "assistant" | "system"
   content: text("content").notNull(),
+  /** Tracks whether the assistant response completed fully or was interrupted. */
+  completionStatus: text("completion_status"), // "complete" | "partial" | "error" — null for user messages
   problemId: text("problem_id"),
   model: text("model"),
   provider: text("provider"),

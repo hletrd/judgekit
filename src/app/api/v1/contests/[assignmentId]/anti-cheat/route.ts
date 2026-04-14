@@ -72,7 +72,9 @@ export const POST = createApiHandler({
     }
 
     const { eventType, details: rawDetails } = body;
-    const details = rawDetails ? JSON.stringify({ message: rawDetails }) : null;
+    // Store the client's details string directly — no double-encoding.
+    // The client already JSON.stringifies structured data before sending.
+    const details = rawDetails ?? null;
 
     // Heartbeat events: only insert a DB row once per 60 seconds to reduce churn.
     if (eventType === "heartbeat") {

@@ -44,6 +44,7 @@ async function persistChatMessage(entry: {
   sessionId: string;
   role: "user" | "assistant";
   content: string;
+  completionStatus?: "complete" | "partial" | "error" | null;
   problemId: string | null;
   provider: string;
   model: string | null;
@@ -60,8 +61,9 @@ async function persistChatMessage(entry: {
 function buildLoggedStreamingResponse(options: {
   stream: ReadableStream<Uint8Array>;
   sessionId: string;
-  persistAssistantMessage: () => Promise<void>;
+  persistAssistantMessage: (status: "complete" | "partial" | "error") => Promise<void>;
 }) {
+  let completed = false;
   const passthrough = new ReadableStream<Uint8Array>({
     async start(controller) {
       const reader = options.stream.getReader();
@@ -71,12 +73,13 @@ function buildLoggedStreamingResponse(options: {
           if (done) break;
           if (value) controller.enqueue(value);
         }
+        completed = true;
         controller.close();
       } catch (error) {
         controller.error(error);
       } finally {
         reader.releaseLock();
-        await options.persistAssistantMessage();
+        await options.persistAssistantMessage(completed ? "complete" : "partial");
       }
     },
   });
@@ -324,6 +327,7 @@ export const POST = createApiHandler({
       });
       const decoder = new TextDecoder();
       let assistantContent = "";
+      let streamCompleted = false;
       const loggingStream = new ReadableStream<Uint8Array>({
         async start(controller) {
           const reader = stream.getReader();
@@ -337,6 +341,7 @@ export const POST = createApiHandler({
               }
             }
             assistantContent += decoder.decode();
+            streamCompleted = true;
             controller.close();
           } catch (error) {
             controller.error(error);
@@ -347,6 +352,7 @@ export const POST = createApiHandler({
               sessionId,
               role: "assistant",
               content: assistantContent,
+              completionStatus: streamCompleted ? "complete" : (assistantContent ? "partial" : "error"),
               problemId: context?.problemId ?? null,
               model,
               provider: config.provider,
@@ -391,12 +397,13 @@ export const POST = createApiHandler({
         return buildLoggedStreamingResponse({
           stream: textStream,
           sessionId,
-          persistAssistantMessage: async () => {
+          persistAssistantMessage: async (status) => {
             await persistChatMessage({
               userId: session.user.id,
               sessionId,
               role: "assistant",
               content: assistantContent,
+              completionStatus: status,
               problemId: context?.problemId ?? null,
               model,
               provider: config.provider,
@@ -424,6 +431,7 @@ export const POST = createApiHandler({
     });
     const decoder = new TextDecoder();
     let assistantContent = "";
+    let finalStreamCompleted = false;
     const loggingStream = new ReadableStream<Uint8Array>({
       async start(controller) {
         const reader = finalStream.getReader();
@@ -437,6 +445,7 @@ export const POST = createApiHandler({
             }
           }
           assistantContent += decoder.decode();
+          finalStreamCompleted = true;
           controller.close();
         } catch (error) {
           controller.error(error);
@@ -447,6 +456,7 @@ export const POST = createApiHandler({
             sessionId,
             role: "assistant",
             content: assistantContent,
+            completionStatus: finalStreamCompleted ? "complete" : (assistantContent ? "partial" : "error"),
             problemId: context?.problemId ?? null,
             model,
             provider: config.provider,

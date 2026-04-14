@@ -21,7 +21,11 @@ export const GET = createApiHandler({
     const offset = (page - 1) * limit;
 
     if (sessionId) {
-      // Get messages for a specific session
+      // Get messages for a specific session.
+      // Transcript access is a privileged operation — the audit event below
+      // serves as the break-glass trail.  Operators should review these
+      // events periodically and constrain access to the narrowest set of
+      // administrators needed for legitimate investigations.
       const messages = await db.query.chatMessages.findMany({
         where: eq(chatMessages.sessionId, sessionId),
         orderBy: [asc(chatMessages.createdAt)],
@@ -36,8 +40,8 @@ export const GET = createApiHandler({
         resourceType: "chat_session",
         resourceId: sessionId,
         resourceLabel: sessionId,
-        summary: `Viewed chat transcript for session ${sessionId}`,
-        details: { sessionId },
+        summary: `Privileged transcript access: viewed chat session ${sessionId} (${messages.length} messages)`,
+        details: { sessionId, messageCount: messages.length, accessType: "break-glass-transcript" },
         request: req,
       });
       return NextResponse.json({ messages });

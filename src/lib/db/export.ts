@@ -70,7 +70,7 @@ async function waitForReadableStreamDemand(
   }
 }
 
-export function streamDatabaseExport(options: { signal?: AbortSignal } = {}): ReadableStream<Uint8Array> {
+export function streamDatabaseExport(options: { signal?: AbortSignal; sanitize?: boolean } = {}): ReadableStream<Uint8Array> {
   const encoder = new TextEncoder();
   let cancelled = false;
   const abort = () => {
@@ -92,6 +92,8 @@ export function streamDatabaseExport(options: { signal?: AbortSignal } = {}): Re
             )
           );
 
+          const activeRedactionMap = options.sanitize ? SANITIZED_COLUMNS : REDACTED_COLUMNS;
+
           for (const [tableIndex, { name, table, orderColumns }] of TABLE_ORDER.entries()) {
             if (cancelled) return;
             const columnsChunk = await tx
@@ -102,7 +104,7 @@ export function streamDatabaseExport(options: { signal?: AbortSignal } = {}): Re
               .offset(0);
 
             const columns = columnsChunk.length > 0 ? Object.keys(columnsChunk[0] as object) : [];
-            const redactSet = REDACTED_COLUMNS[name];
+            const redactSet = activeRedactionMap[name];
 
             await waitForReadableStreamDemand(controller, () => cancelled);
             controller.enqueue(
@@ -248,11 +250,24 @@ function normalizeValue(val: unknown): unknown {
 const EXPORT_CHUNK_SIZE = 1000;
 
 /**
- * Backup/export endpoints now produce full-fidelity exports so they can be
- * round-tripped through import/restore without silently corrupting required
- * columns. Keep this empty unless a future export format explicitly
- * differentiates between "sanitized export" and "restorable backup".
+ * Columns redacted in sanitized (human-downloadable) exports.
+ * Full-fidelity backup keeps all columns for disaster recovery.
+ *
+ * Sanitized exports null-out sensitive material — session tokens, password
+ * hashes, API keys, worker secrets — so a portable export can be shared or
+ * archived without leaking live credentials.
  */
+const SANITIZED_COLUMNS: Record<string, Set<string>> = {
+  users: new Set(["passwordHash"]),
+  sessions: new Set(["sessionToken"]),
+  accounts: new Set(["refresh_token", "access_token", "id_token"]),
+  apiKeys: new Set(["encryptedKey"]),
+  judgeWorkers: new Set(["secretToken", "judgeClaimToken"]),
+  recruitingInvitations: new Set(["token"]),
+  contestAccessTokens: new Set(["token"]),
+};
+
+/** Empty redaction set for full-fidelity backup exports. */
 const REDACTED_COLUMNS: Record<string, Set<string>> = {};
 
 function getOrderClauses(table: any, orderColumns: string[]) {
@@ -291,7 +306,9 @@ async function selectTableChunks(
  * Export the entire database to a portable JSON format.
  * Uses cursor-based pagination to avoid loading entire tables into memory.
  */
-export async function exportDatabase(): Promise<JudgeKitExport> {
+export async function exportDatabase(options: { sanitize?: boolean } = {}): Promise<JudgeKitExport> {
+  const redactionMap = options.sanitize ? SANITIZED_COLUMNS : REDACTED_COLUMNS;
+
   return db.transaction(async (tx) => {
     await tx.execute(sql.raw("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY"));
 
@@ -306,7 +323,7 @@ export async function exportDatabase(): Promise<JudgeKitExport> {
     for (const { name, table, orderColumns } of TABLE_ORDER) {
       const orderedRows = await selectTableChunks(tx as TransactionClient, table, orderColumns);
       const columns = orderedRows.length > 0 ? Object.keys(orderedRows[0] as object) : [];
-      const redactSet = REDACTED_COLUMNS[name];
+      const redactSet = redactionMap[name];
       const rows = orderedRows.map((row) =>
         columns.map((col) => (redactSet?.has(col) ? null : normalizeValue((row as any)[col])))
       );

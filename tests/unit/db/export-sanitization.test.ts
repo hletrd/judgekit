@@ -1,0 +1,55 @@
+import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+
+const EXPORT_PATH = "src/lib/db/export.ts";
+
+describe("export.ts sanitization", () => {
+  it("defines SANITIZED_COLUMNS with entries for all sensitive tables", () => {
+    const source = readFileSync(join(process.cwd(), EXPORT_PATH), "utf8");
+
+    expect(source).toContain("SANITIZED_COLUMNS");
+    expect(source).toContain("users:");
+    expect(source).toContain("sessions:");
+    expect(source).toContain("accounts:");
+    expect(source).toContain("apiKeys:");
+    expect(source).toContain("judgeWorkers:");
+    expect(source).toContain("recruitingInvitations:");
+    expect(source).toContain("contestAccessTokens:");
+  });
+
+  it("covers all required sensitive column names", () => {
+    const source = readFileSync(join(process.cwd(), EXPORT_PATH), "utf8");
+
+    expect(source).toContain("passwordHash");
+    expect(source).toContain("sessionToken");
+    expect(source).toContain("refresh_token");
+    expect(source).toContain("access_token");
+    expect(source).toContain("id_token");
+    expect(source).toContain("encryptedKey");
+    expect(source).toContain("secretToken");
+    expect(source).toContain("judgeClaimToken");
+    // token appears in both recruitingInvitations and contestAccessTokens
+    expect(source).toMatch(/"token"/);
+  });
+
+  it("streamDatabaseExport accepts a sanitize option", () => {
+    const source = readFileSync(join(process.cwd(), EXPORT_PATH), "utf8");
+    expect(source).toMatch(/streamDatabaseExport\s*\([^)]*sanitize\??\s*:/);
+  });
+
+  it("exportDatabase accepts a sanitize option", () => {
+    const source = readFileSync(join(process.cwd(), EXPORT_PATH), "utf8");
+    expect(source).toMatch(/exportDatabase\s*\([^)]*sanitize\??\s*:/);
+  });
+
+  it("streamDatabaseExport uses SANITIZED_COLUMNS when sanitize is true", () => {
+    const source = readFileSync(join(process.cwd(), EXPORT_PATH), "utf8");
+    expect(source).toContain("options.sanitize ? SANITIZED_COLUMNS");
+  });
+
+  it("exportDatabase uses SANITIZED_COLUMNS when sanitize is true", () => {
+    const source = readFileSync(join(process.cwd(), EXPORT_PATH), "utf8");
+    expect(source).toContain("options.sanitize ? SANITIZED_COLUMNS");
+  });
+});

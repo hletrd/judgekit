@@ -2,7 +2,7 @@ import { and, inArray, lt, notInArray, or } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { logger } from "@/lib/logger";
 import { antiCheatEvents, chatMessages, recruitingInvitations, submissions } from "@/lib/db/schema";
-import { DATA_RETENTION_DAYS, getRetentionCutoff } from "@/lib/data-retention";
+import { DATA_RETENTION_DAYS, DATA_RETENTION_LEGAL_HOLD, getRetentionCutoff } from "@/lib/data-retention";
 
 async function pruneChatMessages() {
   const cutoff = getRetentionCutoff(DATA_RETENTION_DAYS.chatMessages);
@@ -47,6 +47,11 @@ async function pruneAntiCheatEvents() {
 }
 
 async function pruneSensitiveOperationalData() {
+  if (DATA_RETENTION_LEGAL_HOLD) {
+    logger.info("Data retention legal hold is active — skipping all automatic pruning");
+    return;
+  }
+
   try {
     await pruneChatMessages();
     await pruneAntiCheatEvents();

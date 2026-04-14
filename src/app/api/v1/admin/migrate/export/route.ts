@@ -51,6 +51,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "invalidPassword" }, { status: 403 });
     }
 
+    // Portable exports are sanitized by default — sensitive tokens/secrets
+    // are nulled out.  Pass ?full=true to get a full-fidelity export (same
+    // as the dedicated backup route).
+    const url = new URL(request.url);
+    const wantFull = url.searchParams.get("full") === "true";
+
     const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
     const filename = `judgekit-export-${timestamp}.json`;
 
@@ -61,11 +67,11 @@ export async function POST(request: NextRequest) {
       resourceType: "system_settings",
       resourceId: "database",
       resourceLabel: "Database export",
-      summary: `Exported database as streamed JSON (${filename})`,
+      summary: `Exported database as streamed JSON (${filename}, ${wantFull ? "full-fidelity" : "sanitized"})`,
       request,
     });
 
-    return new Response(streamDatabaseExport({ signal: request.signal }), {
+    return new Response(streamDatabaseExport({ signal: request.signal, sanitize: !wantFull }), {
       headers: {
         "Content-Type": "application/json",
         "Content-Disposition": `attachment; filename="${filename}"`,
