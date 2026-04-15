@@ -122,7 +122,11 @@
     "compiler": "Compiler",
     "apiKeys": "API Keys",
     "challenges": "Challenges",
-    "attempts": "Attempts"
+    "attempts": "Attempts",
+    "activeTimedAssignment": "Active timed assignment",
+    "remaining": "Remaining",
+    "elapsed": "Elapsed",
+    "progress": "Progress"
   },
   "dashboard": {
     "title": "Dashboard",

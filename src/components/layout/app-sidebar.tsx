@@ -19,7 +19,9 @@ import {
 } from "@/components/ui/sidebar";
 import { BookOpen, FileCode, Send, Users, User, LayoutDashboard, GraduationCap, Shield, LogOut, LogIn, History, FolderOpen, Blocks, Trophy, MessageCircle, Timer, KeyRound, Code, Settings, Server, Play, Upload, Tags, Loader2 } from "lucide-react";
 import type { PlatformMode } from "@/types";
+import type { ActiveTimedAssignmentSummary } from "@/lib/assignments/active-timed-assignments";
 import { getPlatformModePolicy } from "@/lib/platform-mode";
+import { ActiveTimedAssignmentSidebarPanel } from "@/components/layout/active-timed-assignment-sidebar-panel";
 
 interface AppSidebarProps {
   user: {
@@ -32,6 +34,7 @@ interface AppSidebarProps {
   siteTitle: string;
   platformMode: PlatformMode;
   capabilities?: string[];
+  activeTimedAssignments?: ActiveTimedAssignmentSummary[];
 }
 
 type NavItem = {
@@ -165,7 +168,13 @@ function NavItems({
   );
 }
 
-export function AppSidebar({ user, siteTitle, platformMode, capabilities = [] }: AppSidebarProps) {
+export function AppSidebar({
+  user,
+  siteTitle,
+  platformMode,
+  capabilities = [],
+  activeTimedAssignments = [],
+}: AppSidebarProps) {
   const pathname = usePathname();
   const t = useTranslations("nav");
   const tAuth = useTranslations("auth");
@@ -221,6 +230,7 @@ export function AppSidebar({ user, siteTitle, platformMode, capabilities = [] }:
         </div>
       </SidebarHeader>
       <SidebarContent>
+        <ActiveTimedAssignmentSidebarPanel assignments={activeTimedAssignments} />
         {navGroups.map((group) => {
           const filtered = filterItems(group.items);
           if (filtered.length === 0) return null;

@@ -19,6 +19,7 @@ import { isPluginEnabled } from "@/lib/plugins/data";
 import { EditorContentProvider } from "@/contexts/editor-content-context";
 import { getRecruitingAccessContext } from "@/lib/recruiting/access";
 import { isInstructorOrAboveAsync } from "@/lib/auth/role-helpers";
+import { getActiveTimedAssignmentsForSidebar } from "@/lib/assignments/active-timed-assignments";
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
@@ -37,12 +38,25 @@ export default async function DashboardLayout({ children }: { children: React.Re
       return (!chatPluginOn || !aiOn) ? arr.filter(c => c !== "system.chat_logs") : arr;
     })(),
   ]);
-  const settings = await getResolvedSystemSettings({
-    siteTitle: t("appName"),
-    siteDescription: t("appDescription"),
-  });
+  const capsSet = new Set(capabilities);
+  const canBypassTimedAssignmentPanel =
+    session.user.role === "admin"
+    || session.user.role === "super_admin"
+    || session.user.role === "instructor"
+    || capsSet.has("groups.view_all")
+    || capsSet.has("submissions.view_all")
+    || capsSet.has("assignments.view_status");
 
-  const canUseLectureMode = await isInstructorOrAboveAsync(session.user.role);
+  const [settings, canUseLectureMode, activeTimedAssignments] = await Promise.all([
+    getResolvedSystemSettings({
+      siteTitle: t("appName"),
+      siteDescription: t("appDescription"),
+    }),
+    isInstructorOrAboveAsync(session.user.role),
+    canBypassTimedAssignmentPanel
+      ? Promise.resolve([])
+      : getActiveTimedAssignmentsForSidebar(session.user.id, session.user.role),
+  ]);
 
   return (
     <EditorContentProvider>
@@ -64,6 +78,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
           siteTitle={settings.siteTitle}
           platformMode={effectivePlatformMode}
           capabilities={capabilities}
+          activeTimedAssignments={activeTimedAssignments}
         />
         <SidebarInset>
           <header className="flex h-14 items-center gap-2 px-4">

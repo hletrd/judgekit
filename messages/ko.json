@@ -122,7 +122,11 @@
     "compiler": "컴파일러",
     "apiKeys": "API 키",
     "challenges": "과제 문제",
-    "attempts": "시도 내역"
+    "attempts": "시도 내역",
+    "activeTimedAssignment": "진행 중인 제한 시간 과제",
+    "remaining": "남은 시간",
+    "elapsed": "경과 시간",
+    "progress": "진행률"
   },
   "dashboard": {
     "title": "대시보드",

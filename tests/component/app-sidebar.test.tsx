@@ -9,6 +9,9 @@ const { signOutMock } = vi.hoisted(() => ({
 
 vi.mock("next/navigation", () => ({
   usePathname: () => "/dashboard",
+  useSearchParams: () => ({
+    get: () => null,
+  }),
 }));
 
 vi.mock("next-auth/react", () => ({
