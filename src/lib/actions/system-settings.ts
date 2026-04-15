@@ -93,6 +93,8 @@ export async function updateSystemSettings(
     return { success: false, error: "signupHcaptchaUnavailable" };
   }
 
+  const hasOwnInput = (key: string) => Object.prototype.hasOwnProperty.call(input, key);
+
   // Build config fields — undefined means "not provided", null means "clear to default"
   const configValues: Record<string, number | null> = {};
   for (const key of CONFIG_KEYS) {
@@ -104,18 +106,37 @@ export async function updateSystemSettings(
   }
 
   const baseValues: Record<string, unknown> = {
-    siteTitle: siteTitle ?? null,
-    siteDescription: siteDescription ?? null,
-    timeZone: timeZone ?? null,
-    platformMode: platformMode ?? DEFAULT_PLATFORM_MODE,
-    aiAssistantEnabled: aiAssistantEnabled ?? true,
-    publicSignupEnabled: publicSignupEnabled ?? false,
-    signupHcaptchaEnabled: signupHcaptchaEnabled ?? false,
-    defaultLanguage: defaultLanguage ?? null,
-    homePageContent: homePageContent ?? null,
     ...configValues,
     updatedAt: new Date(),
   };
+
+  if (hasOwnInput("siteTitle")) {
+    baseValues.siteTitle = siteTitle ?? null;
+  }
+  if (hasOwnInput("siteDescription")) {
+    baseValues.siteDescription = siteDescription ?? null;
+  }
+  if (hasOwnInput("timeZone")) {
+    baseValues.timeZone = timeZone ?? null;
+  }
+  if (hasOwnInput("platformMode")) {
+    baseValues.platformMode = platformMode ?? DEFAULT_PLATFORM_MODE;
+  }
+  if (hasOwnInput("aiAssistantEnabled")) {
+    baseValues.aiAssistantEnabled = aiAssistantEnabled ?? true;
+  }
+  if (hasOwnInput("publicSignupEnabled")) {
+    baseValues.publicSignupEnabled = publicSignupEnabled ?? false;
+  }
+  if (hasOwnInput("signupHcaptchaEnabled")) {
+    baseValues.signupHcaptchaEnabled = signupHcaptchaEnabled ?? false;
+  }
+  if (hasOwnInput("defaultLanguage")) {
+    baseValues.defaultLanguage = defaultLanguage ?? null;
+  }
+  if (hasOwnInput("homePageContent")) {
+    baseValues.homePageContent = homePageContent ?? null;
+  }
 
   if (allowedHosts !== undefined) {
     baseValues.allowedHosts = allowedHosts.length > 0 ? JSON.stringify(allowedHosts) : null;
@@ -134,6 +155,12 @@ export async function updateSystemSettings(
 
   invalidateSettingsCache();
 
+  const auditDetails = JSON.parse(JSON.stringify(
+    Object.fromEntries(
+      Object.entries(baseValues).filter(([key]) => key !== "updatedAt")
+    )
+  ));
+
   const auditContext = await buildServerActionAuditContext("/dashboard/admin/settings");
   recordAuditEvent({
     actorId: session.user.id,
@@ -143,17 +170,7 @@ export async function updateSystemSettings(
     resourceId: GLOBAL_SETTINGS_ID,
     resourceLabel: "Global settings",
     summary: "Updated global system settings",
-    details: {
-      siteTitle: siteTitle ?? null,
-      siteDescription: siteDescription ?? null,
-      timeZone: timeZone ?? null,
-      platformMode: platformMode ?? DEFAULT_PLATFORM_MODE,
-      aiAssistantEnabled: aiAssistantEnabled ?? true,
-      publicSignupEnabled: publicSignupEnabled ?? false,
-      signupHcaptchaEnabled: signupHcaptchaEnabled ?? false,
-      defaultLanguage: defaultLanguage ?? null,
-      ...configValues,
-    },
+    details: auditDetails,
     context: auditContext,
   });
 

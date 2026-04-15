@@ -12,7 +12,7 @@ type PublicHomePageProps = {
   description: string;
   sections: HomeSection[];
   primaryCta: { href: string; label: string };
-  secondaryCta: { href: string; label: string };
+  secondaryCta?: { href: string; label: string } | null;
 };
 
 export function PublicHomePage({
@@ -33,9 +33,11 @@ export function PublicHomePage({
           <Link href={primaryCta.href} className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90">
             {primaryCta.label}
           </Link>
-          <Link href={secondaryCta.href} className="rounded-md border px-4 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground">
-            {secondaryCta.label}
-          </Link>
+          {secondaryCta ? (
+            <Link href={secondaryCta.href} className="rounded-md border px-4 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground">
+              {secondaryCta.label}
+            </Link>
+          ) : null}
         </div>
       </section>
 

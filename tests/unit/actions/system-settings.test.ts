@@ -239,6 +239,29 @@ describe("updateSystemSettings", () => {
     );
   });
 
+  it("does not overwrite unrelated settings when a tab submits only one field", async () => {
+    const { updateSystemSettings } = await import("@/lib/actions/system-settings");
+    setupAuthorizedAdmin();
+
+    const result = await updateSystemSettings({
+      allowedHosts: ["algo.xylolabs.com"],
+    });
+
+    expect(result).toEqual({ success: true });
+    expect(mocks.dbInsertValues).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: "global",
+        allowedHosts: JSON.stringify(["algo.xylolabs.com"]),
+      })
+    );
+
+    const insertedValues = mocks.dbInsertValues.mock.calls.at(-1)?.[0] as Record<string, unknown>;
+    expect(insertedValues).not.toHaveProperty("siteTitle");
+    expect(insertedValues).not.toHaveProperty("platformMode");
+    expect(insertedValues).not.toHaveProperty("aiAssistantEnabled");
+    expect(insertedValues).not.toHaveProperty("publicSignupEnabled");
+  });
+
   it("calls invalidateSettingsCache on success", async () => {
     const { updateSystemSettings } = await import("@/lib/actions/system-settings");
     setupAuthorizedAdmin();
@@ -281,18 +304,15 @@ describe("updateSystemSettings", () => {
     );
   });
 
-  it("stores null for siteTitle when not provided", async () => {
+  it("leaves top-level settings untouched when no related fields are provided", async () => {
     const { updateSystemSettings } = await import("@/lib/actions/system-settings");
     setupAuthorizedAdmin();
 
     await updateSystemSettings({});
-    expect(mocks.dbInsertValues).toHaveBeenCalledWith(
-      expect.objectContaining({
-        siteTitle: null,
-        siteDescription: null,
-        timeZone: null,
-        platformMode: "homework",
-      })
-    );
+    const insertedValues = mocks.dbInsertValues.mock.calls.at(-1)?.[0] as Record<string, unknown>;
+    expect(insertedValues).not.toHaveProperty("siteTitle");
+    expect(insertedValues).not.toHaveProperty("siteDescription");
+    expect(insertedValues).not.toHaveProperty("timeZone");
+    expect(insertedValues).not.toHaveProperty("platformMode");
   });
 });

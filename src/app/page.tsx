@@ -112,7 +112,7 @@ export default async function HomePage() {
             },
           ]}
           primaryCta={{ href: "/dashboard", label: tShell("home.primaryCta") }}
-          secondaryCta={{ href: "/login", label: tShell("home.secondaryCta") }}
+          secondaryCta={session?.user ? null : { href: "/login", label: tShell("home.secondaryCta") }}
         />
       </main>
     </div>

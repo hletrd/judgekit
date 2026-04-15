@@ -42,6 +42,8 @@ export function ChangePasswordForm({ username }: { username: string }) {
 
         setError(t(result.error ?? "error"));
       } else {
+        await signOut({ redirect: false });
+
         const refreshedSession = await signIn("credentials", {
           username,
           password: newPassword,
@@ -56,7 +58,12 @@ export function ChangePasswordForm({ username }: { username: string }) {
           return;
         }
 
-        router.replace("/dashboard");
+        if (refreshedSession.url) {
+          const nextUrl = new URL(refreshedSession.url, window.location.origin);
+          router.replace(`${nextUrl.pathname}${nextUrl.search}${nextUrl.hash}`);
+        } else {
+          router.replace("/dashboard");
+        }
         router.refresh();
       }
     });
