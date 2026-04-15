@@ -10,18 +10,18 @@ import { ChevronDownIcon, CheckIcon, SearchIcon } from "lucide-react";
 // Category definitions — language IDs that belong to each named group.
 // Any language not in any category will fall into "Other".
 const LANGUAGE_CATEGORIES: Record<string, string[]> = {
-  "C / C++": ["c", "c89", "c99", "c11", "c17", "c23", "cpp", "cpp11", "cpp14", "cpp17", "cpp20", "cpp23", "clang_c23", "clang_cpp23"],
+  "C / C++": ["c", "c89", "c99", "c11", "c17", "c23", "cpp", "cpp11", "cpp14", "cpp17", "cpp20", "cpp23", "cpp26", "clang_c23", "clang_cpp23", "clang_cpp26"],
   "Java / JVM": ["java", "java8", "java11", "java17", "java21", "java25", "kotlin", "scala", "groovy", "clojure"],
   "Python": ["python", "python2", "python3", "pypy2", "pypy3", "micropython"],
-  "JavaScript / TypeScript": ["javascript", "typescript", "nodejs", "deno_js", "deno_ts", "bun_js", "bun_ts", "coffeescript"],
+  "JavaScript / TypeScript": ["javascript", "typescript", "nodejs", "deno_js", "deno_ts", "bun_js", "bun_ts", "coffeescript", "rescript", "elm"],
   "Rust": ["rust"],
   "Go": ["go"],
   "Swift": ["swift"],
   ".NET": ["csharp", "fsharp", "vbnet"],
-  "Haskell / ML": ["haskell", "ocaml", "sml", "flix", "purescript"],
+  "Haskell / ML": ["haskell", "ocaml", "sml", "flix", "purescript", "idris2"],
   "Functional": ["elixir", "erlang", "gleam", "racket", "scheme", "commonlisp", "hy", "fennel", "clean", "mercury", "curry", "koka", "lean", "grain", "pony", "factor"],
   "Scripting": ["perl", "ruby", "php", "lua", "bash", "awk", "tcl", "powershell", "r"],
-  "Compiled": ["fortran", "pascal", "d", "ada", "nim", "zig", "dart", "crystal", "vala", "hare", "c3", "nelua", "odin", "vlang"],
+  "Compiled": ["fortran", "pascal", "d", "ada", "nim", "zig", "dart", "crystal", "vala", "hare", "c3", "nelua", "odin", "vlang", "moonbit", "chapel"],
   "Esoteric / Other": ["brainfuck", "befunge", "aheui", "hyeong", "whitespace", "umjunsik", "lolcode", "shakespeare", "b", "sed", "dc", "forth", "algol68", "snobol4", "icon", "uiua", "rexx", "arturo", "janet", "picat", "wat", "modula2", "minizinc", "spark", "carp", "raku", "bqn", "squirrel", "julia", "octave", "prolog", "smalltalk", "freebasic", "apl", "nasm", "llvm_ir", "postscript", "haxe", "objective_c", "cobol", "delphi"],
 };
 
