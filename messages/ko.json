@@ -2277,7 +2277,7 @@
       "primaryCta": "워크스페이스 열기",
       "secondaryCta": "로그인",
       "catalogTitle": "공개 문제 카탈로그",
-      "catalogDescription": "공개해도 안전한 문제를 둘러볼 수 있습니다. 비로그인 사용자도 문제를 읽고 플레이그라운드로 이동할 수 있습니다.",
+      "catalogDescription": "누구나 살펴볼 수 있는 공개 문제입니다. 로그인 없이도 문제를 읽고 플레이그라운드에서 실행해 볼 수 있습니다.",
       "noProblems": "아직 공개된 문제가 없습니다.",
       "openProblem": "문제 열기",
       "unknownAuthor": "알 수 없는 작성자",
@@ -2288,7 +2288,7 @@
       "signInToSubmit": "로그인 후 제출",
       "discussion": {
         "title": "문제 토론",
-        "description": "이 문제에 대한 접근 방법을 논의하고 궁금한 점을 질문할 수 있습니다.",
+        "description": "풀이 방법이나 궁금한 점을 자유롭게 나눠 보세요.",
         "empty": "이 문제에는 아직 토론 스레드가 없습니다.",
         "openThread": "토론 열기",
         "form": {
@@ -2302,12 +2302,12 @@
     },
     "playground": {
       "title": "공개 플레이그라운드",
-      "description": "로그인 없이도 간단한 코드를 실행할 수 있는 게스트 안전 환경입니다.",
+      "description": "로그인 없이 코드를 바로 실행해 볼 수 있습니다.",
       "note": "이제 빠른 테스트를 위한 게스트 플레이그라운드 실행이 가능합니다. 채점 제출과 대회 참여는 계속 인증이 필요합니다.",
       "primaryCta": "워크스페이스 열기",
       "secondaryCta": "로그인",
       "liveTitle": "공개 플레이그라운드",
-      "liveDescription": "온라인 스크래치 컴파일러처럼 stdin/stdout 기반의 빠른 실험을 실행할 수 있습니다. 채점 제출이나 대회 참여가 필요할 때만 로그인하면 됩니다."
+      "liveDescription": "로그인 없이 코드를 실행하고 결과를 바로 확인할 수 있습니다. 채점이나 대회 참여 시에만 로그인이 필요합니다."
     },
     "contests": {
       "title": "대회 카탈로그 미리보기",
@@ -2316,7 +2316,7 @@
       "primaryCta": "워크스페이스 열기",
       "secondaryCta": "로그인",
       "catalogTitle": "공개 대회 카탈로그",
-      "catalogDescription": "명시적으로 공개로 설정된 대회를 둘러볼 수 있습니다. 비로그인 사용자도 참가 전에 개요를 안전하게 확인할 수 있습니다.",
+      "catalogDescription": "공개된 대회 목록입니다. 로그인 없이도 대회 정보를 미리 확인할 수 있습니다.",
       "noContests": "아직 공개된 대회가 없습니다.",
       "openContest": "대회 열기",
       "hostedBy": "{name} 주최",
@@ -2345,7 +2345,7 @@
       "primaryCta": "워크스페이스 열기",
       "secondaryCta": "로그인",
       "liveTitle": "커뮤니티 게시판",
-      "liveDescription": "질문을 올리고 힌트를 나누며 플랫폼 전반의 토론을 확인할 수 있습니다. 게스트는 읽을 수 있고, 로그인 사용자는 스레드와 답글을 작성할 수 있습니다.",
+      "liveDescription": "풀이 힌트를 공유하거나 궁금한 점을 질문할 수 있습니다. 누구나 읽을 수 있고, 글 작성은 로그인 후 가능합니다.",
       "createThread": "스레드 만들기",
       "newThreadTitle": "새 스레드 만들기",
       "newThreadDescription": "커뮤니티 전체에 공유할 토론을 시작하세요.",
