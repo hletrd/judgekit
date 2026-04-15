@@ -73,6 +73,7 @@ function renderForm(initialTimeZone = "UTC") {
       initialTimeZone={initialTimeZone}
       initialPlatformMode="homework"
       initialDefaultLanguage="python"
+      initialDefaultLocale="en"
       defaultSiteTitle="JudgeKit"
       defaultSiteDescription="Description"
       defaultTimeZone="Asia/Seoul"
