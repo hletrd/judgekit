@@ -8,19 +8,28 @@ vi.mock("next/link", () => ({
 }));
 
 describe("PublicProblemList", () => {
-  it("renders public problem cards", () => {
+  it("renders public problem rows in a list/table layout", () => {
     render(
       <PublicProblemList
         title="Public problem catalog"
         description="Browse public problems"
         noProblemsLabel="No public problems"
         openProblemLabel="Open problem"
+        numberLabel="#"
+        problemTitleLabel="Title"
+        authorLabel="Author"
+        timeLimitLabel="Time limit"
+        difficultyLabel="Difficulty"
+        tagLabel="Tags"
         problems={[
           {
             id: "problem-1",
+            sequenceNumber: 1000,
             title: "A + B",
             summary: "Add two integers.",
             authorName: "Author One",
+            timeLimitLabel: "Time Limit: 2000 ms",
+            difficultyLabel: "Difficulty: 1.00 / 10",
             tags: [{ name: "math", color: null }],
           },
         ]}
@@ -30,7 +39,10 @@ describe("PublicProblemList", () => {
     expect(screen.getByText("Public problem catalog")).toBeInTheDocument();
     expect(screen.getByText("A + B")).toBeInTheDocument();
     expect(screen.getByText("Author One")).toBeInTheDocument();
+    expect(screen.getByText("1000")).toBeInTheDocument();
+    expect(screen.getByText("Time Limit: 2000 ms")).toBeInTheDocument();
+    expect(screen.getByText("Difficulty: 1.00 / 10")).toBeInTheDocument();
     expect(screen.getByText("math")).toBeInTheDocument();
-    expect(screen.getByText("Open problem")).toBeInTheDocument();
+    expect(screen.getAllByText("Open problem").length).toBeGreaterThan(0);
   });
 });

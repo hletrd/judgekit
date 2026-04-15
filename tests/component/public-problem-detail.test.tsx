@@ -15,14 +15,15 @@ describe("PublicProblemDetail", () => {
   it("renders problem metadata and action links", () => {
     render(
       <PublicProblemDetail
+        backHref="/practice"
+        backLabel="Back"
         title="A + B"
         description="Add two integers."
         authorLabel="Author: JudgeKit"
         tags={[{ name: "math", color: null }]}
-        timeLimitMs={2000}
-        memoryLimitMb={256}
-        timeLimitLabel="Time limit: 2000ms"
-        memoryLimitLabel="Memory limit: 256MB"
+        timeLimitLabel="Time Limit: 2000 ms"
+        memoryLimitLabel="Memory Limit: 256 MB"
+        difficultyLabel="Difficulty: 1 / 10"
         playgroundHref="/playground"
         playgroundLabel="Try in playground"
         signInHref="/login"
@@ -31,9 +32,11 @@ describe("PublicProblemDetail", () => {
     );
 
     expect(screen.getByText("A + B")).toBeInTheDocument();
+    expect(screen.getByText("Back")).toBeInTheDocument();
     expect(screen.getByText("Author: JudgeKit")).toBeInTheDocument();
-    expect(screen.getByText("Time limit: 2000ms")).toBeInTheDocument();
-    expect(screen.getByText("Memory limit: 256MB")).toBeInTheDocument();
+    expect(screen.getByText("Time Limit: 2000 ms")).toBeInTheDocument();
+    expect(screen.getByText("Memory Limit: 256 MB")).toBeInTheDocument();
+    expect(screen.getByText("Difficulty: 1 / 10")).toBeInTheDocument();
     expect(screen.getByText("Try in playground")).toBeInTheDocument();
     expect(screen.getByText("Sign in to submit")).toBeInTheDocument();
   });

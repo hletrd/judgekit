@@ -35,8 +35,9 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function PracticePage() {
-  const [t, locale] = await Promise.all([
+  const [t, tProblems, locale] = await Promise.all([
     getTranslations("publicShell"),
+    getTranslations("problems"),
     getLocale(),
   ]);
 
@@ -84,11 +85,22 @@ export default async function PracticePage() {
         description={t("practice.catalogDescription")}
         noProblemsLabel={t("practice.noProblems")}
         openProblemLabel={t("practice.openProblem")}
+        numberLabel={tProblems("table.number")}
+        problemTitleLabel={tProblems("table.title")}
+        authorLabel={tProblems("table.author")}
+        timeLimitLabel={tProblems("table.timeLimit")}
+        difficultyLabel={tProblems("table.difficulty")}
+        tagLabel={tProblems("table.tags")}
         problems={publicProblems.map((problem) => ({
           id: problem.id,
+          sequenceNumber: problem.sequenceNumber ?? null,
           title: problem.title,
           summary: summarizeTextForMetadata(problem.description, 180),
           authorName: problem.author?.name ?? t("practice.unknownAuthor"),
+          timeLimitLabel: tProblems("badges.timeLimit", { value: problem.timeLimitMs ?? 2000 }),
+          difficultyLabel: problem.difficulty != null
+            ? tProblems("badges.difficulty", { value: problem.difficulty.toFixed(2).replace(/\.?0+$/, "") })
+            : null,
           tags: problem.problemTags.map((entry) => ({
             name: entry.tag.name,
             color: entry.tag.color,

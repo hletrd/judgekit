@@ -53,8 +53,10 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
 
 export default async function PublicProblemDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const [t, session, locale] = await Promise.all([
+  const [t, tCommon, tProblems, session, locale] = await Promise.all([
     getTranslations("publicShell"),
+    getTranslations("common"),
+    getTranslations("problems"),
     auth(),
     getLocale(),
   ]);
@@ -96,14 +98,19 @@ export default async function PublicProblemDetailPage({ params }: { params: Prom
       <JsonLd data={problemJsonLd} />
       <div className="space-y-6">
         <PublicProblemDetail
+          backHref="/practice"
+          backLabel={tCommon("back")}
           title={problem.title}
           description={problem.description}
-          authorLabel={t("practice.authoredBy", { name: problem.author?.name ?? t("practice.unknownAuthor") })}
+          authorLabel={tProblems("badges.author", { name: problem.author?.name ?? t("practice.unknownAuthor") })}
           tags={problem.problemTags.map((entry) => ({ name: entry.tag.name, color: entry.tag.color }))}
-          timeLimitMs={problem.timeLimitMs}
-          memoryLimitMb={problem.memoryLimitMb}
-          timeLimitLabel={t("practice.timeLimit", { value: problem.timeLimitMs ?? 2000 })}
-          memoryLimitLabel={t("practice.memoryLimit", { value: problem.memoryLimitMb ?? 256 })}
+          timeLimitLabel={tProblems("badges.timeLimit", { value: problem.timeLimitMs ?? 2000 })}
+          memoryLimitLabel={tProblems("badges.memoryLimit", { value: problem.memoryLimitMb ?? 256 })}
+          difficultyLabel={
+            problem.difficulty != null
+              ? tProblems("badges.difficulty", { value: problem.difficulty.toFixed(2).replace(/\.?0+$/, "") })
+              : null
+          }
           playgroundHref="/playground"
           playgroundLabel={t("practice.tryInPlayground")}
           signInHref={`/login?callbackUrl=${encodeURIComponent(`/dashboard/problems/${problem.id}`)}`}
