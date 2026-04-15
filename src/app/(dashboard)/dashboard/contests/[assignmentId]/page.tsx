@@ -22,6 +22,10 @@ import {
   getAssignmentStatusRows,
   getStudentProblemStatuses,
 } from "@/lib/assignments/submissions";
+import {
+  ASSIGNMENT_PARTICIPANT_STATUS_VALUES,
+  getAssignmentParticipantStatus,
+} from "@/lib/assignments/participant-status";
 import { canManageGroupResourcesAsync } from "@/lib/assignments/management";
 import { canAccessGroup } from "@/lib/auth/permissions";
 import { resolveCapabilities } from "@/lib/capabilities/cache";
@@ -51,19 +55,7 @@ import AssignmentFormDialog, { type AssignmentEditorValue } from "../../groups/[
 import { AssignmentDeleteButton } from "../../groups/[id]/assignment-delete-button";
 import { getRecruitingAccessContext } from "@/lib/recruiting/access";
 
-const STATUS_FILTER_VALUES = [
-  "all",
-  "not_submitted",
-  "pending",
-  "queued",
-  "judging",
-  "accepted",
-  "wrong_answer",
-  "time_limit",
-  "memory_limit",
-  "runtime_error",
-  "compile_error",
-] as const;
+const STATUS_FILTER_VALUES = ["all", ...ASSIGNMENT_PARTICIPANT_STATUS_VALUES] as const;
 
 type StatusFilterValue = (typeof STATUS_FILTER_VALUES)[number];
 
@@ -509,6 +501,8 @@ export default async function ContestDetailPage({
 
   const statusLabels = {
     not_submitted: tAssignment("notSubmitted"),
+    in_progress: tAssignment("examSessionInProgress"),
+    submitted: tSubmissions("status.submitted"),
     pending: tSubmissions("status.pending"),
     queued: tSubmissions("status.queued"),
     judging: tSubmissions("status.judging"),
@@ -518,17 +512,37 @@ export default async function ContestDetailPage({
     memory_limit: tSubmissions("status.memory_limit"),
     runtime_error: tSubmissions("status.runtime_error"),
     compile_error: tSubmissions("status.compile_error"),
-    submitted: tSubmissions("status.submitted"),
   } as const;
 
   const statusFilter = normalizeStatusFilter(resolvedSearchParams?.status);
   const studentQuery = resolvedSearchParams?.student?.trim() ?? "";
   const normalizedStudentQuery = studentQuery.toLocaleLowerCase();
+  const nowTimestamp = now.getTime();
+  const examSessionMap = new Map(
+    examSessionsForAssignment.map((session) => [
+      session.userId,
+      {
+        startedAt: session.startedAt.toISOString(),
+        personalDeadline: session.personalDeadline.toISOString(),
+      },
+    ])
+  );
 
   const filteredRows = assignmentStatus.rows.filter((row) => {
     if (!matchesStudentQuery(row, normalizedStudentQuery)) return false;
     if (statusFilter === "all") return true;
-    return (row.latestStatus ?? "not_submitted") === statusFilter;
+    const examSession = examSessionMap.get(row.userId);
+    return (
+      getAssignmentParticipantStatus({
+        latestStatus: row.latestStatus,
+        attemptCount: row.attemptCount,
+        bestTotalScore: row.bestTotalScore,
+        totalPoints,
+        examSessionStartedAt: examSession?.startedAt ?? null,
+        examSessionPersonalDeadline: examSession?.personalDeadline ?? null,
+        now: nowTimestamp,
+      }) === statusFilter
+    );
   });
 
   const filterSummary = tAssignment("filterSummary", { count: filteredRows.length });
@@ -683,10 +697,11 @@ export default async function ContestDetailPage({
             isContestView
             canManageOverrides={canManage}
             examMode={assignment.examMode ?? undefined}
-            examSessions={examSessionsForAssignment.map((s) => ({
-              userId: s.userId,
-              startedAt: s.startedAt.toISOString(),
-              personalDeadline: s.personalDeadline.toISOString(),
+            currentTimeMs={nowTimestamp}
+            examSessions={Array.from(examSessionMap, ([userId, session]) => ({
+              userId,
+              startedAt: session.startedAt,
+              personalDeadline: session.personalDeadline,
             }))}
             labels={{
               boardTitle: tAssignment("boardTitle"),

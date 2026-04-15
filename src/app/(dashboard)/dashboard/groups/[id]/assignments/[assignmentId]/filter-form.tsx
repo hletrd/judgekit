@@ -3,20 +3,12 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+  ASSIGNMENT_PARTICIPANT_STATUS_VALUES,
+  type AssignmentParticipantStatus,
+} from "@/lib/assignments/participant-status";
 
-const STATUS_FILTER_VALUES = [
-  "all",
-  "not_submitted",
-  "pending",
-  "queued",
-  "judging",
-  "accepted",
-  "wrong_answer",
-  "time_limit",
-  "memory_limit",
-  "runtime_error",
-  "compile_error",
-] as const;
+const STATUS_FILTER_VALUES = ["all", ...ASSIGNMENT_PARTICIPANT_STATUS_VALUES] as const;
 
 type StatusFilterValue = (typeof STATUS_FILTER_VALUES)[number];
 
@@ -35,7 +27,7 @@ export interface FilterFormProps {
   assignmentId: string;
   currentStatusFilter: StatusFilterValue;
   currentStudentQuery: string;
-  statusLabels: Record<Exclude<StatusFilterValue, "all">, string>;
+  statusLabels: Record<AssignmentParticipantStatus, string>;
   labels: FilterFormLabels;
   /** Override the reset link target. Defaults to the group assignment detail page. */
   resetHref?: string;

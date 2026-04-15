@@ -6,24 +6,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { type AssignmentStudentStatusRow } from "@/lib/assignments/submissions";
+import {
+  getAssignmentParticipantStatus,
+  type AssignmentParticipantStatus,
+} from "@/lib/assignments/participant-status";
 import { formatDateTimeInTimeZone } from "@/lib/datetime";
 import { formatSubmissionIdPrefix } from "@/lib/submissions/format";
 import type { SubmissionStatus } from "@/types";
 import { ScoreOverrideDialog, type ScoreOverrideLabels } from "./score-override-dialog";
-
-type StatusFilterValue =
-  | "all"
-  | "not_submitted"
-  | "pending"
-  | "queued"
-  | "judging"
-  | "accepted"
-  | "wrong_answer"
-  | "time_limit"
-  | "memory_limit"
-  | "runtime_error"
-  | "compile_error"
-  | "submitted";
 
 interface ProblemHeader {
   problemId: string;
@@ -60,7 +50,7 @@ export interface StatusBoardProps {
   filteredRows: AssignmentStudentStatusRow[];
   problems: ProblemHeader[];
   totalPoints: number;
-  statusLabels: Record<Exclude<StatusFilterValue, "all">, string>;
+  statusLabels: Record<AssignmentParticipantStatus, string>;
   locale: string;
   timeZone: string;
   labels: StatusBoardLabels;
@@ -70,16 +60,13 @@ export interface StatusBoardProps {
   examMode?: string;
   examSessions?: Array<{ userId: string; startedAt: string; personalDeadline: string }>;
   isContestView?: boolean;
+  currentTimeMs?: number;
 }
 
 function formatBoardScore(score: number, locale: string) {
   return new Intl.NumberFormat(locale, {
     maximumFractionDigits: 2,
   }).format(score);
-}
-
-function getRowStatusFilterValue(row: AssignmentStudentStatusRow): Exclude<StatusFilterValue, "all"> {
-  return row.latestStatus ?? "not_submitted";
 }
 
 function getMedian(values: number[]) {
@@ -110,7 +97,10 @@ export function StatusBoard({
   examMode,
   examSessions,
   isContestView = false,
+  currentTimeMs,
 }: StatusBoardProps) {
+  const now = currentTimeMs ?? 0;
+  const examSessionMap = new Map(examSessions?.map((session) => [session.userId, session]) ?? []);
   const scoreValues = filteredRows
     .map((row) => row.bestTotalScore)
     .sort((left, right) => left - right);
@@ -175,7 +165,16 @@ export function StatusBoard({
             </TableHeader>
             <TableBody>
               {filteredRows.map((row) => {
-                const rowStatus = getRowStatusFilterValue(row);
+                const examSession = examSessionMap.get(row.userId);
+                const rowStatus = getAssignmentParticipantStatus({
+                  latestStatus: row.latestStatus,
+                  attemptCount: row.attemptCount,
+                  bestTotalScore: row.bestTotalScore,
+                  totalPoints,
+                  examSessionStartedAt: examSession?.startedAt ?? null,
+                  examSessionPersonalDeadline: examSession?.personalDeadline ?? null,
+                  now,
+                });
 
                 return (
                   <TableRow key={row.userId}>
@@ -207,13 +206,15 @@ export function StatusBoard({
                       className="align-top"
                       data-testid={`assignment-row-status-${row.userId}`}
                     >
-                      {row.latestStatus ? (
+                      {rowStatus === "not_submitted" ? (
+                        <Badge variant="outline">{statusLabels[rowStatus]}</Badge>
+                      ) : rowStatus === "in_progress" ? (
+                        <Badge variant="secondary">{statusLabels[rowStatus]}</Badge>
+                      ) : (
                         <SubmissionStatusBadge
                           label={statusLabels[rowStatus]}
-                          status={row.latestStatus}
+                          status={rowStatus}
                         />
-                      ) : (
-                        <Badge variant="outline">{statusLabels[rowStatus]}</Badge>
                       )}
                     </TableCell>
                     <TableCell className="align-top whitespace-normal">
@@ -238,11 +239,9 @@ export function StatusBoard({
                       )}
                     </TableCell>
                     {examMode === "windowed" && labels.examSessionStatus && (() => {
-                      const examSession = examSessions?.find(s => s.userId === row.userId);
                       if (!examSession) {
                         return <TableCell className="align-top text-muted-foreground">{labels.examSessionNotStarted}</TableCell>;
                       }
-                      const now = Date.now();
                       const deadline = new Date(examSession.personalDeadline).getTime();
                       const isExpired = now > deadline;
                       return (
