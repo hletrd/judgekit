@@ -155,15 +155,38 @@ export function AntiCheatMonitor({
       void reportEvent("blur");
     }
 
+    function describeElement(el: HTMLElement | null): string {
+      if (!el) return "unknown";
+      const tag = el.tagName;
+      // Code editor (CodeMirror / Monaco)
+      if (el.closest(".cm-editor") || el.closest(".monaco-editor")) return "code-editor";
+      // Problem description area
+      if (el.closest(".problem-description")) return "problem-description";
+      // Textarea / input
+      if (tag === "TEXTAREA" || tag === "INPUT") return "input-field";
+      // Code block in problem
+      if (el.closest("pre") || el.closest("code")) return "code-block";
+      // Headings, paragraphs, spans in content
+      if (["P", "SPAN", "H1", "H2", "H3", "H4", "H5", "H6", "LI", "TD", "TH", "A", "STRONG", "EM"].includes(tag)) {
+        // Try to get a snippet of the content
+        const text = (el.textContent ?? "").trim().slice(0, 80);
+        const parent = el.closest("[class]") as HTMLElement | null;
+        const parentClass = parent?.className?.split(" ")[0] ?? "";
+        if (parentClass) return `${tag.toLowerCase()} in .${parentClass}${text ? `: "${text}"` : ""}`;
+        return `${tag.toLowerCase()}${text ? `: "${text}"` : ""}`;
+      }
+      return tag.toLowerCase();
+    }
+
     function handleCopy(e: ClipboardEvent) {
       void reportEvent("copy", {
-        target: (e.target as HTMLElement)?.tagName,
+        target: describeElement(e.target as HTMLElement),
       });
     }
 
     function handlePaste(e: ClipboardEvent) {
       void reportEvent("paste", {
-        target: (e.target as HTMLElement)?.tagName,
+        target: describeElement(e.target as HTMLElement),
       });
     }
 

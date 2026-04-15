@@ -40,7 +40,20 @@ const EVENT_TYPE_COLORS: Record<string, string> = {
 
 function formatDetailsJson(raw: string): string {
   try {
-    return JSON.stringify(JSON.parse(raw), null, 2);
+    const parsed = JSON.parse(raw);
+    // If has target field, show human-readable summary
+    if (parsed.target) {
+      const target = parsed.target as string;
+      const labels: Record<string, string> = {
+        "code-editor": "Code editor",
+        "problem-description": "Problem description",
+        "input-field": "Input field",
+        "code-block": "Code block",
+      };
+      const label = labels[target] ?? target;
+      return `Target: ${label}`;
+    }
+    return JSON.stringify(parsed, null, 2);
   } catch {
     return raw;
   }
