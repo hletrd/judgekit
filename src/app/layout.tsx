@@ -2,12 +2,16 @@ import type { Metadata, Viewport } from "next";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages, getTranslations } from "next-intl/server";
 import { headers } from "next/headers";
+import Script from "next/script";
 import localFont from "next/font/local";
 import { ThemeProvider } from "@/components/theme-provider";
 import { NonceProvider } from "@/components/nonce-provider";
 import { getAuthUrlObject } from "@/lib/security/env";
+import { buildSeoKeywords } from "@/lib/seo";
 import { getResolvedSystemSettings } from "@/lib/system-settings";
 import "./globals.css";
+
+const GA_MEASUREMENT_ID = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID;
 
 const pretendard = localFont({
   src: "../../node_modules/pretendard/dist/web/variable/woff2/PretendardVariable.woff2",
@@ -26,6 +30,7 @@ export async function generateMetadata(): Promise<Metadata> {
     siteTitle: t("appName"),
     siteDescription: t("appDescription"),
   });
+  const authUrl = getAuthUrlObject() ?? undefined;
 
   const siteTitle = settings.siteTitle;
   const siteDescription = settings.siteDescription;
@@ -35,11 +40,15 @@ export async function generateMetadata(): Promise<Metadata> {
       default: siteTitle,
       template: `%s - ${siteTitle}`,
     },
+    applicationName: siteTitle,
     description: siteDescription,
-    metadataBase: getAuthUrlObject() ?? undefined,
+    category: "education",
+    keywords: buildSeoKeywords(siteTitle),
+    metadataBase: authUrl,
     openGraph: {
       title: siteTitle,
       description: siteDescription,
+      url: authUrl?.toString(),
       siteName: siteTitle,
       type: "website",
     },
@@ -64,6 +73,22 @@ export default async function RootLayout({
   return (
     <html lang={locale} suppressHydrationWarning className={pretendard.variable}>
       <body className="antialiased">
+        {GA_MEASUREMENT_ID && (
+          <>
+            <Script
+              src={`https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`}
+              strategy="afterInteractive"
+            />
+            <Script id="google-analytics" strategy="afterInteractive">
+              {`
+                window.dataLayer = window.dataLayer || [];
+                function gtag(){dataLayer.push(arguments);}
+                gtag('js', new Date());
+                gtag('config', '${GA_MEASUREMENT_ID}');
+              `}
+            </Script>
+          </>
+        )}
         <NonceProvider nonce={nonce}>
           <NextIntlClientProvider messages={messages}>
             <ThemeProvider

@@ -299,6 +299,18 @@ remote_rsync -az --delete \
     "${SCRIPT_DIR}/" \
     "${REMOTE_USER}@${REMOTE_HOST}:${REMOTE_DIR}/"
 
+# macOS openrsync silently skips directories with parentheses (e.g. Next.js
+# route groups like "(public)"). Re-sync them with escaped remote paths.
+for pdir in "${SCRIPT_DIR}"/src/app/\(*\)/; do
+    if [[ -d "$pdir" ]]; then
+        dirname=$(basename "$pdir")
+        escaped_dirname=$(printf '%s' "$dirname" | sed 's/[()]/\\&/g')
+        remote_rsync -az --delete \
+            "$pdir" \
+            "${REMOTE_USER}@${REMOTE_HOST}:${REMOTE_DIR}/src/app/${escaped_dirname}/"
+    fi
+done
+
 # Only transfer .env.production if the remote does not already have one.
 # Each target has its own secrets (AUTH_SECRET, JUDGE_AUTH_TOKEN, AUTH_URL).
 # Overwriting would break the target's auth configuration.
@@ -327,6 +339,10 @@ if [[ "$SKIP_BUILD" == false ]]; then
     if [[ "${DISABLE_MINIFY:-0}" == "1" ]]; then
         EXTRA_BUILD_ARGS="--build-arg DISABLE_MINIFY=1"
         info "Minification DISABLED (DISABLE_MINIFY=1)"
+    fi
+    if [[ -n "${NEXT_PUBLIC_GA_MEASUREMENT_ID:-}" ]]; then
+        EXTRA_BUILD_ARGS="${EXTRA_BUILD_ARGS} --build-arg NEXT_PUBLIC_GA_MEASUREMENT_ID=${NEXT_PUBLIC_GA_MEASUREMENT_ID}"
+        info "Google Analytics: ${NEXT_PUBLIC_GA_MEASUREMENT_ID}"
     fi
 
     info "Building app image on ${REMOTE_HOST} (judgekit-app:latest) [${PLATFORM}]..."
@@ -507,7 +523,7 @@ remote "PG_PASS=\$(grep '^POSTGRES_PASSWORD=' ${REMOTE_DIR}/.env.production | cu
       -v ${REMOTE_DIR}:/app -w /app \
       -e POSTGRES_PASSWORD -e PGPASSWORD -e DATABASE_URL \
       node:24-alpine \
-      sh -c 'npx drizzle-kit push'" 2>&1 || \
+      sh -c 'npm install --no-save drizzle-kit drizzle-orm nanoid 2>&1 | tail -1 && npx drizzle-kit push'" 2>&1 || \
   die "drizzle-kit push failed — aborting deploy"
 success "Database migrated"
 

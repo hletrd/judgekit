@@ -39,6 +39,10 @@ ENV AUTH_TRUST_HOST=true
 ARG DISABLE_MINIFY=0
 ENV DISABLE_MINIFY=${DISABLE_MINIFY}
 
+# Google Analytics measurement ID (optional, only set for production targets)
+ARG NEXT_PUBLIC_GA_MEASUREMENT_ID
+ENV NEXT_PUBLIC_GA_MEASUREMENT_ID=${NEXT_PUBLIC_GA_MEASUREMENT_ID}
+
 # Ensure public/ exists even if the repo has no static assets
 RUN mkdir -p public && npm run build
 
