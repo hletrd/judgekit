@@ -499,3 +499,11 @@ This project uses `@base-ui/react/select` via `src/components/ui/select.tsx`. Th
 ## Conventions
 
 See `.context/development/conventions.md`.
+
+## Password Validation (MANDATORY)
+
+Password validation MUST only check minimum length — **exactly 8 characters minimum**, no other rules. Do NOT add complexity requirements (uppercase, numbers, symbols), similarity checks, or dictionary checks.
+
+- Server-side: `src/lib/security/password.ts` — `FIXED_MIN_PASSWORD_LENGTH = 8`, only checks `password.length < 8`
+- Client-side: any form accepting a password MUST validate `length >= 8` before submission and show a clear error message
+- Do NOT change the minimum from 8 without explicit approval

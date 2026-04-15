@@ -4,6 +4,7 @@ import { users } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { redeemRecruitingToken } from "@/lib/assignments/recruiting-invitations";
 import { extractClientIp } from "@/lib/security/ip";
+import { logger } from "@/lib/logger";
 import type { LoginEventRequestSummary } from "@/lib/auth/login-events";
 
 type AuthUserRecord = {
@@ -36,7 +37,10 @@ export async function authorizeRecruitingToken(
   const ipAddress = extractClientIp(request.headers);
   const result = await redeemRecruitingToken(token, ipAddress ?? undefined, accountPassword);
 
-  if (!result.ok) return null;
+  if (!result.ok) {
+    logger.warn({ error: result.error, hasPassword: !!accountPassword, passwordLength: accountPassword?.length ?? 0 }, "[recruit] redeemRecruitingToken failed");
+    return null;
+  }
 
   const user = await db.query.users.findFirst({
     where: eq(users.id, result.userId),

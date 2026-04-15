@@ -2195,6 +2195,7 @@
     "accountPasswordPlaceholder": "Create your account password",
     "accountPasswordHint": "Use this password to sign in later with your recruiting email through the normal login page.",
     "accountPasswordMissing": "Create an account password to continue.",
+    "accountPasswordTooShort": "Password must be at least {min} characters.",
     "accountPasswordLoginNotice": "After your first start, you can sign in later with your recruiting email and account password through the normal login page.",
     "resumeSessionOnlyNotice": "This invitation is already linked to your current signed-in account. Continue with this session to resume the assessment safely.",
     "goToLogin": "Go to login"

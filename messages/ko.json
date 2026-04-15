@@ -2195,6 +2195,7 @@
     "accountPasswordPlaceholder": "계정 비밀번호를 만드세요",
     "accountPasswordHint": "처음 시작한 뒤에는 일반 로그인 페이지에서 채용용 이메일과 이 비밀번호로 다시 로그인할 수 있습니다.",
     "accountPasswordMissing": "계속하려면 계정 비밀번호를 만드세요.",
+    "accountPasswordTooShort": "비밀번호는 최소 {min}자 이상이어야 합니다.",
     "accountPasswordLoginNotice": "처음 시작한 뒤에는 일반 로그인 페이지에서 채용용 이메일과 계정 비밀번호로 다시 로그인할 수 있습니다.",
     "resumeSessionOnlyNotice": "이 초대 링크는 현재 로그인한 계정에 이미 연결되어 있습니다. 이 세션으로 계속 진행해 평가를 안전하게 이어가세요.",
     "goToLogin": "로그인으로 이동"

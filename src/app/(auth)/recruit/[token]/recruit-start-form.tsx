@@ -7,6 +7,8 @@ import { signIn, signOut } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
+const MIN_PASSWORD_LENGTH = 8;
+
 export function RecruitStartForm({
   token,
   assignmentId,
@@ -40,6 +42,11 @@ export function RecruitStartForm({
       const normalizedAccountPassword = accountPassword.trim();
       if (requiresAccountPassword && !normalizedAccountPassword) {
         setError(t("accountPasswordMissing"));
+        return;
+      }
+
+      if (requiresAccountPassword && normalizedAccountPassword.length < MIN_PASSWORD_LENGTH) {
+        setError(t("accountPasswordTooShort", { min: MIN_PASSWORD_LENGTH }));
         return;
       }
 
