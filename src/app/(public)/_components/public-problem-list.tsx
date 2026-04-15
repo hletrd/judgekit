@@ -12,6 +12,7 @@ import {
 
 type PublicProblemListItem = {
   id: string;
+  href: string;
   sequenceNumber: number | null;
   title: string;
   difficultyLabel: string | null;
@@ -84,7 +85,7 @@ export function PublicProblemList({
                       </TableCell>
                       <TableCell>
                         <Link
-                          href={`/practice/problems/${problem.id}`}
+                          href={problem.href}
                           className="text-sm font-medium text-foreground hover:text-primary hover:underline"
                         >
                           {problem.title}

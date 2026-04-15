@@ -187,6 +187,8 @@ describe("proxy", () => {
           "/playground/:path*",
           "/contests/:path*",
           "/community/:path*",
+          "/rankings/:path*",
+          "/submissions/:path*",
           "/api/v1/:path*",
           "/login",
           "/signup",
@@ -201,13 +203,67 @@ describe("proxy", () => {
   // =========================================================================
   describe("public routes", () => {
     it("allows unauthenticated access to the new public shell routes", async () => {
-      const routes = ["/", "/practice", "/playground", "/contests", "/community", "/signup"];
+      const routes = ["/", "/practice", "/playground", "/contests", "/community", "/rankings", "/signup"];
 
       for (const route of routes) {
         const response = await proxy(makeRequest(route));
         expect(response.status).toBe(200);
         expect(response.headers.get("Content-Security-Policy")).toBeTruthy();
       }
+    });
+
+    it("forces default English locale on indexable public routes without an explicit locale", async () => {
+      const response = await proxy(
+        makeRequest("/practice", {
+          headers: {
+            "accept-language": "ko,en;q=0.9",
+            cookie: "locale=ko",
+          },
+        })
+      );
+
+      expect(response.status).toBe(200);
+      expect(response.headers.get("Content-Language")).toBe("en");
+      expect(response.headers.get("Vary")).toBeNull();
+    });
+
+    it("also forces default English locale on rankings without an explicit locale", async () => {
+      const response = await proxy(
+        makeRequest("/rankings", {
+          headers: {
+            "accept-language": "ko,en;q=0.9",
+            cookie: "locale=ko",
+          },
+        })
+      );
+
+      expect(response.status).toBe(200);
+      expect(response.headers.get("Content-Language")).toBe("en");
+      expect(response.headers.get("Vary")).toBeNull();
+    });
+
+    it("honors an explicit locale on indexable public routes", async () => {
+      const response = await proxy(makeRequest("/practice?locale=ko"));
+
+      expect(response.status).toBe(200);
+      expect(response.headers.get("Content-Language")).toBe("ko");
+      expect(response.cookies.get("locale")?.value).toBe("ko");
+    });
+
+    it("keeps auth routes locale-aware via headers and cookies", async () => {
+      const response = await proxy(
+        makeRequest("/login", {
+          headers: {
+            "accept-language": "ko,en;q=0.9",
+            cookie: "locale=ko",
+          },
+        })
+      );
+
+      expect(response.status).toBe(200);
+      expect(response.headers.get("Content-Language")).toBe("ko");
+      expect(response.headers.get("Vary")).toContain("Accept-Language");
+      expect(response.headers.get("Vary")).toContain("Cookie");
     });
 
     it("allows unauthenticated access to /api/v1/judge/* routes (judge worker bypass)", async () => {

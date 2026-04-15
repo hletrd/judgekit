@@ -17,6 +17,7 @@ describe("PublicContestList", () => {
         contests={[
           {
             id: "contest-1",
+            href: "/contests/contest-1",
             title: "Spring Challenge",
             description: "A public contest.",
             groupName: "Algorithms 101",

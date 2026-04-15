@@ -22,6 +22,9 @@ export async function GET(request: Request) {
   );
   const siteTitle = text(searchParams.get("siteTitle"), "JudgeKit", 60);
   const section = text(searchParams.get("section"), "Online Judge", 40);
+  const badge = text(searchParams.get("badge"), "", 40);
+  const meta = text(searchParams.get("meta"), "", 80);
+  const footer = text(searchParams.get("footer"), "Practice • Contests • Community", 80);
   const locale = searchParams.get("locale") === "ko" ? "한국어" : "English";
 
   return new ImageResponse(
@@ -72,30 +75,53 @@ export async function GET(request: Request) {
                 <div style={{ fontSize: "42px", fontWeight: 700 }}>{section}</div>
               </div>
             </div>
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                padding: "10px 18px",
-                borderRadius: "999px",
-                background: "rgba(255,255,255,0.14)",
-                fontSize: "24px",
-                fontWeight: 600,
-              }}
-            >
-              {locale}
+            <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
+              {badge ? (
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    padding: "10px 18px",
+                    borderRadius: "999px",
+                    background: "rgba(255,255,255,0.10)",
+                    fontSize: "20px",
+                    fontWeight: 600,
+                  }}
+                >
+                  {badge}
+                </div>
+              ) : null}
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  padding: "10px 18px",
+                  borderRadius: "999px",
+                  background: "rgba(255,255,255,0.14)",
+                  fontSize: "24px",
+                  fontWeight: 600,
+                }}
+              >
+                {locale}
+              </div>
             </div>
           </div>
 
           <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+            {meta ? (
+              <div style={{ fontSize: "24px", opacity: 0.84 }}>
+                {meta}
+              </div>
+            ) : null}
             <div style={{ fontSize: "68px", fontWeight: 800, lineHeight: 1.08 }}>{title}</div>
             <div style={{ fontSize: "30px", lineHeight: 1.35, opacity: 0.92 }}>{description}</div>
           </div>
 
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <div style={{ fontSize: "24px", opacity: 0.84 }}>judgekit</div>
-            <div style={{ fontSize: "24px", opacity: 0.84 }}>Practice • Contests • Community</div>
+            <div style={{ fontSize: "24px", opacity: 0.84 }}>{footer}</div>
           </div>
         </div>
       </div>

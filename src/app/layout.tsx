@@ -7,7 +7,7 @@ import localFont from "next/font/local";
 import { ThemeProvider } from "@/components/theme-provider";
 import { NonceProvider } from "@/components/nonce-provider";
 import { getAuthUrlObject } from "@/lib/security/env";
-import { buildSeoKeywords } from "@/lib/seo";
+import { buildSeoKeywords, buildSocialImageUrl, getAlternateOpenGraphLocales, getOpenGraphLocale } from "@/lib/seo";
 import { getResolvedSystemSettings } from "@/lib/system-settings";
 import "./globals.css";
 
@@ -25,7 +25,10 @@ export const viewport: Viewport = {
 };
 
 export async function generateMetadata(): Promise<Metadata> {
-  const t = await getTranslations("common");
+  const [t, locale] = await Promise.all([
+    getTranslations("common"),
+    getLocale(),
+  ]);
   const settings = await getResolvedSystemSettings({
     siteTitle: t("appName"),
     siteDescription: t("appDescription"),
@@ -34,6 +37,13 @@ export async function generateMetadata(): Promise<Metadata> {
 
   const siteTitle = settings.siteTitle;
   const siteDescription = settings.siteDescription;
+  const socialImageUrl = buildSocialImageUrl({
+    title: siteTitle,
+    description: siteDescription,
+    locale,
+    siteTitle,
+    section: locale === "ko" ? "온라인 저지" : "Online judge",
+  });
 
   return {
     title: {
@@ -51,11 +61,22 @@ export async function generateMetadata(): Promise<Metadata> {
       url: authUrl?.toString(),
       siteName: siteTitle,
       type: "website",
+      locale: getOpenGraphLocale(locale),
+      alternateLocale: getAlternateOpenGraphLocales(locale),
+      images: [
+        {
+          url: socialImageUrl,
+          width: 1200,
+          height: 630,
+          alt: siteTitle,
+        },
+      ],
     },
     twitter: {
-      card: "summary",
+      card: "summary_large_image",
       title: siteTitle,
       description: siteDescription,
+      images: [socialImageUrl],
     },
   };
 }

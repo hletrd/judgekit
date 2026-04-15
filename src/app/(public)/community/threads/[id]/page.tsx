@@ -15,9 +15,10 @@ import { getResolvedSystemSettings } from "@/lib/system-settings";
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const { id } = await params;
-  const [thread, t, locale] = await Promise.all([
+  const [thread, t, tShell, locale] = await Promise.all([
     getDiscussionThreadById(id),
     getTranslations("common"),
+    getTranslations("publicShell"),
     getLocale(),
   ]);
 
@@ -43,7 +44,9 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
       "programming discussion",
       thread.scopeType === "general" ? "community forum" : "problem discussion",
     ],
-    section: thread.scopeType === "general" ? "Community" : "Problem discussion",
+    section: thread.scopeType === "general" ? (locale === "ko" ? "커뮤니티" : "Community") : (locale === "ko" ? "문제 토론" : "Problem discussion"),
+    socialBadge: thread.scopeType === "general" ? (locale === "ko" ? "게시판" : "Forum") : (locale === "ko" ? "문제 토론" : "Problem discussion"),
+    socialMeta: [thread.author?.name, tShell("community.replyCount", { count: thread.posts.length })].filter(Boolean).join(" · "),
     type: "article",
   });
 }
@@ -71,7 +74,6 @@ export default async function CommunityThreadDetailPage({ params }: { params: Pr
     }
   }
 
-  const callbackPath = `/community/threads/${thread.id}`;
   const canModerate = session?.user ? await canModerateDiscussions(session.user.role) : false;
   const threadJsonLd = {
     "@context": "https://schema.org",
@@ -90,14 +92,33 @@ export default async function CommunityThreadDetailPage({ params }: { params: Pr
       : undefined,
     commentCount: thread.posts.length,
   };
+  const breadcrumbJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      {
+        "@type": "ListItem",
+        position: 1,
+        name: t("nav.community"),
+        item: buildAbsoluteUrl(buildLocalePath("/community", locale)),
+      },
+      {
+        "@type": "ListItem",
+        position: 2,
+        name: thread.title,
+        item: buildAbsoluteUrl(buildLocalePath(`/community/threads/${thread.id}`, locale)),
+      },
+    ],
+  };
+  const callbackPath = buildLocalePath(`/community/threads/${thread.id}`, locale);
 
   return (
     <>
-      <JsonLd data={threadJsonLd} />
+      <JsonLd data={[threadJsonLd, breadcrumbJsonLd]} />
       <div className="space-y-6">
         {thread.scopeType === "problem" && thread.problem ? (
           <div className="text-sm text-muted-foreground">
-            <Link href={`/practice/problems/${thread.problem.id}`} className="font-medium text-primary hover:underline">
+            <Link href={buildLocalePath(`/practice/problems/${thread.problem.id}`, locale)} className="font-medium text-primary hover:underline">
               {thread.problem.title}
             </Link>
           </div>
@@ -143,7 +164,7 @@ export default async function CommunityThreadDetailPage({ params }: { params: Pr
           successLabel={t("community.reply.success")}
           signInLabel={t("community.reply.signIn")}
           canPost={Boolean(session?.user)}
-          signInHref={`/login?callbackUrl=${encodeURIComponent(callbackPath)}`}
+          signInHref={buildLocalePath(`/login?callbackUrl=${encodeURIComponent(callbackPath)}`, locale)}
         />
       </div>
     </>

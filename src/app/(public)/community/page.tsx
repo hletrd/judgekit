@@ -67,13 +67,16 @@ export default async function CommunityPage() {
       <div className="space-y-6">
         {session?.user ? (
           <div className="flex justify-end">
-            <Link href="/community/new">
+            <Link href={buildLocalePath("/community/new", locale)}>
               <Button>{t("community.createThread")}</Button>
             </Link>
           </div>
         ) : (
           <div className="rounded-2xl border border-dashed bg-muted/30 p-4 text-sm text-muted-foreground">
-            <a href="/login?callbackUrl=%2Fcommunity" className="font-medium text-primary hover:underline">
+            <a
+              href={buildLocalePath(`/login?callbackUrl=${encodeURIComponent(buildLocalePath("/community", locale))}`, locale)}
+              className="font-medium text-primary hover:underline"
+            >
               {t("community.form.signIn")}
             </a>
           </div>
@@ -93,7 +96,7 @@ export default async function CommunityPage() {
             replyCountLabel: t("community.replyCount", { count: thread.posts.length }),
             locked: Boolean(thread.lockedAt),
             pinned: Boolean(thread.pinnedAt),
-            href: `/community/threads/${thread.id}`,
+            href: buildLocalePath(`/community/threads/${thread.id}`, locale),
           }))}
         />
       </div>

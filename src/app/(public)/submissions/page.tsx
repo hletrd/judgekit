@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { getTranslations } from "next-intl/server";
+import { getLocale, getTranslations } from "next-intl/server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
@@ -24,7 +24,7 @@ import { formatSubmissionIdPrefix } from "@/lib/submissions/format";
 import { buildStatusLabels } from "@/lib/judge/status-labels";
 import { SubmissionListAutoRefresh } from "@/components/submission-list-auto-refresh";
 import { getLanguageDisplayLabel } from "@/lib/judge/languages";
-import { NO_INDEX_METADATA } from "@/lib/seo";
+import { buildLocalePath, NO_INDEX_METADATA } from "@/lib/seo";
 import { getResolvedSystemSettings } from "@/lib/system-settings";
 import { LogInIcon } from "lucide-react";
 
@@ -95,7 +95,7 @@ export default async function SubmissionsPage({
           <CardContent className="flex flex-col items-center gap-4 py-12">
             <LogInIcon className="size-10 text-muted-foreground" />
             <p className="text-sm text-muted-foreground">{tAuth("signInRequired")}</p>
-            <Link href="/login">
+            <Link href={buildLocalePath("/login", locale)}>
               <Button>{tAuth("signIn")}</Button>
             </Link>
           </CardContent>
@@ -195,7 +195,7 @@ export default async function SubmissionsPage({
             </div>
             <div className="flex gap-2 items-end">
               <Button type="submit">{tCommon("search")}</Button>
-              <Link href={PAGE_PATH}>
+              <Link href={buildLocalePath(PAGE_PATH, locale)}>
                 <Button type="button" variant="outline">{t("resetSearch")}</Button>
               </Link>
             </div>
@@ -230,13 +230,13 @@ export default async function SubmissionsPage({
               {visibleSubmissions.map((sub) => (
                 <TableRow key={sub.id}>
                   <TableCell className="font-mono text-xs">
-                    <Link href={`/submissions/${sub.id}`} className="text-primary hover:underline">
+                    <Link href={buildLocalePath(`/submissions/${sub.id}`, locale)} className="text-primary hover:underline">
                       {formatSubmissionIdPrefix(sub.id)}
                     </Link>
                   </TableCell>
                   <TableCell>
                     {sub.problem ? (
-                      <Link href={`/practice/problems/${sub.problem.id}`} className="text-primary hover:underline">
+                      <Link href={buildLocalePath(`/practice/problems/${sub.problem.id}`, locale)} className="text-primary hover:underline">
                         {sub.problem.title}
                       </Link>
                     ) : (
@@ -261,7 +261,7 @@ export default async function SubmissionsPage({
                       : "-"}
                   </TableCell>
                   <TableCell>
-                    <Link href={`/submissions/${sub.id}`}>
+                    <Link href={buildLocalePath(`/submissions/${sub.id}`, locale)}>
                       <Button variant="outline" size="sm">{tCommon("view")}</Button>
                     </Link>
                   </TableCell>
@@ -283,7 +283,7 @@ export default async function SubmissionsPage({
       <PaginationControls
         currentPage={clampedPage}
         totalPages={totalPages}
-        buildHref={buildPageHref}
+        buildHref={(page) => buildLocalePath(buildPageHref(page), locale)}
       />
     </div>
   );

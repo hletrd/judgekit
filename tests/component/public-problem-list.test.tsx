@@ -24,6 +24,7 @@ describe("PublicProblemList", () => {
         problems={[
           {
             id: "problem-1",
+            href: "/practice/problems/problem-1",
             sequenceNumber: 1000,
             title: "A + B",
             difficultyLabel: "1.00",
@@ -63,6 +64,7 @@ describe("PublicProblemList", () => {
         problems={[
           {
             id: "problem-2",
+            href: "/practice/problems/problem-2",
             sequenceNumber: null,
             title: "Empty problem",
             difficultyLabel: null,

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { getTranslations } from "next-intl/server";
+import { getLocale, getTranslations } from "next-intl/server";
 import { db } from "@/lib/db";
 import { submissions } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
@@ -7,7 +7,7 @@ import { auth } from "@/lib/auth";
 import { getResolvedSystemTimeZone } from "@/lib/system-settings";
 import { redirect, notFound } from "next/navigation";
 import { SubmissionDetailClient } from "@/app/(dashboard)/dashboard/submissions/[id]/submission-detail-client";
-import { NO_INDEX_METADATA } from "@/lib/seo";
+import { buildLocalePath, NO_INDEX_METADATA } from "@/lib/seo";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("submissions");
@@ -20,16 +20,18 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function PublicSubmissionDetailPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams?: Promise<{ from?: string }> }) {
+  const locale = await getLocale();
   const session = await auth();
-  if (!session?.user) redirect("/login");
+  if (!session?.user) redirect(buildLocalePath("/login", locale));
 
   const resolvedParams = await params;
   const resolvedSearchParams = searchParams ? await searchParams : undefined;
   const submissionId = resolvedParams.id;
   const fromParam = resolvedSearchParams?.from;
-  const backHref = fromParam === "problem"
-    ? "/practice"
-    : "/submissions";
+  const backHref = buildLocalePath(
+    fromParam === "problem" ? "/practice" : "/submissions",
+    locale,
+  );
 
   const timeZone = await getResolvedSystemTimeZone();
 

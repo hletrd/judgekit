@@ -58,6 +58,10 @@ vi.mock("@/components/layout/public-header", () => ({
   PublicHeader: ({ children }: { children?: ReactNode }) => <div>{children ?? "public-header"}</div>,
 }));
 
+vi.mock("@/components/layout/public-footer", () => ({
+  PublicFooter: () => <div>public-footer</div>,
+}));
+
 vi.mock("@/app/(public)/_components/public-home-page", () => ({
   PublicHomePage: ({ primaryCta, secondaryCta }: { primaryCta: { label: string }; secondaryCta?: { label: string } | null }) => (
     <div>

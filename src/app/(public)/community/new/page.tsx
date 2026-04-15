@@ -1,15 +1,16 @@
 import type { Metadata } from "next";
-import { getTranslations } from "next-intl/server";
+import { getLocale, getTranslations } from "next-intl/server";
 import { auth } from "@/lib/auth";
 import { DiscussionThreadForm } from "@/components/discussions/discussion-thread-form";
-import { NO_INDEX_METADATA } from "@/lib/seo";
+import { buildLocalePath, NO_INDEX_METADATA } from "@/lib/seo";
 
 export const metadata: Metadata = NO_INDEX_METADATA;
 
 export default async function CommunityNewPage() {
-  const [t, session] = await Promise.all([
+  const [t, session, locale] = await Promise.all([
     getTranslations("publicShell"),
     auth(),
+    getLocale(),
   ]);
 
   return (
@@ -26,7 +27,7 @@ export default async function CommunityNewPage() {
         successLabel={t("community.form.success")}
         signInLabel={t("community.form.signIn")}
         canPost={Boolean(session?.user)}
-        signInHref="/login?callbackUrl=%2Fcommunity%2Fnew"
+        signInHref={buildLocalePath(`/login?callbackUrl=${encodeURIComponent(buildLocalePath("/community/new", locale))}`, locale)}
       />
     </div>
   );

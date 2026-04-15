@@ -29,7 +29,7 @@ type PublicContestDetailProps = {
   noPublicProblemsLabel: string;
   problemTitleLabel: string;
   actionLabel: string;
-  publicProblems: Array<{ id: string; title: string }>;
+  publicProblems: Array<{ id: string; title: string; href: string }>;
   signInHref: string;
   signInLabel: string;
   workspaceHref: string;
@@ -128,12 +128,12 @@ export function PublicContestDetail({
                 {publicProblems.map((problem) => (
                   <TableRow key={problem.id}>
                     <TableCell className="font-medium">
-                      <Link href={`/practice/problems/${problem.id}`} className="hover:underline">
+                      <Link href={problem.href} className="hover:underline">
                         {problem.title}
                       </Link>
                     </TableCell>
                     <TableCell>
-                      <Link href={`/practice/problems/${problem.id}`}>
+                      <Link href={problem.href}>
                         <Button variant="outline" size="sm">
                           {actionLabel}
                         </Button>

@@ -6,6 +6,7 @@ import { getTokenAuthenticatedAtSeconds } from "@/lib/auth/session-security";
 import { getActiveAuthUserById, getTokenUserId } from "@/lib/api/auth";
 import { getValidatedAuthSecret } from "@/lib/security/env";
 import { recordAuditEvent, buildAuditRequestContext } from "@/lib/audit/events";
+import { usesDeterministicPublicLocale } from "@/lib/public-route-seo";
 import {
   DEFAULT_LOCALE,
   LOCALE_COOKIE_NAME,
@@ -87,10 +88,14 @@ function resolveExplicitLocale(request: NextRequest): SupportedLocale | null {
   return isSupportedLocale(locale) ? locale : null;
 }
 
-function resolveRequestLocale(request: NextRequest): SupportedLocale {
+function resolveRequestLocale(request: NextRequest, deterministicPublicLocale: boolean): SupportedLocale {
   const explicitLocale = resolveExplicitLocale(request);
   if (explicitLocale) {
     return explicitLocale;
+  }
+
+  if (deterministicPublicLocale) {
+    return DEFAULT_LOCALE;
   }
 
   const cookieLocale = request.cookies.get(LOCALE_COOKIE_NAME)?.value;
@@ -122,8 +127,9 @@ function createSecuredNextResponse(request: NextRequest) {
   const nonce = createNonce();
   const isDev = process.env.NODE_ENV === "development";
   const isSignupPage = request.nextUrl.pathname === "/signup";
+  const deterministicPublicLocale = usesDeterministicPublicLocale(request.nextUrl.pathname);
   const explicitLocale = resolveExplicitLocale(request);
-  const resolvedLocale = resolveRequestLocale(request);
+  const resolvedLocale = resolveRequestLocale(request, deterministicPublicLocale);
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set("x-nonce", nonce);
   if (explicitLocale) {
@@ -131,6 +137,7 @@ function createSecuredNextResponse(request: NextRequest) {
   } else {
     requestHeaders.delete("x-locale-override");
   }
+  requestHeaders.set("x-public-locale-mode", deterministicPublicLocale ? "deterministic" : "standard");
   // Next.js 16 RSC bug: X-Forwarded-Host from nginx corrupts RSC streaming
   // during client-side navigation, causing React #300/#310 errors.
   // Auth routes (/api/auth/) are NOT in the proxy matcher, so they keep
@@ -142,8 +149,10 @@ function createSecuredNextResponse(request: NextRequest) {
     },
   });
   response.headers.set("Content-Language", resolvedLocale);
-  appendVaryHeader(response.headers, "Accept-Language");
-  appendVaryHeader(response.headers, "Cookie");
+  if (!deterministicPublicLocale) {
+    appendVaryHeader(response.headers, "Accept-Language");
+    appendVaryHeader(response.headers, "Cookie");
+  }
   if (explicitLocale) {
     response.cookies.set(LOCALE_COOKIE_NAME, explicitLocale, {
       path: "/",
@@ -296,6 +305,8 @@ export const config = {
     "/playground/:path*",
     "/contests/:path*",
     "/community/:path*",
+    "/rankings/:path*",
+    "/submissions/:path*",
     "/api/v1/:path*",
     "/login",
     "/signup",

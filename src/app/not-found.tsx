@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { getTranslations } from "next-intl/server";
+import { getLocale, getTranslations } from "next-intl/server";
 import { PublicHeader } from "@/components/layout/public-header";
+import { PublicFooter } from "@/components/layout/public-footer";
 import { Button } from "@/components/ui/button";
 import { auth } from "@/lib/auth";
-import { NO_INDEX_METADATA } from "@/lib/seo";
+import { buildLocalePath, NO_INDEX_METADATA } from "@/lib/seo";
 import { getResolvedSystemSettings } from "@/lib/system-settings";
 
 export const metadata: Metadata = {
@@ -13,12 +14,13 @@ export const metadata: Metadata = {
 };
 
 export default async function NotFoundPage() {
-  const [tCommon, tAuth, tShell, tState, session] = await Promise.all([
+  const [tCommon, tAuth, tShell, tState, session, locale] = await Promise.all([
     getTranslations("common"),
     getTranslations("auth"),
     getTranslations("publicShell"),
     getTranslations("dashboardState"),
     auth(),
+    getLocale(),
   ]);
 
   const settings = await getResolvedSystemSettings({
@@ -26,7 +28,7 @@ export default async function NotFoundPage() {
     siteDescription: tCommon("appDescription"),
   });
 
-  const homeHref = session?.user ? "/dashboard" : "/";
+  const homeHref = buildLocalePath(session?.user ? "/dashboard" : "/", locale);
   const homeLabel = session?.user ? tState("backToDashboard") : tCommon("back");
 
   return (
@@ -59,12 +61,13 @@ export default async function NotFoundPage() {
             <Link href={homeHref}>
               <Button>{homeLabel}</Button>
             </Link>
-            <Link href="/practice">
+            <Link href={buildLocalePath("/practice", locale)}>
               <Button variant="outline">{tShell("nav.practice")}</Button>
             </Link>
           </div>
         </div>
       </main>
+      <PublicFooter footerContent={settings.footerContent} />
     </div>
   );
 }

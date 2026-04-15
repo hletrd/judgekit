@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   NO_INDEX_METADATA,
   buildAbsoluteUrl,
+  buildLocalizedHref,
   buildPublicMetadata,
   buildSeoKeywords,
   summarizeTextForMetadata,
@@ -57,6 +58,16 @@ describe("buildAbsoluteUrl", () => {
   });
 });
 
+describe("buildLocalizedHref", () => {
+  it("adds the locale query param for internal Korean links", () => {
+    expect(buildLocalizedHref("/practice", "ko")).toBe("/practice?locale=ko");
+  });
+
+  it("leaves external URLs untouched", () => {
+    expect(buildLocalizedHref("https://example.com/docs", "ko")).toBe("https://example.com/docs");
+  });
+});
+
 describe("buildPublicMetadata", () => {
   it("builds canonical, open graph, and twitter metadata for public pages", () => {
     vi.stubEnv("AUTH_URL", "https://judgekit.example");
@@ -70,6 +81,11 @@ describe("buildPublicMetadata", () => {
     });
 
     expect(metadata.alternates?.canonical).toBe("/practice");
+    expect(metadata.alternates?.languages).toMatchObject({
+      en: "/practice",
+      ko: "/practice?locale=ko",
+      "x-default": "/practice",
+    });
     expect(metadata.openGraph).toMatchObject({
       title: "Public problem catalog",
       description: "Browse public programming problems.",
@@ -78,10 +94,19 @@ describe("buildPublicMetadata", () => {
       type: "website",
     });
     expect(metadata.twitter).toMatchObject({
-      card: "summary",
+      card: "summary_large_image",
       title: "Public problem catalog",
       description: "Browse public programming problems.",
     });
+    const openGraphImages = Array.isArray(metadata.openGraph?.images)
+      ? metadata.openGraph.images
+      : metadata.openGraph?.images ? [metadata.openGraph.images] : [];
+    const twitterImages = Array.isArray(metadata.twitter?.images)
+      ? metadata.twitter.images
+      : metadata.twitter?.images ? [metadata.twitter.images] : [];
+
+    expect(openGraphImages[0]).toMatchObject({ url: expect.stringContaining("/og?") });
+    expect(String(twitterImages[0])).toContain("/og?");
     expect(metadata.keywords).toContain("algorithm practice");
   });
 });

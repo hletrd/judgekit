@@ -8,6 +8,7 @@ type PublicContestListProps = {
   noContestsLabel: string;
   contests: Array<{
     id: string;
+    href: string;
     title: string;
     description: string | null;
     groupName: string;
@@ -56,7 +57,7 @@ export function PublicContestList({
       ) : (
         <div className="space-y-2">
           {contests.map((contest) => (
-            <Link key={contest.id} href={`/contests/${contest.id}`} className="block">
+            <Link key={contest.id} href={contest.href} className="block">
               <Card className={getStatusBorderClass(contest.statusKey)}>
                 <CardContent className="p-4">
                   <div className="flex items-center gap-4">

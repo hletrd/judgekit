@@ -3,6 +3,11 @@ import type { ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { PublicHeader } from "@/components/layout/public-header";
 
+vi.mock("next-intl", () => ({
+  useLocale: () => "ko",
+  useTranslations: () => (key: string) => key,
+}));
+
 vi.mock("next/navigation", () => ({
   usePathname: () => "/practice",
 }));
@@ -21,7 +26,7 @@ vi.mock("@/components/layout/locale-switcher", () => ({
 
 describe("PublicHeader", () => {
   it("renders public nav items and actions", () => {
-    render(
+    const { container } = render(
       <PublicHeader
         siteTitle="JudgeKit"
         items={[
@@ -38,9 +43,12 @@ describe("PublicHeader", () => {
     expect(screen.getByText("JudgeKit")).toBeInTheDocument();
     expect(screen.getByText("Practice")).toBeInTheDocument();
     expect(screen.getByText("Community")).toBeInTheDocument();
-    expect(screen.getByText("Workspace")).toBeInTheDocument();
-    expect(screen.getByText("Sign in")).toBeInTheDocument();
-    expect(screen.getByText("theme-toggle")).toBeInTheDocument();
-    expect(screen.getByText("locale-switcher")).toBeInTheDocument();
+    expect(screen.getAllByText("Workspace").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Sign in").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("theme-toggle").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("locale-switcher").length).toBeGreaterThan(0);
+    expect(container.querySelector('a[href="/?locale=ko"]')).toBeTruthy();
+    expect(container.querySelector('a[href="/practice?locale=ko"]')).toBeTruthy();
+    expect(container.querySelector('a[href="/login?locale=ko"]')).toBeTruthy();
   });
 });

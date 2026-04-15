@@ -9,9 +9,10 @@ import { getResolvedSystemSettings } from "@/lib/system-settings";
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const { id } = await params;
-  const [contest, t, locale] = await Promise.all([
+  const [contest, t, tShell, locale] = await Promise.all([
     getPublicContestById(id),
     getTranslations("common"),
+    getTranslations("publicShell"),
     getLocale(),
   ]);
   if (!contest) {
@@ -36,7 +37,9 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
       "programming contest",
       contest.groupName,
     ],
-    section: "Contest",
+    section: locale === "ko" ? "대회" : "Contest",
+    socialBadge: contest.examMode === "scheduled" ? tShell("contests.modeScheduled") : tShell("contests.modeWindowed"),
+    socialMeta: contest.groupName,
   });
 }
 
@@ -80,12 +83,36 @@ export default async function PublicContestDetailPage({ params }: { params: Prom
     startDate: contest.startsAt?.toISOString(),
     endDate: contest.deadline?.toISOString(),
   };
+  const breadcrumbJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      {
+        "@type": "ListItem",
+        position: 1,
+        name: tCommon("appName"),
+        item: buildAbsoluteUrl(buildLocalePath("/", locale)),
+      },
+      {
+        "@type": "ListItem",
+        position: 2,
+        name: t("nav.contests"),
+        item: buildAbsoluteUrl(buildLocalePath("/contests", locale)),
+      },
+      {
+        "@type": "ListItem",
+        position: 3,
+        name: contest.title,
+        item: buildAbsoluteUrl(buildLocalePath(`/contests/${contest.id}`, locale)),
+      },
+    ],
+  };
 
   return (
     <>
-      <JsonLd data={eventJsonLd} />
+      <JsonLd data={[eventJsonLd, breadcrumbJsonLd]} />
       <PublicContestDetail
-        backHref="/contests"
+        backHref={buildLocalePath("/contests", locale)}
         backLabel={tCommon("back")}
         title={contest.title}
         description={contest.description}
@@ -101,10 +128,16 @@ export default async function PublicContestDetailPage({ params }: { params: Prom
         noPublicProblemsLabel={t("contests.noPublicProblems")}
         problemTitleLabel={tProblems("table.title")}
         actionLabel={t("contests.openContest")}
-        publicProblems={contest.publicProblems}
-        signInHref={`/login?callbackUrl=${encodeURIComponent(`/dashboard/contests/${contest.id}`)}`}
+        publicProblems={contest.publicProblems.map((problem) => ({
+          ...problem,
+          href: buildLocalePath(`/practice/problems/${problem.id}`, locale),
+        }))}
+        signInHref={buildLocalePath(
+          `/login?callbackUrl=${encodeURIComponent(buildLocalePath(`/dashboard/contests/${contest.id}`, locale))}`,
+          locale,
+        )}
         signInLabel={t("contests.signInToJoin")}
-        workspaceHref="/workspace"
+        workspaceHref={buildLocalePath("/workspace", locale)}
         workspaceLabel={t("contests.openWorkspace")}
       />
     </>

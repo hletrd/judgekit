@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import { getTranslations, getLocale } from "next-intl/server";
 import { PublicHeader } from "@/components/layout/public-header";
-import { buildAbsoluteUrl, buildPublicMetadata } from "@/lib/seo";
+import { PublicFooter } from "@/components/layout/public-footer";
+import { JsonLd } from "@/components/seo/json-ld";
+import { buildAbsoluteUrl, buildLocalePath, buildPublicMetadata } from "@/lib/seo";
 import { getResolvedSystemSettings } from "@/lib/system-settings";
 import { PublicHomePage } from "@/app/(public)/_components/public-home-page";
 import { auth } from "@/lib/auth";
@@ -34,7 +36,7 @@ export async function generateMetadata(): Promise<Metadata> {
       "online coding contests",
       "computer science coursework",
     ],
-    section: tShell("nav.practice"),
+    section: locale === "ko" ? "온라인 저지" : "Online judge",
   });
 }
 
@@ -54,27 +56,33 @@ export default async function HomePage() {
 
   const o = settings.homePageContent?.[locale];
   const seoDescription = pick(tShell("home.description"), o?.description);
+  const homeUrl = buildAbsoluteUrl(buildLocalePath("/", locale));
   const websiteJsonLd = {
     "@context": "https://schema.org",
     "@type": "WebSite",
     name: settings.siteTitle,
-    url: buildAbsoluteUrl("/"),
+    url: homeUrl,
     description: seoDescription,
     inLanguage: locale,
+  };
+  const organizationJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    name: settings.siteTitle,
+    url: homeUrl,
   };
 
   return (
     <div className="min-h-dvh bg-muted/20">
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd) }}
-      />
+      <JsonLd data={[websiteJsonLd, organizationJsonLd]} />
       <PublicHeader
         siteTitle={settings.siteTitle}
         items={[
           { href: "/practice", label: tShell("nav.practice") },
           { href: "/playground", label: tShell("nav.playground") },
           { href: "/contests", label: tShell("nav.contests") },
+          { href: "/rankings", label: tShell("nav.rankings") },
+          { href: "/submissions", label: tShell("nav.submissions") },
           { href: "/community", label: tShell("nav.community") },
         ]}
         actions={[
@@ -91,30 +99,31 @@ export default async function HomePage() {
           description={pick(tShell("home.description"), o?.description)}
           sections={[
             {
-              href: "/practice",
+              href: buildLocalePath("/practice", locale),
               title: pick(tShell("home.cards.practice.title"), o?.cards?.practice?.title),
               description: pick(tShell("home.cards.practice.description"), o?.cards?.practice?.description),
             },
             {
-              href: "/playground",
+              href: buildLocalePath("/playground", locale),
               title: pick(tShell("home.cards.playground.title"), o?.cards?.playground?.title),
               description: pick(tShell("home.cards.playground.description"), o?.cards?.playground?.description),
             },
             {
-              href: "/contests",
+              href: buildLocalePath("/contests", locale),
               title: pick(tShell("home.cards.contests.title"), o?.cards?.contests?.title),
               description: pick(tShell("home.cards.contests.description"), o?.cards?.contests?.description),
             },
             {
-              href: "/community",
+              href: buildLocalePath("/community", locale),
               title: pick(tShell("home.cards.community.title"), o?.cards?.community?.title),
               description: pick(tShell("home.cards.community.description"), o?.cards?.community?.description),
             },
           ]}
-          primaryCta={{ href: "/dashboard", label: tShell("home.primaryCta") }}
-          secondaryCta={session?.user ? null : { href: "/login", label: tShell("home.secondaryCta") }}
+          primaryCta={{ href: buildLocalePath("/dashboard", locale), label: tShell("home.primaryCta") }}
+          secondaryCta={session?.user ? null : { href: buildLocalePath("/login", locale), label: tShell("home.secondaryCta") }}
         />
       </main>
+      <PublicFooter footerContent={settings.footerContent} />
     </div>
   );
 }

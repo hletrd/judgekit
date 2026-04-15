@@ -79,6 +79,7 @@ export default async function PublicContestsPage() {
         noContestsLabel={t("contests.noContests")}
         contests={contests.map((contest) => ({
           id: contest.id,
+          href: buildLocalePath(`/contests/${contest.id}`, locale),
           title: contest.title,
           description: contest.description,
           groupName: contest.groupName,

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { getLocale } from "next-intl/server";
+import { buildLocalizedHref } from "@/lib/locale-paths";
 
 type FooterLink = { label: string; url: string };
 type FooterLocaleContent = {
@@ -29,7 +30,7 @@ export async function PublicFooter({ footerContent }: PublicFooterProps) {
             {content.links.map((link) => (
               <Link
                 key={link.url}
-                href={link.url}
+                href={buildLocalizedHref(link.url, locale)}
                 className="transition-colors hover:text-foreground"
               >
                 {link.label}

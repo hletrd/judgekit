@@ -13,6 +13,7 @@ vi.mock("next/link", () => ({
 }));
 
 vi.mock("next-intl/server", () => ({
+  getLocale: async () => "en",
   getTranslations: async (namespace: string) => (key: string) => {
     const translations: Record<string, Record<string, string>> = {
       common: { appName: "JudgeKit", appDescription: "Online judge", back: "Back" },
@@ -40,6 +41,9 @@ vi.mock("@/lib/system-settings", () => ({ getResolvedSystemSettings: getResolved
 vi.mock("@/components/layout/public-header", () => ({
   PublicHeader: () => <div>public-header</div>,
 }));
+vi.mock("@/components/layout/public-footer", () => ({
+  PublicFooter: () => <div>public-footer</div>,
+}));
 
 describe("NotFoundPage", () => {
   beforeEach(() => {
@@ -56,6 +60,7 @@ describe("NotFoundPage", () => {
     render(await NotFoundPage());
 
     expect(screen.getByText("public-header")).toBeInTheDocument();
+    expect(screen.getByText("public-footer")).toBeInTheDocument();
     expect(screen.getByText("Page not found")).toBeInTheDocument();
     expect(screen.getByText("This page doesn't exist.")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Back" })).toHaveAttribute("href", "/");

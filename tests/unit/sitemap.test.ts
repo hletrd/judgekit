@@ -68,12 +68,25 @@ describe("sitemap metadata route", () => {
 
     expect(entries).toEqual(expect.arrayContaining([
       { url: "https://judgekit.example/", changeFrequency: "daily", priority: 1 },
+      { url: "https://judgekit.example/?locale=ko", changeFrequency: "daily", priority: 1 },
       { url: "https://judgekit.example/practice", changeFrequency: "daily", priority: 0.9 },
+      { url: "https://judgekit.example/practice?locale=ko", changeFrequency: "daily", priority: 0.9 },
       { url: "https://judgekit.example/contests", changeFrequency: "daily", priority: 0.8 },
+      { url: "https://judgekit.example/contests?locale=ko", changeFrequency: "daily", priority: 0.8 },
       { url: "https://judgekit.example/community", changeFrequency: "daily", priority: 0.7 },
+      { url: "https://judgekit.example/community?locale=ko", changeFrequency: "daily", priority: 0.7 },
       { url: "https://judgekit.example/playground", changeFrequency: "weekly", priority: 0.7 },
+      { url: "https://judgekit.example/playground?locale=ko", changeFrequency: "weekly", priority: 0.7 },
+      { url: "https://judgekit.example/rankings", changeFrequency: "daily", priority: 0.6 },
+      { url: "https://judgekit.example/rankings?locale=ko", changeFrequency: "daily", priority: 0.6 },
       {
         url: "https://judgekit.example/practice/problems/problem-1",
+        lastModified: now,
+        changeFrequency: "weekly",
+        priority: 0.8,
+      },
+      {
+        url: "https://judgekit.example/practice/problems/problem-1?locale=ko",
         lastModified: now,
         changeFrequency: "weekly",
         priority: 0.8,
@@ -85,7 +98,19 @@ describe("sitemap metadata route", () => {
         priority: 0.7,
       },
       {
+        url: "https://judgekit.example/contests/contest-1?locale=ko",
+        lastModified: now,
+        changeFrequency: "daily",
+        priority: 0.7,
+      },
+      {
         url: "https://judgekit.example/community/threads/thread-1",
+        lastModified: now,
+        changeFrequency: "weekly",
+        priority: 0.6,
+      },
+      {
+        url: "https://judgekit.example/community/threads/thread-1?locale=ko",
         lastModified: now,
         changeFrequency: "weekly",
         priority: 0.6,

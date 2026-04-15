@@ -19,7 +19,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   const [problem, t, locale] = await Promise.all([
     db.query.problems.findFirst({
       where: eq(problems.id, id),
-      columns: { title: true, description: true, visibility: true },
+      columns: { title: true, description: true, visibility: true, sequenceNumber: true, difficulty: true },
     }),
     getTranslations("common"),
     getLocale(),
@@ -47,7 +47,11 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
       "programming problem",
       "algorithm challenge",
     ],
-    section: "Problem",
+    section: locale === "ko" ? "문제" : "Problem",
+    socialBadge: problem.sequenceNumber != null ? `#${problem.sequenceNumber}` : undefined,
+    socialMeta: problem.difficulty != null
+      ? `${locale === "ko" ? "난이도" : "Difficulty"} ${problem.difficulty.toFixed(2)}`
+      : undefined,
     type: "article",
   });
 }
@@ -77,7 +81,6 @@ export default async function PublicProblemDetailPage({ params }: { params: Prom
   }
 
   const threads = await listProblemDiscussionThreads(problem.id);
-  const callbackPath = `/practice/problems/${problem.id}`;
   const problemJsonLd = {
     "@context": "https://schema.org",
     "@type": "TechArticle",
@@ -93,10 +96,40 @@ export default async function PublicProblemDetailPage({ params }: { params: Prom
       : undefined,
     keywords: problem.problemTags.map((entry) => entry.tag.name).join(", "),
   };
+  const breadcrumbJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      {
+        "@type": "ListItem",
+        position: 1,
+        name: tCommon("appName"),
+        item: buildAbsoluteUrl(buildLocalePath("/", locale)),
+      },
+      {
+        "@type": "ListItem",
+        position: 2,
+        name: t("nav.practice"),
+        item: buildAbsoluteUrl(buildLocalePath("/practice", locale)),
+      },
+      {
+        "@type": "ListItem",
+        position: 3,
+        name: problem.title,
+        item: buildAbsoluteUrl(buildLocalePath(`/practice/problems/${problem.id}`, locale)),
+      },
+    ],
+  };
+  const problemPageHref = buildLocalePath(`/practice/problems/${problem.id}`, locale);
+  const contestlessPlaygroundHref = buildLocalePath("/playground", locale);
+  const signInHref = buildLocalePath(
+    `/login?callbackUrl=${encodeURIComponent(buildLocalePath(`/dashboard/problems/${problem.id}`, locale))}`,
+    locale,
+  );
 
   return (
     <>
-      <JsonLd data={problemJsonLd} />
+      <JsonLd data={[problemJsonLd, breadcrumbJsonLd]} />
       <div className="space-y-6">
         <Tabs defaultValue="problem">
           <TabsList>
@@ -105,7 +138,7 @@ export default async function PublicProblemDetailPage({ params }: { params: Prom
           </TabsList>
           <TabsContent value="problem" className="mt-4">
             <PublicProblemDetail
-              backHref="/practice"
+              backHref={buildLocalePath("/practice", locale)}
               backLabel={tCommon("back")}
               title={problem.title}
               description={problem.description}
@@ -118,9 +151,9 @@ export default async function PublicProblemDetailPage({ params }: { params: Prom
                   ? tProblems("badges.difficulty", { value: problem.difficulty.toFixed(2).replace(/\.?0+$/, "") })
                   : null
               }
-              playgroundHref="/playground"
+              playgroundHref={contestlessPlaygroundHref}
               playgroundLabel={t("practice.tryInPlayground")}
-              signInHref={`/login?callbackUrl=${encodeURIComponent(`/dashboard/problems/${problem.id}`)}`}
+              signInHref={signInHref}
               signInLabel={t("practice.signInToSubmit")}
             />
           </TabsContent>
@@ -134,7 +167,7 @@ export default async function PublicProblemDetailPage({ params }: { params: Prom
               successLabel={t("practice.discussion.form.success")}
               signInLabel={t("practice.discussion.form.signIn")}
               canPost={Boolean(session?.user)}
-              signInHref={`/login?callbackUrl=${encodeURIComponent(callbackPath)}`}
+              signInHref={buildLocalePath(`/login?callbackUrl=${encodeURIComponent(problemPageHref)}`, locale)}
             />
             <DiscussionThreadList
               title={t("practice.discussion.title")}
@@ -151,7 +184,7 @@ export default async function PublicProblemDetailPage({ params }: { params: Prom
                 replyCountLabel: t("community.replyCount", { count: thread.posts.length }),
                 locked: Boolean(thread.lockedAt),
                 pinned: Boolean(thread.pinnedAt),
-                href: `/community/threads/${thread.id}`,
+                href: buildLocalePath(`/community/threads/${thread.id}`, locale),
               }))}
             />
           </TabsContent>
