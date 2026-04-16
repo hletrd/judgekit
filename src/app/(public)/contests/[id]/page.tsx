@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { getLocale, getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { PublicContestDetail } from "@/app/(public)/_components/public-contest-detail";
+import { ContestStatistics } from "@/components/contest/contest-statistics";
 import { JsonLd } from "@/components/seo/json-ld";
 import { getPublicContestById } from "@/lib/assignments/public-contests";
 import { computeContestAnalytics } from "@/lib/assignments/contest-analytics";
@@ -232,6 +233,23 @@ export default async function PublicContestDetailPage({ params }: { params: Prom
         workspaceHref={buildLocalePath("/workspace", locale)}
         workspaceLabel={t("contests.openWorkspace")}
       />
+
+      {showArchiveInsights && analytics ? (
+        <ContestStatistics
+          title={tContest("analytics.title")}
+          scoreDistributionTitle={tContest("analytics.scoreDistribution")}
+          solveRatesTitle={tContest("analytics.solveRates")}
+          noDataLabel={tContest("analytics.noData")}
+          studentsLabel={tContest("analytics.students")}
+          countLabel={tContest("analytics.count")}
+          percentageLabel={tContest("analytics.percentage")}
+          solvedLabel={tContest("analytics.solved")}
+          partialLabel={tContest("analytics.partial")}
+          zeroLabel={tContest("analytics.zero")}
+          scoreDistribution={analytics.scoreDistribution}
+          problemSolveRates={analytics.problemSolveRates}
+        />
+      ) : null}
 
       {/* Virtual Practice for expired/closed contests */}
       {(contest.status === "expired" || contest.status === "closed") && contest.publicProblems.length > 0 && (
