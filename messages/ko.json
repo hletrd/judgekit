@@ -478,6 +478,8 @@
     "selectProblem": "문제를 선택하세요",
     "addProblem": "문제 추가",
     "removeProblem": "삭제",
+    "moveProblemUp": "문제를 위로 이동",
+    "moveProblemDown": "문제를 아래로 이동",
     "noProblemSets": "아직 생성된 문제 묶음이 없습니다.",
     "noProblems": "이 묶음에 문제가 없습니다.",
     "noGroups": "할당된 그룹이 없습니다.",

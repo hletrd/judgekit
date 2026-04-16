@@ -478,6 +478,8 @@
     "selectProblem": "Select a problem",
     "addProblem": "Add problem",
     "removeProblem": "Remove",
+    "moveProblemUp": "Move problem up",
+    "moveProblemDown": "Move problem down",
     "noProblemSets": "No problem sets created yet.",
     "noProblems": "No problems in this set.",
     "noGroups": "Not assigned to any groups.",

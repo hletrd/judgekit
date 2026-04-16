@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { Plus, Trash2, X } from "lucide-react";
+import { ArrowDown, ArrowUp, Plus, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { apiFetch } from "@/lib/api/client";
 import { Button } from "@/components/ui/button";
@@ -84,6 +84,19 @@ export default function ProblemSetForm({
 
   function removeProblem(index: number) {
     setSelectedProblemIds((prev) => prev.filter((_, i) => i !== index));
+  }
+
+  function moveProblem(index: number, direction: "up" | "down") {
+    setSelectedProblemIds((prev) => {
+      const targetIndex = direction === "up" ? index - 1 : index + 1;
+      if (targetIndex < 0 || targetIndex >= prev.length) {
+        return prev;
+      }
+
+      const next = [...prev];
+      [next[index], next[targetIndex]] = [next[targetIndex], next[index]];
+      return next;
+    });
   }
 
   async function handleAssignGroup() {
@@ -324,16 +337,38 @@ export default function ProblemSetForm({
                       <span className="text-sm">
                         {index + 1}. {problem?.title ?? pid}
                       </span>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => removeProblem(index)}
-                        disabled={isLoading}
-                      >
-                        <Trash2 className="size-4" aria-hidden="true" />
-                        <span className="sr-only">{t("removeProblem")}</span>
-                      </Button>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => moveProblem(index, "up")}
+                          disabled={isLoading || index === 0}
+                          aria-label={t("moveProblemUp")}
+                        >
+                          <ArrowUp className="size-4" aria-hidden="true" />
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => moveProblem(index, "down")}
+                          disabled={isLoading || index === selectedProblemIds.length - 1}
+                          aria-label={t("moveProblemDown")}
+                        >
+                          <ArrowDown className="size-4" aria-hidden="true" />
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => removeProblem(index)}
+                          disabled={isLoading}
+                          aria-label={t("removeProblem")}
+                        >
+                          <Trash2 className="size-4" aria-hidden="true" />
+                        </Button>
+                      </div>
                     </div>
                   );
                 })}
