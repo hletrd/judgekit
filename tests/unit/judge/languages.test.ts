@@ -111,6 +111,17 @@ describe("judge language definitions", () => {
     expect(def?.runCommand).toEqual(["/workspace/solution"]);
   });
 
+  it("keeps -O2 enabled for competitive-programming C++ variants", () => {
+    const variants = ["cpp20", "cpp23", "cpp26", "clang_cpp23", "clang_cpp26"] as const;
+
+    for (const language of variants) {
+      const def = getJudgeLanguageDefinition(language);
+      const compile = serializeJudgeCommand(def?.compileCommand);
+
+      expect(compile, `${language} should keep -O2`).toContain("-O2");
+    }
+  });
+
   // ── JVM ──────────────────────────────────────────────────────────────────
 
   it("exposes the Java runtime with the shared JVM image and Main entrypoint", () => {
