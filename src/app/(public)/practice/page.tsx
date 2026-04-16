@@ -578,7 +578,7 @@ export default async function PracticePage({
       {userId && (
         <div className="mb-4 flex flex-wrap gap-2">
           {PROGRESS_FILTER_VALUES.map((filter) => (
-            <Link key={filter} href={buildPageHref(1, pageSize, searchQuery, currentTag, currentSort, filter)}>
+            <Link key={filter} href={buildPageHref(1, pageSize, searchQuery, currentTag, currentSort, filter)} aria-current={currentProgressFilter === filter ? "page" : undefined}>
               <Button variant={currentProgressFilter === filter ? "default" : "outline"} size="sm">
                 {progressFilterLabels[filter]}
               </Button>

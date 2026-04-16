@@ -34,11 +34,15 @@ function isActivePath(pathname: string, href: string) {
 export function PublicHeader({ siteTitle, items, actions, loggedInUser }: PublicHeaderProps) {
   const pathname = usePathname();
   const locale = useLocale();
-  const [mobileOpenPath, setMobileOpenPath] = useState<string | null>(null);
+  const [mobileOpen, setMobileOpen] = useState(false);
   const menuId = useId();
   const toggleRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
-  const mobileOpen = mobileOpenPath === pathname;
+
+  // Close menu on route change
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [pathname]);
 
   // Focus management: Escape to close, focus first item on open, restore focus on close
   useEffect(() => {
@@ -52,8 +56,26 @@ export function PublicHeader({ siteTitle, items, actions, loggedInUser }: Public
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
-        setMobileOpenPath(null);
+        setMobileOpen(false);
         toggleRef.current?.focus();
+      }
+
+      // Focus trap: keep Tab within the panel
+      if (e.key === "Tab" && panelRef.current) {
+        const focusableSelector = 'a[href], button, [tabindex]:not([tabindex="-1"])';
+        const focusableEls = panelRef.current.querySelectorAll<HTMLElement>(focusableSelector);
+        if (focusableEls.length === 0) return;
+
+        const first = focusableEls[0];
+        const last = focusableEls[focusableEls.length - 1];
+
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
       }
     };
 
@@ -62,7 +84,7 @@ export function PublicHeader({ siteTitle, items, actions, loggedInUser }: Public
   }, [mobileOpen]);
 
   const closeMobileMenu = useCallback(() => {
-    setMobileOpenPath(null);
+    setMobileOpen(false);
     // Defer focus restoration so the DOM update (unmount) completes first
     requestAnimationFrame(() => toggleRef.current?.focus());
   }, []);
@@ -71,7 +93,7 @@ export function PublicHeader({ siteTitle, items, actions, loggedInUser }: Public
     <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
       {/* Screen reader announcement for menu state */}
       <div className="sr-only" aria-live="polite" aria-atomic="true">
-        {mobileOpen ? "Navigation menu opened" : ""}
+        {mobileOpen ? "Navigation menu opened. Press Escape to close." : ""}
       </div>
 
       <div className="mx-auto flex w-full max-w-6xl items-center gap-2 px-4 py-3 sm:gap-4">
@@ -135,7 +157,7 @@ export function PublicHeader({ siteTitle, items, actions, loggedInUser }: Public
           <button
             ref={toggleRef}
             type="button"
-            onClick={() => setMobileOpenPath((current) => (current === pathname ? null : pathname))}
+            onClick={() => setMobileOpen((v) => !v)}
             className="inline-flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             aria-label="Toggle navigation menu"
             aria-controls={menuId}

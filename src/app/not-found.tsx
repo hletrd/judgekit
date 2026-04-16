@@ -38,7 +38,7 @@ export default async function NotFoundPage() {
     <div className="min-h-dvh bg-muted/20">
       <a
         href="#main-content"
-        className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-background focus:px-3 focus:py-2 focus:text-sm focus:shadow-md"
+        className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-background focus:px-3 focus:py-2 focus:text-sm focus:shadow-md dark:focus:bg-foreground dark:focus:text-background"
       >
         {tCommon("skipToContent")}
       </a>
