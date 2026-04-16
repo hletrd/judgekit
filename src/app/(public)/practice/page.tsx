@@ -170,6 +170,16 @@ export default async function PracticePage({
     : undefined;
 
   const baseWhereClause = combineFilters(visibilityFilter, searchFilter, tagFilter);
+  const submissionStatsSubquery = db
+    .select({
+      problemId: submissions.problemId,
+      submissionCount: count(),
+      solverCount: sql<number>`count(distinct case when ${submissions.status} = 'accepted' then ${submissions.userId} end)`,
+      acceptedCount: sql<number>`count(case when ${submissions.status} = 'accepted' then 1 end)`,
+    })
+    .from(submissions)
+    .groupBy(submissions.problemId)
+    .as("submission_stats");
 
   // For non-sort-based queries we still need to count
   // Determine sort order
@@ -215,71 +225,62 @@ export default async function PracticePage({
     clampedPage = Math.min(currentPage, totalPages);
     const offset = (clampedPage - 1) * pageSize;
 
-    // For successRate sort, we need a different approach — sort in application code
+    // For success-rate sort, keep the ranking in SQL so pagination still happens in the database.
     if (currentSort === "successRate_desc") {
-      // Fetch all matching problem IDs with stats, sort by rate, then paginate
-      const allProblemRows = await db.query.problems.findMany({
-        where: baseWhereClause,
-        columns: {
-          id: true,
-          sequenceNumber: true,
-          title: true,
-          description: true,
-          difficulty: true,
-          createdAt: true,
-        },
-        with: {
-          problemTags: {
-            with: {
-              tag: { columns: { name: true, color: true } },
+      const pageStats = await db
+        .select({
+          id: problems.id,
+          sequenceNumber: problems.sequenceNumber,
+          title: problems.title,
+          description: problems.description,
+          difficulty: problems.difficulty,
+          createdAt: problems.createdAt,
+          solverCount: sql<number>`coalesce(${submissionStatsSubquery.solverCount}, 0)`,
+          submissionCount: sql<number>`coalesce(${submissionStatsSubquery.submissionCount}, 0)`,
+          acceptedCount: sql<number>`coalesce(${submissionStatsSubquery.acceptedCount}, 0)`,
+        })
+        .from(problems)
+        .leftJoin(submissionStatsSubquery, eq(problems.id, submissionStatsSubquery.problemId))
+        .where(baseWhereClause)
+        .orderBy(
+          desc(
+            sql<number>`coalesce(cast(${submissionStatsSubquery.acceptedCount} as double precision) / nullif(${submissionStatsSubquery.submissionCount}, 0), -1)`
+          ),
+          asc(problems.sequenceNumber),
+          asc(problems.createdAt),
+        )
+        .limit(pageSize)
+        .offset(offset);
+
+      const pageProblemRows = pageStats.length > 0
+        ? await db.query.problems.findMany({
+            where: inArray(problems.id, pageStats.map((problem) => problem.id)),
+            columns: {
+              id: true,
+              sequenceNumber: true,
+              title: true,
+              description: true,
+              difficulty: true,
+              createdAt: true,
             },
-          },
-        },
-      });
-
-      // Fetch stats for all
-      const allIds = allProblemRows.map((p) => p.id);
-      const statsMap = new Map<string, { solverCount: number; submissionCount: number; acceptedCount: number }>();
-      if (allIds.length > 0) {
-        const statsRows = await db
-          .select({
-            problemId: submissions.problemId,
-            submissionCount: count(),
-            solverCount: sql<number>`count(distinct case when ${submissions.status} = 'accepted' then ${submissions.userId} end)`,
-            acceptedCount: sql<number>`count(case when ${submissions.status} = 'accepted' then 1 end)`,
+            with: {
+              problemTags: {
+                with: {
+                  tag: { columns: { name: true, color: true } },
+                },
+              },
+            },
           })
-          .from(submissions)
-          .where(sql`${submissions.problemId} IN (${sql.join(allIds.map((id) => sql`${id}`), sql`, `)})`)
-          .groupBy(submissions.problemId);
-        for (const row of statsRows) {
-          statsMap.set(row.problemId, {
-            solverCount: Number(row.solverCount),
-            submissionCount: Number(row.submissionCount),
-            acceptedCount: Number(row.acceptedCount),
-          });
-        }
-      }
-
-      const withRate = allProblemRows.map((p) => {
-        const s = statsMap.get(p.id);
-        const sc = s?.submissionCount ?? 0;
-        const ac = s?.acceptedCount ?? 0;
-        return { ...p, solverCount: s?.solverCount ?? 0, submissionCount: sc, acceptedCount: ac, rate: sc > 0 ? ac / sc : -1 };
-      });
-      withRate.sort((a, b) => b.rate - a.rate);
-
-      const pageSlice = withRate.slice(offset, offset + pageSize);
-      totalCount = withRate.length;
-      const tp2 = Math.max(1, Math.ceil(totalCount / pageSize));
-      clampedPage = Math.min(currentPage, tp2);
+        : [];
+      const pageProblemMap = new Map(pageProblemRows.map((problem) => [problem.id, problem]));
 
       // Fetch user progress for the page slice if logged in
       const progressMap = new Map<string, Array<string | null>>();
-      if (userId && pageSlice.length > 0) {
+      if (userId && pageStats.length > 0) {
         const subRows = await db
           .select({ problemId: submissions.problemId, status: submissions.status })
           .from(submissions)
-          .where(and(eq(submissions.userId, userId), inArray(submissions.problemId, pageSlice.map((p) => p.id))));
+          .where(and(eq(submissions.userId, userId), inArray(submissions.problemId, pageStats.map((problem) => problem.id))));
         for (const row of subRows) {
           const arr = progressMap.get(row.problemId) ?? [];
           arr.push(row.status);
@@ -287,21 +288,29 @@ export default async function PracticePage({
         }
       }
 
-      filteredProblems = pageSlice.map((p) => ({
-        id: p.id,
-        sequenceNumber: p.sequenceNumber,
-        title: p.title,
-        difficulty: p.difficulty,
-        createdAt: p.createdAt,
-        searchMatchLabels: searchQuery
-          ? getPracticeSearchMatchKinds(p, searchQuery).map((kind) => searchMatchLabelMap[kind])
-          : [],
-        problemTags: p.problemTags.map((e) => ({ name: e.tag.name, color: e.tag.color })),
-        solverCount: p.solverCount,
-        submissionCount: p.submissionCount,
-        acceptedCount: p.acceptedCount,
-        progress: userId ? getProblemProgress(progressMap.get(p.id) ?? []) : null,
-      }));
+      filteredProblems = pageStats.flatMap((problem) => {
+        const problemRow = pageProblemMap.get(problem.id);
+
+        if (!problemRow) {
+          return [];
+        }
+
+        return [{
+          id: problem.id,
+          sequenceNumber: problem.sequenceNumber,
+          title: problem.title,
+          difficulty: problem.difficulty,
+          createdAt: problem.createdAt,
+          searchMatchLabels: searchQuery
+            ? getPracticeSearchMatchKinds(problem, searchQuery).map((kind) => searchMatchLabelMap[kind])
+            : [],
+          problemTags: problemRow.problemTags.map((entry) => ({ name: entry.tag.name, color: entry.tag.color })),
+          solverCount: Number(problem.solverCount),
+          submissionCount: Number(problem.submissionCount),
+          acceptedCount: Number(problem.acceptedCount),
+          progress: userId ? getProblemProgress(progressMap.get(problem.id) ?? []) : null,
+        }];
+      });
     } else {
       // Standard sort via DB
       const publicProblems = await db.query.problems.findMany({
@@ -333,14 +342,13 @@ export default async function PracticePage({
       if (problemIds.length > 0) {
         const stats = await db
           .select({
-            problemId: submissions.problemId,
-            submissionCount: count(),
-            solverCount: sql<number>`count(distinct case when ${submissions.status} = 'accepted' then ${submissions.userId} end)`,
-            acceptedCount: sql<number>`count(case when ${submissions.status} = 'accepted' then 1 end)`,
+            problemId: submissionStatsSubquery.problemId,
+            submissionCount: submissionStatsSubquery.submissionCount,
+            solverCount: submissionStatsSubquery.solverCount,
+            acceptedCount: submissionStatsSubquery.acceptedCount,
           })
-          .from(submissions)
-          .where(sql`${submissions.problemId} IN (${sql.join(problemIds.map((id) => sql`${id}`), sql`, `)})`)
-          .groupBy(submissions.problemId);
+          .from(submissionStatsSubquery)
+          .where(inArray(submissionStatsSubquery.problemId, problemIds));
 
         for (const row of stats) {
           statsMap.set(row.problemId, {
@@ -448,14 +456,13 @@ export default async function PracticePage({
       const statsMap = new Map<string, { solverCount: number; submissionCount: number; acceptedCount: number }>();
       const statsRows = await db
         .select({
-          problemId: submissions.problemId,
-          submissionCount: count(),
-          solverCount: sql<number>`count(distinct case when ${submissions.status} = 'accepted' then ${submissions.userId} end)`,
-          acceptedCount: sql<number>`count(case when ${submissions.status} = 'accepted' then 1 end)`,
+          problemId: submissionStatsSubquery.problemId,
+          submissionCount: submissionStatsSubquery.submissionCount,
+          solverCount: submissionStatsSubquery.solverCount,
+          acceptedCount: submissionStatsSubquery.acceptedCount,
         })
-        .from(submissions)
-        .where(sql`${submissions.problemId} IN (${sql.join(pageIds.map((id) => sql`${id}`), sql`, `)})`)
-        .groupBy(submissions.problemId);
+        .from(submissionStatsSubquery)
+        .where(inArray(submissionStatsSubquery.problemId, pageIds));
       for (const row of statsRows) {
         statsMap.set(row.problemId, {
           solverCount: Number(row.solverCount),
