@@ -69,6 +69,15 @@ export async function POST(request: NextRequest) {
           throw new Error("invalidJudgeClaim");
         }
 
+        if (Array.isArray(results) && results.length > 0) {
+          await tx.delete(submissionResults).where(eq(submissionResults.submissionId, submissionId));
+
+          const rows = buildSubmissionResultRows(submissionId, results);
+          if (rows.length > 0) {
+            await tx.insert(submissionResults).values(rows);
+          }
+        }
+
         return await tx.query.submissions.findFirst({
           where: eq(submissions.id, submissionId),
           columns: {

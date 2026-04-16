@@ -44,6 +44,7 @@ export function SubmissionDetailClient(props: SubmissionDetailClientProps) {
   const { submission, setSubmission, error: pollingError } = useSubmissionPolling(props.initialSubmission);
   const [rejudging, setRejudging] = useState(false);
   const [queuePosition, setQueuePosition] = useState<number | null>(null);
+  const [gradingTestCase, setGradingTestCase] = useState<string | null>(null);
 
   // Notify chat widget of submission results with problem context (skip for assignments/contests)
   const firedEventRef = useRef<string | null>(null);
@@ -95,6 +96,7 @@ export function SubmissionDetailClient(props: SubmissionDetailClientProps) {
   useEffect(() => {
     if (!isLive) {
       setQueuePosition(null);
+      setGradingTestCase(null);
       return;
     }
 
@@ -114,9 +116,10 @@ export function SubmissionDetailClient(props: SubmissionDetailClientProps) {
           return;
         }
 
-        const payload = await response.json() as { data?: { queuePosition?: number | null } };
+        const payload = await response.json() as { data?: { queuePosition?: number | null; gradingTestCase?: string | null } };
         if (!cancelled) {
           setQueuePosition(typeof payload.data?.queuePosition === "number" ? payload.data.queuePosition : null);
+          setGradingTestCase(typeof payload.data?.gradingTestCase === "string" ? payload.data.gradingTestCase : null);
         }
       } catch {
         // Best-effort only; submission status polling still continues.
@@ -224,7 +227,11 @@ export function SubmissionDetailClient(props: SubmissionDetailClientProps) {
                 <p>{t("queueAhead", { count: queuePosition })}</p>
               ) : null}
               {submission.status === "judging" ? (
-                <p>{t("judgingInProgress")}</p>
+                <p>
+                  {gradingTestCase
+                    ? t("judgingProgress", { progress: gradingTestCase })
+                    : t("judgingInProgress")}
+                </p>
               ) : null}
               {pollingError && (
                 <div aria-live="polite" className="flex items-center gap-2 text-amber-600 dark:text-amber-400">

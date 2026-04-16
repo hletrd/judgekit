@@ -544,6 +544,7 @@
     "liveUpdatesDelayed": "Auto-refresh is temporarily slower. Retrying...",
     "queueAhead": "{count} submissions ahead in queue.",
     "judgingInProgress": "Judging is currently in progress.",
+    "judgingProgress": "Judging progress: {progress}",
     "testCaseTable": {
       "testCase": "Test Case",
       "status": "Status",
