@@ -503,8 +503,8 @@ export const systemSettings = pgTable("system_settings", {
   aiAssistantEnabled: boolean("ai_assistant_enabled").notNull().default(true),
   publicSignupEnabled: boolean("public_signup_enabled").notNull().default(false),
   signupHcaptchaEnabled: boolean("signup_hcaptcha_enabled").notNull().default(false),
-  hcaptchaSiteKey: varchar("hcaptcha_site_key", { length: 255 }),
-  hcaptchaSecret: varchar("hcaptcha_secret", { length: 255 }),
+  hcaptchaSiteKey: text("hcaptcha_site_key"),
+  hcaptchaSecret: text("hcaptcha_secret"),
   // Rate Limiting (Login)
   loginRateLimitMaxAttempts: integer("login_rate_limit_max_attempts"),
   loginRateLimitWindowMs: integer("login_rate_limit_window_ms"),
