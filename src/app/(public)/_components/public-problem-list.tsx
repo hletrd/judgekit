@@ -9,6 +9,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { CircleCheck, CircleAlert, CircleX, CheckCircle2, XCircle, CircleDashed } from "lucide-react";
+
+type ProblemProgress = "solved" | "attempted" | "untried";
 
 type PublicProblemListItem = {
   id: string;
@@ -16,10 +19,11 @@ type PublicProblemListItem = {
   sequenceNumber: number | null;
   title: string;
   difficultyLabel: string | null;
-  tags: Array<{ name: string; color: string | null }>;
+  tags: Array<{ name: string; color: string | null; href: string }>;
   solverCount: number;
   submissionCount: number;
   successRate: number | null;
+  progress: ProblemProgress | null;
   createdAt: string | null;
 };
 
@@ -34,8 +38,38 @@ type PublicProblemListProps = {
   solverCountLabel: string;
   successRateLabel: string;
   createdAtLabel: string;
+  progressLabel: string;
+  progressLabels: { solved: string; attempted: string; untried: string };
   problems: PublicProblemListItem[];
 };
+
+function renderProgress(
+  progress: ProblemProgress,
+  labels: { solved: string; attempted: string; untried: string },
+) {
+  if (progress === "solved") {
+    return (
+      <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
+        <CheckCircle2 className="size-4" aria-hidden="true" />
+        <span className="text-xs">{labels.solved}</span>
+      </span>
+    );
+  }
+  if (progress === "attempted") {
+    return (
+      <span className="inline-flex items-center gap-1 text-amber-600 dark:text-amber-400">
+        <XCircle className="size-4" aria-hidden="true" />
+        <span className="text-xs">{labels.attempted}</span>
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1 text-muted-foreground">
+      <CircleDashed className="size-4" aria-hidden="true" />
+      <span className="text-xs">{labels.untried}</span>
+    </span>
+  );
+}
 
 export function PublicProblemList({
   title,
@@ -48,6 +82,8 @@ export function PublicProblemList({
   solverCountLabel,
   successRateLabel,
   createdAtLabel,
+  progressLabel,
+  progressLabels,
   problems,
 }: PublicProblemListProps) {
   return (
@@ -74,6 +110,7 @@ export function PublicProblemList({
                     <TableHead className="w-24 text-center">{successRateLabel}</TableHead>
                     <TableHead className="w-28 text-center">{difficultyLabel}</TableHead>
                     <TableHead className="w-36">{tagLabel}</TableHead>
+                    <TableHead className="w-20 text-center">{progressLabel}</TableHead>
                     <TableHead className="w-24 text-center">{createdAtLabel}</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -86,7 +123,7 @@ export function PublicProblemList({
                       <TableCell>
                         <Link
                           href={problem.href}
-                          className="text-sm font-medium text-foreground hover:text-primary hover:underline"
+                          className="text-sm font-medium text-foreground hover:text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
                         >
                           {problem.title}
                         </Link>
@@ -98,11 +135,17 @@ export function PublicProblemList({
                         {problem.successRate != null ? (
                           <span className={
                             problem.successRate >= 60
-                              ? "text-emerald-600"
+                              ? "inline-flex items-center gap-1 text-green-600 dark:text-green-400"
                               : problem.successRate >= 30
-                                ? "text-amber-600"
-                                : "text-red-500"
+                                ? "inline-flex items-center gap-1 text-yellow-600 dark:text-yellow-400"
+                                : "inline-flex items-center gap-1 text-red-500 dark:text-red-400"
                           }>
+                            {problem.successRate >= 60
+                              ? <CircleCheck className="size-3.5" aria-hidden="true" />
+                              : problem.successRate >= 30
+                                ? <CircleAlert className="size-3.5" aria-hidden="true" />
+                                : <CircleX className="size-3.5" aria-hidden="true" />
+                            }
                             {problem.successRate.toFixed(1)}%
                           </span>
                         ) : (
@@ -115,11 +158,21 @@ export function PublicProblemList({
                       <TableCell>
                         <div className="flex flex-wrap gap-1">
                           {problem.tags.map((tag) => (
-                            <Badge key={tag.name} variant="secondary" className="text-xs">
-                              {tag.name}
-                            </Badge>
+                            <Link key={tag.name} href={tag.href}>
+                              <Badge
+                                variant="secondary"
+                                className="text-xs cursor-pointer hover:bg-accent"
+                              >
+                                {tag.name}
+                              </Badge>
+                            </Link>
                           ))}
                         </div>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        {problem.progress != null
+                          ? renderProgress(problem.progress, progressLabels)
+                          : <span className="text-muted-foreground text-xs">-</span>}
                       </TableCell>
                       <TableCell className="text-center text-sm text-muted-foreground">
                         {problem.createdAt ?? "-"}
