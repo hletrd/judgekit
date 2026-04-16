@@ -33,12 +33,20 @@ export default async function NotFoundPage() {
 
   return (
     <div className="min-h-dvh bg-muted/20">
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-background focus:px-3 focus:py-2 focus:text-sm focus:shadow-md"
+      >
+        {tCommon("skipToContent")}
+      </a>
       <PublicHeader
         siteTitle={settings.siteTitle}
         items={[
           { href: "/practice", label: tShell("nav.practice") },
           { href: "/playground", label: tShell("nav.playground") },
           { href: "/contests", label: tShell("nav.contests") },
+          { href: "/rankings", label: tShell("nav.rankings") },
+          { href: "/submissions", label: tShell("nav.submissions") },
           { href: "/community", label: tShell("nav.community") },
         ]}
         actions={[
@@ -48,7 +56,7 @@ export default async function NotFoundPage() {
         ]}
         loggedInUser={session?.user ? { name: session.user.name, href: "/dashboard", label: tShell("nav.workspace") } : null}
       />
-      <main className="mx-auto flex min-h-[calc(100dvh-64px)] w-full max-w-6xl items-center justify-center px-4 py-10 sm:px-6 lg:px-8">
+      <main id="main-content" className="mx-auto flex min-h-[calc(100dvh-80px)] w-full max-w-6xl items-center justify-center px-4 py-10 sm:px-6 lg:px-8">
         <div className="w-full max-w-xl rounded-3xl border bg-background p-8 text-center shadow-sm sm:p-10">
           <p className="text-sm font-medium uppercase tracking-[0.2em] text-muted-foreground">404</p>
           <h1 className="mt-4 text-3xl font-semibold tracking-tight sm:text-4xl">

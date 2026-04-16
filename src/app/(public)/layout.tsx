@@ -18,6 +18,12 @@ export default async function PublicLayout({ children }: { children: React.React
 
   return (
     <div className="min-h-dvh bg-muted/20">
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-background focus:px-3 focus:py-2 focus:text-sm focus:shadow-md"
+      >
+        {tCommon("skipToContent")}
+      </a>
       <PublicHeader
         siteTitle={settings.siteTitle}
         items={[
@@ -35,7 +41,7 @@ export default async function PublicLayout({ children }: { children: React.React
         ]}
         loggedInUser={session?.user ? { name: session.user.name, href: "/dashboard", label: tShell("nav.workspace") } : null}
       />
-      <main className="mx-auto w-full max-w-6xl px-4 py-10 sm:px-6 lg:px-8">{children}</main>
+      <main id="main-content" className="mx-auto w-full max-w-6xl px-4 py-10 sm:px-6 lg:px-8">{children}</main>
       <PublicFooter footerContent={settings.footerContent} />
     </div>
   );
