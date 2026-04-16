@@ -74,7 +74,8 @@
       "recruiting": "채용"
     },
     "paginationPageSize": "페이지 크기",
-    "paginationPageSizeOption": "페이지당 {size}개 보기"
+    "paginationPageSizeOption": "페이지당 {size}개 보기",
+    "footerNavigation": "푸터 탐색"
   },
   "auth": {
     "signIn": "로그인",
@@ -722,6 +723,10 @@
     "freezeLeaderboardDescription": "이 시점 이후 사용자에게 동결된 순위가 표시됩니다. 관리자는 실시간 데이터를 볼 수 있습니다.",
     "enableAntiCheatLabel": "부정행위 모니터링 활성화",
     "enableAntiCheatDescription": "탭 전환, 복사/붙여넣기, 포커스 이탈 등을 기록합니다. 참고용 신호이며 부정행위 증거가 아닙니다. 공식 시험에는 감독관 배치 등 별도 통제가 필요합니다.",
+    "showResultsToCandidateLabel": "참가자에게 채점 결과 공개",
+    "showResultsToCandidateDescription": "활성화하면 참가자가 테스트 케이스 결과 등 채점 세부 정보를 볼 수 있습니다. 비활성화하면 강사와 관리자만 결과를 볼 수 있습니다.",
+    "hideScoresFromCandidatesLabel": "참가자 점수 숨기기",
+    "hideScoresFromCandidatesDescription": "활성화하면 참가자가 자신의 점수를 볼 수 없습니다.",
     "examDurationRequired": "개별 시험 모드에서는 시험 시간이 필요합니다.",
     "examWindowRequired": "개별 시험 모드에서는 시작 일시와 마감 일시가 모두 필요합니다.",
     "examScheduleRequired": "정규 시험 모드에서는 시작 일시와 마감 일시가 모두 필요합니다.",
@@ -815,7 +820,9 @@
     "assignmentVisibilityPrivate": "비공개 대회",
     "assignmentVisibilityPublic": "공개 대회",
     "assignmentVisibilityDescription_private": "등록된 참가자와 운영자만 볼 수 있습니다. 게스트는 공개 대회 카탈로그에서 볼 수 없습니다.",
-    "assignmentVisibilityDescription_public": "공개 대회 카탈로그에 표시됩니다. 참가 및 시작은 계속 로그인이 필요합니다."
+    "assignmentVisibilityDescription_public": "공개 대회 카탈로그에 표시됩니다. 참가 및 시작은 계속 로그인이 필요합니다.",
+    "showResultsToCandidateLabel": "지원자에게 문제별 결과 표시",
+    "hideScoresFromCandidatesLabel": "지원자에게 점수 숨기기"
   },
   "admin": {
     "users": {
@@ -1197,7 +1204,8 @@
       "signupHcaptchaTitle": "회원가입 hCaptcha",
       "signupHcaptchaEnabled": "공개 회원가입 시 hCaptcha 요구",
       "signupHcaptchaEnabledHint": "봇 회원가입을 줄이기 위해 hCaptcha를 사용합니다. NEXT_PUBLIC_HCAPTCHA_SITE_KEY와 HCAPTCHA_SECRET이 필요합니다.",
-      "signupHcaptchaUnavailable": "hCaptcha를 켜기 전에 NEXT_PUBLIC_HCAPTCHA_SITE_KEY와 HCAPTCHA_SECRET을 설정하세요."
+      "signupHcaptchaUnavailable": "hCaptcha를 켜기 전에 NEXT_PUBLIC_HCAPTCHA_SITE_KEY와 HCAPTCHA_SECRET을 설정하세요.",
+      "defaultLanguagePlaceholder": "python"
     },
     "files": {
       "title": "파일 관리",
@@ -1372,7 +1380,10 @@
         "languageKeyHelp": "고유 식별자 (소문자, 공백 없음)",
         "create": "생성",
         "createSuccess": "언어가 생성되었습니다.",
-        "createError": "언어 생성에 실패했습니다."
+        "createError": "언어 생성에 실패했습니다.",
+        "displayNamePlaceholder": "예: My Language",
+        "standardPlaceholder": "예: C++20",
+        "extensionPlaceholder": "예: .ml"
       }
     },
     "workers": {

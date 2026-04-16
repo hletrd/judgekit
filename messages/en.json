@@ -74,7 +74,8 @@
       "recruiting": "Recruiting"
     },
     "paginationPageSize": "Page size",
-    "paginationPageSizeOption": "Show {size} items per page"
+    "paginationPageSizeOption": "Show {size} items per page",
+    "footerNavigation": "Footer navigation"
   },
   "auth": {
     "signIn": "Sign in",
@@ -725,6 +726,10 @@
     "freezeLeaderboardDescription": "Users see frozen standings after this time. Instructors see live data.",
     "enableAntiCheatLabel": "Enable anti-cheat monitoring",
     "enableAntiCheatDescription": "Logs browser focus changes, copy/paste, and similar signals as review aids. This is low-confidence telemetry — not proctoring or proof of misconduct. For formal exams, add separate operational controls.",
+    "showResultsToCandidateLabel": "Show grading results to participants",
+    "showResultsToCandidateDescription": "When enabled, participants can see their grading details including test case results. When disabled, only instructors and admins can view results.",
+    "hideScoresFromCandidatesLabel": "Hide scores from participants",
+    "hideScoresFromCandidatesDescription": "When enabled, participants cannot see their numerical scores.",
     "examBadgeScheduled": "Scheduled Exam",
     "examBadgeWindowed": "Windowed Exam ({duration} min)",
     "examStartButton": "Start Exam",
@@ -815,7 +820,9 @@
     "assignmentVisibilityPrivate": "Private contest",
     "assignmentVisibilityPublic": "Public contest",
     "assignmentVisibilityDescription_private": "Visible only to enrolled participants and staff. Guests cannot browse it from the public contest catalog.",
-    "assignmentVisibilityDescription_public": "Visible in the public contest catalog. Joining and starting still require authentication."
+    "assignmentVisibilityDescription_public": "Visible in the public contest catalog. Joining and starting still require authentication.",
+    "showResultsToCandidateLabel": "Show per-problem results to candidates",
+    "hideScoresFromCandidatesLabel": "Hide scores from candidates"
   },
   "admin": {
     "users": {
@@ -1197,7 +1204,8 @@
       "signupHcaptchaTitle": "Sign-up hCaptcha",
       "signupHcaptchaEnabled": "Require hCaptcha during public sign-up",
       "signupHcaptchaEnabledHint": "Use hCaptcha to reduce bot sign-ups. Requires NEXT_PUBLIC_HCAPTCHA_SITE_KEY and HCAPTCHA_SECRET.",
-      "signupHcaptchaUnavailable": "Configure NEXT_PUBLIC_HCAPTCHA_SITE_KEY and HCAPTCHA_SECRET before enabling hCaptcha."
+      "signupHcaptchaUnavailable": "Configure NEXT_PUBLIC_HCAPTCHA_SITE_KEY and HCAPTCHA_SECRET before enabling hCaptcha.",
+      "defaultLanguagePlaceholder": "python"
     },
     "files": {
       "title": "File Management",
@@ -1372,7 +1380,10 @@
         "languageKeyHelp": "Unique identifier (lowercase, no spaces)",
         "create": "Create Language",
         "createSuccess": "Language created.",
-        "createError": "Failed to create language."
+        "createError": "Failed to create language.",
+        "displayNamePlaceholder": "e.g. My Language",
+        "standardPlaceholder": "e.g. C++20",
+        "extensionPlaceholder": "e.g. .ml"
       }
     },
     "workers": {

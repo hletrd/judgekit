@@ -157,6 +157,8 @@ export async function createAssignmentWithProblems(
         scoringModel: input.scoringModel ?? "ioi",
         freezeLeaderboardAt: input.freezeLeaderboardAt ? new Date(input.freezeLeaderboardAt) : null,
         enableAntiCheat: input.enableAntiCheat ?? false,
+        showResultsToCandidate: input.showResultsToCandidate ?? false,
+        hideScoresFromCandidates: input.hideScoresFromCandidates ?? false,
         createdAt: now,
         updatedAt: now,
       });
@@ -247,6 +249,8 @@ export async function updateAssignmentWithProblems(
         scoringModel: input.scoringModel ?? "ioi",
         freezeLeaderboardAt: input.freezeLeaderboardAt ? new Date(input.freezeLeaderboardAt) : null,
         enableAntiCheat: input.enableAntiCheat ?? false,
+        showResultsToCandidate: input.showResultsToCandidate ?? false,
+        hideScoresFromCandidates: input.hideScoresFromCandidates ?? false,
         updatedAt: now,
       })
       .where(eq(assignments.id, assignmentId));

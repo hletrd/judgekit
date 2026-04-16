@@ -314,6 +314,13 @@ export default async function GroupDetailPage({ params }: { params: Promise<{ id
                       points: problem.points ?? 100,
                     })),
                   visibility: assignment.visibility ?? "private",
+                  examMode: assignment.examMode ?? "none",
+                  scoringModel: assignment.scoringModel ?? "ioi",
+                  examDurationMinutes: assignment.examDurationMinutes ?? null,
+                  freezeLeaderboardAt: assignment.freezeLeaderboardAt ? assignment.freezeLeaderboardAt.valueOf() : null,
+                  enableAntiCheat: assignment.enableAntiCheat ?? false,
+                  showResultsToCandidate: assignment.showResultsToCandidate ?? false,
+                  hideScoresFromCandidates: assignment.hideScoresFromCandidates ?? false,
                 };
 
                 return (

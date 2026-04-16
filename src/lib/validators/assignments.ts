@@ -34,6 +34,8 @@ export const assignmentMutationSchema = z
     scoringModel: z.enum(["ioi", "icpc"]).default("ioi"),
     freezeLeaderboardAt: z.number().int().nullable().optional(),
     enableAntiCheat: z.boolean().default(false),
+    showResultsToCandidate: z.boolean().default(false),
+    hideScoresFromCandidates: z.boolean().default(false),
     problems: z
       .array(assignmentProblemSchema)
       .min(1, "assignmentProblemRequired")

@@ -49,6 +49,8 @@ export type AssignmentEditorValue = {
   scoringModel?: "ioi" | "icpc";
   freezeLeaderboardAt?: number | null;
   enableAntiCheat?: boolean;
+  showResultsToCandidate?: boolean;
+  hideScoresFromCandidates?: boolean;
 };
 
 type AssignmentFormDialogProps = {
@@ -117,6 +119,8 @@ export default function AssignmentFormDialog({
   const [scoringModel, setScoringModel] = useState<"ioi" | "icpc">(initialAssignment?.scoringModel ?? "ioi");
   const [freezeLeaderboardAt, setFreezeLeaderboardAt] = useState(formatDateTimeInput(initialAssignment?.freezeLeaderboardAt ?? null));
   const [enableAntiCheat, setEnableAntiCheat] = useState(initialAssignment?.enableAntiCheat ?? false);
+  const [showResultsToCandidate, setShowResultsToCandidate] = useState(initialAssignment?.showResultsToCandidate ?? false);
+  const [hideScoresFromCandidates, setHideScoresFromCandidates] = useState(initialAssignment?.hideScoresFromCandidates ?? false);
   const [problemRows, setProblemRows] = useState<AssignmentProblemDraft[]>(
     initialAssignment?.problems.length
       ? initialAssignment.problems.map((p) => ({ ...p, _key: nanoid() }))
@@ -150,6 +154,8 @@ export default function AssignmentFormDialog({
     setScoringModel(initialAssignment?.scoringModel ?? "ioi");
     setFreezeLeaderboardAt(formatDateTimeInput(initialAssignment?.freezeLeaderboardAt ?? null));
     setEnableAntiCheat(initialAssignment?.enableAntiCheat ?? false);
+    setShowResultsToCandidate(initialAssignment?.showResultsToCandidate ?? false);
+    setHideScoresFromCandidates(initialAssignment?.hideScoresFromCandidates ?? false);
     setProblemRows(
       initialAssignment?.problems.length
         ? initialAssignment.problems.map((p) => ({ ...p, _key: nanoid() }))
@@ -239,6 +245,8 @@ export default function AssignmentFormDialog({
             scoringModel: examMode !== "none" ? scoringModel : "ioi",
             freezeLeaderboardAt: examMode !== "none" ? parseDateTimeInput(freezeLeaderboardAt) : null,
             enableAntiCheat: examMode !== "none" ? enableAntiCheat : false,
+            showResultsToCandidate: examMode !== "none" ? showResultsToCandidate : false,
+            hideScoresFromCandidates: examMode !== "none" ? hideScoresFromCandidates : false,
             ...(areProblemsEditable
               ? { problems: problemRows.map(({ _key, ...rest }) => { void _key; return rest; }) }
               : {}),
@@ -485,6 +493,30 @@ export default function AssignmentFormDialog({
                     className="size-4 rounded border-gray-300"
                   />
                   <Label htmlFor="enable-anti-cheat">{t("enableAntiCheatLabel")}</Label>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <input
+                    type="checkbox"
+                    id="show-results-to-candidate"
+                    checked={showResultsToCandidate}
+                    onChange={(e) => setShowResultsToCandidate(e.target.checked)}
+                    disabled={isLoading}
+                    className="size-4 rounded border-gray-300"
+                  />
+                  <Label htmlFor="show-results-to-candidate">{t("showResultsToCandidateLabel")}</Label>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <input
+                    type="checkbox"
+                    id="hide-scores-from-candidates"
+                    checked={hideScoresFromCandidates}
+                    onChange={(e) => setHideScoresFromCandidates(e.target.checked)}
+                    disabled={isLoading}
+                    className="size-4 rounded border-gray-300"
+                  />
+                  <Label htmlFor="hide-scores-from-candidates">{t("hideScoresFromCandidatesLabel")}</Label>
                 </div>
               </>
             )}

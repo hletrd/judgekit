@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { apiSuccess } from "@/lib/api/responses";
 import { db } from "@/lib/db";
-import { submissions } from "@/lib/db/schema";
+import { assignments, submissions } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { forbidden, notFound } from "@/lib/api/auth";
 import { canAccessSubmission } from "@/lib/auth/permissions";
@@ -64,6 +64,25 @@ export const GET = createApiHandler({
         }
         return r;
       });
+    }
+
+    // Enforce assignment result visibility settings for non-privileged users
+    if (!canViewAllResults && submission.assignmentId) {
+      const assignmentRow = await db.query.assignments.findFirst({
+        where: eq(assignments.id, submission.assignmentId),
+        columns: { showResultsToCandidate: true, hideScoresFromCandidates: true },
+      });
+      const hideResults = !(assignmentRow?.showResultsToCandidate ?? false);
+      const hideScores = assignmentRow?.hideScoresFromCandidates ?? false;
+      if (hideResults) {
+        (sanitized as Record<string, unknown>).results = [];
+        (sanitized as Record<string, unknown>).compileOutput = null;
+        (sanitized as Record<string, unknown>).executionTimeMs = null;
+        (sanitized as Record<string, unknown>).memoryUsedKb = null;
+        (sanitized as Record<string, unknown>).score = null;
+      } else if (hideScores) {
+        (sanitized as Record<string, unknown>).score = null;
+      }
     }
 
     if (!isOwner && !canViewSource) {

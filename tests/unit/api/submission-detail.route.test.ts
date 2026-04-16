@@ -5,10 +5,12 @@ const {
   canAccessSubmissionMock,
   resolveCapabilitiesMock,
   submissionsFindFirstMock,
+  assignmentsFindFirstMock,
 } = vi.hoisted(() => ({
   canAccessSubmissionMock: vi.fn(),
   resolveCapabilitiesMock: vi.fn(),
   submissionsFindFirstMock: vi.fn(),
+  assignmentsFindFirstMock: vi.fn(),
 }));
 
 vi.mock("@/lib/api/auth", () => ({
@@ -40,6 +42,9 @@ vi.mock("@/lib/db", () => ({
       submissions: {
         findFirst: submissionsFindFirstMock,
       },
+      assignments: {
+        findFirst: assignmentsFindFirstMock,
+      },
     },
   },
 }));
@@ -54,6 +59,7 @@ describe("GET /api/v1/submissions/[id]", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     canAccessSubmissionMock.mockResolvedValue(true);
+    assignmentsFindFirstMock.mockResolvedValue({ showResultsToCandidate: true, hideScoresFromCandidates: false });
   });
 
   it("removes source code and hidden test outputs for non-privileged viewers", async () => {

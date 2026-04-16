@@ -69,14 +69,16 @@ export default async function SubmissionDetailPage({ params, searchParams }: { p
     );
   const isPrivileged = caps.has("submissions.view_all") || canReviewAssignment;
 
-  // Check if scores should be hidden from candidates
+  // Check if scores/results should be hidden from candidates
   let hideScore = false;
+  let hideResults = false;
   if (!isPrivileged && submission.assignmentId) {
     const assignmentRow = await db.query.assignments.findFirst({
       where: eq(assignments.id, submission.assignmentId),
-      columns: { hideScoresFromCandidates: true },
+      columns: { hideScoresFromCandidates: true, showResultsToCandidate: true },
     });
     hideScore = assignmentRow?.hideScoresFromCandidates ?? false;
+    hideResults = !(assignmentRow?.showResultsToCandidate ?? false);
   }
 
   const showDetailedResults = isPrivileged
@@ -129,10 +131,10 @@ export default async function SubmissionDetailPage({ params, searchParams }: { p
         language: submission.language,
         status: submission.status ?? "pending",
         sourceCode: submission.sourceCode,
-        compileOutput: submission.compileOutput ?? null,
-        executionTimeMs: submission.executionTimeMs ?? null,
-        memoryUsedKb: submission.memoryUsedKb ?? null,
-        score: hideScore ? null : (submission.score ?? null),
+        compileOutput: hideResults ? null : (submission.compileOutput ?? null),
+        executionTimeMs: hideResults ? null : (submission.executionTimeMs ?? null),
+        memoryUsedKb: hideResults ? null : (submission.memoryUsedKb ?? null),
+        score: (hideScore || hideResults) ? null : (submission.score ?? null),
         submittedAt: submission.submittedAt ? submission.submittedAt.valueOf() : null,
         user: submission.user
           ? {
@@ -145,15 +147,15 @@ export default async function SubmissionDetailPage({ params, searchParams }: { p
               title: submission.problem.title,
             }
           : null,
-        results: filteredResults,
+        results: hideResults ? [] : filteredResults,
       }}
       backHref={backHref}
       timeZone={timeZone}
       showCompileOutput={
-        isPrivileged ? true : (submission.problem?.showCompileOutput ?? true)
+        hideResults ? false : (isPrivileged ? true : (submission.problem?.showCompileOutput ?? true))
       }
-      showDetailedResults={showDetailedResults}
-      showRuntimeErrors={showRuntimeErrors}
+      showDetailedResults={hideResults ? false : showDetailedResults}
+      showRuntimeErrors={hideResults ? false : showRuntimeErrors}
       userRole={session.user.role}
       userId={session.user.id}
       capabilities={[...caps]}
