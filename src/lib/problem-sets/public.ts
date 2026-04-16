@@ -1,7 +1,9 @@
-import { and, count, desc, eq, inArray, like, or } from "drizzle-orm";
+import { and, count, desc, eq, inArray, like, or, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { problemSets, submissions } from "@/lib/db/schema";
+import { problemSetProblems, problemSets, problemTags, problems, submissions, tags } from "@/lib/db/schema";
 import { escapePracticeLike, normalizePracticeSearch } from "@/lib/practice/search";
+
+export type PublicProblemSetTag = { name: string; color: string | null };
 
 export type PublicProblemSetListItem = {
   id: string;
@@ -10,6 +12,7 @@ export type PublicProblemSetListItem = {
   createdAt: Date;
   creator: { id: string; name: string | null; username: string | null } | null;
   publicProblemCount: number;
+  tags: PublicProblemSetTag[];
 };
 
 export type PublicProblemSetDetail = {
@@ -26,36 +29,76 @@ export type PublicProblemSetDetail = {
   }>;
 };
 
-function buildPublicProblemSetSearchFilter(search?: string) {
-  const normalizedSearch = normalizePracticeSearch(search);
+function collectPublicProblemSetTags(
+  rows: Array<{
+    problems: Array<{
+      problem: {
+        visibility?: string | null;
+        problemTags?: Array<{ tag: { name: string; color: string | null } }>;
+      } | null;
+    }>;
+  }>
+): PublicProblemSetTag[] {
+  const seen = new Map<string, PublicProblemSetTag>();
 
-  if (!normalizedSearch) {
-    return eq(problemSets.isPublic, true);
+  for (const row of rows) {
+    for (const item of row.problems) {
+      if (item.problem?.visibility !== "public") continue;
+      for (const entry of item.problem.problemTags ?? []) {
+        if (!seen.has(entry.tag.name)) {
+          seen.set(entry.tag.name, {
+            name: entry.tag.name,
+            color: entry.tag.color,
+          });
+        }
+      }
+    }
   }
 
-  const escapedSearch = `%${escapePracticeLike(normalizedSearch)}%`;
-
-  return and(
-    eq(problemSets.isPublic, true),
-    or(
-      like(problemSets.name, escapedSearch),
-      like(problemSets.description, escapedSearch),
-    ),
-  );
+  return [...seen.values()].sort((left, right) => left.name.localeCompare(right.name));
 }
 
-export async function countPublicProblemSets(search?: string) {
+function buildPublicProblemSetSearchFilter(search?: string, tag?: string) {
+  const normalizedSearch = normalizePracticeSearch(search);
+  const normalizedTag = tag?.trim() ?? "";
+  const filters = [eq(problemSets.isPublic, true)];
+
+  if (normalizedSearch) {
+    const escapedSearch = `%${escapePracticeLike(normalizedSearch)}%`;
+    filters.push(or(
+      like(problemSets.name, escapedSearch),
+      like(problemSets.description, escapedSearch),
+    )!);
+  }
+
+  if (normalizedTag) {
+    filters.push(sql`exists (
+      select 1
+      from ${problemSetProblems}
+      inner join ${problems} on ${problemSetProblems.problemId} = ${problems.id}
+      inner join ${problemTags} on ${problemTags.problemId} = ${problems.id}
+      inner join ${tags} on ${problemTags.tagId} = ${tags.id}
+      where ${problemSetProblems.problemSetId} = ${problemSets.id}
+        and ${problems.visibility} = 'public'
+        and ${tags.name} = ${normalizedTag}
+    )`);
+  }
+
+  return filters.length === 1 ? filters[0] : and(...filters);
+}
+
+export async function countPublicProblemSets(search?: string, tag?: string) {
   const [row] = await db
     .select({ total: count() })
     .from(problemSets)
-    .where(buildPublicProblemSetSearchFilter(search));
+    .where(buildPublicProblemSetSearchFilter(search, tag));
 
   return Number(row?.total ?? 0);
 }
 
-export async function listPublicProblemSets(options: { limit?: number; offset?: number; search?: string } = {}): Promise<PublicProblemSetListItem[]> {
+export async function listPublicProblemSets(options: { limit?: number; offset?: number; search?: string; tag?: string } = {}): Promise<PublicProblemSetListItem[]> {
   const rows = await db.query.problemSets.findMany({
-    where: buildPublicProblemSetSearchFilter(options.search),
+    where: buildPublicProblemSetSearchFilter(options.search, options.tag),
     with: {
       problems: {
         with: {
@@ -63,6 +106,13 @@ export async function listPublicProblemSets(options: { limit?: number; offset?: 
             columns: {
               id: true,
               visibility: true,
+            },
+            with: {
+              problemTags: {
+                with: {
+                  tag: { columns: { name: true, color: true } },
+                },
+              },
             },
           },
         },
@@ -83,7 +133,32 @@ export async function listPublicProblemSets(options: { limit?: number; offset?: 
     createdAt: row.createdAt,
     creator: row.creator,
     publicProblemCount: row.problems.filter((item) => item.problem?.visibility === "public").length,
+    tags: collectPublicProblemSetTags([row]),
   }));
+}
+
+export async function listPublicProblemSetTags() {
+  const rows = await db.query.problemSets.findMany({
+    where: eq(problemSets.isPublic, true),
+    with: {
+      problems: {
+        with: {
+          problem: {
+            columns: { visibility: true },
+            with: {
+              problemTags: {
+                with: {
+                  tag: { columns: { name: true, color: true } },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  });
+
+  return collectPublicProblemSetTags(rows);
 }
 
 export async function getPublicProblemSetById(id: string, viewerUserId?: string | null): Promise<PublicProblemSetDetail | null> {

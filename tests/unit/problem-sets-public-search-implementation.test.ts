@@ -7,7 +7,7 @@ function read(relativePath: string) {
 }
 
 describe("public problem-set search implementation", () => {
-  it("threads the public problem-set search query through the helper and page pagination", () => {
+  it("threads the public problem-set search and tag filters through the helper and page pagination", () => {
     const helperSource = read("src/lib/problem-sets/public.ts");
     const pageSource = read("src/app/(public)/practice/sets/page.tsx");
 
@@ -15,9 +15,13 @@ describe("public problem-set search implementation", () => {
     expect(helperSource).toContain("normalizePracticeSearch");
     expect(helperSource).toContain("like(problemSets.name");
     expect(helperSource).toContain("like(problemSets.description");
-    expect(pageSource).toContain("searchParams?: Promise<{ page?: string; search?: string }>");
+    expect(helperSource).toContain("problemSetProblems");
+    expect(helperSource).toContain("tags.name");
+    expect(pageSource).toContain("searchParams?: Promise<{ page?: string; search?: string; tag?: string }>");
     expect(pageSource).toContain('name="search"');
-    expect(pageSource).toContain("countPublicProblemSets(searchQuery)");
-    expect(pageSource).toContain("listPublicProblemSets({ limit: PAGE_SIZE, offset, search: searchQuery })");
+    expect(pageSource).toContain('name="tag"');
+    expect(pageSource).toContain("countPublicProblemSets(searchQuery, currentTag)");
+    expect(pageSource).toContain("listPublicProblemSets({ limit: PAGE_SIZE, offset, search: searchQuery, tag: currentTag })");
+    expect(pageSource).toContain("listPublicProblemSetTags()");
   });
 });

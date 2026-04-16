@@ -9,6 +9,7 @@ type ProblemSetListItem = {
   description: string | null;
   creatorName: string;
   publicProblemCountLabel: string;
+  tags: Array<{ name: string; color: string | null }>;
 };
 
 type PublicProblemSetListProps = {
@@ -53,6 +54,13 @@ export function PublicProblemSetList({
               <CardContent className="space-y-3">
                 {item.description ? (
                   <p className="text-sm text-muted-foreground">{item.description}</p>
+                ) : null}
+                {item.tags.length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {item.tags.map((tag) => (
+                      <Badge key={tag.name} variant="outline">{tag.name}</Badge>
+                    ))}
+                  </div>
                 ) : null}
                 <Link href={item.href} className="text-sm font-medium text-primary hover:underline">
                   {openLabel}

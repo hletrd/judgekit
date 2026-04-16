@@ -24,6 +24,7 @@ describe("public problem set pages", () => {
             description: "starter set",
             creatorName: "Alice",
             publicProblemCountLabel: "3 problems",
+            tags: [{ name: "dp", color: null }, { name: "math", color: null }],
           },
         ]}
       />
@@ -32,6 +33,8 @@ describe("public problem set pages", () => {
     expect(screen.getByText("Problem Sets")).toBeInTheDocument();
     expect(screen.getByText("DP Warmup")).toBeInTheDocument();
     expect(screen.getByText("3 problems")).toBeInTheDocument();
+    expect(screen.getByText("dp")).toBeInTheDocument();
+    expect(screen.getByText("math")).toBeInTheDocument();
   });
 
   it("renders a public problem set detail with solve-next CTA", () => {

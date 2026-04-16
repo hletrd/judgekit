@@ -2,11 +2,12 @@ import type { Metadata } from "next";
 import { getLocale, getTranslations } from "next-intl/server";
 import { PaginationControls } from "@/components/pagination-controls";
 import { Button } from "@/components/ui/button";
+import { FilterSelect } from "@/components/filter-select";
 import { Input } from "@/components/ui/input";
 import { PublicProblemSetList } from "@/components/problem/public-problem-set-list";
 import { buildLocalePath, buildPublicMetadata } from "@/lib/seo";
 import { getResolvedSystemSettings } from "@/lib/system-settings";
-import { countPublicProblemSets, listPublicProblemSets } from "@/lib/problem-sets/public";
+import { countPublicProblemSets, listPublicProblemSets, listPublicProblemSetTags } from "@/lib/problem-sets/public";
 import { normalizePage } from "@/lib/pagination";
 import { normalizePracticeSearch } from "@/lib/practice/search";
 
@@ -37,23 +38,28 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function PracticeSetsPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ page?: string; search?: string }>;
+  searchParams?: Promise<{ page?: string; search?: string; tag?: string }>;
 }) {
   const resolvedSearchParams = searchParams ? await searchParams : undefined;
   const currentPage = normalizePage(resolvedSearchParams?.page);
   const searchQuery = normalizePracticeSearch(resolvedSearchParams?.search);
+  const currentTag = resolvedSearchParams?.tag?.trim() ?? "";
   const locale = await getLocale();
   const t = await getTranslations("publicShell");
 
-  const totalCount = await countPublicProblemSets(searchQuery);
+  const [totalCount, availableTags] = await Promise.all([
+    countPublicProblemSets(searchQuery, currentTag),
+    listPublicProblemSetTags(),
+  ]);
   const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
   const clampedPage = Math.min(currentPage, totalPages);
   const offset = (clampedPage - 1) * PAGE_SIZE;
-  const items = await listPublicProblemSets({ limit: PAGE_SIZE, offset, search: searchQuery });
+  const items = await listPublicProblemSets({ limit: PAGE_SIZE, offset, search: searchQuery, tag: currentTag });
 
-  function buildHref(page: number) {
+  function buildHref(page: number, nextTag = currentTag) {
     const params = new URLSearchParams();
     if (searchQuery) params.set("search", searchQuery);
+    if (nextTag) params.set("tag", nextTag);
     if (page > 1) params.set("page", String(page));
     const query = params.toString();
     return query ? `${PAGE_PATH}?${query}` : PAGE_PATH;
@@ -72,6 +78,20 @@ export default async function PracticeSetsPage({
             type="search"
             defaultValue={searchQuery}
             placeholder={t("practice.sets.searchPlaceholder")}
+          />
+        </div>
+        <div className="space-y-1.5">
+          <label className="block text-sm font-medium">
+            {t("practice.filterByTag")}
+          </label>
+          <FilterSelect
+            name="tag"
+            defaultValue={currentTag}
+            placeholder={t("practice.allTags")}
+            options={[
+              { value: "", label: t("practice.allTags") },
+              ...availableTags.map((tag) => ({ value: tag.name, label: tag.name })),
+            ]}
           />
         </div>
         <div className="flex gap-2">
@@ -93,13 +113,14 @@ export default async function PracticeSetsPage({
           description: item.description,
           creatorName: item.creator?.name ?? item.creator?.username ?? t("practice.unknownAuthor"),
           publicProblemCountLabel: t("practice.sets.problemCount", { count: item.publicProblemCount }),
+          tags: item.tags,
         }))}
       />
       <PaginationControls
         currentPage={clampedPage}
         totalPages={totalPages}
         pageSize={PAGE_SIZE}
-        buildHref={buildHref}
+        buildHref={(page) => buildHref(page)}
       />
     </div>
   );

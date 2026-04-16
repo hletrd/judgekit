@@ -23,7 +23,7 @@ describe("public problem set helpers", () => {
     vi.clearAllMocks();
   });
 
-  it("lists only public problem counts from public problem sets", async () => {
+  it("lists only public problem counts and derived tags from public problem sets", async () => {
     problemSetsFindManyMock.mockResolvedValue([
       {
         id: "set-1",
@@ -32,8 +32,8 @@ describe("public problem set helpers", () => {
         createdAt: new Date("2026-04-16T00:00:00.000Z"),
         creator: { id: "user-1", name: "Alice", username: "alice" },
         problems: [
-          { problem: { id: "problem-1", visibility: "public" } },
-          { problem: { id: "problem-2", visibility: "private" } },
+          { problem: { id: "problem-1", visibility: "public", problemTags: [{ tag: { name: "dp", color: null } }, { tag: { name: "math", color: null } }] } },
+          { problem: { id: "problem-2", visibility: "private", problemTags: [{ tag: { name: "secret", color: null } }] } },
         ],
       },
     ]);
@@ -45,6 +45,7 @@ describe("public problem set helpers", () => {
       expect.objectContaining({
         id: "set-1",
         publicProblemCount: 1,
+        tags: [{ name: "dp", color: null }, { name: "math", color: null }],
       }),
     ]);
   });
