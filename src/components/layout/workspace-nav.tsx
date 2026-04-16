@@ -26,7 +26,7 @@ export function WorkspaceNav({ siteTitle, sectionLabel, userLabel, items }: Work
 
   return (
     <aside className="border-r bg-muted/30">
-      <div className="sticky top-0 flex h-full w-full min-w-72 flex-col p-4">
+      <div className="sticky top-0 flex h-full w-full min-w-56 flex-col p-4 sm:min-w-72">
         <div className="mb-6">
           <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">{sectionLabel}</p>
           <p className="mt-2 text-lg font-semibold tracking-tight">{siteTitle}</p>

@@ -7,6 +7,7 @@ import { buildAbsoluteUrl, buildLocalePath, buildPublicMetadata } from "@/lib/se
 import { getResolvedSystemSettings } from "@/lib/system-settings";
 import { PublicHomePage } from "@/app/(public)/_components/public-home-page";
 import { auth } from "@/lib/auth";
+import { SkipToContent } from "@/components/layout/skip-to-content";
 
 function pick(defaultVal: string, override?: string): string {
   return override && override.trim() ? override : defaultVal;
@@ -75,12 +76,7 @@ export default async function HomePage() {
   return (
     <div className="min-h-dvh bg-muted/20">
       <JsonLd data={[websiteJsonLd, organizationJsonLd]} />
-      <a
-        href="#main-content"
-        className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-background focus:px-3 focus:py-2 focus:text-sm focus:shadow-md dark:focus:bg-foreground dark:focus:text-background"
-      >
-        {tCommon("skipToContent")}
-      </a>
+      <SkipToContent label={tCommon("skipToContent")} />
       <PublicHeader
         siteTitle={settings.siteTitle}
         items={[
@@ -108,21 +104,25 @@ export default async function HomePage() {
               href: buildLocalePath("/practice", locale),
               title: pick(tShell("home.cards.practice.title"), o?.cards?.practice?.title),
               description: pick(tShell("home.cards.practice.description"), o?.cards?.practice?.description),
+              icon: "code" as const,
             },
             {
               href: buildLocalePath("/playground", locale),
               title: pick(tShell("home.cards.playground.title"), o?.cards?.playground?.title),
               description: pick(tShell("home.cards.playground.description"), o?.cards?.playground?.description),
+              icon: "code" as const,
             },
             {
               href: buildLocalePath("/contests", locale),
               title: pick(tShell("home.cards.contests.title"), o?.cards?.contests?.title),
               description: pick(tShell("home.cards.contests.description"), o?.cards?.contests?.description),
+              icon: "trophy" as const,
             },
             {
               href: buildLocalePath("/community", locale),
               title: pick(tShell("home.cards.community.title"), o?.cards?.community?.title),
               description: pick(tShell("home.cards.community.description"), o?.cards?.community?.description),
+              icon: "message" as const,
             },
           ]}
           primaryCta={{ href: buildLocalePath("/dashboard", locale), label: tShell("home.primaryCta") }}

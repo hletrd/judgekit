@@ -15,8 +15,8 @@ describe("PublicHomePage", () => {
         title="A new JudgeKit structure is underway."
         description="Description"
         sections={[
-          { href: "/practice", title: "Practice", description: "Practice description" },
-          { href: "/community", title: "Community", description: "Community description" },
+          { href: "/practice", title: "Practice", description: "Practice description", icon: "code" as const },
+          { href: "/community", title: "Community", description: "Community description", icon: "message" as const },
         ]}
         primaryCta={{ href: "/workspace", label: "Open workspace" }}
         secondaryCta={{ href: "/login", label: "Sign in" }}

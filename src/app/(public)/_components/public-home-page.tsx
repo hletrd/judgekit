@@ -1,9 +1,14 @@
+"use client";
+
 import Link from "next/link";
+import { Code, Trophy, Users, MessageCircle } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 type HomeSection = {
   href: string;
   title: string;
   description: string;
+  icon: "code" | "trophy" | "users" | "message";
 };
 
 type PublicHomePageProps = {
@@ -14,6 +19,13 @@ type PublicHomePageProps = {
   primaryCta: { href: string; label: string };
   secondaryCta?: { href: string; label: string } | null;
 };
+
+const sectionIcons = {
+  code: Code,
+  trophy: Trophy,
+  users: Users,
+  message: MessageCircle,
+} as const;
 
 export function PublicHomePage({
   eyebrow,
@@ -30,24 +42,28 @@ export function PublicHomePage({
         <h1 className="mt-4 text-4xl font-semibold tracking-tight sm:text-5xl">{title}</h1>
         <p className="mt-4 max-w-2xl text-base leading-7 text-muted-foreground">{description}</p>
         <div className="mt-8 flex flex-wrap gap-3">
-          <Link href={primaryCta.href} className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90">
-            {primaryCta.label}
-          </Link>
+          <Button render={<Link href={primaryCta.href} />}>{primaryCta.label}</Button>
           {secondaryCta ? (
-            <Link href={secondaryCta.href} className="rounded-md border px-4 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground">
-              {secondaryCta.label}
-            </Link>
+            <Button variant="outline" render={<Link href={secondaryCta.href} />}>{secondaryCta.label}</Button>
           ) : null}
         </div>
       </section>
 
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        {sections.map((section) => (
-          <Link key={section.href} href={section.href} className="rounded-2xl border bg-background p-5 shadow-sm transition-colors hover:bg-accent/40">
-            <div className="text-lg font-semibold tracking-tight">{section.title}</div>
-            <p className="mt-2 text-sm leading-6 text-muted-foreground">{section.description}</p>
-          </Link>
-        ))}
+        {sections.map((section) => {
+          const Icon = sectionIcons[section.icon];
+          return (
+            <Link key={section.href} href={section.href} className="group rounded-2xl border bg-background p-5 shadow-sm transition-all hover:shadow-md hover:bg-accent/40">
+              {Icon && (
+                <div className="mb-3 flex size-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                  <Icon className="size-5" aria-hidden="true" />
+                </div>
+              )}
+              <div className="text-lg font-semibold tracking-tight">{section.title}</div>
+              <p className="mt-2 text-sm leading-6 text-muted-foreground">{section.description}</p>
+            </Link>
+          );
+        })}
       </section>
     </div>
   );

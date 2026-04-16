@@ -2,13 +2,13 @@
 
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import Link from "next/link";
-import { useLocale } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { usePathname } from "next/navigation";
 import { LocaleSwitcher } from "@/components/layout/locale-switcher";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { cn } from "@/lib/utils";
 import { buildLocalizedHref } from "@/lib/locale-paths";
-import { ChevronDown } from "lucide-react";
+import { Menu, X } from "lucide-react";
 
 type HeaderItem = {
   href: string;
@@ -34,6 +34,7 @@ function isActivePath(pathname: string, href: string) {
 export function PublicHeader({ siteTitle, items, actions, loggedInUser }: PublicHeaderProps) {
   const pathname = usePathname();
   const locale = useLocale();
+  const tCommon = useTranslations("common");
   const [mobileOpen, setMobileOpen] = useState(false);
   const menuId = useId();
   const toggleRef = useRef<HTMLButtonElement>(null);
@@ -92,9 +93,11 @@ export function PublicHeader({ siteTitle, items, actions, loggedInUser }: Public
   return (
     <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
       {/* Screen reader announcement for menu state */}
-      <div className="sr-only" aria-live="polite" aria-atomic="true">
-        {mobileOpen ? "Navigation menu opened. Press Escape to close." : ""}
-      </div>
+      {mobileOpen && (
+        <div className="sr-only" aria-live="polite">
+          {tCommon("mobileMenuOpened")}
+        </div>
+      )}
 
       <div className="mx-auto flex w-full max-w-6xl items-center gap-2 px-4 py-3 sm:gap-4">
         <Link
@@ -163,12 +166,11 @@ export function PublicHeader({ siteTitle, items, actions, loggedInUser }: Public
             aria-controls={menuId}
             aria-expanded={mobileOpen}
           >
-            <ChevronDown
-              className={cn(
-                "size-4 transition-transform duration-200",
-                mobileOpen && "rotate-180"
-              )}
-            />
+            {mobileOpen ? (
+              <X className="size-4" aria-hidden="true" />
+            ) : (
+              <Menu className="size-4" aria-hidden="true" />
+            )}
           </button>
         </div>
       </div>
@@ -180,7 +182,7 @@ export function PublicHeader({ siteTitle, items, actions, loggedInUser }: Public
           role="region"
           aria-label="Mobile navigation"
           data-state="open"
-          className="border-t md:hidden"
+          className="max-h-[calc(100dvh-56px)] overflow-y-auto border-t md:hidden"
         >
           <div className="mx-auto max-w-6xl px-4 py-2">
             <nav aria-label="Mobile menu" className="flex flex-col gap-0.5">

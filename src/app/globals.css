@@ -128,6 +128,14 @@
     @apply font-sans;
     letter-spacing: -0.01em;
   }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
 }
 
 @keyframes shake {
@@ -209,15 +217,15 @@
   }
 
   .problem-description h1 {
-    font-size: 1.875rem;
+    font-size: 1.5em;
   }
 
   .problem-description h2 {
-    font-size: 1.5rem;
+    font-size: 1.25em;
   }
 
   .problem-description h3 {
-    font-size: 1.25rem;
+    font-size: 1.1em;
   }
 
   .problem-description :is(p, ul, ol, pre, table, blockquote) {

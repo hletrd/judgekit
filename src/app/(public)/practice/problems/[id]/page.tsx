@@ -347,7 +347,7 @@ export default async function PublicProblemDetailPage({ params }: { params: Prom
                     <div className="text-xs text-muted-foreground">{t("practice.stats.totalSubmissions")}</div>
                   </div>
                   <div className="text-center">
-                    <div className="text-2xl font-bold text-green-600">{acceptedCount}</div>
+                    <div className="text-2xl font-bold text-primary">{acceptedCount}</div>
                     <div className="text-xs text-muted-foreground">{t("practice.stats.acceptedCount")}</div>
                   </div>
                   <div className="text-center">

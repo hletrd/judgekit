@@ -156,6 +156,7 @@ function NavItems({
             <SidebarMenuButton
               isActive={isActive}
               aria-current={isActive ? "page" : undefined}
+              tooltip={t(titleKey)}
               render={<Link href={item.href} />}
             >
               <item.icon className="size-4" aria-hidden="true" />
@@ -213,8 +214,12 @@ export function AppSidebar({
   async function handleSignOut() {
     setIsSigningOut(true);
     if (typeof window !== "undefined") {
-      const keysToRemove = Object.keys(localStorage).filter((key) => key.startsWith("oj:"));
-      keysToRemove.forEach((key) => localStorage.removeItem(key));
+      try {
+        localStorage.clear();
+        sessionStorage.clear();
+      } catch {
+        // Storage may be inaccessible in some environments
+      }
     }
     await signOut({ callbackUrl: "/login" });
   }

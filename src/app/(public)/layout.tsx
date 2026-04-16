@@ -1,6 +1,7 @@
 import { getTranslations } from "next-intl/server";
 import { PublicHeader } from "@/components/layout/public-header";
 import { PublicFooter } from "@/components/layout/public-footer";
+import { SkipToContent } from "@/components/layout/skip-to-content";
 import { getResolvedSystemSettings } from "@/lib/system-settings";
 import { auth } from "@/lib/auth";
 
@@ -18,12 +19,7 @@ export default async function PublicLayout({ children }: { children: React.React
 
   return (
     <div className="min-h-dvh bg-muted/20">
-      <a
-        href="#main-content"
-        className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-background focus:px-3 focus:py-2 focus:text-sm focus:shadow-md dark:focus:bg-foreground dark:focus:text-background"
-      >
-        {tCommon("skipToContent")}
-      </a>
+      <SkipToContent label={tCommon("skipToContent")} />
       <PublicHeader
         siteTitle={settings.siteTitle}
         items={[

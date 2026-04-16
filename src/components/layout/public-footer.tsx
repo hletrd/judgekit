@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { getLocale, getTranslations } from "next-intl/server";
+import { DEFAULT_LOCALE } from "@/lib/i18n/constants";
 import { buildLocalizedHref } from "@/lib/locale-paths";
 
 type FooterLink = { label: string; url: string };
@@ -15,7 +16,7 @@ type PublicFooterProps = {
 
 export async function PublicFooter({ siteTitle, footerContent }: PublicFooterProps) {
   const [locale, tCommon] = await Promise.all([getLocale(), getTranslations("common")]);
-  const content = footerContent?.[locale] ?? footerContent?.["en"];
+  const content = footerContent?.[locale] ?? footerContent?.[DEFAULT_LOCALE];
   const copyrightText = content?.copyrightText || `© ${new Date().getFullYear()} ${siteTitle}`;
   const links = content?.links ?? [];
 

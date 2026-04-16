@@ -6,6 +6,7 @@ import { getTranslations } from "next-intl/server";
 import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/layout/app-sidebar";
 import { LocaleSwitcher } from "@/components/layout/locale-switcher";
+import { SkipToContent } from "@/components/layout/skip-to-content";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { LectureModeProvider } from "@/components/lecture/lecture-mode-provider";
 import { LectureModeToggle } from "@/components/layout/lecture-mode-toggle";
@@ -72,12 +73,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
       persistAction={updatePreferences}
     >
       <SidebarProvider>
-        <a
-          href="#dashboard-main-content"
-          className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-background focus:px-3 focus:py-2 focus:text-sm focus:shadow-md dark:focus:bg-foreground dark:focus:text-background"
-        >
-          {t("skipToContent")}
-        </a>
+        <SkipToContent targetId="dashboard-main-content" label={t("skipToContent")} />
         <AppSidebar
           user={session.user}
           siteTitle={settings.siteTitle}
@@ -88,10 +84,10 @@ export default async function DashboardLayout({ children }: { children: React.Re
         <SidebarInset>
           <header className="flex h-14 items-center gap-2 px-4">
             <SidebarTrigger />
-            <div className="min-w-0 flex-1">
-              <Link href="/" className="block truncate text-sm font-semibold hover:text-primary transition-colors">{settings.siteTitle}</Link>
+            <div className="hidden min-w-0 flex-1 sm:block">
+              <Link href="/dashboard" className="block truncate text-sm font-semibold hover:text-primary transition-colors">{settings.siteTitle}</Link>
             </div>
-            <div className="ml-auto flex items-center gap-1">
+            <div className="ml-auto flex shrink-0 items-center gap-1">
               {canUseLectureMode && <LectureModeToggle />}
               <ThemeToggle dbTheme={session.user.preferredTheme} />
               <LocaleSwitcher />
