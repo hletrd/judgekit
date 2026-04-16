@@ -245,6 +245,7 @@
     "uploadSourceFile": "Upload Source File",
     "sourceFileLoaded": "\"{name}\" loaded into the editor.",
     "sourceFileLoadFailed": "Failed to read the selected source file.",
+    "resetToTemplate": "Reset to Template",
     "writeCodePlaceholder": "Write your code here...",
     "descriptionTitle": "Description",
     "noDescription": "No description.",

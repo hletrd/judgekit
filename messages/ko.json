@@ -245,6 +245,7 @@
     "uploadSourceFile": "소스 파일 업로드",
     "sourceFileLoaded": "\"{name}\" 파일을 에디터로 불러왔습니다.",
     "sourceFileLoadFailed": "선택한 소스 파일을 읽지 못했습니다.",
+    "resetToTemplate": "템플릿 초기화",
     "writeCodePlaceholder": "여기에 코드를 입력하세요",
     "descriptionTitle": "설명",
     "noDescription": "설명이 없습니다.",

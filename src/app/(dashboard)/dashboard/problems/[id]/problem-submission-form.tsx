@@ -10,10 +10,11 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { LanguageSelector } from "@/components/language-selector";
 import { apiFetch } from "@/lib/api/client";
+import { DEFAULT_TEMPLATES, isTemplateLike } from "@/lib/judge/code-templates";
 import { useSourceDraft } from "@/hooks/use-source-draft";
 import { useUnsavedChangesGuard } from "@/hooks/use-unsaved-changes-guard";
 import { useEditorContent } from "@/contexts/editor-content-context";
-import { ChevronDown, ChevronRight, Play, Loader2 } from "lucide-react";
+import { ChevronDown, ChevronRight, Play, Loader2, RotateCcw } from "lucide-react";
 
 type SubmissionLanguage = {
   id: string;
@@ -62,6 +63,18 @@ export function ProblemSubmissionForm({
 
   const { allowNextNavigation } = useUnsavedChangesGuard({ isDirty });
   const { setContent } = useEditorContent();
+
+  // Auto-load language template when language changes and editor is empty/template-like
+  const prevLanguageRef = useRef(language);
+  useEffect(() => {
+    if (prevLanguageRef.current !== language) {
+      prevLanguageRef.current = language;
+      if (isTemplateLike(sourceCode)) {
+        const tmpl = DEFAULT_TEMPLATES[language] ?? "";
+        setSourceCode(tmpl);
+      }
+    }
+  }, [language, sourceCode, setSourceCode]);
 
   // Adaptive code snapshots: 10s after a change, backs off to 60s if idle
   const lastSnapshotRef = useRef<string>("");
@@ -259,6 +272,18 @@ export function ProblemSubmissionForm({
           >
             {t("uploadSourceFile")}
           </Button>
+          {DEFAULT_TEMPLATES[language] && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => setSourceCode(DEFAULT_TEMPLATES[language] ?? "")}
+              title={t("resetToTemplate")}
+            >
+              <RotateCcw className="mr-1 size-3.5" />
+              {t("resetToTemplate")}
+            </Button>
+          )}
         </div>
         <LanguageSelector
           id="language"
