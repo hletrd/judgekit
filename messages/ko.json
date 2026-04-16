@@ -2455,7 +2455,33 @@
           "label": "지원 언어 수",
           "description": "다양한 언어로 실행·제출할 수 있는 채점 환경을 제공합니다."
         }
+      },
+      "judgeInfo": {
+        "title": "채점 서버 정보",
+        "description": "제출 코드는 격리된 Docker 샌드박스에서 언어별 툴체인으로 채점됩니다.",
+        "enabledLanguages": "활성 언어",
+        "onlineWorkers": "온라인 워커",
+        "parallelSlots": "병렬 슬롯",
+        "viewDetails": "세부 채점 환경 및 옵션 컴파일 정보"
       }
+    },
+    "languages": {
+      "title": "세부 채점 환경 및 컴파일 정보",
+      "description": "활성화된 모든 언어의 런타임, 컴파일러, 컴파일/실행 명령을 확인할 수 있습니다.",
+      "featuredTitle": "주요 환경",
+      "featuredDescription": "여러 표준 변형을 갖춘 주요 언어 그룹입니다.",
+      "allLanguages": "전체 활성 언어",
+      "allLanguagesDescription": "제출 및 플레이그라운드에서 사용 가능한 전체 언어 카탈로그입니다.",
+      "language": "언어",
+      "runtime": "런타임",
+      "compiler": "컴파일러",
+      "compileCommand": "컴파일 명령",
+      "runCommand": "실행 명령",
+      "extension": "확장자",
+      "variantCount": "{count}개 변형",
+      "additionalLanguages": "…외 {count}개 언어 추가 지원",
+      "noLanguages": "현재 활성화된 언어가 없습니다.",
+      "backToHome": "홈으로 돌아가기"
     },
     "practice": {
       "title": "연습 영역 미리보기",

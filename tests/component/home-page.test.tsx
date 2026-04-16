@@ -3,9 +3,11 @@ import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import HomePage from "@/app/page";
 
-const { authMock, getResolvedSystemSettingsMock } = vi.hoisted(() => ({
+const { authMock, getResolvedSystemSettingsMock, getHomepageInsightsMock, getJudgeSystemSnapshotMock } = vi.hoisted(() => ({
   authMock: vi.fn(),
   getResolvedSystemSettingsMock: vi.fn(),
+  getHomepageInsightsMock: vi.fn(),
+  getJudgeSystemSnapshotMock: vi.fn(),
 }));
 
 vi.mock("next-intl/server", () => ({
@@ -39,6 +41,18 @@ vi.mock("next-intl/server", () => ({
         "home.cards.contests.description": "Join contests",
         "home.cards.community.title": "Community",
         "home.cards.community.description": "Discuss",
+        "home.insights.problems.label": "Public problems",
+        "home.insights.problems.description": "Problem insight",
+        "home.insights.submissions.label": "Total submissions",
+        "home.insights.submissions.description": "Submission insight",
+        "home.insights.languages.label": "Supported languages",
+        "home.insights.languages.description": "Language insight",
+        "home.judgeInfo.title": "Judge System",
+        "home.judgeInfo.description": "Judge description",
+        "home.judgeInfo.enabledLanguages": "Enabled languages",
+        "home.judgeInfo.onlineWorkers": "Workers online",
+        "home.judgeInfo.parallelSlots": "Parallel slots",
+        "home.judgeInfo.viewDetails": "View judge environments",
       },
     };
 
@@ -54,6 +68,14 @@ vi.mock("@/lib/system-settings", () => ({
   getResolvedSystemSettings: getResolvedSystemSettingsMock,
 }));
 
+vi.mock("@/lib/homepage-insights", () => ({
+  getHomepageInsights: getHomepageInsightsMock,
+}));
+
+vi.mock("@/lib/judge/dashboard-data", () => ({
+  getJudgeSystemSnapshot: getJudgeSystemSnapshotMock,
+}));
+
 vi.mock("@/components/layout/public-header", () => ({
   PublicHeader: ({ children }: { children?: ReactNode }) => <div>{children ?? "public-header"}</div>,
 }));
@@ -62,11 +84,22 @@ vi.mock("@/components/layout/public-footer", () => ({
   PublicFooter: () => <div>public-footer</div>,
 }));
 
+vi.mock("@/components/layout/skip-to-content", () => ({
+  SkipToContent: () => <div>skip-to-content</div>,
+}));
+
+vi.mock("@/components/seo/json-ld", () => ({
+  JsonLd: () => null,
+}));
+
 vi.mock("@/app/(public)/_components/public-home-page", () => ({
-  PublicHomePage: ({ primaryCta, secondaryCta }: { primaryCta: { label: string }; secondaryCta?: { label: string } | null }) => (
+  PublicHomePage: ({ primaryCta, secondaryCta, insights }: { primaryCta: { label: string }; secondaryCta?: { label: string } | null; insights: Array<{ label: string; value: string }> }) => (
     <div>
       <div>{primaryCta.label}</div>
       {secondaryCta ? <div>{secondaryCta.label}</div> : null}
+      {insights.map((insight) => (
+        <div key={insight.label}>{`${insight.label}: ${insight.value}`}</div>
+      ))}
     </div>
   ),
 }));
@@ -80,6 +113,20 @@ describe("HomePage hero CTAs", () => {
       homePageContent: null,
       publicSignupEnabled: false,
     });
+    getHomepageInsightsMock.mockResolvedValue({
+      publicProblemCount: 1024,
+      totalSubmissionCount: 9876,
+      enabledLanguageCount: 120,
+    });
+    getJudgeSystemSnapshotMock.mockResolvedValue({
+      onlineWorkerCount: 2,
+      activeJudgeTasks: 0,
+      totalWorkerCapacity: 8,
+      architectureSummary: "x86_64",
+      allLanguages: [],
+      featuredEnvironments: [],
+      additionalLanguageCount: 0,
+    });
   });
 
   it("hides the sign-in hero CTA for logged-in users", async () => {
@@ -89,6 +136,9 @@ describe("HomePage hero CTAs", () => {
 
     expect(screen.getByText("Open workspace")).toBeInTheDocument();
     expect(screen.queryByText("Sign in")).not.toBeInTheDocument();
+    expect(screen.getByText("Public problems: 1,024")).toBeInTheDocument();
+    expect(screen.getByText("Total submissions: 9,876")).toBeInTheDocument();
+    expect(screen.getByText("Supported languages: 120")).toBeInTheDocument();
   });
 
   it("shows the sign-in hero CTA for guests", async () => {

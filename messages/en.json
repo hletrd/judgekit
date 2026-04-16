@@ -2455,7 +2455,33 @@
           "label": "Supported languages",
           "description": "Run and submit code across a broad multi-language toolchain."
         }
+      },
+      "judgeInfo": {
+        "title": "Judge System",
+        "description": "Submissions are evaluated in isolated Docker sandboxes with per-language toolchains.",
+        "enabledLanguages": "Enabled languages",
+        "onlineWorkers": "Workers online",
+        "parallelSlots": "Parallel slots",
+        "viewDetails": "View judge environments & compilation options"
       }
+    },
+    "languages": {
+      "title": "Judge Environments & Compilation Options",
+      "description": "Detailed runtime, compiler, and compilation command information for every enabled language.",
+      "featuredTitle": "Featured environments",
+      "featuredDescription": "Major language families with multiple standard variants.",
+      "allLanguages": "All enabled languages",
+      "allLanguagesDescription": "Complete catalog of languages available for submission and playground use.",
+      "language": "Language",
+      "runtime": "Runtime",
+      "compiler": "Compiler",
+      "compileCommand": "Compile command",
+      "runCommand": "Run command",
+      "extension": "Extension",
+      "variantCount": "{count} variants",
+      "additionalLanguages": "…and {count} more languages",
+      "noLanguages": "No languages are currently enabled.",
+      "backToHome": "Back to home"
     },
     "practice": {
       "title": "Practice surface preview",

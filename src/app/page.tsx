@@ -8,6 +8,8 @@ import { getResolvedSystemSettings } from "@/lib/system-settings";
 import { PublicHomePage } from "@/app/(public)/_components/public-home-page";
 import { auth } from "@/lib/auth";
 import { SkipToContent } from "@/components/layout/skip-to-content";
+import { getHomepageInsights } from "@/lib/homepage-insights";
+import { getJudgeSystemSnapshot } from "@/lib/judge/dashboard-data";
 
 function pick(defaultVal: string, override?: string): string {
   return override && override.trim() ? override : defaultVal;
@@ -42,12 +44,14 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function HomePage() {
-  const [tCommon, tAuth, tShell, locale, session] = await Promise.all([
+  const [tCommon, tAuth, tShell, locale, session, insights, judgeSnapshot] = await Promise.all([
     getTranslations("common"),
     getTranslations("auth"),
     getTranslations("publicShell"),
     getLocale(),
     auth(),
+    getHomepageInsights(),
+    getJudgeSystemSnapshot(),
   ]);
 
   const settings = await getResolvedSystemSettings({
@@ -99,6 +103,26 @@ export default async function HomePage() {
           eyebrow={pick(tShell("home.eyebrow"), o?.eyebrow)}
           title={pick(tShell("home.title"), o?.title)}
           description={pick(tShell("home.description"), o?.description)}
+          insights={[
+            {
+              label: tShell("home.insights.problems.label"),
+              value: new Intl.NumberFormat(locale).format(insights.publicProblemCount),
+              description: tShell("home.insights.problems.description"),
+              icon: "problems",
+            },
+            {
+              label: tShell("home.insights.submissions.label"),
+              value: new Intl.NumberFormat(locale).format(insights.totalSubmissionCount),
+              description: tShell("home.insights.submissions.description"),
+              icon: "submissions",
+            },
+            {
+              label: tShell("home.insights.languages.label"),
+              value: new Intl.NumberFormat(locale).format(insights.enabledLanguageCount),
+              description: tShell("home.insights.languages.description"),
+              icon: "languages",
+            },
+          ]}
           sections={[
             {
               href: buildLocalePath("/practice", locale),
@@ -127,6 +151,17 @@ export default async function HomePage() {
           ]}
           primaryCta={{ href: buildLocalePath("/dashboard", locale), label: tShell("home.primaryCta") }}
           secondaryCta={session?.user ? null : { href: buildLocalePath("/login", locale), label: tShell("home.secondaryCta") }}
+          judgeInfo={{
+            title: tShell("home.judgeInfo.title"),
+            description: tShell("home.judgeInfo.description"),
+            viewDetails: tShell("home.judgeInfo.viewDetails"),
+            languagesHref: buildLocalePath("/languages", locale),
+            stats: [
+              { label: tShell("home.judgeInfo.enabledLanguages"), value: new Intl.NumberFormat(locale).format(insights.enabledLanguageCount) },
+              { label: tShell("home.judgeInfo.onlineWorkers"), value: new Intl.NumberFormat(locale).format(judgeSnapshot.onlineWorkerCount) },
+              { label: tShell("home.judgeInfo.parallelSlots"), value: new Intl.NumberFormat(locale).format(judgeSnapshot.totalWorkerCapacity) },
+            ],
+          }}
         />
       </main>
       <PublicFooter siteTitle={settings.siteTitle} footerContent={settings.footerContent} />
