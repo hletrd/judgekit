@@ -283,6 +283,7 @@ export function LeaderboardTable({
   }
 
   const isIcpc = data.scoringModel === "icpc";
+  const hasAffiliationColumn = data.entries.some((entry) => Boolean(entry.className));
 
   return (
     <Card
@@ -329,6 +330,9 @@ export function LeaderboardTable({
               <TableHead className="sticky left-16 z-[5] min-w-[140px] bg-background shadow-[1px_0_0_0_hsl(var(--border))]">
                 {t("name")}
               </TableHead>
+              {hasAffiliationColumn ? (
+                <TableHead className="min-w-[120px] text-center">{t("affiliation")}</TableHead>
+              ) : null}
               {isIcpc ? (
                 <>
                   <TableHead className="min-w-[80px] text-center">{t("solved")}</TableHead>
@@ -396,13 +400,13 @@ export function LeaderboardTable({
                         {t("live")}
                       </Badge>
                     ) : null}
-                    {entry.className && (
-                      <span className="ml-2 text-xs text-muted-foreground">
-                        {entry.className}
-                      </span>
-                    )}
                   </div>
                 </TableCell>
+                {hasAffiliationColumn ? (
+                  <TableCell className="text-center text-sm text-muted-foreground">
+                    {entry.className ?? "-"}
+                  </TableCell>
+                ) : null}
                 {isIcpc ? (
                   <>
                     <TableCell className="text-center font-bold transition-all duration-300">

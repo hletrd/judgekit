@@ -1851,7 +1851,8 @@
       "failedAttempts": "-{count}",
       "refreshing": "Refreshing...",
       "fetchError": "Failed to load data.",
-      "retry": "Retry"
+      "retry": "Retry",
+      "affiliation": "Affiliation"
     },
     "accessCode": {
       "title": "Access Code",

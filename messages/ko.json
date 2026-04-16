@@ -1851,7 +1851,8 @@
       "failedAttempts": "-{count}",
       "refreshing": "새로고침 중",
       "fetchError": "데이터를 불러오지 못했습니다.",
-      "retry": "다시 시도"
+      "retry": "다시 시도",
+      "affiliation": "소속"
     },
     "accessCode": {
       "title": "접속 코드",
