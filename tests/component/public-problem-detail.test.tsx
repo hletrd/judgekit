@@ -7,8 +7,8 @@ vi.mock("next/link", () => ({
   default: ({ href, children }: { href: string; children: ReactNode }) => <a href={href}>{children}</a>,
 }));
 
-vi.mock("@/components/problem-description", () => ({
-  ProblemDescription: ({ description }: { description: string | null }) => <div>{description}</div>,
+vi.mock("@/components/problem/structured-problem-statement", () => ({
+  StructuredProblemStatement: ({ description }: { description: string | null }) => <div>{description}</div>,
 }));
 
 describe("PublicProblemDetail", () => {

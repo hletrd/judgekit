@@ -3,7 +3,7 @@ import { ArrowLeft } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { ProblemDescription } from "@/components/problem-description";
+import { StructuredProblemStatement } from "@/components/problem/structured-problem-statement";
 import { TierBadge } from "@/components/tier-badge";
 import type { ProblemTierInfo } from "@/lib/problem-tiers";
 import type { ReactNode } from "react";
@@ -83,7 +83,7 @@ export function PublicProblemDetail({
       </div>
       <Card>
         <CardContent className="pt-6">
-          <ProblemDescription description={description ?? ""} />
+          <StructuredProblemStatement description={description ?? ""} />
         </CardContent>
       </Card>
     </div>

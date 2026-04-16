@@ -13,7 +13,7 @@ import {
   validateAssignmentSubmission,
 } from "@/lib/assignments/submissions";
 import { formatRelativeTimeFromNow } from "@/lib/datetime";
-import { ProblemDescription } from "@/components/problem-description";
+import { StructuredProblemStatement } from "@/components/problem/structured-problem-statement";
 import { ProblemSubmissionForm } from "@/components/problem/problem-submission-form";
 import { getResolvedSystemSettings } from "@/lib/system-settings";
 import { CountdownTimer } from "@/components/exam/countdown-timer";
@@ -291,7 +291,7 @@ export default async function ProblemDetailPage({
       <Card>
         <CardContent className="pt-2">
           {problem.description ? (
-            <ProblemDescription
+            <StructuredProblemStatement
               className="text-sm sm:text-base"
               description={problem.description}
               editorTheme={session.user.editorTheme}
