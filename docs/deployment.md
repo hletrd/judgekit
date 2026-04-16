@@ -140,6 +140,33 @@ Add judging capacity by deploying workers on separate machines. Each worker conn
   --sync-images
 ```
 
+### Algo split deployment workflow
+
+For the production split topology:
+
+- `algo.xylolabs.com` = web/app host
+- `worker-0.algo.xylolabs.com` = dedicated judge host
+
+Use:
+
+```bash
+# App host only
+./scripts/deploy-algo.sh web --skip-bootstrap
+
+# Worker runtime only (judge-worker + judge-node)
+./scripts/deploy-algo.sh worker-runtime --skip-bootstrap
+
+# Full worker flow, including language images
+./scripts/deploy-algo.sh worker --skip-bootstrap
+
+# Language images only
+./scripts/deploy-algo.sh worker-languages
+```
+
+`worker-runtime` is the fast path for runtime changes that only need
+`judgekit-judge-worker` and `judge-node:latest` rebuilt. It avoids a full
+`ALL_LANGS` rebuild on the worker.
+
 ### Or use docker-compose.worker.yml directly on the worker machine
 
 ```bash
@@ -149,6 +176,15 @@ JUDGE_CONCURRENCY=4 \
 JUDGE_WORKER_HOSTNAME=worker-2 \
 docker compose -f docker-compose.worker.yml up -d
 ```
+
+The worker compose file also publishes the internal runner on host loopback:
+
+```text
+127.0.0.1:${RUNNER_PORT:-3001}:3001
+```
+
+This is what the algo app host's SSH tunnel / host bridge targets for remote
+interactive compiler execution.
 
 ### Monitor workers
 
