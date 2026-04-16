@@ -117,6 +117,27 @@ export async function listProblemDiscussionThreads(problemId: string, viewerUser
   });
 }
 
+export async function listProblemSolutionThreads(problemId: string, viewerUserId?: string | null) {
+  const threads = await db.query.discussionThreads.findMany({
+    where: and(eq(discussionThreads.scopeType, "solution"), eq(discussionThreads.problemId, problemId)),
+    with: {
+      author: { columns: { id: true, name: true, role: true } },
+      posts: { columns: { id: true } },
+    },
+    orderBy: [desc(discussionThreads.pinnedAt), desc(discussionThreads.updatedAt)],
+    limit: 50,
+  });
+
+  const voteSummaries = await listVoteSummaries("thread", threads.map((thread) => thread.id), viewerUserId);
+  return withThreadVotes(threads, voteSummaries).sort((left, right) => {
+    const leftPinned = left.pinnedAt ? 1 : 0;
+    const rightPinned = right.pinnedAt ? 1 : 0;
+    if (leftPinned !== rightPinned) return rightPinned - leftPinned;
+    if (left.voteScore !== right.voteScore) return right.voteScore - left.voteScore;
+    return new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime();
+  });
+}
+
 export async function listProblemEditorials(problemId: string, viewerUserId?: string | null) {
   const threads = await db.query.discussionThreads.findMany({
     where: and(eq(discussionThreads.scopeType, "editorial"), eq(discussionThreads.problemId, problemId)),

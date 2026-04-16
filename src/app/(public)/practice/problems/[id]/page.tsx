@@ -8,7 +8,7 @@ import { languageConfigs, problems, submissions, problemTags } from "@/lib/db/sc
 import { PublicProblemDetail } from "@/app/(public)/_components/public-problem-detail";
 import { JsonLd } from "@/components/seo/json-ld";
 import { AssistantMarkdown } from "@/components/assistant-markdown";
-import { listProblemDiscussionThreads, listProblemEditorials } from "@/lib/discussions/data";
+import { listProblemDiscussionThreads, listProblemEditorials, listProblemSolutionThreads } from "@/lib/discussions/data";
 import { DiscussionThreadForm } from "@/components/discussions/discussion-thread-form";
 import { DiscussionThreadList } from "@/components/discussions/discussion-thread-list";
 import { DiscussionVoteButtons } from "@/components/discussions/discussion-vote-buttons";
@@ -141,6 +141,7 @@ export default async function PublicProblemDetailPage({ params }: { params: Prom
     }];
   });
   const threads = await listProblemDiscussionThreads(problem.id, session?.user?.id ?? null);
+  const solutionThreads = await listProblemSolutionThreads(problem.id, session?.user?.id ?? null);
   const editorials = await listProblemEditorials(problem.id, session?.user?.id ?? null);
 
   // Problem statistics
@@ -607,46 +608,96 @@ export default async function PublicProblemDetailPage({ params }: { params: Prom
           )}
 
           <TabsContent value="discussion" className="mt-4 space-y-6">
-            <DiscussionThreadForm
-              scopeType="problem"
-              problemId={problem.id}
-              titleLabel={t("practice.discussion.form.titleLabel")}
-              contentLabel={t("practice.discussion.form.contentLabel")}
-              submitLabel={t("practice.discussion.form.submitLabel")}
-              successLabel={t("practice.discussion.form.success")}
-              signInLabel={t("practice.discussion.form.signIn")}
-              canPost={Boolean(session?.user)}
-              signInHref={buildLocalePath(`/login?callbackUrl=${encodeURIComponent(problemPageHref)}`, locale)}
-            />
-            <DiscussionThreadList
-              title={t("practice.discussion.title")}
-              description={t("practice.discussion.description")}
-              emptyLabel={t("practice.discussion.empty")}
-              openLabel={t("practice.discussion.openThread")}
-              pinnedLabel={t("community.pinned")}
-              lockedLabel={t("community.locked")}
-              threads={threads.map((thread) => ({
-                id: thread.id,
-                title: thread.title,
-                content: thread.content,
-                authorName: thread.author?.name ?? t("community.unknownAuthor"),
-                replyCountLabel: t("community.replyCount", { count: thread.posts.length }),
-              locked: Boolean(thread.lockedAt),
-              pinned: Boolean(thread.pinnedAt),
-              href: buildLocalePath(`/community/threads/${thread.id}`, locale),
-              actions: (
-                <DiscussionVoteButtons
-                  targetType="thread"
-                  targetId={thread.id}
-                  score={thread.voteScore}
-                  currentUserVote={thread.currentUserVote}
-                  canVote={Boolean(session?.user) && thread.authorId !== session?.user?.id}
-                  upvoteLabel={t("community.upvote")}
-                  downvoteLabel={t("community.downvote")}
+            <Tabs defaultValue="questions">
+              <TabsList>
+                <TabsTrigger value="questions">{t("practice.discussion.questionsTitle")}</TabsTrigger>
+                <TabsTrigger value="solutions">{t("practice.discussion.solutionsTitle")}</TabsTrigger>
+              </TabsList>
+              <TabsContent value="questions" className="mt-4 space-y-6">
+                <DiscussionThreadForm
+                  scopeType="problem"
+                  problemId={problem.id}
+                  titleLabel={t("practice.discussion.form.titleLabel")}
+                  contentLabel={t("practice.discussion.form.contentLabel")}
+                  submitLabel={t("practice.discussion.form.submitLabel")}
+                  successLabel={t("practice.discussion.form.success")}
+                  signInLabel={t("practice.discussion.form.signIn")}
+                  canPost={Boolean(session?.user)}
+                  signInHref={buildLocalePath(`/login?callbackUrl=${encodeURIComponent(problemPageHref)}`, locale)}
                 />
-              ),
-            }))}
-          />
+                <DiscussionThreadList
+                  title={t("practice.discussion.questionsTitle")}
+                  description={t("practice.discussion.questionsDescription")}
+                  emptyLabel={t("practice.discussion.empty")}
+                  openLabel={t("practice.discussion.openThread")}
+                  pinnedLabel={t("community.pinned")}
+                  lockedLabel={t("community.locked")}
+                  threads={threads.map((thread) => ({
+                    id: thread.id,
+                    title: thread.title,
+                    content: thread.content,
+                    authorName: thread.author?.name ?? t("community.unknownAuthor"),
+                    replyCountLabel: t("community.replyCount", { count: thread.posts.length }),
+                    locked: Boolean(thread.lockedAt),
+                    pinned: Boolean(thread.pinnedAt),
+                    href: buildLocalePath(`/community/threads/${thread.id}`, locale),
+                    actions: (
+                      <DiscussionVoteButtons
+                        targetType="thread"
+                        targetId={thread.id}
+                        score={thread.voteScore}
+                        currentUserVote={thread.currentUserVote}
+                        canVote={Boolean(session?.user) && thread.authorId !== session?.user?.id}
+                        upvoteLabel={t("community.upvote")}
+                        downvoteLabel={t("community.downvote")}
+                      />
+                    ),
+                  }))}
+                />
+              </TabsContent>
+              <TabsContent value="solutions" className="mt-4 space-y-6">
+                <DiscussionThreadForm
+                  scopeType="solution"
+                  problemId={problem.id}
+                  titleLabel={t("practice.discussion.solutionForm.titleLabel")}
+                  contentLabel={t("practice.discussion.solutionForm.contentLabel")}
+                  submitLabel={t("practice.discussion.solutionForm.submitLabel")}
+                  successLabel={t("practice.discussion.solutionForm.success")}
+                  signInLabel={t("practice.discussion.solutionForm.signIn")}
+                  canPost={Boolean(session?.user)}
+                  signInHref={buildLocalePath(`/login?callbackUrl=${encodeURIComponent(problemPageHref)}`, locale)}
+                />
+                <DiscussionThreadList
+                  title={t("practice.discussion.solutionsTitle")}
+                  description={t("practice.discussion.solutionsDescription")}
+                  emptyLabel={t("practice.discussion.solutionsEmpty")}
+                  openLabel={t("practice.discussion.openThread")}
+                  pinnedLabel={t("community.pinned")}
+                  lockedLabel={t("community.locked")}
+                  threads={solutionThreads.map((thread) => ({
+                    id: thread.id,
+                    title: thread.title,
+                    content: thread.content,
+                    authorName: thread.author?.name ?? t("community.unknownAuthor"),
+                    replyCountLabel: t("community.replyCount", { count: thread.posts.length }),
+                    locked: Boolean(thread.lockedAt),
+                    pinned: Boolean(thread.pinnedAt),
+                    href: buildLocalePath(`/community/threads/${thread.id}`, locale),
+                    actions: (
+                      <DiscussionVoteButtons
+                        targetType="thread"
+                        targetId={thread.id}
+                        score={thread.voteScore}
+                        currentUserVote={thread.currentUserVote}
+                        canVote={Boolean(session?.user) && thread.authorId !== session?.user?.id}
+                        upvoteLabel={t("community.upvote")}
+                        downvoteLabel={t("community.downvote")}
+                      />
+                    ),
+                  }))}
+                />
+              </TabsContent>
+            </Tabs>
           </TabsContent>
         </Tabs>
       </div>

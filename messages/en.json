@@ -2539,6 +2539,18 @@
           "submitLabel": "Start discussion",
           "success": "Discussion created",
           "signIn": "Sign in to discuss this problem"
+        },
+        "questionsTitle": "Questions",
+        "questionsDescription": "Ask for hints, clarify constraints, and discuss edge cases.",
+        "solutionsTitle": "Solutions",
+        "solutionsDescription": "Share 풀이 ideas, optimizations, and post-contest write-ups.",
+        "solutionsEmpty": "No solution threads yet for this problem.",
+        "solutionForm": {
+          "titleLabel": "Solution title",
+          "contentLabel": "Solution or insight",
+          "submitLabel": "Share solution",
+          "success": "Solution shared",
+          "signIn": "Sign in to share a solution"
         }
       },
       "acceptedSolutions": {
@@ -2651,7 +2663,8 @@
       "sortNewest": "Newest",
       "sortPopular": "Popular",
       "upvote": "Upvote",
-      "downvote": "Downvote"
+      "downvote": "Downvote",
+      "scopeSolution": "Solution sharing"
     }
   },
   "userProfile": {

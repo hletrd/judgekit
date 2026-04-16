@@ -14,4 +14,13 @@ describe("public problem editorial rendering implementation", () => {
     expect(source).toContain("<AssistantMarkdown content={editorial.content} />");
     expect(source).toContain("<AssistantMarkdown content={post.content} />");
   });
+
+  it("splits problem discussion into question and solution lanes", () => {
+    const source = read("src/app/(public)/practice/problems/[id]/page.tsx");
+
+    expect(source).toContain('scopeType="problem"');
+    expect(source).toContain('scopeType="solution"');
+    expect(source).toContain('t("practice.discussion.questionsTitle")');
+    expect(source).toContain('t("practice.discussion.solutionsTitle")');
+  });
 });

@@ -2,12 +2,12 @@ import { z } from "zod";
 import { normalizeOptionalString, trimString } from "@/lib/validators/preprocess";
 
 export const discussionThreadCreateSchema = z.object({
-  scopeType: z.enum(["general", "problem", "editorial"]),
+  scopeType: z.enum(["general", "problem", "editorial", "solution"]),
   problemId: z.preprocess(normalizeOptionalString, z.string().min(1).nullable().optional()),
   title: z.preprocess(trimString, z.string().min(3, "discussionTitleRequired").max(200, "discussionTitleTooLong")),
   content: z.preprocess(trimString, z.string().min(1, "discussionContentRequired").max(5000, "discussionContentTooLong")),
 }).superRefine((value, ctx) => {
-  if ((value.scopeType === "problem" || value.scopeType === "editorial") && !value.problemId) {
+  if ((value.scopeType === "problem" || value.scopeType === "editorial" || value.scopeType === "solution") && !value.problemId) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
       message: "discussionProblemRequired",

@@ -2539,6 +2539,18 @@
           "submitLabel": "토론 시작",
           "success": "토론이 생성되었습니다",
           "signIn": "이 문제를 토론하려면 로그인하세요"
+        },
+        "questionsTitle": "질문",
+        "questionsDescription": "힌트, 제약사항, 반례처럼 궁금한 점을 질문해 보세요.",
+        "solutionsTitle": "풀이",
+        "solutionsDescription": "풀이 아이디어, 최적화, 대회 후 해설을 공유해 보세요.",
+        "solutionsEmpty": "이 문제에는 아직 풀이 스레드가 없습니다.",
+        "solutionForm": {
+          "titleLabel": "풀이 제목",
+          "contentLabel": "풀이 또는 인사이트",
+          "submitLabel": "풀이 공유",
+          "success": "풀이가 공유되었습니다",
+          "signIn": "풀이를 공유하려면 로그인하세요"
         }
       },
       "acceptedSolutions": {
@@ -2651,7 +2663,8 @@
       "sortNewest": "최신순",
       "sortPopular": "인기순",
       "upvote": "추천",
-      "downvote": "비추천"
+      "downvote": "비추천",
+      "scopeSolution": "풀이 공유"
     }
   },
   "userProfile": {

@@ -23,7 +23,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
     getLocale(),
   ]);
 
-  if (!thread || (thread.scopeType === "problem" && thread.problem?.visibility !== "public")) {
+  if (!thread || ((thread.scopeType === "problem" || thread.scopeType === "solution") && thread.problem?.visibility !== "public")) {
     return {
       title: tShell("community.liveTitle"),
       ...NO_INDEX_METADATA,
@@ -43,13 +43,17 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
     locale,
     keywords: [
       "programming discussion",
-      thread.scopeType === "general" ? "community forum" : "problem discussion",
+      thread.scopeType === "general"
+        ? "community forum"
+        : thread.scopeType === "solution"
+          ? "solution discussion"
+          : "problem discussion",
     ],
-    section: thread.scopeType === "general" ? tShell("nav.community") : tShell("community.scopeProblem"),
+    section: thread.scopeType === "general" ? tShell("nav.community") : tShell(`community.${thread.scopeType === "solution" ? "scopeSolution" : "scopeProblem"}`),
     socialBadge:
       thread.scopeType === "general"
         ? tShell("community.scopeGeneral")
-        : tShell("community.scopeProblem"),
+        : tShell(thread.scopeType === "solution" ? "community.scopeSolution" : "community.scopeProblem"),
     socialMeta: [thread.author?.name, tShell("community.replyCount", { count: thread.posts.length })].filter(Boolean).join(" · "),
     socialFooter: thread.scopeType === "problem"
       ? thread.problem?.title ?? tShell("nav.community")
@@ -76,7 +80,7 @@ export default async function CommunityThreadDetailPage({ params }: { params: Pr
     notFound();
   }
 
-  if (thread.scopeType === "problem") {
+  if (thread.scopeType === "problem" || thread.scopeType === "solution") {
     const canRead = await canReadProblemDiscussion(
       thread.problemId ?? "",
       session?.user ? { userId: session.user.id, role: session.user.role } : null,
@@ -92,8 +96,8 @@ export default async function CommunityThreadDetailPage({ params }: { params: Pr
     description: summarizeTextForMetadata(thread.content),
     locale,
     siteTitle: settings.siteTitle,
-    section: thread.scopeType === "general" ? t("nav.community") : t("community.scopeProblem"),
-    badge: thread.scopeType === "general" ? t("community.scopeGeneral") : t("community.scopeProblem"),
+    section: thread.scopeType === "general" ? t("nav.community") : t(thread.scopeType === "solution" ? "community.scopeSolution" : "community.scopeProblem"),
+    badge: thread.scopeType === "general" ? t("community.scopeGeneral") : t(thread.scopeType === "solution" ? "community.scopeSolution" : "community.scopeProblem"),
     meta: [thread.author?.name, t("community.replyCount", { count: thread.posts.length })].filter(Boolean).join(" · "),
     footer: thread.scopeType === "problem" ? thread.problem?.title ?? t("nav.community") : t("nav.community"),
   });
@@ -181,7 +185,13 @@ export default async function CommunityThreadDetailPage({ params }: { params: Pr
           title={thread.title}
           content={thread.content}
           authorName={thread.author?.name ?? t("community.unknownAuthor")}
-          scopeLabel={thread.scopeType === "general" ? t("community.scopeGeneral") : t("community.scopeProblem")}
+          scopeLabel={
+            thread.scopeType === "general"
+              ? t("community.scopeGeneral")
+              : thread.scopeType === "solution"
+                ? t("community.scopeSolution")
+                : t("community.scopeProblem")
+          }
           repliesTitle={t("community.repliesTitle")}
           noRepliesLabel={t("community.noReplies")}
           actions={(
