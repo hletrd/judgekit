@@ -431,6 +431,8 @@ export const submissions = mysqlTable(
     compileOutput: text("compile_output"),
     executionTimeMs: int("execution_time_ms"),
     memoryUsedKb: int("memory_used_kb"),
+    failedTestCaseIndex: int("failed_test_case_index"),
+    runtimeErrorType: text("runtime_error_type"),
     score: double("score"),
     judgedAt: timestamp("judged_at"),
     ipAddress: varchar("ip_address", { length: 255 }),
@@ -476,13 +478,12 @@ export const systemSettings = mysqlTable("system_settings", {
   siteDescription: text("site_description"),
   timeZone: varchar("time_zone", { length: 255 }),
   defaultLanguage: varchar("default_language", { length: 255 }),
-  defaultLocale: varchar("default_locale", { length: 10 }),
   platformMode: varchar("platform_mode", { length: 255 }).$type<PlatformMode>().notNull().default("homework"),
   aiAssistantEnabled: boolean("ai_assistant_enabled").notNull().default(true),
   publicSignupEnabled: boolean("public_signup_enabled").notNull().default(false),
   signupHcaptchaEnabled: boolean("signup_hcaptcha_enabled").notNull().default(false),
-  homePageContent: json("home_page_content"),
-  footerContent: json("footer_content"),
+  hcaptchaSiteKey: varchar("hcaptcha_site_key", { length: 255 }),
+  hcaptchaSecret: varchar("hcaptcha_secret", { length: 255 }),
   // Rate Limiting (Login)
   loginRateLimitMaxAttempts: int("login_rate_limit_max_attempts"),
   loginRateLimitWindowMs: int("login_rate_limit_window_ms"),
@@ -514,8 +515,27 @@ export const systemSettings = mysqlTable("system_settings", {
   uploadMaxImageSizeBytes: int("upload_max_image_size_bytes"),
   uploadMaxFileSizeBytes: int("upload_max_file_size_bytes"),
   uploadMaxImageDimension: int("upload_max_image_dimension"),
+  // Default UI Locale (fallback when no cookie/accept-language match)
+  defaultLocale: varchar("default_locale", { length: 255 }),
   // Allowed Hosts (JSON array of domain strings)
   allowedHosts: text("allowed_hosts"),
+  // Home Page Content (locale-keyed JSON overrides for jumbotron + section cards)
+  homePageContent: json("home_page_content").$type<Record<string, {
+    eyebrow?: string;
+    title?: string;
+    description?: string;
+    cards?: {
+      practice?: { title?: string; description?: string };
+      playground?: { title?: string; description?: string };
+      contests?: { title?: string; description?: string };
+      community?: { title?: string; description?: string };
+    };
+  }>>(),
+  // Footer Content (locale-keyed JSON overrides for copyright text and custom links)
+  footerContent: json("footer_content").$type<Record<string, {
+    copyrightText?: string;
+    links?: { label: string; url: string }[];
+  }>>(),
   updatedAt: timestamp("updated_at")
     .notNull()
     .$defaultFn(() => new Date(Date.now())),
