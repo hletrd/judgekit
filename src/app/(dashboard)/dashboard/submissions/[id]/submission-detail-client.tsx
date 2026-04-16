@@ -43,6 +43,7 @@ export function SubmissionDetailClient(props: SubmissionDetailClientProps) {
 
   const { submission, setSubmission, error: pollingError } = useSubmissionPolling(props.initialSubmission);
   const [rejudging, setRejudging] = useState(false);
+  const [queuePosition, setQueuePosition] = useState<number | null>(null);
 
   // Notify chat widget of submission results with problem context (skip for assignments/contests)
   const firedEventRef = useRef<string | null>(null);
@@ -90,6 +91,65 @@ export function SubmissionDetailClient(props: SubmissionDetailClientProps) {
     localStorage.setItem(key, JSON.stringify(payload));
     router.push(problemHref);
   }
+
+  useEffect(() => {
+    if (!isLive) {
+      setQueuePosition(null);
+      return;
+    }
+
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+
+    const pollQueueStatus = async () => {
+      if (document.visibilityState === "hidden") {
+        return;
+      }
+
+      try {
+        const response = await apiFetch(`/api/v1/submissions/${submission.id}/queue-status`, {
+          cache: "no-store",
+        });
+        if (!response.ok) {
+          return;
+        }
+
+        const payload = await response.json() as { data?: { queuePosition?: number | null } };
+        if (!cancelled) {
+          setQueuePosition(typeof payload.data?.queuePosition === "number" ? payload.data.queuePosition : null);
+        }
+      } catch {
+        // Best-effort only; submission status polling still continues.
+      }
+    };
+
+    const schedule = () => {
+      if (cancelled) {
+        return;
+      }
+      timer = setTimeout(async () => {
+        await pollQueueStatus();
+        schedule();
+      }, 5000);
+    };
+
+    void pollQueueStatus();
+    schedule();
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        void pollQueueStatus();
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [isLive, submission.id]);
 
   async function handleRejudge() {
     if (rejudging) return;
@@ -160,6 +220,12 @@ export function SubmissionDetailClient(props: SubmissionDetailClientProps) {
           {isLive && (
             <div className="space-y-1 text-sm text-muted-foreground">
               <p>{t("liveUpdatesActive")}</p>
+              {(submission.status === "pending" || submission.status === "queued") && queuePosition !== null && queuePosition > 0 ? (
+                <p>{t("queueAhead", { count: queuePosition })}</p>
+              ) : null}
+              {submission.status === "judging" ? (
+                <p>{t("judgingInProgress")}</p>
+              ) : null}
               {pollingError && (
                 <div aria-live="polite" className="flex items-center gap-2 text-amber-600 dark:text-amber-400">
                   <p>{t("liveUpdatesDelayed")}</p>
