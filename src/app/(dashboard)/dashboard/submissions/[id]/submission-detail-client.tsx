@@ -144,6 +144,11 @@ export function SubmissionDetailClient(props: SubmissionDetailClientProps) {
                 label={t(`status.${submission.status}` as Parameters<typeof t>[0]) ?? submission.status}
                 showLivePulse
                 status={submission.status}
+                executionTimeMs={submission.executionTimeMs}
+                memoryUsedKb={submission.memoryUsedKb}
+                score={submission.score}
+                failedTestCaseIndex={submission.failedTestCaseIndex}
+                runtimeErrorType={submission.runtimeErrorType}
               />
             </div>
           </div>

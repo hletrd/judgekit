@@ -86,6 +86,8 @@ export default async function PublicSubmissionDetailPage({ params, searchParams 
           submittedAt: submissions.submittedAt,
           executionTimeMs: submissions.executionTimeMs,
           memoryUsedKb: submissions.memoryUsedKb,
+          failedTestCaseIndex: submissions.failedTestCaseIndex,
+          runtimeErrorType: submissions.runtimeErrorType,
         })
         .from(submissions)
         .where(
@@ -150,6 +152,8 @@ export default async function PublicSubmissionDetailPage({ params, searchParams 
           executionTimeMs: submission.executionTimeMs ?? null,
           memoryUsedKb: submission.memoryUsedKb ?? null,
           score: submission.score ?? null,
+          failedTestCaseIndex: submission.failedTestCaseIndex ?? null,
+          runtimeErrorType: submission.runtimeErrorType ?? null,
           submittedAt: submission.submittedAt ? submission.submittedAt.valueOf() : null,
           user: submission.user
             ? {
@@ -212,6 +216,8 @@ export default async function PublicSubmissionDetailPage({ params, searchParams 
                             executionTimeMs={sub.executionTimeMs}
                             memoryUsedKb={sub.memoryUsedKb}
                             score={sub.score}
+                            failedTestCaseIndex={sub.failedTestCaseIndex}
+                            runtimeErrorType={sub.runtimeErrorType}
                           />
                         </TableCell>
                         <TableCell>{sub.score !== null ? Math.round(sub.score * 100) / 100 : "-"}</TableCell>

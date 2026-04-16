@@ -79,14 +79,14 @@ function TooltipBody({
     <div className="space-y-1 text-xs">
       {/* Verdict-specific detail line */}
       {status === "wrong_answer" && failedTestCaseIndex != null && (
-        <div className="text-muted-foreground">Failed on test case {failedTestCaseIndex + 1}</div>
+        <div className="text-muted-foreground">WA on test #{failedTestCaseIndex + 1}</div>
       )}
       {status === "wrong_answer" && score !== null && score !== undefined && (
         <span className="font-medium">Score: {Math.round(score * 100) / 100}</span>
       )}
       {status === "time_limit" && executionTimeMs != null && (
         <div className="text-muted-foreground">
-          {formatNumber(executionTimeMs)} ms / {timeLimitMs != null ? `${formatNumber(timeLimitMs)} ms` : "limit"}
+          {formatNumber(executionTimeMs)} ms / {timeLimitMs != null ? `${formatNumber(timeLimitMs)} ms` : "—"}
         </div>
       )}
       {status === "runtime_error" && (

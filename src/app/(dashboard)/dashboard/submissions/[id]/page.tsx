@@ -135,6 +135,8 @@ export default async function SubmissionDetailPage({ params, searchParams }: { p
         executionTimeMs: hideResults ? null : (submission.executionTimeMs ?? null),
         memoryUsedKb: hideResults ? null : (submission.memoryUsedKb ?? null),
         score: (hideScore || hideResults) ? null : (submission.score ?? null),
+        failedTestCaseIndex: hideResults ? null : (submission.failedTestCaseIndex ?? null),
+        runtimeErrorType: hideResults ? null : (submission.runtimeErrorType ?? null),
         submittedAt: submission.submittedAt ? submission.submittedAt.valueOf() : null,
         user: submission.user
           ? {

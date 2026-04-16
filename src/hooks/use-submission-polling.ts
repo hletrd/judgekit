@@ -28,6 +28,8 @@ type SubmissionDetailView = {
   memoryUsedKb: number | null;
   score: number | null;
   submittedAt: number | null;
+  failedTestCaseIndex: number | null;
+  runtimeErrorType: string | null;
   user: {
     name: string | null;
   } | null;
@@ -85,6 +87,8 @@ function normalizeSubmission(data: Record<string, unknown>): SubmissionDetailVie
     executionTimeMs: typeof data.executionTimeMs === "number" ? data.executionTimeMs : null,
     memoryUsedKb: typeof data.memoryUsedKb === "number" ? data.memoryUsedKb : null,
     score: typeof data.score === "number" ? data.score : null,
+    failedTestCaseIndex: typeof data.failedTestCaseIndex === "number" ? data.failedTestCaseIndex : null,
+    runtimeErrorType: typeof data.runtimeErrorType === "string" ? data.runtimeErrorType : null,
     submittedAt,
     user: user
       ? {

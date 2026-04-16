@@ -196,6 +196,8 @@ export default async function PublicProblemDetailPage({ params }: { params: Prom
     executionTimeMs: number | null;
     memoryUsedKb: number | null;
     submittedAt: Date | null;
+    failedTestCaseIndex: number | null;
+    runtimeErrorType: string | null;
   }> = [];
 
   if (session?.user) {
@@ -208,6 +210,8 @@ export default async function PublicProblemDetailPage({ params }: { params: Prom
         executionTimeMs: submissions.executionTimeMs,
         memoryUsedKb: submissions.memoryUsedKb,
         submittedAt: submissions.submittedAt,
+        failedTestCaseIndex: submissions.failedTestCaseIndex,
+        runtimeErrorType: submissions.runtimeErrorType,
       })
       .from(submissions)
       .where(
@@ -495,6 +499,9 @@ export default async function PublicProblemDetailPage({ params }: { params: Prom
                                   executionTimeMs={sub.executionTimeMs}
                                   memoryUsedKb={sub.memoryUsedKb}
                                   score={sub.score}
+                                  failedTestCaseIndex={sub.failedTestCaseIndex}
+                                  runtimeErrorType={sub.runtimeErrorType}
+                                  timeLimitMs={problem.timeLimitMs ?? null}
                                 />
                               </TableCell>
                               <TableCell>{sub.score !== null ? Math.round(sub.score * 100) / 100 : "-"}</TableCell>
