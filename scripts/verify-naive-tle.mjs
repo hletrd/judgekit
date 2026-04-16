@@ -189,30 +189,25 @@ const PROBLEMS = [
   {
     name: '이분 탐색 경계 (seq 423)',
     id: 'WJvq1ftWdxdRkbQXr75jW',
-    strategy: 'Naive O(N) linear search per query instead of binary search',
+    strategy: 'Naive O(N) linear search instead of binary search — single lower_bound query',
     source: [
       '#include <bits/stdc++.h>',
       'using namespace std;',
       'int main() {',
       '  ios::sync_with_stdio(false);',
       '  cin.tie(nullptr);',
-      '  int N, M;',
+      '  int N;',
       '  cin >> N;',
       '  vector<int> a(N);',
       '  for (auto& x : a) cin >> x;',
-      '  cin >> M;',
-      '  while (M--) {',
-      '    int q; cin >> q;',
-      '    int lo = N;',
-      '    for (int i = 0; i < N; i++) {',
-      '      if (a[i] >= q) { lo = i; break; }',
-      '    }',
-      '    int hi = N;',
-      '    for (int i = 0; i < N; i++) {',
-      '      if (a[i] > q) { hi = i; break; }',
-      '    }',
-      '    cout << lo << " " << hi << "\\n";',
+      '  int X;',
+      '  cin >> X;',
+      '  // linear scan for first position >= X (1-indexed)',
+      '  int ans = N + 1;',
+      '  for (int i = 0; i < N; i++) {',
+      '    if (a[i] >= X) { ans = i + 1; break; }',
       '  }',
+      '  cout << ans << "\\n";',
       '}',
     ].join('\n'),
   },
@@ -261,7 +256,11 @@ const PROBLEMS = [
       '  for (int i = 0; i < N; i++)',
       '    for (int j = 0; j + 1 < N - i; j++)',
       '      if (a[j] > a[j + 1]) swap(a[j], a[j + 1]);',
-      '  for (int x : a) cout << x << "\\n";',
+      '  for (int i = 0; i < N; i++) {',
+      '    if (i) cout << " ";',
+      '    cout << a[i];',
+      '  }',
+      '  cout << "\\n";',
       '}',
     ].join('\n'),
   },
@@ -317,7 +316,11 @@ const PROBLEMS = [
       '  vector<int> a(N);',
       '  for (auto& x : a) cin >> x;',
       '  qsort(a, 0, N - 1);',
-      '  for (int x : a) cout << x << "\\n";',
+      '  for (int i = 0; i < N; i++) {',
+      '    if (i) cout << " ";',
+      '    cout << a[i];',
+      '  }',
+      '  cout << "\\n";',
       '}',
     ].join('\n'),
   },
@@ -336,7 +339,11 @@ const PROBLEMS = [
       '  vector<int> a(N);',
       '  for (auto& x : a) cin >> x;',
       '  sort(a.begin(), a.end());',
-      '  for (int x : a) cout << x << "\\n";',
+      '  for (int i = 0; i < N; i++) {',
+      '    if (i) cout << " ";',
+      '    cout << a[i];',
+      '  }',
+      '  cout << "\\n";',
       '}',
     ].join('\n'),
   },
@@ -344,7 +351,7 @@ const PROBLEMS = [
 
 // ─── API helpers ──────────────────────────────────────────────────────────────
 
-async function submit(problemId, sourceCode, retries = 5) {
+async function submit(problemId, sourceCode, retries = 8) {
   const res = await fetch(`${BASE_URL}/api/v1/submissions`, {
     method: 'POST',
     headers: {
@@ -354,8 +361,8 @@ async function submit(problemId, sourceCode, retries = 5) {
     body: JSON.stringify({ problemId, language: LANGUAGE, sourceCode }),
   });
   if (res.status === 429 && retries > 0) {
-    console.log(`    Rate limited — waiting 15s and retrying (${retries} retries left)...`);
-    await sleep(15000);
+    console.log(`    Rate limited — waiting 65s and retrying (${retries} retries left)...`);
+    await sleep(65000);
     return submit(problemId, sourceCode, retries - 1);
   }
   if (!res.ok) {

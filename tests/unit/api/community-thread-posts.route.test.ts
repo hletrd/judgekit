@@ -58,6 +58,10 @@ vi.mock("@/lib/auth/permissions", () => ({
   canAccessProblem: vi.fn(async () => true),
 }));
 
+vi.mock("@/lib/security/sanitize-html", () => ({
+  sanitizeMarkdown: vi.fn((s: string) => s),
+}));
+
 vi.mock("@/lib/audit/events", () => ({
   recordAuditEvent: recordAuditEventMock,
 }));
