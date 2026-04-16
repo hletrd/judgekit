@@ -12,10 +12,12 @@ describe("deployment security defaults", () => {
 
     expect(deployDocker).toContain("StrictHostKeyChecking=accept-new");
     expect(deployDocker).toContain("remote_sudo()");
-    expect(deployDocker).toContain('SSHPASS="$SSH_PASSWORD" rsync -e "sshpass -e ssh $SSH_OPTS"');
+    expect(deployDocker).toContain('SSHPASS="$SSH_PASSWORD" rsync -s -e "sshpass -e ssh $SSH_OPTS"');
     expect(deployDocker).not.toContain("echo '${SSH_PASSWORD}' | sudo -S");
     expect(deployDocker).not.toContain(".env.dbcreds");
     expect(deployDocker).toContain("-e POSTGRES_PASSWORD -e PGPASSWORD -e DATABASE_URL");
+    expect(deployDocker).not.toContain('escaped_dirname=$(printf');
+    expect(deployDocker).toContain("legacy escaped route-group directories");
   });
 
   it("uses https AUTH_URL defaults for deploy scripts", () => {

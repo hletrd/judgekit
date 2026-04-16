@@ -23,6 +23,7 @@ Repair the current judge/worker/deploy invariants so long-running jobs, split-ho
   - the Rust similarity service now rejects `ngram_size == 0`
   - deploys now fail fast on migration errors and require an explicit external runner URL when `INCLUDE_WORKER=false`
   - checked-in nginx/systemd/docs/env artifacts were updated toward the generated runtime truth
+- macOS deploy rsync now uses protected-arg sync and proactively removes legacy escaped route-group directories before remote builds, preventing stale `\(public\)`-style trees from breaking Next route generation
 
 ## Workstream A — Claim freshness and worker-capacity accounting
 **Targets**

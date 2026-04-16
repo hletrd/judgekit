@@ -155,9 +155,9 @@ remote_copy() {
 
 remote_rsync() {
     if [[ -n "${SSH_PASSWORD:-}" ]]; then
-        SSHPASS="$SSH_PASSWORD" rsync -e "sshpass -e ssh $SSH_OPTS" "$@"
+        SSHPASS="$SSH_PASSWORD" rsync -s -e "sshpass -e ssh $SSH_OPTS" "$@"
     else
-        rsync -e "ssh $SSH_OPTS" "$@"
+        rsync -s -e "ssh $SSH_OPTS" "$@"
     fi
 }
 
@@ -300,17 +300,20 @@ remote_rsync -az --delete \
     "${SCRIPT_DIR}/" \
     "${REMOTE_USER}@${REMOTE_HOST}:${REMOTE_DIR}/"
 
-# macOS openrsync silently skips directories with parentheses (e.g. Next.js
-# route groups like "(public)"). Re-sync them with escaped remote paths.
-for pdir in "${SCRIPT_DIR}"/src/app/\(*\)/; do
-    if [[ -d "$pdir" ]]; then
-        dirname=$(basename "$pdir")
-        escaped_dirname=$(printf '%s' "$dirname" | sed 's/[()]/\\&/g')
-        remote_rsync -az --delete \
-            "$pdir" \
-            "${REMOTE_USER}@${REMOTE_HOST}:${REMOTE_DIR}/src/app/${escaped_dirname}/"
-    fi
-done
+# Remove any legacy escaped route-group directories that may have been created
+# by earlier deploys on macOS (e.g. "\u005c(public)"), as they can confuse
+# Next.js route type generation during remote builds.
+remote "python3 - <<'PY'
+from pathlib import Path
+import shutil
+root = Path('${REMOTE_DIR}') / 'src' / 'app'
+for path in list(root.iterdir()) if root.exists() else []:
+    if '\\\\' in path.name:
+        if path.is_dir():
+            shutil.rmtree(path)
+        else:
+            path.unlink()
+PY"
 
 # Only transfer .env.production if the remote does not already have one.
 # Each target has its own secrets (AUTH_SECRET, JUDGE_AUTH_TOKEN, AUTH_URL).
