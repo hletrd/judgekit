@@ -1,9 +1,10 @@
 import type { MetadataRoute } from "next";
-import { buildAbsoluteUrl } from "@/lib/seo";
+import { getAuthUrlObject } from "@/lib/security/env";
+
+export const dynamic = "force-dynamic";
 
 export default function robots(): MetadataRoute.Robots {
-  const siteUrl = buildAbsoluteUrl("/").replace(/\/$/, "");
-  const sitemapUrl = buildAbsoluteUrl("/sitemap.xml");
+  const siteUrl = getAuthUrlObject()?.origin;
 
   return {
     host: siteUrl,
@@ -23,6 +24,6 @@ export default function robots(): MetadataRoute.Robots {
         "/submissions",
       ],
     },
-    sitemap: sitemapUrl,
+    sitemap: siteUrl ? `${siteUrl}/sitemap.xml` : undefined,
   };
 }

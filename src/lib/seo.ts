@@ -59,6 +59,26 @@ export function summarizeTextForMetadata(text: string | null | undefined, maxLen
   return `${candidate.slice(0, safeCut).trim()}…`;
 }
 
+function summarizeShortLabelForMetadata(text: string | null | undefined, maxLength = 80) {
+  if (!text) {
+    return "";
+  }
+
+  const normalized = text
+    .replace(/!\[[^\]]*\]\([^)]*\)/g, " ")
+    .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/[`*_~>|]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  if (!normalized || normalized.length <= maxLength) {
+    return normalized;
+  }
+
+  return `${normalized.slice(0, maxLength - 1).trim()}…`;
+}
+
 export function buildSeoKeywords(siteTitle: string, extraKeywords: string[] = []) {
   return Array.from(new Set([
     siteTitle,
@@ -113,19 +133,19 @@ export function buildSocialImageUrl(options: {
   }
 
   if (options.section) {
-    params.set("section", summarizeTextForMetadata(options.section, 40));
+    params.set("section", summarizeShortLabelForMetadata(options.section, 40));
   }
 
   if (options.badge) {
-    params.set("badge", summarizeTextForMetadata(options.badge, 40));
+    params.set("badge", summarizeShortLabelForMetadata(options.badge, 40));
   }
 
   if (options.meta) {
-    params.set("meta", summarizeTextForMetadata(options.meta, 80));
+    params.set("meta", summarizeShortLabelForMetadata(options.meta, 80));
   }
 
   if (options.footer) {
-    params.set("footer", summarizeTextForMetadata(options.footer, 80));
+    params.set("footer", summarizeShortLabelForMetadata(options.footer, 80));
   }
 
   return buildAbsoluteUrl(`/og?${params.toString()}`);
@@ -162,6 +182,12 @@ export function buildPublicMetadata(options: {
   return {
     title: options.title,
     description,
+    applicationName: options.siteTitle,
+    category: "education",
+    creator: options.siteTitle,
+    publisher: options.siteTitle,
+    authors: [{ name: options.siteTitle }],
+    referrer: "origin-when-cross-origin",
     keywords: buildSeoKeywords(options.siteTitle, options.keywords),
     alternates: buildLocaleAlternates(options.path, locale),
     openGraph: {

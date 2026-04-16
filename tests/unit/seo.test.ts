@@ -98,6 +98,12 @@ describe("buildPublicMetadata", () => {
       title: "Public problem catalog",
       description: "Browse public programming problems.",
     });
+    expect(metadata.applicationName).toBe("JudgeKit");
+    expect(metadata.category).toBe("education");
+    expect(metadata.creator).toBe("JudgeKit");
+    expect(metadata.publisher).toBe("JudgeKit");
+    expect(metadata.referrer).toBe("origin-when-cross-origin");
+    expect(metadata.authors).toEqual([{ name: "JudgeKit" }]);
     const openGraphImages = Array.isArray(metadata.openGraph?.images)
       ? metadata.openGraph.images
       : metadata.openGraph?.images ? [metadata.openGraph.images] : [];

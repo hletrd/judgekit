@@ -1,7 +1,8 @@
 import { ImageResponse } from "next/og";
 
-export const runtime = "edge";
+export const runtime = "nodejs";
 export const contentType = "image/png";
+export const revalidate = 86400;
 export const size = {
   width: 1200,
   height: 630,
@@ -34,12 +35,36 @@ export async function GET(request: Request) {
           display: "flex",
           width: "100%",
           height: "100%",
-          background: "linear-gradient(135deg, #0f172a 0%, #1d4ed8 55%, #7c3aed 100%)",
+          position: "relative",
+          overflow: "hidden",
+          background: "linear-gradient(135deg, #0b1220 0%, #1d4ed8 52%, #7c3aed 100%)",
           color: "white",
           padding: "56px",
           fontFamily: "Inter, Arial, sans-serif",
         }}
       >
+        <div
+          style={{
+            position: "absolute",
+            top: "-120px",
+            right: "-100px",
+            width: "320px",
+            height: "320px",
+            borderRadius: "999px",
+            background: "rgba(255,255,255,0.10)",
+          }}
+        />
+        <div
+          style={{
+            position: "absolute",
+            bottom: "-140px",
+            left: "-80px",
+            width: "280px",
+            height: "280px",
+            borderRadius: "999px",
+            background: "rgba(255,255,255,0.08)",
+          }}
+        />
         <div
           style={{
             display: "flex",
@@ -50,11 +75,23 @@ export async function GET(request: Request) {
             border: "1px solid rgba(255,255,255,0.18)",
             borderRadius: "32px",
             padding: "48px",
-            background: "rgba(15,23,42,0.20)",
+            background: "linear-gradient(180deg, rgba(11,18,32,0.58), rgba(11,18,32,0.32))",
+            boxShadow: "0 24px 80px rgba(0,0,0,0.28)",
           }}
         >
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "18px" }}>
+          <div
+            style={{
+              position: "absolute",
+              inset: "0 auto auto 0",
+              width: "100%",
+              height: "6px",
+              background: "linear-gradient(90deg, rgba(255,255,255,0.22), rgba(255,255,255,0.04))",
+              borderTopLeftRadius: "32px",
+              borderTopRightRadius: "32px",
+            }}
+          />
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "24px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "18px", maxWidth: "70%" }}>
               <div
                 style={{
                   display: "flex",
@@ -71,11 +108,13 @@ export async function GET(request: Request) {
                 &lt;/&gt;
               </div>
               <div style={{ display: "flex", flexDirection: "column" }}>
-                <div style={{ fontSize: "22px", opacity: 0.84 }}>{siteTitle}</div>
-                <div style={{ fontSize: "42px", fontWeight: 700 }}>{section}</div>
+                <div style={{ fontSize: "18px", opacity: 0.8, letterSpacing: "0.08em", textTransform: "uppercase" }}>
+                  {siteTitle}
+                </div>
+                <div style={{ fontSize: "40px", fontWeight: 750, lineHeight: 1.1 }}>{section}</div>
               </div>
             </div>
-            <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
+            <div style={{ display: "flex", gap: "12px", alignItems: "center", flexWrap: "wrap", justifyContent: "flex-end" }}>
               {badge ? (
                 <div
                   style={{
@@ -84,7 +123,8 @@ export async function GET(request: Request) {
                     justifyContent: "center",
                     padding: "10px 18px",
                     borderRadius: "999px",
-                    background: "rgba(255,255,255,0.10)",
+                    border: "1px solid rgba(255,255,255,0.16)",
+                    background: "rgba(255,255,255,0.12)",
                     fontSize: "20px",
                     fontWeight: 600,
                   }}
@@ -99,8 +139,9 @@ export async function GET(request: Request) {
                   justifyContent: "center",
                   padding: "10px 18px",
                   borderRadius: "999px",
-                  background: "rgba(255,255,255,0.14)",
-                  fontSize: "24px",
+                  border: "1px solid rgba(255,255,255,0.18)",
+                  background: "rgba(255,255,255,0.16)",
+                  fontSize: "22px",
                   fontWeight: 600,
                 }}
               >
@@ -109,19 +150,45 @@ export async function GET(request: Request) {
             </div>
           </div>
 
-          <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: "22px" }}>
             {meta ? (
-              <div style={{ fontSize: "24px", opacity: 0.84 }}>
+              <div
+                style={{
+                  display: "flex",
+                  width: "fit-content",
+                  alignItems: "center",
+                  borderRadius: "999px",
+                  border: "1px solid rgba(255,255,255,0.14)",
+                  background: "rgba(255,255,255,0.08)",
+                  padding: "10px 16px",
+                  fontSize: "22px",
+                  opacity: 0.9,
+                }}
+              >
                 {meta}
               </div>
             ) : null}
-            <div style={{ fontSize: "68px", fontWeight: 800, lineHeight: 1.08 }}>{title}</div>
-            <div style={{ fontSize: "30px", lineHeight: 1.35, opacity: 0.92 }}>{description}</div>
+            <div style={{ fontSize: "66px", fontWeight: 800, lineHeight: 1.04, letterSpacing: "-0.03em" }}>{title}</div>
+            <div style={{ maxWidth: "92%", fontSize: "29px", lineHeight: 1.34, opacity: 0.93 }}>{description}</div>
           </div>
 
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <div style={{ fontSize: "24px", opacity: 0.84 }}>judgekit</div>
-            <div style={{ fontSize: "24px", opacity: 0.84 }}>{footer}</div>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "flex-end",
+              gap: "20px",
+              borderTop: "1px solid rgba(255,255,255,0.14)",
+              paddingTop: "24px",
+            }}
+          >
+            <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+              <div style={{ fontSize: "22px", opacity: 0.7, textTransform: "uppercase", letterSpacing: "0.1em" }}>
+                Online judge
+              </div>
+              <div style={{ fontSize: "28px", fontWeight: 700 }}>{siteTitle}</div>
+            </div>
+            <div style={{ fontSize: "22px", opacity: 0.84, textAlign: "right", maxWidth: "48%" }}>{footer}</div>
           </div>
         </div>
       </div>
