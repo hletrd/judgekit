@@ -4,10 +4,14 @@ import { NextRequest } from "next/server";
 const {
   getInvitationMock,
   resetAccountPasswordMock,
+  getContestAssignmentMock,
+  canManageContestMock,
   recordAuditEventMock,
 } = vi.hoisted(() => ({
   getInvitationMock: vi.fn(),
   resetAccountPasswordMock: vi.fn(),
+  getContestAssignmentMock: vi.fn(),
+  canManageContestMock: vi.fn(),
   recordAuditEventMock: vi.fn(),
 }));
 
@@ -26,8 +30,12 @@ vi.mock("@/lib/assignments/recruiting-invitations", () => ({
   getRecruitingInvitation: getInvitationMock,
   updateRecruitingInvitation: vi.fn(),
   deleteRecruitingInvitation: vi.fn(),
-  resetRecruitingInvitationResumeCode: vi.fn(),
   resetRecruitingInvitationAccountPassword: resetAccountPasswordMock,
+}));
+
+vi.mock("@/lib/assignments/contests", () => ({
+  getContestAssignment: getContestAssignmentMock,
+  canManageContest: canManageContestMock,
 }));
 
 vi.mock("@/lib/audit/events", () => ({
@@ -48,8 +56,11 @@ function makePatchRequest(body: unknown) {
 describe("PATCH /api/v1/contests/[assignmentId]/recruiting-invitations/[invitationId] account password reset", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    getContestAssignmentMock.mockResolvedValue({ id: "assignment-1", instructorId: "admin-1" });
+    canManageContestMock.mockResolvedValue(true);
     getInvitationMock.mockResolvedValue({
       id: "invite-1",
+      assignmentId: "assignment-1",
       candidateName: "Candidate One",
       status: "redeemed",
       userId: "user-1",

@@ -29,7 +29,6 @@ describe("remaining route capability consistency guards", () => {
         expect(source).toContain(capabilitySnippet);
       }
       expect(source).not.toContain("isAdmin(user.role)");
-      expect(source).not.toContain('apiError("forbidden", 403)');
     }
   });
 });

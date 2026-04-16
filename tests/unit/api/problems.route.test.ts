@@ -73,6 +73,49 @@ vi.mock("@/lib/problem-management", () => ({
   createProblemWithTestCases: createProblemWithTestCasesMock,
 }));
 
+vi.mock("@/lib/api/handler", () => ({
+  createApiHandler:
+    ({ handler }: { handler: (req: NextRequest, ctx: { user: unknown; params: Record<string, string>; body?: unknown }) => Promise<Response> }) =>
+    async (req: NextRequest, routeCtx?: { params?: Promise<Record<string, string>> }) => {
+      try {
+        const rateLimited = consumeApiRateLimitMock();
+        if (rateLimited) return rateLimited;
+
+        if (req.method !== "GET") {
+          const csrfResponse = csrfForbiddenMock();
+          if (csrfResponse) return csrfResponse;
+        }
+
+        const user = await getApiUserMock();
+        if (!user) {
+          return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+        }
+
+        return await handler(req, {
+          user,
+          params: routeCtx?.params ? await routeCtx.params : {},
+          body: undefined,
+        });
+      } catch (error) {
+        loggerErrorMock(error);
+        return NextResponse.json({ error: "internalServerError" }, { status: 500 });
+      }
+    },
+  forbidden: () => NextResponse.json({ error: "forbidden" }, { status: 403 }),
+}));
+
+vi.mock("@/lib/capabilities/cache", () => ({
+  resolveCapabilities: vi.fn(async (role: string) => {
+    if (role === "admin" || role === "super_admin") {
+      return new Set(["problems.view_all", "problems.create"]);
+    }
+    if (role === "instructor") {
+      return new Set(["problems.create"]);
+    }
+    return new Set<string>();
+  }),
+}));
+
 vi.mock("@/lib/api/pagination", () => ({
   parsePagination: (_params: URLSearchParams) => ({ page: 1, limit: 20, offset: 0 }),
 }));

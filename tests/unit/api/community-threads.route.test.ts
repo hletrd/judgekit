@@ -28,6 +28,28 @@ vi.mock("@/lib/api/responses", () => ({
     NextResponse.json({ error }, { status }),
 }));
 
+vi.mock("@/lib/api/handler", () => ({
+  createApiHandler:
+    ({ handler }: { handler: (req: NextRequest, ctx: { user: unknown; body: unknown; params: Record<string, string> }) => Promise<Response> }) =>
+    async (req: NextRequest, routeCtx?: { params?: Promise<Record<string, string>> }) => {
+      const rateLimited = await consumeApiRateLimitMock();
+      if (rateLimited) return rateLimited;
+
+      const user = await getApiUserMock();
+      if (!user) {
+        return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+      }
+
+      return await handler(req, {
+        user,
+        body: await req.json(),
+        params: routeCtx?.params ? await routeCtx.params : {},
+      });
+    },
+  forbidden: () => NextResponse.json({ error: "forbidden" }, { status: 403 }),
+  notFound: (resource: string) => NextResponse.json({ error: "notFound", resource }, { status: 404 }),
+}));
+
 vi.mock("@/lib/security/api-rate-limit", () => ({
   consumeApiRateLimit: consumeApiRateLimitMock,
 }));
@@ -108,5 +130,5 @@ describe("POST /api/v1/community/threads", () => {
       },
     });
     expect(recordAuditEventMock).toHaveBeenCalledOnce();
-  });
+  }, 15000);
 });

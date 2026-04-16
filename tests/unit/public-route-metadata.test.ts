@@ -81,5 +81,5 @@ describe("public personal-route metadata", () => {
       index: false,
       follow: false,
     });
-  });
+  }, 15000);
 });

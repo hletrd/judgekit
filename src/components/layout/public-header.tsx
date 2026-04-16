@@ -34,15 +34,11 @@ function isActivePath(pathname: string, href: string) {
 export function PublicHeader({ siteTitle, items, actions, loggedInUser }: PublicHeaderProps) {
   const pathname = usePathname();
   const locale = useLocale();
-  const [mobileOpen, setMobileOpen] = useState(false);
+  const [mobileOpenPath, setMobileOpenPath] = useState<string | null>(null);
   const menuId = useId();
   const toggleRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
-
-  // Close menu on route change
-  useEffect(() => {
-    setMobileOpen(false);
-  }, [pathname]);
+  const mobileOpen = mobileOpenPath === pathname;
 
   // Focus management: Escape to close, focus first item on open, restore focus on close
   useEffect(() => {
@@ -56,7 +52,7 @@ export function PublicHeader({ siteTitle, items, actions, loggedInUser }: Public
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
-        setMobileOpen(false);
+        setMobileOpenPath(null);
         toggleRef.current?.focus();
       }
     };
@@ -66,7 +62,7 @@ export function PublicHeader({ siteTitle, items, actions, loggedInUser }: Public
   }, [mobileOpen]);
 
   const closeMobileMenu = useCallback(() => {
-    setMobileOpen(false);
+    setMobileOpenPath(null);
     // Defer focus restoration so the DOM update (unmount) completes first
     requestAnimationFrame(() => toggleRef.current?.focus());
   }, []);
@@ -139,7 +135,7 @@ export function PublicHeader({ siteTitle, items, actions, loggedInUser }: Public
           <button
             ref={toggleRef}
             type="button"
-            onClick={() => setMobileOpen((v) => !v)}
+            onClick={() => setMobileOpenPath((current) => (current === pathname ? null : pathname))}
             className="inline-flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             aria-label="Toggle navigation menu"
             aria-controls={menuId}

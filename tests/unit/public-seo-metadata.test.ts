@@ -50,6 +50,10 @@ vi.mock("@/lib/system-settings", () => ({
   getResolvedSystemSettings: getResolvedSystemSettingsMock,
 }));
 
+vi.mock("@/lib/auth", () => ({
+  auth: vi.fn(async () => null),
+}));
+
 vi.mock("@/lib/db", () => ({
   db: {
     select: dbSelectMock,
@@ -63,6 +67,8 @@ vi.mock("@/lib/db", () => ({
 
 vi.mock("@/lib/db/schema", () => ({
   problems: {},
+  tags: {},
+  problemTags: {},
   submissions: {},
   users: {},
 }));

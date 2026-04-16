@@ -476,10 +476,13 @@ export const systemSettings = mysqlTable("system_settings", {
   siteDescription: text("site_description"),
   timeZone: varchar("time_zone", { length: 255 }),
   defaultLanguage: varchar("default_language", { length: 255 }),
+  defaultLocale: varchar("default_locale", { length: 10 }),
   platformMode: varchar("platform_mode", { length: 255 }).$type<PlatformMode>().notNull().default("homework"),
   aiAssistantEnabled: boolean("ai_assistant_enabled").notNull().default(true),
   publicSignupEnabled: boolean("public_signup_enabled").notNull().default(false),
   signupHcaptchaEnabled: boolean("signup_hcaptcha_enabled").notNull().default(false),
+  homePageContent: json("home_page_content"),
+  footerContent: json("footer_content"),
   // Rate Limiting (Login)
   loginRateLimitMaxAttempts: int("login_rate_limit_max_attempts"),
   loginRateLimitWindowMs: int("login_rate_limit_window_ms"),

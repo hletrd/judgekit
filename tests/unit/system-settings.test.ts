@@ -171,7 +171,9 @@ describe("getResolvedSystemSettings", () => {
       publicSignupEnabled: false,
       signupHcaptchaEnabled: false,
       defaultLanguage: null,
+      defaultLocale: null,
       homePageContent: null,
+      footerContent: null,
     });
   });
 
@@ -189,7 +191,9 @@ describe("getResolvedSystemSettings", () => {
       publicSignupEnabled: false,
       signupHcaptchaEnabled: false,
       defaultLanguage: null,
+      defaultLocale: null,
       homePageContent: null,
+      footerContent: null,
     });
   });
 

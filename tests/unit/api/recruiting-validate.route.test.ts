@@ -73,8 +73,6 @@ describe("POST /api/v1/recruiting/validate", () => {
     await expect(response.json()).resolves.toEqual({
       data: {
         valid: true,
-        status: "pending",
-        expiresAt: "2026-05-01T00:00:00.000Z",
       },
     });
   });
