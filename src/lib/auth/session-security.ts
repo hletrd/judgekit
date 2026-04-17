@@ -43,7 +43,18 @@ export function clearAuthToken(token: JWT) {
   delete token.name;
   delete token.className;
   delete token.mustChangePassword;
+  delete token.preferredLanguage;
+  delete token.preferredTheme;
+  delete token.shareAcceptedSolutions;
+  delete token.acceptedSolutionsAnonymous;
+  delete token.editorTheme;
+  delete token.editorFontSize;
+  delete token.editorFontFamily;
+  delete token.lectureMode;
+  delete token.lectureFontScale;
+  delete token.lectureColorScheme;
   delete token.authenticatedAt;
+  delete token.uaHash;
 
   return token;
 }
