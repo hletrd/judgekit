@@ -188,6 +188,7 @@
     "viewAssignmentLabel": "View assignment: {title}",
     "viewSubmission": "View submission",
     "deadlineLabel": "Deadline",
+    "deadlineInfo": "Deadline: {date}",
     "studentLabel": "User",
     "groupLabel": "Group",
     "assignmentLabel": "Assignment",
@@ -1074,7 +1075,9 @@
         "searchLabel": "Search",
         "searchPlaceholder": "Identifier, user, IP, or user agent",
         "outcomeLabel": "Outcome",
-        "allOutcomes": "All outcomes"
+        "allOutcomes": "All outcomes",
+        "dateFromLabel": "From date",
+        "dateToLabel": "To date"
       },
       "outcomes": {
         "success": "Success",
@@ -2492,6 +2495,7 @@
     "startConfirmDescriptionFallback": "You are about to begin this assessment.",
     "startConfirmConnection": "Double-check that your internet connection and environment are ready before you continue.",
     "startConfirmButton": "Start now",
+    "cancel": "Cancel",
     "starting": "Starting...",
     "startFailed": "Couldn't start. Try again.",
     "claimed": "Assessment already claimed",
