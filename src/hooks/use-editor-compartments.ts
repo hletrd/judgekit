@@ -17,6 +17,7 @@ export function useEditorCompartments() {
   const placeholderComp = useLazyRef(() => new Compartment());
   const contentAttributes = useLazyRef(() => new Compartment());
   const customTheme = useLazyRef(() => new Compartment());
+  const lineWrapping = useLazyRef(() => new Compartment());
 
-  return { language, highlight, minHeight, editability, placeholderComp, contentAttributes, customTheme };
+  return { language, highlight, minHeight, editability, placeholderComp, contentAttributes, customTheme, lineWrapping };
 }

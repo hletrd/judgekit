@@ -19,6 +19,7 @@ type CodeEditorProps = {
   editorTheme?: string | null;
   id?: string;
   language?: string | null;
+  lineWrapping?: boolean;
   minHeight?: number;
   onSubmitShortcut?: () => void;
   onValueChange: (value: string) => void;
@@ -28,7 +29,7 @@ type CodeEditorProps = {
 };
 
 export function CodeEditor(props: CodeEditorProps) {
-  const { minHeight, onSubmitShortcut, onValueChange, showFullscreen = false, ...surfaceProps } = props;
+  const { minHeight, onSubmitShortcut, onValueChange, showFullscreen = false, lineWrapping, ...surfaceProps } = props;
   const height = minHeight ?? 300;
   const [isFullscreen, setIsFullscreen] = useState(false);
 
@@ -78,6 +79,7 @@ export function CodeEditor(props: CodeEditorProps) {
     <CodeSurface
       {...surfaceProps}
       minHeight={isFullscreen ? undefined : height}
+      lineWrapping={lineWrapping}
       onSubmitShortcut={onSubmitShortcut}
       onValueChangeAction={onValueChange}
     />

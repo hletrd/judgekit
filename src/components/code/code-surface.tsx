@@ -37,6 +37,7 @@ type CodeSurfaceProps = {
   fontSize?: number | null;
   id?: string;
   language?: string | null;
+  lineWrapping?: boolean;
   minHeight?: number;
   onSubmitShortcut?: () => void;
   onValueChangeAction?: (value: string) => void;
@@ -183,7 +184,6 @@ const baseExtensions: Extension[] = [
   highlightSpecialChars(),
   bracketMatching(),
   electricBrace,
-  EditorView.lineWrapping,
   keymap.of([
     { key: "Enter", run: insertNewlineGnuStyle },
     indentWithTab,
@@ -289,6 +289,7 @@ export function CodeSurface({
   fontSize,
   id,
   language,
+  lineWrapping = true,
   minHeight = 220,
   onSubmitShortcut,
   onValueChangeAction,
@@ -304,13 +305,14 @@ export function CodeSurface({
   const onValueChangeRef = useRef(onValueChangeAction);
   const onSubmitShortcutRef = useRef(onSubmitShortcut);
   const isSyncingRef = useRef(false);
-  const { language: languageCompartmentRef, highlight: highlightCompartmentRef, minHeight: minHeightCompartmentRef, editability: editabilityCompartmentRef, placeholderComp: placeholderCompartmentRef, contentAttributes: contentAttributesCompartmentRef, customTheme: customThemeCompartmentRef } = useEditorCompartments();
+  const { language: languageCompartmentRef, highlight: highlightCompartmentRef, minHeight: minHeightCompartmentRef, editability: editabilityCompartmentRef, placeholderComp: placeholderCompartmentRef, contentAttributes: contentAttributesCompartmentRef, customTheme: customThemeCompartmentRef, lineWrapping: lineWrappingCompartmentRef } = useEditorCompartments();
   const [initialEditorConfig] = useState(() => ({
     ariaLabel,
     ariaLabelledby,
     editorTheme: editorThemeProp,
     id,
     language,
+    lineWrapping,
     minHeight,
     nonce,
     placeholderText,
@@ -365,6 +367,7 @@ export function CodeSurface({
           )
         ),
         customThemeCompartmentRef.current.of([]),
+        lineWrappingCompartmentRef.current.of(initialEditorConfig.lineWrapping ? EditorView.lineWrapping : []),
         EditorView.cspNonce.of(initialEditorConfig.nonce ?? ""),
         EditorView.updateListener.of((update) => {
           if (!update.docChanged || isSyncingRef.current) {
@@ -437,6 +440,16 @@ export function CodeSurface({
     });
     return () => { cancelled = true; };
   }, [editorThemeProp]);
+
+  useEffect(() => {
+    const view = editorViewRef.current;
+    if (!view) return;
+    view.dispatch({
+      effects: lineWrappingCompartmentRef.current.reconfigure(
+        lineWrapping ? EditorView.lineWrapping : []
+      ),
+    });
+  }, [lineWrapping]);
 
   useEffect(() => {
     const view = editorViewRef.current;
