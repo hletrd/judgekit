@@ -5,7 +5,7 @@ import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Combobox as ComboboxPrimitive } from "@base-ui/react/combobox";
 import { cn } from "@/lib/utils";
-import { ChevronDownIcon, CheckIcon, SearchIcon } from "lucide-react";
+import { ChevronDownIcon, CheckIcon, SearchIcon, XIcon } from "lucide-react";
 
 // Category definitions — language IDs that belong to each named group.
 // Any language not in any category will fall into "Other".
@@ -191,6 +191,16 @@ export function LanguageSelector({
                 className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
                 placeholder={resolvedSearchPlaceholder}
               />
+              {inputValue && (
+                <button
+                  type="button"
+                  onClick={() => setInputValue("")}
+                  className="ml-1 rounded-sm p-0.5 text-muted-foreground transition-colors hover:text-foreground"
+                  aria-label="Clear search"
+                >
+                  <XIcon className="size-3.5" />
+                </button>
+              )}
             </div>
 
             <ComboboxPrimitive.List className="overflow-y-auto max-h-[min(calc(var(--available-height,400px)-48px),360px)]">
