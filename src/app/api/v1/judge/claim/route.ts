@@ -8,7 +8,7 @@ import { eq, asc } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { z } from "zod";
 import { recordAuditEvent } from "@/lib/audit/events";
-import { isJudgeAuthorized, isJudgeAuthorizedForWorker } from "@/lib/judge/auth";
+import { isJudgeAuthorized, isJudgeAuthorizedForWorker, hashToken } from "@/lib/judge/auth";
 import { isJudgeIpAllowed } from "@/lib/judge/ip-allowlist";
 import { logger } from "@/lib/logger";
 import { deserializeStoredJudgeCommand } from "@/lib/judge/languages";
@@ -88,6 +88,7 @@ export async function POST(request: NextRequest) {
         .select({
           status: judgeWorkers.status,
           secretToken: judgeWorkers.secretToken,
+          secretTokenHash: judgeWorkers.secretTokenHash,
         })
         .from(judgeWorkers)
         .where(eq(judgeWorkers.id, workerId))
@@ -98,15 +99,24 @@ export async function POST(request: NextRequest) {
       }
 
       // Defense-in-depth: also validate the workerSecret from the request body
-      // against the worker's stored secretToken.
-      if (worker.secretToken) {
+      // against the worker's stored secretTokenHash (or plaintext secretToken
+      // for backward compatibility during migration).
+      if (worker.secretTokenHash || worker.secretToken) {
         if (!workerSecret) {
           return apiError("workerSecretRequired", 400);
         }
-        const provided = Buffer.from(workerSecret);
-        const expected = Buffer.from(worker.secretToken);
-        if (provided.length !== expected.length || !timingSafeEqual(provided, expected)) {
-          return apiError("invalidWorkerSecret", 403);
+        if (worker.secretTokenHash) {
+          const provided = Buffer.from(hashToken(workerSecret));
+          const expected = Buffer.from(worker.secretTokenHash);
+          if (provided.length !== expected.length || !timingSafeEqual(provided, expected)) {
+            return apiError("invalidWorkerSecret", 403);
+          }
+        } else {
+          const provided = Buffer.from(workerSecret);
+          const expected = Buffer.from(worker.secretToken!);
+          if (provided.length !== expected.length || !timingSafeEqual(provided, expected)) {
+            return apiError("invalidWorkerSecret", 403);
+          }
         }
       }
     }

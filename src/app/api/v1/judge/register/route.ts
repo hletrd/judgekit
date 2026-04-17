@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import { apiSuccess, apiError } from "@/lib/api/responses";
 import { db } from "@/lib/db";
 import { judgeWorkers } from "@/lib/db/schema";
-import { isJudgeAuthorized } from "@/lib/judge/auth";
+import { isJudgeAuthorized, hashToken } from "@/lib/judge/auth";
 import { isJudgeIpAllowed } from "@/lib/judge/ip-allowlist";
 import { extractClientIp } from "@/lib/security/ip";
 import { logger } from "@/lib/logger";
@@ -52,6 +52,7 @@ export async function POST(request: NextRequest) {
         labels: labels ?? [],
         status: "online",
         secretToken: workerSecret,
+        secretTokenHash: hashToken(workerSecret),
       })
       .returning({ id: judgeWorkers.id });
 

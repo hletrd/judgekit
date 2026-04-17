@@ -15,6 +15,7 @@ const {
 
 vi.mock("@/lib/judge/auth", () => ({
   isJudgeAuthorizedForWorker: isJudgeAuthorizedForWorkerMock,
+  hashToken: (value: string) => `hashed:${value}`,
 }));
 
 vi.mock("@/lib/logger", () => ({
@@ -117,6 +118,16 @@ describe("POST /api/v1/judge/deregister", () => {
     );
 
     expect(response.status).toBe(403);
+  });
+
+  it("accepts a hashed worker secret during deregistration", async () => {
+    findFirstMock.mockResolvedValue({ secretToken: null, secretTokenHash: "hashed:secret-abc" });
+
+    const response = await POST(
+      makeRequest({ workerId: "worker-1", workerSecret: "secret-abc" })
+    );
+
+    expect(response.status).toBe(200);
   });
 
   it("returns 404 when update affects zero rows", async () => {

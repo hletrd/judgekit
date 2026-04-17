@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
 
 const EXPECTED_TOKEN = "a".repeat(32);
@@ -22,7 +22,11 @@ vi.mock("@/lib/db", () => ({
   },
 }));
 
-import { isJudgeAuthorized, isJudgeAuthorizedForWorker } from "@/lib/judge/auth";
+import { hashToken, isJudgeAuthorized, isJudgeAuthorizedForWorker } from "@/lib/judge/auth";
+
+afterEach(() => {
+  judgeWorkerFindFirstMock.mockReset();
+});
 
 function makeRequest(authHeader?: string) {
   return new NextRequest("http://localhost:3000/api/v1/judge/claim", {
@@ -30,6 +34,22 @@ function makeRequest(authHeader?: string) {
     headers: authHeader ? { Authorization: authHeader } : {},
   });
 }
+
+describe("hashToken", () => {
+  it("returns a 64-character hex string", () => {
+    const result = hashToken("test-token");
+    expect(result).toHaveLength(64);
+    expect(result).toMatch(/^[0-9a-f]{64}$/);
+  });
+
+  it("is deterministic", () => {
+    expect(hashToken("same-input")).toBe(hashToken("same-input"));
+  });
+
+  it("produces different hashes for different inputs", () => {
+    expect(hashToken("input-a")).not.toBe(hashToken("input-b"));
+  });
+});
 
 describe("isJudgeAuthorized", () => {
   it("returns true for a valid Bearer token", () => {
@@ -84,8 +104,35 @@ describe("isJudgeAuthorized", () => {
 });
 
 describe("isJudgeAuthorizedForWorker", () => {
-  it("uses the worker-specific secret when present", async () => {
-    judgeWorkerFindFirstMock.mockResolvedValueOnce({ secretToken: "worker-secret-token" });
+  it("uses the worker-specific secret hash when present", async () => {
+    judgeWorkerFindFirstMock.mockResolvedValueOnce({
+      secretToken: null,
+      secretTokenHash: hashToken("worker-secret-token"),
+    });
+
+    const request = makeRequest("Bearer worker-secret-token");
+
+    await expect(isJudgeAuthorizedForWorker(request, "worker-1")).resolves.toEqual({
+      authorized: true,
+    });
+  });
+
+  it("rejects a mismatched token when hash is stored without falling back to shared token", async () => {
+    judgeWorkerFindFirstMock.mockResolvedValueOnce({
+      secretToken: null,
+      secretTokenHash: hashToken("worker-secret-token"),
+    });
+
+    const request = makeRequest(`Bearer ${EXPECTED_TOKEN}`);
+
+    await expect(isJudgeAuthorizedForWorker(request, "worker-1")).resolves.toEqual({
+      authorized: false,
+      error: "invalidWorkerToken",
+    });
+  });
+
+  it("uses the worker-specific plaintext secret when no hash is present", async () => {
+    judgeWorkerFindFirstMock.mockResolvedValueOnce({ secretToken: "worker-secret-token", secretTokenHash: null });
 
     const request = makeRequest("Bearer worker-secret-token");
 
@@ -95,7 +142,7 @@ describe("isJudgeAuthorizedForWorker", () => {
   });
 
   it("rejects a mismatched worker-specific secret without falling back to the shared token", async () => {
-    judgeWorkerFindFirstMock.mockResolvedValueOnce({ secretToken: "worker-secret-token" });
+    judgeWorkerFindFirstMock.mockResolvedValueOnce({ secretToken: "worker-secret-token", secretTokenHash: null });
 
     const request = makeRequest(`Bearer ${EXPECTED_TOKEN}`);
 
@@ -121,6 +168,20 @@ describe("isJudgeAuthorizedForWorker", () => {
     await expect(isJudgeAuthorizedForWorker(makeRequest(), "worker-1")).resolves.toEqual({
       authorized: false,
       error: "unauthorized",
+    });
+  });
+
+  it("prefers hash over plaintext when both are stored", async () => {
+    // When both secretTokenHash and secretToken exist, hash should be used
+    judgeWorkerFindFirstMock.mockResolvedValueOnce({
+      secretToken: "wrong-plaintext-secret",
+      secretTokenHash: hashToken("correct-hashed-secret"),
+    });
+
+    const request = makeRequest("Bearer correct-hashed-secret");
+
+    await expect(isJudgeAuthorizedForWorker(request, "worker-1")).resolves.toEqual({
+      authorized: true,
     });
   });
 });

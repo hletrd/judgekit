@@ -28,6 +28,7 @@ describe("export.ts sanitization", () => {
     expect(source).toContain("id_token");
     expect(source).toContain("encryptedKey");
     expect(source).toContain("secretToken");
+    expect(source).toContain("secretTokenHash");
     expect(source).toContain("judgeClaimToken");
     // token appears in both recruitingInvitations and contestAccessTokens
     expect(source).toMatch(/"token"/);

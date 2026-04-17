@@ -7,12 +7,14 @@ import { NextRequest } from "next/server";
 const {
   isJudgeAuthorizedMock,
   insertMock,
+  valuesMock,
   returningMock,
   extractClientIpMock,
   loggerMock,
 } = vi.hoisted(() => ({
   isJudgeAuthorizedMock: vi.fn(),
   insertMock: vi.fn(),
+  valuesMock: vi.fn(),
   returningMock: vi.fn(),
   extractClientIpMock: vi.fn(),
   loggerMock: { info: vi.fn(), error: vi.fn(), warn: vi.fn(), debug: vi.fn() },
@@ -20,6 +22,7 @@ const {
 
 vi.mock("@/lib/judge/auth", () => ({
   isJudgeAuthorized: isJudgeAuthorizedMock,
+  hashToken: (value: string) => `hashed:${value}`,
 }));
 
 vi.mock("@/lib/security/ip", () => ({
@@ -81,10 +84,11 @@ beforeEach(() => {
   extractClientIpMock.mockReturnValue("192.168.1.100");
 
   returningMock.mockResolvedValue([{ id: "worker-1" }]);
+  valuesMock.mockReturnValue({
+    returning: returningMock,
+  });
   insertMock.mockReturnValue({
-    values: vi.fn().mockReturnValue({
-      returning: returningMock,
-    }),
+    values: valuesMock,
   });
 });
 
@@ -102,6 +106,17 @@ describe("POST /api/v1/judge/register", () => {
     expect(typeof payload.data.workerSecret).toBe("string");
     expect(payload.data.heartbeatIntervalMs).toBe(30_000);
     expect(payload.data.staleClaimTimeoutMs).toBe(300_000);
+  });
+
+  it("stores a hashed worker secret alongside the plaintext registration response", async () => {
+    const response = await POST(makeRequest(VALID_BODY));
+    const payload = await response.json();
+
+    expect(response.status).toBe(200);
+    const valuesArg = valuesMock.mock.calls[0]?.[0];
+    expect(valuesArg.secretToken).toBe(payload.data.workerSecret);
+    expect(valuesArg.secretTokenHash).toBe(`hashed:${payload.data.workerSecret}`);
+    expect(valuesArg.secretTokenHash).not.toBe(payload.data.workerSecret);
   });
 
   it("returns 401 when not authorized", async () => {

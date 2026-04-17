@@ -12,6 +12,7 @@ const { rawQueryOneMock, problemsFindFirstMock, dbSelectMock, recordAuditEventMo
 vi.mock("@/lib/judge/auth", () => ({
   isJudgeAuthorized: vi.fn(() => true),
   isJudgeAuthorizedForWorker: vi.fn(async () => ({ authorized: true })),
+  hashToken: (value: string) => `hashed:${value}`,
 }));
 
 vi.mock("@/lib/audit/events", () => ({
@@ -317,5 +318,41 @@ describe("POST /api/v1/judge/claim", () => {
 
     expect(response.status).toBe(403);
     await expect(response.json()).resolves.toEqual({ error: "invalidWorkerSecret" });
+  });
+
+  it("accepts worker claims when the stored worker secret hash matches the provided secret", async () => {
+    dbSelectMock
+      .mockReturnValueOnce(
+        makeSelectChain([
+          {
+            status: "online",
+            secretToken: null,
+            secretTokenHash: "hashed:worker-secret",
+          },
+        ])
+      )
+      .mockReturnValueOnce(makeSelectChain([]))
+      .mockReturnValueOnce(
+        makeSelectChain([
+          {
+            dockerImage: "judge-python",
+            compileCommand: null,
+            runCommand: "python /workspace/solution.py",
+          },
+        ])
+      );
+
+    const response = await POST(
+      new NextRequest("http://localhost:3000/api/v1/judge/claim", {
+        method: "POST",
+        headers: {
+          Authorization: "Bearer test-token",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ workerId: "worker-1", workerSecret: "worker-secret" }),
+      })
+    );
+
+    expect(response.status).toBe(200);
   });
 });
