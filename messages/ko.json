@@ -1921,6 +1921,13 @@
         "heartbeat": "하트비트"
       },
       "warningTabSwitch": "탭 전환이 감지되었습니다. 검토용 신호가 기록됩니다.",
+      "privacyNoticeTitle": "활동 모니터링 안내",
+      "privacyNoticeDescription": "이 시험은 학업 정직성을 보장하기 위해 활동 모니터링을 사용합니다. 다음 활동이 기록될 수 있습니다:",
+      "privacyNoticeTabSwitch": "탭 또는 창 전환",
+      "privacyNoticeCopyPaste": "복사 및 붙여넣기",
+      "privacyNoticeIpAddress": "IP 주소 변경",
+      "privacyNoticeCodeSnapshots": "주기적 코드 스냅샷",
+      "privacyNoticeAccept": "이해했습니다",
       "similarityCheck": "유사도 스캔 실행",
       "similarityRunning": "유사도 검사 중",
       "similarityComplete": "유사도 스캔이 완료되었습니다. {count}쌍이 검토 대상으로 표시되었습니다.",

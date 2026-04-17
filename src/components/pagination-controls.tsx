@@ -1,3 +1,4 @@
+import { useState } from "react";
 import Link from "next/link";
 import {
   ChevronLeft,
@@ -7,6 +8,7 @@ import {
 } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS } from "@/lib/pagination";
+import { Input } from "@/components/ui/input";
 
 interface PaginationControlsProps {
   currentPage: number;
@@ -146,6 +148,44 @@ export async function PaginationControls({
           )}
         </nav>
       )}
+
+      {totalPages > 10 && (
+        <GoToPage totalPages={totalPages} buildHref={buildHref} pageSize={pageSize} />
+      )}
+    </div>
+  );
+}
+
+function GoToPage({
+  totalPages,
+  buildHref,
+  pageSize,
+}: {
+  totalPages: number;
+  buildHref: (page: number, pageSize: number) => string;
+  pageSize: number;
+}) {
+  const [value, setValue] = useState("");
+
+  return (
+    <div className="flex items-center gap-2 text-sm">
+      <span className="text-muted-foreground whitespace-nowrap">Go to page</span>
+      <Input
+        type="number"
+        min={1}
+        max={totalPages}
+        className="w-16 h-8 text-center text-sm"
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            const page = Math.max(1, Math.min(totalPages, Number(value) || 1));
+            window.location.href = buildHref(page, pageSize);
+          }
+        }}
+        placeholder="..."
+      />
+      <span className="text-muted-foreground">/ {totalPages}</span>
     </div>
   );
 }

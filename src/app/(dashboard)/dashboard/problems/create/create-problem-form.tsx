@@ -110,6 +110,26 @@ export default function CreateProblemForm({
   const areTestCasesEditable = !testCasesLocked || testCaseOverrideEnabled;
   const [expandedTestCases, setExpandedTestCases] = useState<Set<string>>(new Set());
 
+  const [currentTags, setCurrentTags] = useState<string[]>(initialProblem?.tags ?? []);
+  const isDirty =
+    title !== (initialProblem?.title ?? "") ||
+    description !== (initialProblem?.description ?? "") ||
+    sequenceNumber !== (initialProblem?.sequenceNumber?.toString() ?? "") ||
+    timeLimitMs !== (initialProblem?.timeLimitMs ?? 2000) ||
+    memoryLimitMb !== (initialProblem?.memoryLimitMb ?? 256) ||
+    problemType !== (initialProblem?.problemType ?? "auto") ||
+    visibility !== (initialProblem?.visibility ?? "private") ||
+    showCompileOutput !== (initialProblem?.showCompileOutput ?? true) ||
+    showDetailedResults !== (initialProblem?.showDetailedResults ?? true) ||
+    showRuntimeErrors !== (initialProblem?.showRuntimeErrors ?? true) ||
+    allowAiAssistant !== (forceDisableAiAssistant ? false : (initialProblem?.allowAiAssistant ?? true)) ||
+    comparisonMode !== (initialProblem?.comparisonMode ?? "exact") ||
+    difficulty !== (initialProblem?.difficulty?.toString() ?? "") ||
+    defaultLanguage !== (initialProblem?.defaultLanguage ?? "") ||
+    JSON.stringify(currentTags) !== JSON.stringify(initialProblem?.tags ?? []);
+
+  const { allowNextNavigation } = useUnsavedChangesGuard({ isDirty });
+
   useEffect(() => {
     if (forceDisableAiAssistant) {
       setAllowAiAssistant(false);
@@ -117,7 +137,6 @@ export default function CreateProblemForm({
   }, [forceDisableAiAssistant]);
 
   // Tags state
-  const [currentTags, setCurrentTags] = useState<string[]>(initialProblem?.tags ?? []);
   const [tagInput, setTagInput] = useState("");
   const [tagSuggestions, setTagSuggestions] = useState<Array<{ id: string; name: string; color: string | null }>>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -396,6 +415,7 @@ export default function CreateProblemForm({
       const nextProblemId = data.data?.id ?? initialProblem?.id;
 
       toast.success(isEditing ? t("updateSuccess") : t("createSuccess"));
+      allowNextNavigation();
       router.push(nextProblemId ? `/dashboard/problems/${nextProblemId}` : "/dashboard/problems");
       router.refresh();
     } catch (error) {

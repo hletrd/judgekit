@@ -206,7 +206,7 @@
     "instructorQuickActions": "Quick actions",
     "adminQuickActions": "Admin quick actions",
     "judgeSystemSectionTitle": "Judge system snapshot",
-    "judgeSystemSectionDescription": "Check live worker capacity and the major language environments available right now.",
+    "judgeSystemSectionDescription": "Live worker capacity and available language environments.",
     "onlineWorkers": "Online workers",
     "workerCapacity": "Worker capacity",
     "workerCapacityDescription": "Total concurrent judging slots across online workers.",
@@ -215,16 +215,16 @@
     "defaultJudgeLimits": "Default limits",
     "availableArchitecturesValue": "Architectures: {architectures}",
     "featuredLanguageEnvironments": "Featured language environments",
-    "featuredLanguageEnvironmentsDescription": "The dashboard highlights the most commonly used language families first.",
+    "featuredLanguageEnvironmentsDescription": "Most commonly used language families.",
     "additionalLanguagesMessage": "{count} more enabled languages are available on the full catalog page.",
     "viewAllLanguages": "View all languages",
     "activeVariantCount": "{count} active variants",
     "noEnabledLanguages": "No enabled languages are currently available.",
-    "supportedLanguagesCatalogDescription": "The main dashboard highlights only major language environments. This page lists every enabled language variant available in the current deployment.",
+    "supportedLanguagesCatalogDescription": "Every enabled language variant in this deployment.",
     "viewDashboardOverview": "Back to dashboard overview",
     "enabledLanguageCount": "Enabled language variants",
     "allEnabledLanguages": "All enabled languages",
-    "allEnabledLanguagesDescription": "Each row represents an enabled judge language key and its runtime environment.",
+    "allEnabledLanguagesDescription": "Enabled judge languages and their runtimes.",
     "languageKey": "Language key",
     "fileExtension": "File ext."
   },
@@ -240,7 +240,7 @@
   "problems": {
     "title": "Problems",
     "detail": "Problem Detail",
-    "description": "Browse and solve programming problems.",
+    "description": "Solve programming problems.",
     "available": "Available Problems",
     "create": "Create Problem",
     "solve": "Solve",
@@ -263,10 +263,10 @@
     "submitConfirmAction": "Send to Judge",
     "selectLanguage": "Select Language",
     "exportProblem": "Export",
-    "exportSuccess": "Problem exported successfully.",
+    "exportSuccess": "Problem exported.",
     "exportFailed": "Failed to export problem.",
     "importProblem": "Import",
-    "importSuccess": "Problem imported successfully.",
+    "importSuccess": "Problem imported.",
     "importFailed": "Failed to import problem.",
     "uploadSourceFile": "Upload Source File",
     "sourceFileLoaded": "\"{name}\" loaded into the editor.",
@@ -276,7 +276,7 @@
     "descriptionTitle": "Description",
     "noDescription": "No description.",
     "createTitle": "Create New Problem",
-    "createDescription": "Set up a new problem with test cases and limits.",
+    "createDescription": "Add test cases and limits.",
     "editTitle": "Edit Problem",
     "editDescription": "Edit problem details and test cases.",
     "titleLabel": "Title",
@@ -457,7 +457,7 @@
   },
   "problemSets": {
     "title": "Problem Sets",
-    "description": "Organize problems into reusable sets.",
+    "description": "Group problems into sets.",
     "create": "Create Problem Set",
     "createTitle": "Create Problem Set",
     "createDescription": "Create a new set of problems.",
@@ -515,7 +515,7 @@
     "title": "My Submissions",
     "instructorTitle": "Group Submissions",
     "detail": "Submission Detail",
-    "description": "View your submission history and results.",
+    "description": "Your submission history and results.",
     "mySubmissions": "My Submissions",
     "allSubmissions": "All Submissions",
     "groupSubmissions": "User Submissions",
@@ -614,7 +614,7 @@
   "groups": {
     "title": "Groups",
     "detail": "Group Detail",
-    "description": "View your enrolled groups and assignments.",
+    "description": "Your groups and assignments.",
     "myGroups": "My Groups",
     "create": "Create Group",
     "createDialogTitle": "Create Group",
@@ -690,7 +690,7 @@
     "archiveFailed": "Failed to archive group",
     "unarchiveFailed": "Failed to unarchive group",
     "assignments": "Assignments",
-    "assignmentsDescription": "Manage assignments for this group.",
+    "assignmentsDescription": "Assignments for this group.",
     "createAssignment": "Create assignment",
     "assignmentCreateDialogTitle": "Create assignment",
     "assignmentCreateDialogDescription": "Add a new assignment with problems and deadlines.",
@@ -775,7 +775,7 @@
     "freezeLeaderboardLabel": "Freeze Leaderboard At",
     "freezeLeaderboardDescription": "Users see frozen standings after this time. Instructors see live data.",
     "enableAntiCheatLabel": "Enable anti-cheat monitoring",
-    "enableAntiCheatDescription": "Logs browser focus changes, copy/paste, and similar signals as review aids. This is low-confidence telemetry — not proctoring or proof of misconduct. For formal exams, add separate operational controls.",
+    "enableAntiCheatDescription": "Logs browser focus changes, copy/paste, and similar signals as review aids. This is low-confidence telemetry, not proctoring or proof of misconduct. For formal exams, add separate operational controls.",
     "showResultsToCandidateLabel": "Show grading results to participants",
     "showResultsToCandidateDescription": "When enabled, participants can see their grading details including test case results. When disabled, only instructors and admins can view results.",
     "hideScoresFromCandidatesLabel": "Hide scores from participants",
@@ -899,7 +899,7 @@
       "applyFilters": "Apply",
       "resetFilters": "Reset",
       "allRoles": "All roles",
-      "autoGeneratedPasswordNotice": "A secure one-time password will be generated automatically when you create this user.",
+      "autoGeneratedPasswordNotice": "A one-time password will be generated when you create this user.",
       "generatedPasswordTitle": "Copy the generated password",
       "generatedPasswordDescription": "This password is shown only once. Copy it now and share it securely with the user.",
       "generatedPasswordLabel": "Generated password",
@@ -978,7 +978,7 @@
     },
     "submissions": {
       "title": "All Submissions",
-      "description": "View and manage all submissions.",
+      "description": "All submission history.",
       "recent": "Recent Submissions (All Users)",
       "table": {
         "id": "ID",
@@ -997,7 +997,7 @@
     },
     "loginLogs": {
       "title": "Login Logs",
-      "description": "Recent login activity.",
+      "description": "Login activity.",
       "filtersTitle": "Filters",
       "resultsTitle": "Recent Login Events",
       "applyFilters": "Apply Filters",
@@ -1031,7 +1031,7 @@
     },
     "auditLogs": {
       "title": "Audit Logs",
-      "description": "Recent admin and system changes.",
+      "description": "Admin and system changes.",
       "filtersTitle": "Filters",
       "resultsTitle": "Recent Audit Events",
       "applyFilters": "Apply Filters",
@@ -1080,7 +1080,7 @@
     },
     "settings": {
       "title": "System Settings",
-      "description": "Global application settings.",
+      "description": "Application settings.",
       "siteCardTitle": "Site Identity",
       "siteCardDescription": "Site title, description, and timezone.",
       "siteTitle": "Site Title",
@@ -1266,10 +1266,10 @@
     },
     "files": {
       "title": "File Management",
-      "description": "Upload and manage files for problem descriptions.",
+      "description": "Files for problem descriptions.",
       "uploadButton": "Upload Files",
       "uploadDialogTitle": "Upload Files",
-      "uploadDialogDescription": "Upload images and attachments. Images are automatically optimized.",
+      "uploadDialogDescription": "Upload images and attachments. Images are optimized on upload.",
       "dropzoneHint": "Click or drag & drop files here",
       "dropzoneActive": "Drop files here...",
       "uploading": "Uploading...",
@@ -1318,7 +1318,7 @@
     },
     "roles": {
       "title": "Role Management",
-      "description": "Manage roles and their capabilities.",
+      "description": "Roles and capabilities.",
       "createRole": "Create Role",
       "editRole": "Edit Role",
       "deleteRole": "Delete Role",
@@ -1362,8 +1362,7 @@
     },
     "languages": {
       "title": "Language Management",
-      "description": "Configure supported programming languages, compile options, and Docker images.",
-      "languageCount": "{enabled} of {total} languages enabled",
+      "description": "Programming languages, compile options, and Docker images.",
       "search": "Search languages...",
       "noResults": "No languages found.",
       "noCompileCommand": "No compile step",
@@ -1445,7 +1444,7 @@
     },
     "workers": {
       "title": "Judge Workers",
-      "description": "Monitor and manage connected judge workers.",
+      "description": "Connected judge workers.",
       "statsOnline": "Workers Online",
       "statsQueueDepth": "Queue Depth",
       "statsActiveJudging": "Active Judging",
@@ -1483,7 +1482,7 @@
     },
     "apiKeys": {
       "title": "API Keys",
-      "description": "Create and manage API keys for programmatic access.",
+      "description": "API keys for programmatic access.",
       "createKey": "Create API Key",
       "noKeys": "No API keys yet.",
       "colName": "Name",
@@ -1532,7 +1531,7 @@
       "viewKey": "View Key",
       "viewKeyTitle": "API Key",
       "viewKeyDescription": "Full API key for \"{name}\".",
-      "noEncryptedKey": "Old key — can't be viewed. Create a new one instead.",
+      "noEncryptedKey": "Old key, can't be viewed. Create a new one instead.",
       "viewKeyFailed": "Couldn't load key"
     },
     "tags": {
@@ -1562,7 +1561,7 @@
   },
   "profile": {
     "title": "Profile",
-    "description": "Manage your account settings and preferences.",
+    "description": "Account settings and preferences.",
     "userProfile": "User Profile",
     "userProfileDesc": "Your account details and role.",
     "userId": "User ID",
@@ -1702,7 +1701,7 @@
   },
   "plugins": {
     "title": "Plugins",
-    "description": "Manage and configure plugins.",
+    "description": "Plugins.",
     "enabled": "Enabled",
     "disabled": "Disabled",
     "configure": "Configure",
@@ -1758,14 +1757,14 @@
       "noLogs": "No chat logs yet.",
       "noMessages": "No messages in this conversation.",
       "loggingNotice": "Messages may be stored and reviewed by authorized staff to improve support and investigate misuse.",
-      "chatLogsRetentionNotice": "Chat transcripts are automatically pruned after {days} days unless they are exported through other review workflows.",
+      "chatLogsRetentionNotice": "Chat transcripts are pruned after {days} days unless exported through other review workflows.",
       "chatLogsAccessNotice": "Only authorized staff with chat-log access should review transcripts, and only for support, safety, or assessment-governance reasons.",
       "chatLogsAuditNotice": "Chat-log session views are audit logged."
     }
   },
   "rankings": {
     "title": "Rankings",
-    "description": "User rankings by number of solved problems.",
+    "description": "Rankings by solved problems.",
     "rank": "Rank",
     "username": "Username",
     "name": "Name",
@@ -1799,7 +1798,7 @@
   },
   "contests": {
     "title": "Contests",
-    "description": "Timed exams and contests across all your groups.",
+    "description": "Timed exams and contests.",
     "noContests": "No contests available.",
     "enterContest": "Enter Contest",
     "createContest": "Create Contest",
@@ -1921,6 +1920,13 @@
         "heartbeat": "Heartbeat"
       },
       "warningTabSwitch": "Tab switch detected. An integrity signal has been recorded for review.",
+      "privacyNoticeTitle": "Activity Monitoring Notice",
+      "privacyNoticeDescription": "This exam uses activity monitoring to help ensure academic integrity. The following activities may be recorded:",
+      "privacyNoticeTabSwitch": "Tab or window switches",
+      "privacyNoticeCopyPaste": "Copy and paste actions",
+      "privacyNoticeIpAddress": "IP address changes",
+      "privacyNoticeCodeSnapshots": "Periodic code snapshots",
+      "privacyNoticeAccept": "I Understand",
       "similarityCheck": "Run Similarity Scan",
       "similarityRunning": "Running similarity scan...",
       "similarityComplete": "Similarity scan complete. {count} pairs flagged for review.",
@@ -2072,7 +2078,7 @@
       "accountPasswordCopied": "Account password copied"
     },
     "codeTimeline": {
-      "title": "Code timeline — {name}",
+      "title": "Code timeline: {name}",
       "noSnapshots": "No code snapshots recorded yet.",
       "allProblems": "All problems"
     },
@@ -2185,7 +2191,7 @@
   },
   "compiler": {
     "title": "Compiler",
-    "description": "Write, compile, and run code in your browser with stdin/stdout.",
+    "description": "Write, compile, and run code with stdin/stdout.",
     "language": "Language",
     "stdin": "Standard Input (stdin)",
     "stdout": "Standard Output (stdout)",
@@ -2295,7 +2301,7 @@
     },
     "languages": {
       "title": "Language Management",
-      "description": "Configure supported programming languages, compile options, and Docker images.",
+      "description": "Programming languages, compile options, and Docker images.",
       "table": {
         "language": "Language",
         "displayName": "Display Name",
@@ -2381,7 +2387,7 @@
     "deadlineInfo": "Deadline: {date}",
     "importantNotes": "Before you start",
     "noteTimer": "The timer begins when you click Start and cannot be paused or restarted.",
-    "noteSubmissions": "You may submit multiple times — your best score counts.",
+    "noteSubmissions": "You may submit multiple times; your best score counts.",
     "noteCompletion": "Make sure you have a stable connection and enough time to complete.",
     "startAssessment": "Start Assessment",
     "continueAssessment": "Continue Assessment",
@@ -2423,7 +2429,7 @@
     "home": {
       "eyebrow": "Online judge platform",
       "title": "Write code. Submit. Get judged.",
-      "description": "JudgeKit is a modern online judge for programming practice, contests, and coursework. Solve problems, compete in contests, and track your progress.",
+      "description": "Solve problems, compete in contests, and track your progress.",
       "primaryCta": "Open workspace",
       "secondaryCta": "Sign in",
       "workersTitle": "Judge worker fleet",
@@ -2440,38 +2446,38 @@
       "cards": {
         "practice": {
           "title": "Practice",
-          "description": "Solve problems and sharpen your algorithm skills at your own pace."
+          "description": "Solve problems at your own pace."
         },
         "playground": {
           "title": "Playground",
-          "description": "Write and run code instantly — no sign-in required."
+          "description": "Write and run code instantly, no sign-in required."
         },
         "contests": {
           "title": "Contests",
-          "description": "Browse and join upcoming programming competitions."
+          "description": "Join upcoming programming competitions."
         },
         "community": {
           "title": "Community",
-          "description": "Ask questions, share tips, and discuss with other users."
+          "description": "Questions, tips, and discussion."
         }
       },
       "insights": {
         "problems": {
           "label": "Public problems",
-          "description": "Solve from a growing catalog of publicly available challenges."
+          "description": "Solve publicly available challenges."
         },
         "submissions": {
           "label": "Total submissions",
-          "description": "See the scale of activity already flowing through the judge."
+          "description": "Total submissions run through this deployment."
         },
         "languages": {
           "label": "Supported languages",
-          "description": "Run and submit code across a broad multi-language toolchain."
+          "description": "Run and submit code in multiple languages."
         }
       },
       "judgeInfo": {
         "title": "Judge System",
-        "description": "Submissions are evaluated in isolated Docker sandboxes with per-language toolchains.",
+        "description": "Submissions run in isolated Docker sandboxes with per-language toolchains.",
         "enabledLanguages": "Enabled languages",
         "onlineWorkers": "Workers online",
         "parallelSlots": "Parallel slots",
@@ -2480,7 +2486,7 @@
     },
     "languages": {
       "title": "Judge Environments & Compilation Options",
-      "description": "Detailed runtime, compiler, and compilation command information for every enabled language.",
+      "description": "Runtime, compiler, and compile command details for every enabled language.",
       "featuredTitle": "Featured environments",
       "featuredDescription": "Major language families with multiple standard variants.",
       "allLanguages": "All enabled languages",
@@ -2620,7 +2626,7 @@
       },
       "sets": {
         "title": "Problem Sets",
-        "description": "Browse curated public problem sets and solve them in order.",
+        "description": "Public problem sets to solve in order.",
         "searchLabel": "Search sets",
         "searchPlaceholder": "Search by title or description…",
         "empty": "No public problem sets yet.",

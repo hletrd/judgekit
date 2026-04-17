@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useCallback } from "react";
+import { useEffect, useRef, useCallback, useState } from "react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
+import { ShieldAlert } from "lucide-react";
 import { apiFetch } from "@/lib/api/client";
 
 interface AntiCheatMonitorProps {
@@ -51,6 +52,7 @@ export function AntiCheatMonitor({
 }: AntiCheatMonitorProps) {
   const t = useTranslations("contests.antiCheat");
   const resolvedWarningMessage = warningMessage ?? t("warningTabSwitch");
+  const [showPrivacyNotice, setShowPrivacyNotice] = useState(true);
   const lastEventRef = useRef<Record<string, number>>({});
   const MIN_INTERVAL_MS = 1000;
   const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -219,6 +221,36 @@ export function AntiCheatMonitor({
       }
     };
   }, [enabled, flushPendingEvents, reportEvent, resolvedWarningMessage]);
+
+  if (!enabled) return null;
+
+  if (showPrivacyNotice) {
+    return (
+      <div className="fixed inset-0 z-[60] flex items-center justify-center bg-background/80 backdrop-blur-sm">
+        <div className="mx-4 max-w-md rounded-lg border bg-card p-6 shadow-lg">
+          <div className="flex items-center gap-2 mb-3">
+            <ShieldAlert className="size-5 text-muted-foreground" />
+            <h3 className="font-semibold">{t("privacyNoticeTitle")}</h3>
+          </div>
+          <p className="text-sm text-muted-foreground mb-3">
+            {t("privacyNoticeDescription")}
+          </p>
+          <ul className="text-sm text-muted-foreground mb-4 space-y-1 list-disc list-inside">
+            <li>{t("privacyNoticeTabSwitch")}</li>
+            <li>{t("privacyNoticeCopyPaste")}</li>
+            <li>{t("privacyNoticeIpAddress")}</li>
+            <li>{t("privacyNoticeCodeSnapshots")}</li>
+          </ul>
+          <button
+            className="w-full rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+            onClick={() => setShowPrivacyNotice(false)}
+          >
+            {t("privacyNoticeAccept")}
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return null;
 }
