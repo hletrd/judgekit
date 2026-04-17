@@ -52,10 +52,14 @@ const STATUS_FILTER_VALUES = [
 
 type StatusFilter = (typeof STATUS_FILTER_VALUES)[number];
 
+function normalizeLanguageFilter(value?: string) {
+  return typeof value === "string" ? value.trim().slice(0, 50) : "";
+}
+
 export default async function AdminSubmissionsPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ page?: string; search?: string; sort?: string; dir?: string; status?: string }>;
+  searchParams?: Promise<{ page?: string; search?: string; sort?: string; dir?: string; status?: string; language?: string }>;
 }) {
   const session = await auth();
   if (!session?.user) redirect("/login");
@@ -68,6 +72,7 @@ export default async function AdminSubmissionsPage({
   const statusFilter = STATUS_FILTER_VALUES.includes((resolvedSearchParams?.status ?? "all") as StatusFilter)
     ? ((resolvedSearchParams?.status ?? "all") as StatusFilter)
     : "all";
+  const languageFilter = normalizeLanguageFilter(resolvedSearchParams?.language);
   const sortColumn = resolvedSearchParams?.sort ?? "submittedAt";
   const sortDir = resolvedSearchParams?.dir === "asc" ? "asc" : "desc";
   const validSortColumns = new Set(["submittedAt", "score", "status", "language"]);
@@ -91,8 +96,15 @@ export default async function AdminSubmissionsPage({
     : undefined;
   const whereClause = and(
     statusFilter !== "all" ? eq(submissions.status, statusFilter) : undefined,
+    languageFilter ? eq(submissions.language, languageFilter) : undefined,
     searchWhereClause
   );
+
+  const availableLanguages = await db
+    .select({ language: submissions.language })
+    .from(submissions)
+    .groupBy(submissions.language)
+    .orderBy(asc(submissions.language));
 
   const [countRow] = await db
     .select({ count: count() })
@@ -152,6 +164,7 @@ export default async function AdminSubmissionsPage({
     if (page > 1) params.set("page", String(page));
     if (searchQuery) params.set("search", searchQuery);
     if (statusFilter !== "all") params.set("status", statusFilter);
+    if (languageFilter) params.set("language", languageFilter);
     if (effectiveSort !== "submittedAt") params.set("sort", effectiveSort);
     if (sortDir === "asc") params.set("dir", "asc");
     const qs = params.toString();
@@ -162,6 +175,7 @@ export default async function AdminSubmissionsPage({
     const params = new URLSearchParams();
     if (searchQuery) params.set("search", searchQuery);
     if (statusFilter !== "all") params.set("status", statusFilter);
+    if (languageFilter) params.set("language", languageFilter);
     if (column === effectiveSort) {
       params.set("dir", sortDir === "desc" ? "asc" : "desc");
     } else {
@@ -220,6 +234,26 @@ export default async function AdminSubmissionsPage({
                       ? tSubmissions("statusFilter.all")
                       : statusLabels[value as keyof typeof statusLabels] ?? value,
                 }))}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="block text-sm font-medium" htmlFor="submissions-language">
+                {tSubmissions("languageFilterLabel")}
+              </label>
+              <FilterSelect
+                name="language"
+                defaultValue={languageFilter || "all"}
+                placeholder={tSubmissions("allLanguages")}
+                options={[
+                  { value: "all", label: tSubmissions("allLanguages") },
+                  ...availableLanguages
+                    .map((entry) => entry.language)
+                    .filter((language): language is string => Boolean(language))
+                    .map((language) => ({
+                      value: language,
+                      label: getLanguageDisplayLabel(language),
+                    })),
+                ]}
               />
             </div>
             <div className="flex gap-2 items-end">

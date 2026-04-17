@@ -15,5 +15,9 @@ describe("admin submissions implementation", () => {
     expect(source).toContain('eq(submissions.status, statusFilter)');
     expect(source).toContain('if (statusFilter !== "all") params.set("status", statusFilter);');
     expect(source).toContain('tSubmissions("statusFilter.all")');
+    expect(source).toContain('name="language"');
+    expect(source).toContain('eq(submissions.language, languageFilter)');
+    expect(source).toContain('if (languageFilter) params.set("language", languageFilter);');
+    expect(source).toContain('tSubmissions("allLanguages")');
   });
 });
