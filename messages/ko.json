@@ -462,6 +462,8 @@
   "problemSets": {
     "title": "문제 묶음",
     "description": "문제를 묶어 세트로 만듭니다.",
+    "publicLabel": "공개 문제집",
+    "publicDescription": "공개 문제집은 접근 권한이 있는 학습자가 대시보드 밖에서도 찾을 수 있습니다.",
     "create": "문제 묶음 생성",
     "createTitle": "문제 묶음 생성",
     "createDescription": "새 문제 세트를 만듭니다.",
@@ -880,10 +882,25 @@
     "assignmentVisibilityDescription_public": "공개 대회 카탈로그에 표시됩니다. 참가 및 시작은 계속 로그인이 필요합니다.",
     "assignmentPerformance": "과제 성적 분석",
     "assignmentTitle": "과제",
+    "analytics": "분석",
+    "totalSubmissions": "총 제출 수",
+    "totalPoints": "총 배점",
+    "submitted": "제출 수",
+    "avgScore": "평균 점수",
+    "deadline": "마감",
     "highScore": "최고 점수",
     "lowScore": "최저 점수",
     "noAssignmentsYet": "아직 과제가 없습니다.",
     "avgOverallScore": "전체 평균"
+  },
+  "editor": {
+    "shortcutSubmit": "코드 제출",
+    "shortcutExitFullscreen": "전체 화면 종료",
+    "shortcutFullscreen": "전체 화면 전환",
+    "shortcutFontSize": "글자 크기 조절",
+    "shortcutStats": "제출 통계 전환",
+    "shortcutLayout": "패널 레이아웃 전환",
+    "shortcutsTitle": "키보드 단축키"
   },
   "admin": {
     "users": {
@@ -2239,6 +2256,9 @@
     "runFailed": "코드 실행에 실패했습니다",
     "networkError": "네트워크 오류가 발생했습니다",
     "codeEditorLabel": "코드 편집기",
+    "addTestCase": "테스트 케이스 추가",
+    "removeTestCase": "테스트 케이스 삭제",
+    "testCaseLabel": "테스트 케이스 {number}",
     "loadingLanguages": "언어 목록을 불러오는 중",
     "noLanguagesTitle": "사용 가능한 언어 없음",
     "noLanguagesDescription": "현재 활성화된 프로그래밍 언어가 없습니다. 관리자에게 문의해 주세요."
@@ -2652,7 +2672,9 @@
         "memoryUsage": "메모리 사용량: {value}",
         "expand": "펼치기",
         "collapse": "접기",
-        "pagination": "{page} / {totalPages} 페이지"
+        "pagination": "{page} / {totalPages} 페이지",
+        "previous": "이전",
+        "next": "다음"
       },
       "sets": {
         "title": "문제집",

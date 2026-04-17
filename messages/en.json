@@ -462,6 +462,8 @@
   "problemSets": {
     "title": "Problem Sets",
     "description": "Group problems into sets.",
+    "publicLabel": "Public set",
+    "publicDescription": "Public problem sets can be discovered outside the dashboard by authenticated learners who have access.",
     "create": "Create Problem Set",
     "createTitle": "Create Problem Set",
     "createDescription": "Create a new set of problems.",
@@ -880,10 +882,25 @@
     "assignmentVisibilityDescription_public": "Visible in the public contest catalog. Joining and starting still require authentication.",
     "assignmentPerformance": "Assignment Performance",
     "assignmentTitle": "Assignment",
+    "analytics": "Analytics",
+    "totalSubmissions": "Total Submissions",
+    "totalPoints": "Total Points",
+    "submitted": "Submitted",
+    "avgScore": "Avg Score",
+    "deadline": "Deadline",
     "highScore": "High Score",
     "lowScore": "Low Score",
     "noAssignmentsYet": "No assignments yet.",
     "avgOverallScore": "Avg Overall Score"
+  },
+  "editor": {
+    "shortcutSubmit": "Submit code",
+    "shortcutExitFullscreen": "Exit fullscreen",
+    "shortcutFullscreen": "Toggle fullscreen",
+    "shortcutFontSize": "Font size",
+    "shortcutStats": "Toggle submission stats",
+    "shortcutLayout": "Switch panel layout",
+    "shortcutsTitle": "Keyboard Shortcuts"
   },
   "admin": {
     "users": {
@@ -1392,6 +1409,7 @@
     "languages": {
       "title": "Language Management",
       "description": "Programming languages, compile options, and Docker images.",
+      "languageCount": "{enabled} of {total} languages enabled",
       "search": "Search languages...",
       "noResults": "No languages found.",
       "noCompileCommand": "No compile step",
@@ -2238,6 +2256,9 @@
     "runFailed": "Failed to run code",
     "networkError": "Network error occurred",
     "codeEditorLabel": "Code editor",
+    "addTestCase": "Add Test Case",
+    "removeTestCase": "Remove Test Case",
+    "testCaseLabel": "Test Case {number}",
     "loadingLanguages": "Loading languages...",
     "noLanguagesTitle": "No Languages Available",
     "noLanguagesDescription": "No programming languages are currently enabled. Please contact an administrator."
@@ -2651,7 +2672,9 @@
         "memoryUsage": "Memory usage: {value}",
         "expand": "Expand",
         "collapse": "Collapse",
-        "pagination": "Page {page} of {totalPages}"
+        "pagination": "Page {page} of {totalPages}",
+        "previous": "Previous",
+        "next": "Next"
       },
       "sets": {
         "title": "Problem Sets",
