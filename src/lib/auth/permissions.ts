@@ -247,6 +247,13 @@ export async function canAccessSubmission(
     return true;
   }
 
+  // SECURITY NOTE (Plan 006): When assignmentId is null (non-assignment
+  // submissions), canViewAssignmentSubmissions returns false. This means
+  // only the submission owner, admins, and users with submissions.view_all
+  // can access non-assignment submissions. This is correct — without an
+  // assignment there is no instructor relationship to check. The route
+  // handler at src/app/api/v1/submissions/[id]/route.ts calls this function
+  // before returning any submission data, so there is no IDOR gap.
   // Instructors: scoped to their own groups via canViewAssignmentSubmissions
   return canViewAssignmentSubmissions(submission.assignmentId, userId, role);
 }
