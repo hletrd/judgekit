@@ -39,11 +39,25 @@ export function PublicHeader({ siteTitle, items, actions, loggedInUser }: Public
   const menuId = useId();
   const toggleRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
+  const previousPathnameRef = useRef(pathname);
 
   // Close menu on route change
   useEffect(() => {
-    setMobileOpen(false);
-  }, [pathname]);
+    if (previousPathnameRef.current === pathname) {
+      return;
+    }
+
+    previousPathnameRef.current = pathname;
+    if (!mobileOpen) {
+      return;
+    }
+
+    const frame = window.requestAnimationFrame(() => {
+      setMobileOpen(false);
+    });
+
+    return () => window.cancelAnimationFrame(frame);
+  }, [mobileOpen, pathname]);
 
   // Focus management: Escape to close, focus first item on open, restore focus on close
   useEffect(() => {

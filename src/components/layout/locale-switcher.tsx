@@ -53,7 +53,7 @@ export function LocaleSwitcher({ className }: { className?: string }) {
     <DropdownMenu>
       <DropdownMenuTrigger
         render={
-          <Button variant="ghost" size="icon" aria-label={t("language")}>
+          <Button variant="ghost" size="icon" aria-label={t("language")} className={className}>
             <Languages className="size-4" aria-hidden="true" />
           </Button>
         }

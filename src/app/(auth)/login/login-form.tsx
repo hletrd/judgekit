@@ -21,7 +21,6 @@ export function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const t = useTranslations("auth");
-  const tCommon = useTranslations("common");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);

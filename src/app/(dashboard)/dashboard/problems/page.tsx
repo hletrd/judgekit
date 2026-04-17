@@ -14,7 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { db } from "@/lib/db";
 import { enrollments, problemGroupAccess, problems, submissions, users, tags, problemTags } from "@/lib/db/schema";
-import { desc, eq, and, like, or, sql, inArray, asc } from "drizzle-orm";
+import { eq, and, like, or, sql, inArray, asc } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import Link from "next/link";

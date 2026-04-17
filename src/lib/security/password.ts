@@ -4,8 +4,9 @@ export type PasswordValidationError = "passwordTooShort";
 
 export function getPasswordValidationError(
   password: string,
-  _context?: { username?: string; email?: string | null }
+  context?: { username?: string; email?: string | null }
 ): PasswordValidationError | null {
+  void context;
   if (password.length < FIXED_MIN_PASSWORD_LENGTH) {
     return "passwordTooShort";
   }

@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -231,7 +232,15 @@ export function AppSidebar({
       <SidebarHeader className="border-b p-4">
         <Link href="/" className="flex items-center gap-2">
           {siteIconUrl ? (
-            <img src={siteIconUrl} alt="" className="h-6 w-6 rounded object-contain" />
+            <Image
+              src={siteIconUrl}
+              alt=""
+              width={24}
+              height={24}
+              unoptimized
+              loader={({ src }) => src}
+              className="h-6 w-6 rounded object-contain"
+            />
           ) : (
             <GraduationCap className="h-6 w-6" aria-hidden="true" />
           )}

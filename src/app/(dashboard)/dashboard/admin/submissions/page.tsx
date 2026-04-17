@@ -148,7 +148,7 @@ export default async function AdminSubmissionsPage({
     return qs ? `/dashboard/admin/submissions?${qs}` : "/dashboard/admin/submissions";
   }
 
-  function SortableHeader({ column, label }: { column: string; label: string }) {
+  function renderSortableHeader(column: string, label: string) {
     const isActive = column === effectiveSort;
     return (
       <TableHead>
@@ -208,10 +208,10 @@ export default async function AdminSubmissionsPage({
                 <TableHead>{t("table.id")}</TableHead>
                 <TableHead>{t("table.user")}</TableHead>
                 <TableHead>{t("table.problem")}</TableHead>
-                <SortableHeader column="language" label={t("table.language")} />
-                <SortableHeader column="status" label={t("table.status")} />
-                <SortableHeader column="score" label={t("table.score")} />
-                <SortableHeader column="submittedAt" label={t("table.submittedAt")} />
+                {renderSortableHeader("language", t("table.language"))}
+                {renderSortableHeader("status", t("table.status"))}
+                {renderSortableHeader("score", t("table.score"))}
+                {renderSortableHeader("submittedAt", t("table.submittedAt"))}
                 <TableHead>{tCommon("action")}</TableHead>
               </TableRow>
             </TableHeader>

@@ -59,6 +59,7 @@ export async function streamBackupWithFiles(signal?: AbortSignal): Promise<Reada
 
   // 4. Generate ZIP as a Web ReadableStream
   const blob = await zip.generateAsync({ type: "uint8array" }, (metadata) => {
+    void metadata;
     if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
   });
 

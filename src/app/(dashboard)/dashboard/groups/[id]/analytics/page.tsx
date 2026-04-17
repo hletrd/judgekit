@@ -17,7 +17,7 @@ interface PageProps {
   params: Promise<{ id: string }>;
 }
 
-export async function generateMetadata({ params }: PageProps) {
+export async function generateMetadata() {
   const t = await getTranslations("groups");
   return { title: `${t("analytics")} - JudgeKit` };
 }
@@ -35,7 +35,7 @@ export default async function GroupAnalyticsPage({ params }: PageProps) {
 
   const t = await getTranslations("groups");
   const locale = await getLocale();
-  const timeZone = getResolvedSystemTimeZone();
+  const timeZone = await getResolvedSystemTimeZone();
 
   // Get group member count
   const [memberCountRow] = await db
