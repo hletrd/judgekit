@@ -16,11 +16,11 @@ async function getDbHcaptchaFields() {
   const { getSystemSettings } = await import("@/lib/system-settings");
   const settings = await getSystemSettings();
   if (!settings) return { siteKey: null, secret: null };
+  const hcaptchaSiteKey = (settings as Record<string, unknown>).hcaptchaSiteKey as string | null;
+  const hcaptchaSecret = (settings as Record<string, unknown>).hcaptchaSecret as string | null;
   return {
-    siteKey: (settings as Record<string, unknown>).hcaptchaSiteKey as string | null ?? null,
-    secret: ((settings as Record<string, unknown>).hcaptchaSecret as string | null != null)
-      ? decrypt((settings as Record<string, unknown>).hcaptchaSecret as string)
-      : null,
+    siteKey: hcaptchaSiteKey ?? null,
+    secret: hcaptchaSecret != null ? decrypt(hcaptchaSecret) : null,
   };
 }
 

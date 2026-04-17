@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { timingSafeEqual } from "node:crypto";
+import { safeTokenCompare } from "@/lib/security/timing";
 import { apiSuccess, apiError } from "@/lib/api/responses";
 import { db } from "@/lib/db";
 import { rawQueryOne } from "@/lib/db/queries";
@@ -106,15 +106,11 @@ export async function POST(request: NextRequest) {
           return apiError("workerSecretRequired", 400);
         }
         if (worker.secretTokenHash) {
-          const provided = Buffer.from(hashToken(workerSecret));
-          const expected = Buffer.from(worker.secretTokenHash);
-          if (provided.length !== expected.length || !timingSafeEqual(provided, expected)) {
+          if (!safeTokenCompare(hashToken(workerSecret), worker.secretTokenHash)) {
             return apiError("invalidWorkerSecret", 403);
           }
         } else {
-          const provided = Buffer.from(workerSecret);
-          const expected = Buffer.from(worker.secretToken!);
-          if (provided.length !== expected.length || !timingSafeEqual(provided, expected)) {
+          if (!safeTokenCompare(workerSecret, worker.secretToken!)) {
             return apiError("invalidWorkerSecret", 403);
           }
         }
