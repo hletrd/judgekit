@@ -10,11 +10,14 @@ import { db, type TransactionClient, activeDialect } from "./index";
 import type { DbDialect } from "./config";
 import * as schema from "./schema";
 
+export type JudgeKitExportRedactionMode = "full-fidelity" | "sanitized";
+
 export interface JudgeKitExport {
   version: 1;
   exportedAt: string;
   sourceDialect: DbDialect;
   appVersion: string;
+  redactionMode?: JudgeKitExportRedactionMode;
   tables: Record<
     string,
     {
@@ -27,12 +30,13 @@ export interface JudgeKitExport {
 
 export function createExportJsonStream(data: JudgeKitExport): ReadableStream<Uint8Array> {
   const encoder = new TextEncoder();
+  const redactionMode = data.redactionMode ?? "full-fidelity";
 
   return new ReadableStream({
     start(controller) {
       controller.enqueue(
         encoder.encode(
-          `{"version":${data.version},"exportedAt":${JSON.stringify(data.exportedAt)},"sourceDialect":${JSON.stringify(data.sourceDialect)},"appVersion":${JSON.stringify(data.appVersion)},"tables":{`
+          `{"version":${data.version},"exportedAt":${JSON.stringify(data.exportedAt)},"sourceDialect":${JSON.stringify(data.sourceDialect)},"appVersion":${JSON.stringify(data.appVersion)},"redactionMode":${JSON.stringify(redactionMode)},"tables":{`
         )
       );
 
@@ -72,6 +76,7 @@ async function waitForReadableStreamDemand(
 
 export function streamDatabaseExport(options: { signal?: AbortSignal; sanitize?: boolean } = {}): ReadableStream<Uint8Array> {
   const encoder = new TextEncoder();
+  const redactionMode = getExportRedactionMode(options.sanitize);
   let cancelled = false;
   const abort = () => {
     cancelled = true;
@@ -88,7 +93,7 @@ export function streamDatabaseExport(options: { signal?: AbortSignal; sanitize?:
 
           controller.enqueue(
             encoder.encode(
-              `{"version":1,"exportedAt":${JSON.stringify(new Date().toISOString())},"sourceDialect":${JSON.stringify(activeDialect)},"appVersion":${JSON.stringify(process.env.npm_package_version ?? "unknown")},"tables":{`
+              `{"version":1,"exportedAt":${JSON.stringify(new Date().toISOString())},"sourceDialect":${JSON.stringify(activeDialect)},"appVersion":${JSON.stringify(process.env.npm_package_version ?? "unknown")},"redactionMode":${JSON.stringify(redactionMode)},"tables":{`
             )
           );
 
@@ -250,6 +255,10 @@ function normalizeValue(val: unknown): unknown {
 
 const EXPORT_CHUNK_SIZE = 1000;
 
+function getExportRedactionMode(sanitize?: boolean): JudgeKitExportRedactionMode {
+  return sanitize ? "sanitized" : "full-fidelity";
+}
+
 /**
  * Columns redacted in sanitized (human-downloadable) exports.
  * Full-fidelity backup keeps all columns for disaster recovery.
@@ -318,6 +327,7 @@ export async function exportDatabase(options: { sanitize?: boolean } = {}): Prom
       exportedAt: new Date().toISOString(),
       sourceDialect: activeDialect,
       appVersion: process.env.npm_package_version ?? "unknown",
+      redactionMode: getExportRedactionMode(options.sanitize),
       tables: {},
     };
 
@@ -366,6 +376,14 @@ export function validateExport(data: unknown): string[] {
     errors.push(`Invalid sourceDialect: ${exp.sourceDialect}`);
   }
 
+  if (
+    exp.redactionMode !== undefined &&
+    exp.redactionMode !== "full-fidelity" &&
+    exp.redactionMode !== "sanitized"
+  ) {
+    errors.push(`Invalid redactionMode: ${exp.redactionMode}`);
+  }
+
   if (!exp.tables || typeof exp.tables !== "object") {
     errors.push("Missing or invalid tables field");
     return errors;
@@ -395,4 +413,8 @@ export function validateExport(data: unknown): string[] {
   }
 
   return errors;
+}
+
+export function isSanitizedExport(data: JudgeKitExport): boolean {
+  return data.redactionMode === "sanitized";
 }

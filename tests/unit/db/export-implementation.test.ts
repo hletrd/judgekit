@@ -21,6 +21,7 @@ describe("exportDatabase implementation guards", () => {
     expect(source).toContain("waitForReadableStreamDemand");
     expect(source).toContain('options.signal?.addEventListener("abort", abort, { once: true })');
     expect(source).toContain("controller.desiredSize <= 0");
+    expect(source).toContain('"redactionMode":${JSON.stringify(redactionMode)}');
   });
 
   it("keeps full-fidelity backup REDACTED_COLUMNS empty while providing SANITIZED_COLUMNS for portable exports", () => {
@@ -35,6 +36,7 @@ describe("exportDatabase implementation guards", () => {
     expect(source).toContain('sessions: new Set(["sessionToken"])');
     expect(source).toContain('apiKeys: new Set(["encryptedKey"])');
     expect(source).toContain('judgeWorkers: new Set(["secretToken", "judgeClaimToken"])');
+    expect(source).toContain("redactionMode: getExportRedactionMode(options.sanitize)");
   });
 
   it("uses the streaming export helper in the migration script instead of materializing the whole export object", () => {

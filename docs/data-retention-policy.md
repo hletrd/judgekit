@@ -40,7 +40,7 @@ No data is deleted until the variable is removed and the application is restarte
 
 The export endpoint (`POST /api/v1/admin/migrate/export`) supports two modes:
 
-**Sanitized** (default) — passwords, tokens, and keys are redacted. Use for data sharing, migration testing, or handing off a snapshot to a third party. This is the default when `?full` is omitted.
+**Sanitized** (default) — passwords, tokens, and keys are redacted. Use for data sharing, migration testing, or handing off a snapshot to a third party. This is the default when `?full` is omitted. Sanitized exports are intentionally **not** accepted by the disaster-recovery restore route.
 
 **Full-fidelity** (`?full=true`) — all fields included. Use only for disaster-recovery backups. Treat the output as a secret; store with encryption and access controls equivalent to the live database.
 

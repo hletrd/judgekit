@@ -9,6 +9,9 @@ const {
   verifyPasswordMock,
   dbSelectMock,
   readJsonBodyWithLimitMock,
+  readUploadedJsonFileWithLimitMock,
+  validateExportMock,
+  importDatabaseMock,
 } = vi.hoisted(() => ({
   getApiUserMock: vi.fn(),
   csrfForbiddenMock: vi.fn(),
@@ -17,6 +20,9 @@ const {
   verifyPasswordMock: vi.fn(),
   dbSelectMock: vi.fn(),
   readJsonBodyWithLimitMock: vi.fn(),
+  readUploadedJsonFileWithLimitMock: vi.fn(),
+  validateExportMock: vi.fn(),
+  importDatabaseMock: vi.fn(),
 }));
 
 vi.mock("@/lib/api/auth", () => ({
@@ -54,23 +60,18 @@ vi.mock("drizzle-orm", async () => {
 
 vi.mock("@/lib/db/export", () => ({
   streamDatabaseExport: vi.fn(() => new ReadableStream()),
-  validateExport: vi.fn(() => []),
+  validateExport: validateExportMock,
+  isSanitizedExport: (data: { redactionMode?: string }) => data.redactionMode === "sanitized",
 }));
 
 vi.mock("@/lib/db/import", () => ({
-  importDatabase: vi.fn(),
+  importDatabase: importDatabaseMock,
 }));
 
 vi.mock("@/lib/db/import-transfer", () => ({
   MAX_IMPORT_BYTES: 1024 * 1024,
   readJsonBodyWithLimit: readJsonBodyWithLimitMock,
-  readUploadedJsonFileWithLimit: vi.fn(async () => ({
-    version: 1,
-    exportedAt: "2026-04-12T00:00:00.000Z",
-    sourceDialect: "postgresql",
-    appVersion: "test",
-    tables: {},
-  })),
+  readUploadedJsonFileWithLimit: readUploadedJsonFileWithLimitMock,
 }));
 
 vi.mock("@/lib/audit/events", () => ({
@@ -129,6 +130,22 @@ describe("destructive backup/import route password confirmation", () => {
     resolveCapabilitiesMock.mockResolvedValue(new Set(["system.backup"]));
     verifyPasswordMock.mockResolvedValue({ valid: false });
     dbSelectMock.mockReturnValue(makeLimitChain([{ passwordHash: "stored-hash" }]));
+    validateExportMock.mockReturnValue([]);
+    readUploadedJsonFileWithLimitMock.mockResolvedValue({
+      version: 1,
+      exportedAt: "2026-04-12T00:00:00.000Z",
+      sourceDialect: "postgresql",
+      appVersion: "test",
+      redactionMode: "full-fidelity",
+      tables: {},
+    });
+    importDatabaseMock.mockResolvedValue({
+      success: true,
+      tablesImported: 0,
+      totalRowsImported: 0,
+      tableResults: {},
+      errors: [],
+    });
     readJsonBodyWithLimitMock.mockResolvedValue({
       password: "wrong-password",
       data: {
@@ -136,6 +153,7 @@ describe("destructive backup/import route password confirmation", () => {
         exportedAt: "2026-04-12T00:00:00.000Z",
         sourceDialect: "postgresql",
         appVersion: "test",
+        redactionMode: "full-fidelity",
         tables: {},
       },
     });
@@ -211,6 +229,7 @@ describe("destructive backup/import route password confirmation", () => {
         exportedAt: "2026-04-12T00:00:00.000Z",
         sourceDialect: "postgresql",
         appVersion: "test",
+        redactionMode: "full-fidelity",
         tables: {},
       },
     });
@@ -232,5 +251,55 @@ describe("destructive backup/import route password confirmation", () => {
 
     expect(res.status).toBe(403);
     expect(body.error).toBe("invalidPassword");
+  });
+});
+
+describe("backup restore semantic safety", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    getApiUserMock.mockResolvedValue({
+      id: "admin-1",
+      role: "admin",
+      username: "admin",
+      email: "admin@example.com",
+      name: "Admin",
+      className: null,
+      mustChangePassword: false,
+    });
+    csrfForbiddenMock.mockReturnValue(null);
+    consumeApiRateLimitMock.mockResolvedValue(null);
+    resolveCapabilitiesMock.mockResolvedValue(new Set(["system.backup"]));
+    verifyPasswordMock.mockResolvedValue({ valid: true });
+    dbSelectMock.mockReturnValue(makeLimitChain([{ passwordHash: "stored-hash" }]));
+    validateExportMock.mockReturnValue([]);
+    importDatabaseMock.mockResolvedValue({
+      success: true,
+      tablesImported: 1,
+      totalRowsImported: 1,
+      tableResults: {},
+      errors: [],
+    });
+  });
+
+  it("rejects sanitized JSON exports on POST /api/v1/admin/restore", async () => {
+    readUploadedJsonFileWithLimitMock.mockResolvedValue({
+      version: 1,
+      exportedAt: "2026-04-12T00:00:00.000Z",
+      sourceDialect: "postgresql",
+      appVersion: "test",
+      redactionMode: "sanitized",
+      tables: {},
+    });
+
+    const { POST } = await import("@/app/api/v1/admin/restore/route");
+    const form = new FormData();
+    form.set("password", "correct-password");
+    form.set("file", new File(["{}"], "portable-export.json", { type: "application/json" }));
+    const res = await POST(makeFormRequest("http://localhost:3000/api/v1/admin/restore", form));
+    const body = await res.json();
+
+    expect(res.status).toBe(400);
+    expect(body.error).toBe("sanitizedExportNotRestorable");
+    expect(importDatabaseMock).not.toHaveBeenCalled();
   });
 });

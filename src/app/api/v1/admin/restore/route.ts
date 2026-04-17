@@ -10,7 +10,7 @@ import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { importDatabase } from "@/lib/db/import";
-import { validateExport, type JudgeKitExport } from "@/lib/db/export";
+import { isSanitizedExport, validateExport, type JudgeKitExport } from "@/lib/db/export";
 import { MAX_IMPORT_BYTES, readUploadedJsonFileWithLimit } from "@/lib/db/import-transfer";
 import { restoreFilesFromZip } from "@/lib/db/export-with-files";
 
@@ -102,6 +102,16 @@ export async function POST(request: NextRequest) {
     const errors = validateExport(data);
     if (errors.length > 0) {
       return NextResponse.json({ error: "invalidExport", details: errors }, { status: 400 });
+    }
+
+    if (isSanitizedExport(data)) {
+      return NextResponse.json(
+        {
+          error: "sanitizedExportNotRestorable",
+          message: "Portable sanitized exports are for sharing and validation only. Restore from a full-fidelity backup instead.",
+        },
+        { status: 400 }
+      );
     }
 
     recordAuditEvent({

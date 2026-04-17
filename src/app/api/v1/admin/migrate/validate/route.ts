@@ -52,7 +52,10 @@ export async function POST(request: NextRequest) {
     }
 
     const errors = validateExport(data);
-    const exp = data as JudgeKitExport;
+    const exp =
+      data && typeof data === "object"
+        ? (data as Partial<JudgeKitExport>)
+        : {};
 
     const tableSummary: Record<string, number> = {};
     if (exp.tables && typeof exp.tables === "object") {
@@ -69,6 +72,8 @@ export async function POST(request: NextRequest) {
       errors,
       sourceDialect: exp.sourceDialect ?? null,
       exportedAt: exp.exportedAt ?? null,
+      redactionMode: exp.redactionMode ?? "legacy-unknown",
+      restorable: exp.redactionMode !== "sanitized",
       tableCount: Object.keys(tableSummary).length,
       totalRows: Object.values(tableSummary).reduce((a, b) => a + b, 0),
       tables: tableSummary,

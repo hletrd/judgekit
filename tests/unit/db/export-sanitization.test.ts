@@ -38,6 +38,13 @@ describe("export.ts sanitization", () => {
     expect(source).toMatch(/streamDatabaseExport\s*\([^)]*sanitize\??\s*:/);
   });
 
+  it("records whether an export is sanitized or full-fidelity", () => {
+    const source = readFileSync(join(process.cwd(), EXPORT_PATH), "utf8");
+    expect(source).toContain('export type JudgeKitExportRedactionMode = "full-fidelity" | "sanitized"');
+    expect(source).toContain('"redactionMode"');
+    expect(source).toContain('return sanitize ? "sanitized" : "full-fidelity"');
+  });
+
   it("exportDatabase accepts a sanitize option", () => {
     const source = readFileSync(join(process.cwd(), EXPORT_PATH), "utf8");
     expect(source).toMatch(/exportDatabase\s*\([^)]*sanitize\??\s*:/);

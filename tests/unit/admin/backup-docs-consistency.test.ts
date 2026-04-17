@@ -11,7 +11,16 @@ describe("backup/export docs consistency", () => {
     const docs = read("docs/api.md");
     expect(docs).toContain("#### `POST /api/v1/admin/migrate/export`");
     expect(docs).toContain('{ "password": "string" }');
+    expect(docs).toContain('redactionMode: "sanitized"');
     expect(docs).not.toContain("#### `GET /api/v1/admin/migrate/export`");
+  });
+
+  it("documents restore as full-fidelity-only for disaster recovery", () => {
+    const docs = read("docs/api.md");
+    const policy = read("docs/data-retention-policy.md");
+
+    expect(docs).toContain("Portable sanitized exports are rejected here.");
+    expect(policy).toContain("Sanitized exports are intentionally **not** accepted by the disaster-recovery restore route.");
   });
 
   it("uses ZIP backup downloads with JSON+ZIP restore inputs for PostgreSQL backups", () => {

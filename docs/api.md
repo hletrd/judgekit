@@ -1536,6 +1536,8 @@ Restore from backup. Requires the `system.backup` capability. Rate limit: `admin
 
 Accepts either a JudgeKit JSON export or a ZIP backup archive (`database.json` + `uploads/`). Validates and imports it via the migration system.
 
+Portable sanitized exports are rejected here. Use a full-fidelity backup for disaster recovery restores.
+
 ---
 
 ### Admin: Migration
@@ -1553,6 +1555,8 @@ Accepts `application/json` or `multipart/form-data`.
     "valid": true,
     "sourceDialect": "postgresql",
     "exportedAt": "ISO8601",
+    "redactionMode": "full-fidelity",
+    "restorable": true,
     "tableCount": 15,
     "totalRows": 1000,
     "tables": { "users": 50, "problems": 30 }
@@ -1572,6 +1576,8 @@ Export the entire database as JSON. Requires the `system.backup` capability. Rat
 ```
 
 Password re-confirmation required. Returns a JSON file download.
+
+Sanitized exports include `redactionMode: "sanitized"` metadata and are intended for sharing or migration testing, not disaster-recovery restore.
 
 ---
 
