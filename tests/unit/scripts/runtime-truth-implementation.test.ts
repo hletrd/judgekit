@@ -13,6 +13,9 @@ describe("runtime-truth implementation guards", () => {
 
     expect(backupScript).toContain('DB_DIALECT="${DB_DIALECT:-postgresql}"');
     expect(monitorScript).toContain('DB_DIALECT="${DB_DIALECT:-postgresql}"');
+    expect(monitorScript).toContain("judge_workers");
+    expect(monitorScript).toContain("submissions WHERE status IN ('pending', 'queued', 'judging')");
+    expect(monitorScript).toContain('HEALTH_WARN_QUEUE_DEPTH="${HEALTH_WARN_QUEUE_DEPTH:-50}"');
   });
 
   it("keeps SQLite backup paths explicitly historical", () => {

@@ -8,6 +8,9 @@ set -euo pipefail
 DB_DIALECT="${DB_DIALECT:-postgresql}"
 DISK_WARN_PERCENT=85
 DISK_CRIT_PERCENT=95
+HEALTH_WARN_QUEUE_DEPTH="${HEALTH_WARN_QUEUE_DEPTH:-50}"
+HEALTH_CRIT_QUEUE_DEPTH="${HEALTH_CRIT_QUEUE_DEPTH:-200}"
+HEALTH_STALE_WORKER_WARN="${HEALTH_STALE_WORKER_WARN:-1}"
 
 log() {
   echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) [$1] $2" | systemd-cat -t judgekit-monitor -p "$3"
@@ -50,6 +53,52 @@ check_pg() {
     fi
     log "INFO" "PostgreSQL is accepting connections" "info"
   fi
+  return 0
+}
+
+# Check queue depth and worker status from PostgreSQL
+check_runtime_state() {
+  if [ "$DB_DIALECT" != "postgresql" ]; then
+    return 0
+  fi
+  local url="${DATABASE_URL:-}"
+  if [ -z "$url" ] || ! command -v psql >/dev/null 2>&1; then
+    return 0
+  fi
+
+  local worker_counts
+  if ! worker_counts=$(psql "$url" -Atqc "SELECT count(*) FILTER (WHERE status = 'online'), count(*) FILTER (WHERE status = 'stale'), count(*) FILTER (WHERE status = 'offline') FROM judge_workers;" 2>/dev/null); then
+    log "WARNING" "Failed to query judge worker health state from PostgreSQL" "warning"
+    return 1
+  fi
+
+  local queue_depth
+  if ! queue_depth=$(psql "$url" -Atqc "SELECT count(*) FROM submissions WHERE status IN ('pending', 'queued', 'judging');" 2>/dev/null); then
+    log "WARNING" "Failed to query submission queue depth from PostgreSQL" "warning"
+    return 1
+  fi
+
+  local online stale offline
+  IFS='|' read -r online stale offline <<<"${worker_counts}"
+  online="${online:-0}"
+  stale="${stale:-0}"
+  offline="${offline:-0}"
+  queue_depth="${queue_depth:-0}"
+
+  log "INFO" "Judge workers online=${online}, stale=${stale}, offline=${offline}; queue depth=${queue_depth}" "info"
+
+  if [ "${stale}" -ge "${HEALTH_STALE_WORKER_WARN}" ] && [ "${HEALTH_STALE_WORKER_WARN}" -gt 0 ]; then
+    log "WARNING" "Detected ${stale} stale judge worker(s)" "warning"
+  fi
+
+  if [ "${queue_depth}" -ge "${HEALTH_CRIT_QUEUE_DEPTH}" ]; then
+    log "CRITICAL" "Submission queue depth ${queue_depth} exceeds critical threshold ${HEALTH_CRIT_QUEUE_DEPTH}" "crit"
+    return 2
+  elif [ "${queue_depth}" -ge "${HEALTH_WARN_QUEUE_DEPTH}" ]; then
+    log "WARNING" "Submission queue depth ${queue_depth} exceeds warning threshold ${HEALTH_WARN_QUEUE_DEPTH}" "warning"
+    return 1
+  fi
+
   return 0
 }
 
@@ -102,6 +151,7 @@ check_db_size() {
 exit_code=0
 check_disk || exit_code=$?
 check_pg || { rc=$?; [ $rc -gt $exit_code ] && exit_code=$rc; }
+check_runtime_state || { rc=$?; [ $rc -gt $exit_code ] && exit_code=$rc; }
 check_wal || { rc=$?; [ $rc -gt $exit_code ] && exit_code=$rc; }
 check_db_size || true
 
