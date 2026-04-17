@@ -208,6 +208,7 @@ These must pass for **any** release.
 - [ ] monitoring and alerts active
 - [ ] rollback plan available
 - [ ] runbooks accessible to operators
+- [ ] admin security operations guidance reviewed (`docs/admin-security-operations.md`)
 
 **Reviewer:** ____________________  
 **Date:** ____________________

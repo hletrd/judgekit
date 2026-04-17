@@ -266,6 +266,7 @@ Default: `homework`. Change in admin settings or directly in the database (`syst
 - [API Reference](docs/api.md) — all REST endpoints, authentication, request/response formats
 - [Deployment Guide](docs/deployment.md) — provisioning, deploy scripts, nginx, post-deploy checks
 - [Authentication](docs/authentication.md) — sign-in flow, cookie architecture, API smoke test
+- [Admin Security Operations](docs/admin-security-operations.md) — lockout policy, MFA/SSO integration guidance, and dependency scanning baseline
 - [Languages](docs/languages.md) — all 124 variants, Docker image presets, admin management
 - [Judge Workers](docs/judge-workers.md) — multi-worker architecture, registration, deployment
 - [Privacy & Retention](docs/privacy-retention.md) — current retention windows and handling rules for sensitive operational data
