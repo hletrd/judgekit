@@ -27,6 +27,7 @@ Repair the current judge/worker/deploy invariants so long-running jobs, split-ho
 - macOS deploy rsync now uses protected-arg sync and proactively removes legacy escaped route-group directories before remote builds, preventing stale `\(public\)`-style trees from breaking Next route generation
 - dedicated worker docker-proxy build/delete/image verbs are now opt-in instead of on-by-default, and non-container runner defaults now bind to loopback unless deployments widen them explicitly
 - runner shell-command validation now rejects common shell metacharacter chains and is covered by Rust unit tests
+- worker config now rejects traversal-style seccomp/dead-letter override paths and covers that helper with Rust unit tests
 
 ## Workstream A — Claim freshness and worker-capacity accounting
 **Targets**

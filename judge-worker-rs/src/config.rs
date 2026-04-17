@@ -1,5 +1,6 @@
 use crate::types::SecretString;
 use std::env;
+use std::path::Component;
 use std::path::PathBuf;
 use std::time::Duration;
 
@@ -163,14 +164,14 @@ impl Config {
         }
 
         let seccomp_profile_path = match std::env::var("JUDGE_SECCOMP_PROFILE") {
-            Ok(path) => std::path::PathBuf::from(path),
+            Ok(path) => validate_runtime_path(&path, "JUDGE_SECCOMP_PROFILE")?,
             Err(_) => std::env::current_dir()
                 .map_err(|e| format!("Failed to determine current working directory: {e}"))?
                 .join("docker/seccomp-profile.json"),
         };
 
         let dead_letter_dir = match env::var("DEAD_LETTER_DIR") {
-            Ok(path) => PathBuf::from(path),
+            Ok(path) => validate_runtime_path(&path, "DEAD_LETTER_DIR")?,
             Err(_) => std::env::current_dir()
                 .map_err(|e| format!("Failed to determine current working directory: {e}"))?
                 .join("dead-letter"),
@@ -255,5 +256,52 @@ impl Config {
             runner_concurrency,
             allow_unregistered_mode,
         })
+    }
+}
+
+fn validate_runtime_path(raw: &str, var_name: &str) -> Result<PathBuf, String> {
+    if raw.trim().is_empty() {
+        return Err(format!("{var_name} must not be empty"));
+    }
+    if raw.contains('\0') {
+        return Err(format!("{var_name} must not contain NUL bytes"));
+    }
+
+    let path = PathBuf::from(raw);
+    if path
+        .components()
+        .any(|component| matches!(component, Component::ParentDir))
+    {
+        return Err(format!(
+            "{var_name} must not contain parent-directory traversal"
+        ));
+    }
+
+    Ok(path)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::validate_runtime_path;
+    use std::path::PathBuf;
+
+    #[test]
+    fn accepts_normal_runtime_paths() {
+        assert_eq!(
+            validate_runtime_path("/app/dead-letter", "DEAD_LETTER_DIR").unwrap(),
+            PathBuf::from("/app/dead-letter")
+        );
+        assert_eq!(
+            validate_runtime_path("./docker/seccomp-profile.json", "JUDGE_SECCOMP_PROFILE")
+                .unwrap(),
+            PathBuf::from("./docker/seccomp-profile.json")
+        );
+    }
+
+    #[test]
+    fn rejects_empty_or_traversing_runtime_paths() {
+        assert!(validate_runtime_path("", "DEAD_LETTER_DIR").is_err());
+        assert!(validate_runtime_path("../dead-letter", "DEAD_LETTER_DIR").is_err());
+        assert!(validate_runtime_path("/tmp/../../etc/passwd", "DEAD_LETTER_DIR").is_err());
     }
 }
