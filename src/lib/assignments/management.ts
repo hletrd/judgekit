@@ -88,7 +88,8 @@ export async function getManageableProblemsForGroup(
   userId: string,
   role: string
 ): Promise<AssignmentManagerProblem[]> {
-  if (role === "super_admin" || role === "admin") {
+  const caps = await resolveCapabilities(role);
+  if (caps.has("problems.view_all")) {
     return db
       .select({
         id: problems.id,

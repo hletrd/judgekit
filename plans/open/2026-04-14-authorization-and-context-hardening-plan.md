@@ -39,6 +39,7 @@ Close the remaining object-level authorization gaps and remove the last places w
   - `/api/v1/users/[id]` mutations now enforce actor-vs-target role-level checks for patch/delete flows instead of relying only on super-admin special cases
   - contest discovery now derives global-vs-owned contest visibility from capabilities instead of built-in admin/instructor role-name checks
   - group-resource management no longer grants cross-group control through plain `assignments.edit`; owner/co-instructor scope or a true global capability is now required
+  - group assignment-authoring problem pickers now use `problems.view_all` for true global visibility instead of built-in admin-only branching
 
 ## Workstream A — Problem-set visibility and scope isolation
 **Targets**

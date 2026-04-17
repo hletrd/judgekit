@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const { dbMock, resolveCapabilitiesMock } = vi.hoisted(() => ({
   dbMock: {
     select: vi.fn(),
+    selectDistinct: vi.fn(),
   },
   resolveCapabilitiesMock: vi.fn(),
 }));
@@ -22,6 +23,7 @@ vi.mock("nanoid", () => ({
 import {
   canManageGroupResources,
   canManageGroupResourcesAsync,
+  getManageableProblemsForGroup,
   hasGroupInstructorRole,
   isGroupTA,
 } from "@/lib/assignments/management";
@@ -34,6 +36,21 @@ function mockGroupInstructorRow(row: { role: string } | undefined) {
       })),
     })),
   });
+}
+
+function mockProblemSelectRows(rows: unknown[]) {
+  const chain = {
+    from: vi.fn(),
+    leftJoin: vi.fn(),
+    where: vi.fn(),
+    then: vi.fn(),
+  };
+  chain.from.mockReturnValue(chain);
+  chain.leftJoin.mockReturnValue(chain);
+  chain.where.mockResolvedValue(rows);
+  chain.then.mockImplementation((cb: (value: unknown[]) => unknown) => Promise.resolve(cb(rows)));
+  dbMock.select.mockReturnValue(chain);
+  dbMock.selectDistinct.mockReturnValue(chain);
 }
 
 describe("group management helpers", () => {
@@ -88,5 +105,30 @@ describe("group management helpers", () => {
 
     await expect(isGroupTA("group-1", "ta-1")).resolves.toBe(true);
     await expect(hasGroupInstructorRole("group-1", "ta-1", "owner-1")).resolves.toBe(true);
+  });
+
+  it("lets roles with problems.view_all load the full problem list", async () => {
+    resolveCapabilitiesMock.mockResolvedValue(new Set(["problems.view_all"]));
+    mockProblemSelectRows([{ id: "problem-1", title: "A + B", authorId: "author-1", visibility: "private" }]);
+
+    await expect(
+      getManageableProblemsForGroup("group-1", "custom-1", "custom_editor")
+    ).resolves.toEqual([
+      { id: "problem-1", title: "A + B", authorId: "author-1", visibility: "private" },
+    ]);
+    expect(dbMock.select).toHaveBeenCalled();
+    expect(dbMock.selectDistinct).not.toHaveBeenCalled();
+  });
+
+  it("keeps scoped roles on the distinct filtered query when they lack problems.view_all", async () => {
+    resolveCapabilitiesMock.mockResolvedValue(new Set(["assignments.edit"]));
+    mockProblemSelectRows([{ id: "problem-2", title: "Scoped", authorId: "custom-1", visibility: "hidden" }]);
+
+    await expect(
+      getManageableProblemsForGroup("group-1", "custom-1", "custom_editor")
+    ).resolves.toEqual([
+      { id: "problem-2", title: "Scoped", authorId: "custom-1", visibility: "hidden" },
+    ]);
+    expect(dbMock.selectDistinct).toHaveBeenCalled();
   });
 });
