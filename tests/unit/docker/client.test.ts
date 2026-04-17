@@ -15,6 +15,7 @@ describe("buildDockerImage implementation", () => {
     vi.restoreAllMocks();
     delete process.env.COMPILER_RUNNER_URL;
     delete process.env.JUDGE_AUTH_TOKEN;
+    delete process.env.RUNNER_AUTH_TOKEN;
   });
 
   it("routes Docker management through the worker API when a runner is configured", async () => {
@@ -34,5 +35,29 @@ describe("buildDockerImage implementation", () => {
         cache: "no-store",
       }),
     );
+  });
+
+  it("prefers RUNNER_AUTH_TOKEN over JUDGE_AUTH_TOKEN for worker docker-management calls", async () => {
+    process.env.COMPILER_RUNNER_URL = "http://judge-worker:3001";
+    process.env.JUDGE_AUTH_TOKEN = "x".repeat(32);
+    process.env.RUNNER_AUTH_TOKEN = "y".repeat(32);
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => [],
+    }) as unknown as typeof fetch;
+
+    const { listDockerImages } = await import("@/lib/docker/client");
+    await listDockerImages("judge-*");
+
+    expect(global.fetch).toHaveBeenCalledWith(
+      "http://judge-worker:3001/docker/images?filter=judge-*",
+      expect.objectContaining({
+        headers: expect.any(Headers),
+      }),
+    );
+
+    const init = vi.mocked(global.fetch).mock.calls[0]?.[1] as RequestInit | undefined;
+    const headers = init?.headers as Headers | undefined;
+    expect(headers?.get("Authorization")).toBe(`Bearer ${"y".repeat(32)}`);
   });
 });

@@ -4,8 +4,8 @@ import pLimit from "p-limit";
 
 const exec = promisify(execFile);
 const JUDGE_WORKER_URL = process.env.COMPILER_RUNNER_URL || "";
-const JUDGE_AUTH_TOKEN = process.env.JUDGE_AUTH_TOKEN || "";
-const USE_WORKER_DOCKER_API = Boolean(JUDGE_WORKER_URL && JUDGE_AUTH_TOKEN);
+const RUNNER_AUTH_TOKEN = process.env.RUNNER_AUTH_TOKEN || process.env.JUDGE_AUTH_TOKEN || "";
+const USE_WORKER_DOCKER_API = Boolean(JUDGE_WORKER_URL && RUNNER_AUTH_TOKEN);
 
 export interface DockerImage {
   repository: string;
@@ -36,7 +36,7 @@ async function readError(response: Response): Promise<string> {
 async function callWorkerJson<T>(path: string, init?: RequestInit): Promise<T> {
   const headers = new Headers(init?.headers);
   headers.set("Content-Type", "application/json");
-  headers.set("Authorization", `Bearer ${JUDGE_AUTH_TOKEN}`);
+  headers.set("Authorization", `Bearer ${RUNNER_AUTH_TOKEN}`);
 
   const response = await fetch(`${JUDGE_WORKER_URL}${path}`, {
     ...init,
@@ -54,7 +54,7 @@ async function callWorkerJson<T>(path: string, init?: RequestInit): Promise<T> {
 async function callWorkerNoContent(path: string, init?: RequestInit): Promise<void> {
   const headers = new Headers(init?.headers);
   headers.set("Content-Type", "application/json");
-  headers.set("Authorization", `Bearer ${JUDGE_AUTH_TOKEN}`);
+  headers.set("Authorization", `Bearer ${RUNNER_AUTH_TOKEN}`);
 
   const response = await fetch(`${JUDGE_WORKER_URL}${path}`, {
     ...init,

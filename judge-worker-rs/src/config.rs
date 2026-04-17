@@ -12,6 +12,7 @@ pub struct Config {
     pub deregister_url: String,
     pub poll_interval: Duration,
     pub auth_token: SecretString,
+    pub runner_auth_token: SecretString,
     pub disable_custom_seccomp: bool,
     pub seccomp_profile_path: PathBuf,
     /// Directory where failed result payloads are written as JSON for manual recovery.
@@ -147,6 +148,27 @@ impl Config {
             );
         }
         let auth_token = SecretString::new(auth_token_raw);
+        let runner_auth_token = match env::var("RUNNER_AUTH_TOKEN") {
+            Ok(token) => {
+                if token.is_empty() {
+                    return Err("RUNNER_AUTH_TOKEN must not be empty".to_string());
+                }
+                if token.len() < 32 {
+                    return Err(
+                        "RUNNER_AUTH_TOKEN must be at least 32 characters. Generate one with: openssl rand -hex 32"
+                            .to_string(),
+                    );
+                }
+                SecretString::new(token)
+            }
+            Err(_) => {
+                tracing::warn!(
+                    "RUNNER_AUTH_TOKEN is not set — falling back to JUDGE_AUTH_TOKEN for runner/admin endpoints. \
+                     Set RUNNER_AUTH_TOKEN separately in production to reduce bearer-token blast radius."
+                );
+                auth_token.clone()
+            }
+        };
 
         let disable_custom_seccomp = match env::var("JUDGE_DISABLE_CUSTOM_SECCOMP") {
             Ok(val) => {
@@ -245,6 +267,7 @@ impl Config {
             deregister_url,
             poll_interval,
             auth_token,
+            runner_auth_token,
             disable_custom_seccomp,
             seccomp_profile_path,
             dead_letter_dir,

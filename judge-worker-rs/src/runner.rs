@@ -315,7 +315,7 @@ fn check_auth(headers: &HeaderMap, config: &Config) -> Result<(), StatusCode> {
 
     let token = auth.strip_prefix("Bearer ").ok_or(StatusCode::UNAUTHORIZED)?;
     // Use constant-time comparison to prevent timing side-channel attacks
-    let expected = config.auth_token.expose();
+    let expected = config.runner_auth_token.expose();
     if token.len() != expected.len() || !constant_time_eq(token.as_bytes(), expected.as_bytes()) {
         return Err(StatusCode::UNAUTHORIZED);
     }
