@@ -1604,8 +1604,7 @@ Send a message to the AI assistant. Session auth only (no API keys). Rate limite
     "assignmentId": "string?",
     "editorCode": "string?",
     "editorLanguage": "string?",
-    "sessionId": "string?",
-    "skipLog": false
+    "sessionId": "string?"
   }
 }
 ```
@@ -1613,6 +1612,7 @@ Send a message to the AI assistant. Session auth only (no API keys). Rate limite
 Messages max 50, content max 10000 chars, editor code max 100KB.
 
 Requires AI assistant to be enabled globally and per-problem (if problem context provided).
+Only the authoritative latest user message and the server-generated assistant reply are persisted.
 
 **Response:** Streaming `text/plain` with `X-Chat-Session-Id` header.
 

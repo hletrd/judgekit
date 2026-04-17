@@ -217,20 +217,6 @@ export const POST = createApiHandler({
 
     const sessionId = context?.sessionId || generateSessionId();
 
-    // Save the latest user message as the authoritative request record.
-    const lastUserMessage = [...parsed.data.messages].reverse().find(m => m.role === "user");
-    if (lastUserMessage) {
-      await persistChatMessage({
-        userId: session.user.id,
-        sessionId,
-        role: "user",
-        content: lastUserMessage.content,
-        problemId: context?.problemId ?? null,
-        model: null,
-        provider: config.provider,
-      });
-    }
-
     // Check global AI assistant toggle
     const globalEnabled = await isAiAssistantEnabledForContext({
       userId: session.user.id,
@@ -254,6 +240,21 @@ export const POST = createApiHandler({
       } catch {
         // Column may not exist yet — skip per-problem check
       }
+    }
+
+    // Save the latest user message only after the request clears assistant
+    // availability checks. Denied requests should not create chat transcripts.
+    const lastUserMessage = [...parsed.data.messages].reverse().find(m => m.role === "user");
+    if (lastUserMessage) {
+      await persistChatMessage({
+        userId: session.user.id,
+        sessionId,
+        role: "user",
+        content: lastUserMessage.content,
+        problemId: context?.problemId ?? null,
+        model: null,
+        provider: config.provider,
+      });
     }
 
     // Determine API key and model based on provider

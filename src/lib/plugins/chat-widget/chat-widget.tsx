@@ -126,12 +126,12 @@ export default function ChatWidget() {
         ? t("autoAnalysisError")
         : t("autoAnalysisReview");
       setPendingAutoAnalysis(null);
-      void sendMessage(apiPrompt, displayText, true);
+      void sendMessage(apiPrompt, displayText);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pendingAutoAnalysis, isStreaming, problemContext]);
 
-  const sendMessage = useCallback(async (text: string, displayText?: string, skipLog?: boolean) => {
+  const sendMessage = useCallback(async (text: string, displayText?: string) => {
     if (!text || isStreaming) return;
 
     setError(null);
@@ -160,7 +160,6 @@ export default function ChatWidget() {
             editorCode: editorContent?.code,
             editorLanguage: editorContent?.language,
             sessionId: sessionId ?? undefined,
-            skipLog: skipLog || undefined,
           } : sessionId ? { sessionId } : undefined,
         }),
         signal: controller.signal,

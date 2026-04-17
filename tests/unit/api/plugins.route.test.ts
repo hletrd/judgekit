@@ -453,6 +453,29 @@ describe("POST /api/v1/plugins/chat-widget/chat", () => {
     );
   });
 
+  it("does not persist denied requests when the AI assistant is globally disabled", async () => {
+    isAiAssistantEnabledForContextMock.mockResolvedValue(false);
+
+    const res = await chatPOST(makeChatRequest(VALID_CHAT_BODY));
+
+    expect(res.status).toBe(403);
+    expect(dbInsertMock).not.toHaveBeenCalled();
+  });
+
+  it("does not persist denied requests when the problem disables the AI assistant", async () => {
+    problemsFindFirstMock.mockResolvedValue({ allowAiAssistant: false });
+
+    const res = await chatPOST(
+      makeChatRequest({
+        messages: [{ role: "user", content: "Help me!" }],
+        context: { problemId: "prob-1" },
+      })
+    );
+
+    expect(res.status).toBe(403);
+    expect(dbInsertMock).not.toHaveBeenCalled();
+  });
+
   it("returns 500 on unexpected error", async () => {
     isPluginEnabledMock.mockRejectedValue(new Error("DB crash"));
 

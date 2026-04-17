@@ -10,6 +10,14 @@ Primary sources:
 ## Goal
 Restore trust in the full repository quality gates by reconciling stale tests, source-grep contracts, and docs/assertions that no longer match the current implementation.
 
+## Progress
+- 🚧 in progress
+- completed in the current pass:
+  - root review backlog ownership was consolidated into a single roadmap/index set
+  - targeted typecheck + eslint regressions blocking the latest remediation slice were cleared
+- still open:
+  - full-suite contract drift across built-in role tests, judge auth mocks, backup docs tests, and brittle source-grep inventories
+
 ## Workstream A — Built-in role and capability contract drift
 **Targets**
 - `src/lib/capabilities/defaults.ts`
