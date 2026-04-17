@@ -2,20 +2,16 @@ import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { groups, enrollments, groupInstructors } from "@/lib/db/schema";
 import { eq, desc, sql, or } from "drizzle-orm";
-import { getApiUser, unauthorized, forbidden, csrfForbidden } from "@/lib/api/auth";
 import { recordAuditEvent } from "@/lib/audit/events";
 import { parsePagination } from "@/lib/api/pagination";
-import { apiError, apiPaginated, apiSuccess } from "@/lib/api/responses";
+import { apiPaginated, apiSuccess } from "@/lib/api/responses";
 import { nanoid } from "nanoid";
 import { createGroupSchema } from "@/lib/validators/groups";
-import { consumeApiRateLimit } from "@/lib/security/api-rate-limit";
-import { logger } from "@/lib/logger";
 import { resolveCapabilities } from "@/lib/capabilities/cache";
+import { createApiHandler } from "@/lib/api/handler";
 
-export async function GET(request: NextRequest) {
-  try {
-    const user = await getApiUser(request);
-    if (!user) return unauthorized();
+export const GET = createApiHandler({
+  handler: async (request: NextRequest, { user }) => {
     const caps = await resolveCapabilities(user.role);
 
     const searchParams = request.nextUrl.searchParams;
@@ -72,33 +68,15 @@ export async function GET(request: NextRequest) {
     }
 
     return apiPaginated(results, page, limit, total);
-  } catch (error) {
-    logger.error({ err: error }, "GET /api/v1/groups error");
-    return apiError("internalServerError", 500);
-  }
-}
+  },
+});
 
-export async function POST(request: NextRequest) {
-  try {
-    const csrfError = csrfForbidden(request);
-    if (csrfError) return csrfError;
-
-    const rateLimitResponse = await consumeApiRateLimit(request, "groups:create");
-    if (rateLimitResponse) return rateLimitResponse;
-
-    const user = await getApiUser(request);
-    if (!user) return unauthorized();
-    const caps = await resolveCapabilities(user.role);
-    if (!caps.has("groups.create")) return forbidden();
-
-    const body = await request.json();
-    const parsedInput = createGroupSchema.safeParse(body);
-
-    if (!parsedInput.success) {
-      return apiError(parsedInput.error.issues[0]?.message ?? "createError", 400);
-    }
-
-    const { name, description } = parsedInput.data;
+export const POST = createApiHandler({
+  rateLimit: "groups:create",
+  auth: { capabilities: ["groups.create"] },
+  schema: createGroupSchema,
+  handler: async (request: NextRequest, { user, body }) => {
+    const { name, description } = body;
 
     const id = nanoid();
     const [group] = await db.insert(groups).values({
@@ -127,8 +105,5 @@ export async function POST(request: NextRequest) {
     }
 
     return apiSuccess(group, { status: 201 });
-  } catch (error) {
-    logger.error({ err: error }, "POST /api/v1/groups error");
-    return apiError("createError", 500);
-  }
-}
+  },
+});
