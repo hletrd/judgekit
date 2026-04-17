@@ -14,10 +14,10 @@ describe("backup/export docs consistency", () => {
     expect(docs).not.toContain("#### `GET /api/v1/admin/migrate/export`");
   });
 
-  it("uses JSON file extensions and filters for PostgreSQL backups", () => {
+  it("uses ZIP backup downloads with JSON+ZIP restore inputs for PostgreSQL backups", () => {
     const component = read("src/app/(dashboard)/dashboard/admin/settings/database-backup-restore.tsx");
-    expect(component).toContain("judgekit-backup-${timestamp}.json");
-    expect(component).toContain('accept=".json,application/json"');
+    expect(component).toContain("judgekit-backup-${timestamp}.zip");
+    expect(component).toContain('accept=".json,.zip,application/json,application/zip"');
     expect(component).not.toContain(".sqlite");
   });
 

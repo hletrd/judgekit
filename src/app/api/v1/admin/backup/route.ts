@@ -1,5 +1,6 @@
-// Database backup route: POST with password re-confirmation for security
-// Exports the database as portable JSON
+// Database backup route: POST with password re-confirmation for security.
+// Returns either a JSON export or a ZIP bundle containing `database.json`
+// plus uploaded files when `includeFiles=true`.
 import { NextRequest, NextResponse } from "next/server";
 import { getApiUser, unauthorized, forbidden, csrfForbidden } from "@/lib/api/auth";
 import { consumeApiRateLimit } from "@/lib/security/api-rate-limit";

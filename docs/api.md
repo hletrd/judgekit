@@ -1522,6 +1522,10 @@ Create a database backup. Requires the `system.backup` capability. Rate limit: `
 
 Password re-confirmation required for security. Returns a streamed JSON export for the PostgreSQL runtime.
 
+**Query params:**
+- `includeFiles=true` — return a ZIP archive containing `database.json` plus uploaded files
+- omitted / `false` — return a JSON export only
+
 ---
 
 #### `POST /api/v1/admin/restore`
@@ -1530,7 +1534,7 @@ Restore from backup. Requires the `system.backup` capability. Rate limit: `admin
 
 **Request:** `multipart/form-data` with `file` and `password` fields. Max 100 MB.
 
-Accepts a JudgeKit JSON export. Validates and imports it via the migration system.
+Accepts either a JudgeKit JSON export or a ZIP backup archive (`database.json` + `uploads/`). Validates and imports it via the migration system.
 
 ---
 
