@@ -66,6 +66,9 @@ describe("getAdminHealthSnapshot", () => {
         pending: 17,
         limit: 250,
       },
+      uptimeSeconds: expect.any(Number),
+      responseTimeMs: expect.any(Number),
+      appVersion: expect.any(String),
       status: "ok",
     });
   });
@@ -90,6 +93,9 @@ describe("getAdminHealthSnapshot", () => {
         pending: 0,
         limit: 250,
       },
+      uptimeSeconds: expect.any(Number),
+      responseTimeMs: expect.any(Number),
+      appVersion: expect.any(String),
       status: "error",
       error: "healthCheckFailed",
     });

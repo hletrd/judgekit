@@ -26,5 +26,7 @@ describe("admin dashboard implementation", () => {
     expect(source).toContain('t("auditPipelineStatusTitle")');
     expect(source).toContain('t("submissionQueueStatusTitle")');
     expect(source).toContain('t("workerFleetStatusTitle")');
+    expect(source).toContain('t("uptimeStatusTitle")');
+    expect(source).toContain('t("responseTimeStatusTitle")');
   });
 });

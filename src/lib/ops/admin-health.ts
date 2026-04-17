@@ -3,6 +3,8 @@ import { rawQueryOne } from "@/lib/db/queries";
 import { logger } from "@/lib/logger";
 import { getConfiguredSettings } from "@/lib/system-settings-config";
 
+const PROCESS_STARTED_AT_MS = Date.now();
+
 type WorkerStatsRow = {
   online?: string | number | null;
   stale?: string | number | null;
@@ -27,6 +29,9 @@ export type AdminHealthSnapshot = {
     pending: number;
     limit: number;
   };
+  uptimeSeconds: number;
+  responseTimeMs: number;
+  appVersion: string;
   status: "ok" | "degraded" | "error";
   timestamp: string;
   details?: {
@@ -56,6 +61,7 @@ function buildSnapshotBase() {
 
 export async function getAdminHealthSnapshot(): Promise<AdminHealthSnapshot> {
   const { auditEvents, settings, timestamp } = buildSnapshotBase();
+  const probeStartedAt = Date.now();
 
   try {
     await rawQueryOne("select 1");
@@ -87,6 +93,9 @@ export async function getAdminHealthSnapshot(): Promise<AdminHealthSnapshot> {
         pending: toCount(queueStats?.pending),
         limit: settings.submissionGlobalQueueLimit,
       },
+      uptimeSeconds: Math.floor((Date.now() - PROCESS_STARTED_AT_MS) / 1000),
+      responseTimeMs: Date.now() - probeStartedAt,
+      appVersion: process.env.npm_package_version ?? "unknown",
       status: auditEvents.status === "ok" ? "ok" : "degraded",
       timestamp,
       ...(auditEvents.failedWrites > 0
@@ -117,6 +126,9 @@ export async function getAdminHealthSnapshot(): Promise<AdminHealthSnapshot> {
         pending: 0,
         limit: settings.submissionGlobalQueueLimit,
       },
+      uptimeSeconds: Math.floor((Date.now() - PROCESS_STARTED_AT_MS) / 1000),
+      responseTimeMs: Date.now() - probeStartedAt,
+      appVersion: process.env.npm_package_version ?? "unknown",
       status: "error",
       timestamp,
       error: "healthCheckFailed",

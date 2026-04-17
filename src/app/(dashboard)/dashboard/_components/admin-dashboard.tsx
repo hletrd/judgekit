@@ -84,6 +84,18 @@ export async function AdminDashboard() {
               })}
             </p>
           </div>
+          <div className="space-y-1">
+            <p className="text-sm font-medium">{t("uptimeStatusTitle")}</p>
+            <p className="text-2xl font-semibold">
+              {t("uptimeValue", { seconds: health.uptimeSeconds })}
+            </p>
+          </div>
+          <div className="space-y-1">
+            <p className="text-sm font-medium">{t("responseTimeStatusTitle")}</p>
+            <p className="text-2xl font-semibold">
+              {t("responseTimeValue", { ms: health.responseTimeMs })}
+            </p>
+          </div>
         </CardContent>
       </Card>
 

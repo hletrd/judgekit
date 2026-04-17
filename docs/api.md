@@ -169,6 +169,9 @@ Health check endpoint. No authentication required, but admin users see extended 
 {
   "status": "ok|degraded|error",
   "checks": { "database": "ok|error", "auditEvents": "ok|degraded" },
+  "uptimeSeconds": 3600,
+  "responseTimeMs": 12,
+  "appVersion": "1.2.3",
   "timestamp": "2025-01-01T00:00:00.000Z",
   "details": { "auditEvents": { "failedWrites": 0, "lastFailureAt": null } }
 }
