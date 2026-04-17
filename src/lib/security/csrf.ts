@@ -52,6 +52,10 @@ export function validateCsrf(request: NextRequest): NextResponse | null {
     return NextResponse.json({ error: "csrfValidationFailed" }, { status: 403 });
   }
 
+  if (!origin && expectedHost && !secFetchSite) {
+    return NextResponse.json({ error: "csrfValidationFailed" }, { status: 403 });
+  }
+
   if (origin && expectedHost) {
     try {
       if (new URL(origin).host !== expectedHost) {

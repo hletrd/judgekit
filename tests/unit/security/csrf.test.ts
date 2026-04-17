@@ -198,12 +198,27 @@ describe("validateCsrf", () => {
       await expect(res?.json()).resolves.toEqual({ error: "csrfValidationFailed" });
     });
 
-    it("skips Origin check when Origin header is absent", () => {
+    it("rejects missing Origin when expected host is known and Sec-Fetch-Site is absent", async () => {
       const req = createRequest(
         "POST",
         {
           "x-requested-with": "XMLHttpRequest",
           "x-forwarded-host": "example.com",
+        },
+        "https://example.com/api/v1/resource"
+      );
+      const res = validateCsrf(req);
+      expect(res?.status).toBe(403);
+      await expect(res?.json()).resolves.toEqual({ error: "csrfValidationFailed" });
+    });
+
+    it("accepts missing Origin when Sec-Fetch-Site explicitly proves same-origin", () => {
+      const req = createRequest(
+        "POST",
+        {
+          "x-requested-with": "XMLHttpRequest",
+          "x-forwarded-host": "example.com",
+          "sec-fetch-site": "same-origin",
         },
         "https://example.com/api/v1/resource"
       );
