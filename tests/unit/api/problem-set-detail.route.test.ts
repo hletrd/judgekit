@@ -29,13 +29,25 @@ const {
 
 vi.mock("@/lib/api/handler", () => ({
   createApiHandler:
-    ({ handler }: { handler: (req: NextRequest, ctx: { user: typeof mockUserRef.current; params: Record<string, string>; body?: unknown }) => Promise<Response> }) =>
+    ({ handler, schema }: { handler: (req: NextRequest, ctx: { user: typeof mockUserRef.current; params: Record<string, string>; body?: unknown }) => Promise<Response>; schema?: { safeParse: (data: unknown) => { success: boolean; data?: unknown } } }) =>
     async (req: NextRequest, routeCtx?: { params?: Promise<Record<string, string>> }) => {
       const params = routeCtx?.params ? await routeCtx.params : {};
+      let body: unknown = undefined;
+      if (schema) {
+        try {
+          const cloned = req.clone();
+          const text = await cloned.text();
+          body = JSON.parse(text);
+          const parsed = schema.safeParse(body);
+          if (parsed.success) {
+            body = (parsed as { data: unknown }).data;
+          }
+        } catch { /* ignore */ }
+      }
       return handler(req, {
         user: mockUserRef.current,
         params,
-        body: undefined as never,
+        body,
       });
     },
   forbidden: () => NextResponse.json({ error: "forbidden" }, { status: 403 }),

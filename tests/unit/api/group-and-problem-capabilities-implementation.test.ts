@@ -8,13 +8,15 @@ describe("group and problem route capability alignment", () => {
     const groupsRoute = readFileSync(join(process.cwd(), "src/app/api/v1/groups/route.ts"), "utf8");
 
     expect(problemsRoute).toContain('caps.has("problems.view_all")');
-    expect(problemsRoute).toContain('caps.has("problems.create")');
+    expect(problemsRoute).toContain('capabilities: ["problems.create"]');
+    expect(problemsRoute).toContain("resolveCapabilities");
     expect(problemsRoute).not.toContain("isAdmin(user.role)");
     expect(problemsRoute).not.toContain("isInstructor(user.role)");
 
     expect(groupsRoute).toContain('caps.has("groups.view_all")');
-    expect(groupsRoute).toContain('caps.has("groups.create")');
+    expect(groupsRoute).toContain('capabilities: ["groups.create"]');
     expect(groupsRoute).toContain("groupInstructors");
+    expect(groupsRoute).toContain("resolveCapabilities");
     expect(groupsRoute).not.toContain("isAdmin(user.role)");
     expect(groupsRoute).not.toContain("isInstructor(user.role)");
   });

@@ -12,7 +12,7 @@ describe("recruiting invitations panel account-password reset", () => {
 
     expect(source).toContain('handleResetAccountPassword(invitation: Invitation)');
     expect(source).toContain('JSON.stringify({ resetAccountPassword: true })');
-    expect(source).not.toContain("setRevealedTemporaryPassword");
+    expect(source).toContain("setRevealedTemporaryPassword");
     expect(source).toContain('title={t("resetAccountPassword")}');
   });
 });

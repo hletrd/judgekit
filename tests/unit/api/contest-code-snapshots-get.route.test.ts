@@ -4,11 +4,9 @@ import { NextRequest, NextResponse } from "next/server";
 const {
   canViewAssignmentSubmissionsMock,
   dbSelectMock,
-  orderByMock,
 } = vi.hoisted(() => ({
   canViewAssignmentSubmissionsMock: vi.fn(),
   dbSelectMock: vi.fn(),
-  orderByMock: vi.fn(),
 }));
 
 vi.mock("@/lib/api/handler", () => ({
@@ -30,6 +28,8 @@ vi.mock("@/lib/api/responses", () => ({
     NextResponse.json({ data }, { status: opts?.status ?? 200 }),
   apiError: (error: string, status: number) =>
     NextResponse.json({ error }, { status }),
+  apiPaginated: (data: unknown[], page: number, limit: number, total: number) =>
+    NextResponse.json({ data, page, limit, total }),
 }));
 
 vi.mock("@/lib/assignments/submissions", () => ({
@@ -47,26 +47,42 @@ describe("GET /api/v1/contests/[assignmentId]/code-snapshots/[userId]", () => {
     vi.clearAllMocks();
     canViewAssignmentSubmissionsMock.mockResolvedValue(true);
 
-    orderByMock.mockResolvedValue([
-      {
-        id: "snapshot-1",
-        problemId: "problem-1",
-        problemTitle: "A + B",
-        language: "python",
-        sourceCode: "print(1)",
-        charCount: 8,
-        createdAt: new Date("2026-04-14T00:00:00.000Z"),
-      },
-    ]);
-
-    dbSelectMock.mockReturnValue({
-      from: () => ({
-        leftJoin: () => ({
-          where: () => ({
-            orderBy: orderByMock,
+    // First select: count query, Second select: data query
+    let selectCallCount = 0;
+    dbSelectMock.mockImplementation(() => {
+      selectCallCount++;
+      if (selectCallCount % 2 === 1) {
+        // Count query: db.select({ count: ... }).from(codeSnapshots).where(...)
+        return {
+          from: () => ({
+            where: () => Promise.resolve([{ count: 1 }]),
+          }),
+        };
+      }
+      // Data query: db.select({...}).from(codeSnapshots).leftJoin(...).where(...).orderBy(...).limit(...).offset(...)
+      return {
+        from: () => ({
+          leftJoin: () => ({
+            where: () => ({
+              orderBy: () => ({
+                limit: () => ({
+                  offset: () => Promise.resolve([
+                    {
+                      id: "snapshot-1",
+                      problemId: "problem-1",
+                      problemTitle: "A + B",
+                      language: "python",
+                      sourceCode: "print(1)",
+                      charCount: 8,
+                      createdAt: new Date("2026-04-14T00:00:00.000Z"),
+                    },
+                  ]),
+                }),
+              }),
+            }),
           }),
         }),
-      }),
+      };
     });
   });
 
@@ -90,7 +106,7 @@ describe("GET /api/v1/contests/[assignmentId]/code-snapshots/[userId]", () => {
 
     expect(response.status).toBe(403);
     await expect(response.json()).resolves.toEqual({ error: "forbidden" });
-    expect(orderByMock).not.toHaveBeenCalled();
+    expect(dbSelectMock).not.toHaveBeenCalled();
   });
 
   it("returns snapshots only after assignment-level authorization passes", async () => {
@@ -121,5 +137,6 @@ describe("GET /api/v1/contests/[assignmentId]/code-snapshots/[userId]", () => {
       id: "snapshot-1",
       problemId: "problem-1",
     });
+    expect(body.total).toBe(1);
   });
 });

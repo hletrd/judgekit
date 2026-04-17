@@ -14,6 +14,7 @@ const {
   recordAuditEventMock,
   canAccessGroupMock,
   groupsFindFirstMock,
+  enrollmentsFindManyMock,
   dbDeleteMock,
   dbSelectMock,
   loggerErrorMock,
@@ -33,6 +34,7 @@ const {
     recordAuditEventMock: vi.fn(),
     canAccessGroupMock: vi.fn(),
     groupsFindFirstMock: vi.fn(),
+    enrollmentsFindManyMock: vi.fn(),
     dbDeleteMock,
     dbSelectMock,
     loggerErrorMock: vi.fn(),
@@ -83,6 +85,9 @@ vi.mock("@/lib/db", () => ({
     query: {
       groups: {
         findFirst: groupsFindFirstMock,
+      },
+      enrollments: {
+        findMany: enrollmentsFindManyMock,
       },
     },
     delete: dbDeleteMock,
@@ -203,47 +208,47 @@ describe("GET /api/v1/groups/[id] — enrollment contract", () => {
           name: "Instructor",
           email: "instructor@example.com",
         },
-        enrollments: [
-          {
-            id: "enrollment-1",
-            userId: "student-1",
-            groupId: EXISTING_GROUP.id,
-            enrolledAt: new Date("2026-04-01T00:00:00Z"),
-            user: {
-              id: "student-1",
-              name: "Student One",
-              email: "student1@example.com",
-            },
-          },
-          {
-            id: "enrollment-2",
-            userId: "student-2",
-            groupId: EXISTING_GROUP.id,
-            enrolledAt: new Date("2026-04-02T00:00:00Z"),
-            user: {
-              id: "student-2",
-              name: "Student Two",
-              email: "student2@example.com",
-            },
-          },
-        ],
       });
     dbSelectMock.mockReturnValueOnce({
       from: vi.fn(() => ({
         where: vi.fn().mockResolvedValue([{ count: 2 }]),
       })),
     });
+    enrollmentsFindManyMock.mockResolvedValue([
+      {
+        id: "enrollment-1",
+        userId: "student-1",
+        groupId: EXISTING_GROUP.id,
+        enrolledAt: new Date("2026-04-01T00:00:00Z"),
+        user: {
+          id: "student-1",
+          name: "Student One",
+          email: "student1@example.com",
+        },
+      },
+      {
+        id: "enrollment-2",
+        userId: "student-2",
+        groupId: EXISTING_GROUP.id,
+        enrolledAt: new Date("2026-04-02T00:00:00Z"),
+        user: {
+          id: "student-2",
+          name: "Student Two",
+          email: "student2@example.com",
+        },
+      },
+    ]);
 
     const res = await GET(makeRequest("GET"), { params: PARAMS });
 
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.data.enrollmentsMeta).toEqual({
-      totalCount: 2,
-      returnedCount: 2,
-      isComplete: true,
+      page: 1,
+      limit: 100,
+      total: 2,
     });
-    expect(body.data.membersTruncated).toBe(false);
+    expect(body.data.memberCount).toBe(2);
   });
 
   it("shows member emails to a custom role that can manage the group", async () => {
@@ -267,25 +272,25 @@ describe("GET /api/v1/groups/[id] — enrollment contract", () => {
           name: "Instructor",
           email: "instructor@example.com",
         },
-        enrollments: [
-          {
-            id: "enrollment-1",
-            userId: "student-1",
-            groupId: EXISTING_GROUP.id,
-            enrolledAt: new Date("2026-04-01T00:00:00Z"),
-            user: {
-              id: "student-1",
-              name: "Student One",
-              email: "student1@example.com",
-            },
-          },
-        ],
       });
     dbSelectMock.mockReturnValueOnce({
       from: vi.fn(() => ({
         where: vi.fn().mockResolvedValue([{ count: 1 }]),
       })),
     });
+    enrollmentsFindManyMock.mockResolvedValue([
+      {
+        id: "enrollment-1",
+        userId: "student-1",
+        groupId: EXISTING_GROUP.id,
+        enrolledAt: new Date("2026-04-01T00:00:00Z"),
+        user: {
+          id: "student-1",
+          name: "Student One",
+          email: "student1@example.com",
+        },
+      },
+    ]);
 
     const res = await GET(makeRequest("GET"), { params: PARAMS });
     const body = await res.json();
