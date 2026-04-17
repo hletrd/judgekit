@@ -51,6 +51,7 @@ import { AnalyticsCharts } from "@/components/contest/analytics-charts";
 import { ExportButton } from "@/components/contest/export-button";
 import { ContestAnnouncements } from "@/components/contest/contest-announcements";
 import { ContestClarifications } from "@/components/contest/contest-clarifications";
+import { formatScore } from "@/lib/formatting";
 import { RecruiterCandidatesPanel } from "@/components/contest/recruiter-candidates-panel";
 import { RecruitingInvitationsPanel } from "@/components/contest/recruiting-invitations-panel";
 import AssignmentFormDialog, { type AssignmentEditorValue } from "../../groups/[id]/assignment-form-dialog";
@@ -433,7 +434,7 @@ export default async function ContestDetailPage({
                               />
                             </TableCell>
                             <TableCell>
-                              {sub.score !== null ? Math.round(sub.score * 100) / 100 : "-"}
+                              {formatScore(sub.score)}
                             </TableCell>
                             <TableCell>
                               {sub.submittedAt

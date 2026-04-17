@@ -169,7 +169,7 @@ export default async function ContestsPage({
           {t("noContests")}
         </div>
       ) : (
-        <div className="space-y-2">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {pagedContests.map((contest) => {
             const status = statusMap.get(contest.id)!;
             return (
