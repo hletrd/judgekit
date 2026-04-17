@@ -27,5 +27,7 @@ describe("admin submissions implementation", () => {
     expect(source).toContain('if (dateTo) params.set("dateTo", dateTo);');
     expect(source).toContain('t("dateFromLabel")');
     expect(source).toContain('t("dateToLabel")');
+    expect(source).toContain('buildExportHref()');
+    expect(source).toContain('t("exportCsv")');
   });
 });
