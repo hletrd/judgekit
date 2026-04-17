@@ -17,7 +17,7 @@ const playgroundRunSchema = z.object({
 });
 
 export const POST = createApiHandler({
-  auth: false,
+  auth: { capabilities: ["content.submit_solutions"] },
   rateLimit: "playground:run",
   schema: playgroundRunSchema,
   handler: async (_req, { body }) => {

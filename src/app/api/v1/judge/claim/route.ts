@@ -99,7 +99,10 @@ export async function POST(request: NextRequest) {
 
       // Defense-in-depth: also validate the workerSecret from the request body
       // against the worker's stored secretToken.
-      if (worker.secretToken && workerSecret) {
+      if (worker.secretToken) {
+        if (!workerSecret) {
+          return apiError("workerSecretRequired", 400);
+        }
         const provided = Buffer.from(workerSecret);
         const expected = Buffer.from(worker.secretToken);
         if (provided.length !== expected.length || !timingSafeEqual(provided, expected)) {
