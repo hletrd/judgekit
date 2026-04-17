@@ -75,6 +75,7 @@ export function RecruitingInvitationsPanel({ assignmentId }: { assignmentId: str
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [revealedTemporaryPassword, setRevealedTemporaryPassword] = useState<{ candidateName: string; password: string } | null>(null);
 
   // Create dialog state
   const [createOpen, setCreateOpen] = useState(false);
@@ -87,6 +88,12 @@ export function RecruitingInvitationsPanel({ assignmentId }: { assignmentId: str
   const [createdLink, setCreatedLink] = useState<string | null>(null);
 
   const baseUrl = typeof window !== "undefined" ? window.location.origin : "";
+
+  useEffect(() => {
+    if (!revealedTemporaryPassword) return;
+    const timer = setTimeout(() => setRevealedTemporaryPassword(null), 60_000);
+    return () => clearTimeout(timer);
+  }, [revealedTemporaryPassword]);
 
   const fetchData = useCallback(async () => {
     try {
