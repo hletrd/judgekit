@@ -58,4 +58,23 @@ describe("custom-role page/runtime implementation guards", () => {
     expect(publicPracticeDetail).toContain('caps.has("problems.edit")');
     expect(publicPracticeDetail).not.toContain('session.user.role === "admin"');
   });
+
+  it("keeps admin user-management affordances capability-aware for custom roles", () => {
+    const usersPage = read("src/app/(dashboard)/dashboard/admin/users/page.tsx");
+    const userActions = read("src/app/(dashboard)/dashboard/admin/users/user-actions.tsx");
+    const editDialog = read("src/app/(dashboard)/dashboard/admin/users/edit-user-dialog.tsx");
+
+    expect(usersPage).toContain("canManageRoleAsync");
+    expect(usersPage).toContain('caps.has("users.create")');
+    expect(usersPage).toContain('caps.has("users.edit")');
+    expect(usersPage).toContain('caps.has("users.delete")');
+    expect(usersPage).not.toContain('const isAdmin = caps.has("users.edit")');
+
+    expect(userActions).toContain("actorCanDelete");
+    expect(userActions).not.toContain('actorRole === "admin"');
+
+    expect(editDialog).toContain("canEditRole");
+    expect(editDialog).toContain("roleOptions");
+    expect(editDialog).not.toContain('actorRole === "instructor"');
+  });
 });

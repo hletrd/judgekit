@@ -20,6 +20,7 @@ import { safeUserSelect } from "@/lib/db/selects";
 import { and, desc, eq, or, sql } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import { resolveCapabilities } from "@/lib/capabilities/cache";
+import { canManageRoleAsync } from "@/lib/security/constants";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import UserActions from "./user-actions";
@@ -55,7 +56,9 @@ export default async function UserManagementPage({
   const caps = await resolveCapabilities(session.user.role);
   if (!caps.has("users.view")) redirect("/dashboard");
 
-  const isAdmin = caps.has("users.edit");
+  const canCreateUsers = caps.has("users.create");
+  const canEditUsers = caps.has("users.edit");
+  const canDeleteUsers = caps.has("users.delete");
 
   const resolvedSearchParams = searchParams ? await searchParams : undefined;
   const t = await getTranslations("admin.users");
@@ -71,8 +74,19 @@ export default async function UserManagementPage({
     .select({ name: roles.name, displayName: roles.displayName, level: roles.level })
     .from(roles)
     .orderBy(roles.level, roles.name);
+  const manageableRoleNames = new Set(
+    (await Promise.all(
+      availableRoles.map(async (role) =>
+        role.name === session.user.role || await canManageRoleAsync(session.user.role, role.name)
+          ? role.name
+          : null
+      )
+    )).filter((roleName): roleName is string => Boolean(roleName))
+  );
+  const createRoleOptions = availableRoles.filter((role) => manageableRoleNames.has(role.name));
   const roleLabels: Record<string, string> = {
     student: tCommon("roles.student"),
+    assistant: tCommon("roles.assistant"),
     instructor: tCommon("roles.instructor"),
     admin: tCommon("roles.admin"),
     super_admin: tCommon("roles.super_admin"),
@@ -87,7 +101,7 @@ export default async function UserManagementPage({
   const filters = [];
 
   // Instructors can only manage students
-  if (!isAdmin) {
+  if (!canEditUsers) {
     filters.push(eq(users.role, "student"));
   }
 
@@ -141,8 +155,12 @@ export default async function UserManagementPage({
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-2xl font-bold">{t("title")}</h2>
         <div className="flex gap-2">
-          <BulkCreateDialog />
-          <AddUserDialog actorRole={session.user.role} availableRoles={availableRoles} />
+          {canCreateUsers ? (
+            <>
+              <BulkCreateDialog />
+              <AddUserDialog actorRole={session.user.role} availableRoles={createRoleOptions} />
+            </>
+          ) : null}
         </div>
       </div>
       <Card>
@@ -233,7 +251,7 @@ export default async function UserManagementPage({
                   </TableCell>
                   <TableCell>
                     <div className="flex gap-2 items-center">
-                      <EditUserDialog actorRole={session.user.role} availableRoles={availableRoles} user={{
+                      <EditUserDialog actorRole={session.user.role} availableRoles={availableRoles} roleOptions={availableRoles.filter((role) => role.name === user.role || manageableRoleNames.has(role.name))} canEditRole={user.role !== "super_admin" && canEditUsers} user={{
                         id: user.id,
                         username: user.username,
                         email: user.email,
@@ -247,7 +265,7 @@ export default async function UserManagementPage({
                         isActive={!!user.isActive}
                         isSelf={user.id === session.user.id}
                         userRole={user.role}
-                        actorRole={session.user.role}
+                        actorCanDelete={canDeleteUsers}
                       />
                     </div>
                   </TableCell>

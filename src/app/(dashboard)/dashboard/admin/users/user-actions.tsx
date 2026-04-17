@@ -13,7 +13,7 @@ export default function UserActions({
   isActive,
   isSelf,
   userRole,
-  actorRole,
+  actorCanDelete,
   triggerVariant,
 }: {
   userId: string;
@@ -21,7 +21,7 @@ export default function UserActions({
   isActive: boolean;
   isSelf: boolean;
   userRole: string;
-  actorRole?: string;
+  actorCanDelete?: boolean;
   triggerVariant?: "default" | "destructive" | "outline" | "secondary" | "ghost" | "link";
 }) {
   const [isPending, startTransition] = useTransition();
@@ -93,7 +93,7 @@ export default function UserActions({
         triggerTestId={`user-access-toggle-${userId}`}
         confirmTestId={`user-access-toggle-confirm-${userId}`}
       />
-      {(!actorRole || actorRole === "admin" || actorRole === "super_admin") && (
+      {actorCanDelete ? (
         <DestructiveActionDialog
           triggerLabel={t("deleteUser")}
           title={t("deleteDialogTitle")}
@@ -106,7 +106,7 @@ export default function UserActions({
           triggerTestId={`user-delete-${userId}`}
           confirmTestId={`user-delete-confirm-${userId}`}
         />
-      )}
+      ) : null}
     </div>
   );
 }

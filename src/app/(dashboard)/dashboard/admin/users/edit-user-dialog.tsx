@@ -28,9 +28,11 @@ interface EditUserDialogProps {
   };
   actorRole?: string;
   availableRoles?: RoleOption[];
+  roleOptions?: RoleOption[];
+  canEditRole?: boolean;
 }
 
-export default function EditUserDialog({ user, actorRole, availableRoles }: EditUserDialogProps) {
+export default function EditUserDialog({ user, actorRole, availableRoles, roleOptions, canEditRole = true }: EditUserDialogProps) {
   const t = useTranslations("admin.users");
   const tCommon = useTranslations("common");
   const router = useRouter();
@@ -108,13 +110,13 @@ export default function EditUserDialog({ user, actorRole, availableRoles }: Edit
           </div>
           <div className="space-y-2">
             <Label htmlFor="edit-role">{t("table.role")}</Label>
-            <Select value={role} onValueChange={v => { if (v) setRole(v); }} disabled={user.role === "super_admin" || actorRole === "instructor"}>
+            <Select value={role} onValueChange={v => { if (v) setRole(v); }} disabled={!canEditRole}>
               <SelectTrigger id="edit-role">
                 <SelectValue>{builtinRoleLabels[role] || role}</SelectValue>
               </SelectTrigger>
               <SelectContent>
-                {availableRoles ? (
-                  availableRoles
+                {roleOptions ?? availableRoles ? (
+                  (roleOptions ?? availableRoles ?? [])
                     .filter((r) => r.name !== "super_admin" || user.role === "super_admin")
                     .map((r) => (
                       <SelectItem key={r.name} value={r.name} label={builtinRoleLabels[r.name] ?? r.displayName}>
