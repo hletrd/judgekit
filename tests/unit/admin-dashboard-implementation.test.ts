@@ -16,4 +16,15 @@ describe("admin dashboard implementation", () => {
     expect(source).toContain('href="/dashboard/admin/users"');
     expect(source).toContain('href="/dashboard/admin/audit-logs"');
   });
+
+  it("renders a system health snapshot using the shared admin health helper", () => {
+    const source = read("src/app/(dashboard)/dashboard/_components/admin-dashboard.tsx");
+
+    expect(source).toContain('getAdminHealthSnapshot()');
+    expect(source).toContain('CardTitle>{t("systemHealthTitle")}');
+    expect(source).toContain('t("databaseStatusTitle")');
+    expect(source).toContain('t("auditPipelineStatusTitle")');
+    expect(source).toContain('t("submissionQueueStatusTitle")');
+    expect(source).toContain('t("workerFleetStatusTitle")');
+  });
 });
