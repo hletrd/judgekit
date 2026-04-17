@@ -21,6 +21,6 @@ describe("judge progress implementation", () => {
 
     expect(queueRoute).toContain("gradingTestCase");
     expect(queueRoute).toContain("from(submissionResults)");
-    expect(client).toContain('t("judgingProgress", { progress: gradingTestCase })');
+    expect(client).toContain('t("judgingProgress", { progress: gradingTestCase ?? "" })');
   });
 });

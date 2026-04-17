@@ -5,7 +5,7 @@ import { join } from "node:path";
 describe("UI/runtime implementation guards", () => {
   it("keeps the code snapshot timer stable across keystrokes via refs", () => {
     const source = readFileSync(
-      join(process.cwd(), "src/app/(dashboard)/dashboard/problems/[id]/problem-submission-form.tsx"),
+      join(process.cwd(), "src/components/problem/problem-submission-form.tsx"),
       "utf8"
     );
 

@@ -19,7 +19,7 @@ describe("submission queue status implementation", () => {
     const source = read("src/app/(dashboard)/dashboard/submissions/[id]/submission-detail-client.tsx");
 
     expect(source).toContain("/api/v1/submissions/${submission.id}/queue-status");
-    expect(source).toContain('t("queueAhead", { count: queuePosition })');
+    expect(source).toContain('t("queueAhead", { count: queuePosition ?? 0 })');
     expect(source).toContain('t("judgingInProgress")');
   });
 });
