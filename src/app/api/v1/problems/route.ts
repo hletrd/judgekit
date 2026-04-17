@@ -7,7 +7,7 @@ import { recordAuditEvent } from "@/lib/audit/events";
 import { parsePagination } from "@/lib/api/pagination";
 import { apiError, apiPaginated, apiSuccess } from "@/lib/api/responses";
 import { createProblemWithTestCases } from "@/lib/problem-management";
-import { problemMutationSchema, problemVisibilityValues } from "@/lib/validators/problem-management";
+import { problemCreateSchema, problemMutationSchema, problemVisibilityValues } from "@/lib/validators/problem-management";
 import { resolveCapabilities } from "@/lib/capabilities/cache";
 
 export const GET = createApiHandler({
@@ -75,11 +75,9 @@ export const GET = createApiHandler({
 
 export const POST = createApiHandler({
   rateLimit: "problems:create",
-  handler: async (req: NextRequest, { user }) => {
-    const caps = await resolveCapabilities(user.role);
-    if (!caps.has("problems.create")) return forbidden();
-
-    const body = await req.json();
+  auth: { capabilities: ["problems.create"] },
+  schema: problemCreateSchema,
+  handler: async (req: NextRequest, { user, body }) => {
     const parsedInput = problemMutationSchema.safeParse({
       title: body.title,
       description: body.description ?? "",
@@ -92,7 +90,7 @@ export const POST = createApiHandler({
       showDetailedResults: body.showDetailedResults,
       showRuntimeErrors: body.showRuntimeErrors,
       allowAiAssistant: body.allowAiAssistant,
-      comparisonMode: body.comparisonMode,
+      comparisonMode: body.comparisonMode ?? "exact",
       floatAbsoluteError: body.floatAbsoluteError,
       floatRelativeError: body.floatRelativeError,
       difficulty: body.difficulty ?? null,

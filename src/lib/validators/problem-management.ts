@@ -32,5 +32,33 @@ export const problemMutationSchema = z.object({
   tags: z.array(z.string().min(1).max(50)).max(20, "tooManyTags").default([]),
 });
 
+/**
+ * Schema for the raw request body of POST /api/v1/problems.
+ * Unlike problemMutationSchema, timeLimitMs/memoryLimitMb/visibility are
+ * optional with defaults so clients can omit them on creation.
+ */
+export const problemCreateSchema = z.object({
+  title: z.preprocess(trimString, z.string().min(1, "titleRequired").max(200, "titleTooLong")),
+  description: z.string().max(50000, "descriptionTooLong").optional().default(""),
+  sequenceNumber: z.number().int().min(0).nullable().optional(),
+  problemType: z.enum(problemTypeValues).optional().default("auto"),
+  timeLimitMs: z.number().int().min(100, "invalidTimeLimit").max(10000, "invalidTimeLimit").optional().default(2000),
+  memoryLimitMb: z.number().int().min(16, "invalidMemoryLimit").max(1024, "invalidMemoryLimit").optional().default(256),
+  visibility: z.enum(problemVisibilityValues).optional().default("private"),
+  showCompileOutput: z.boolean().optional(),
+  showDetailedResults: z.boolean().optional(),
+  showRuntimeErrors: z.boolean().optional(),
+  allowAiAssistant: z.boolean().optional(),
+  comparisonMode: z.enum(["exact", "float"]).optional().default("exact"),
+  floatAbsoluteError: z.number().min(0).max(1).optional().nullable(),
+  floatRelativeError: z.number().min(0).max(1).optional().nullable(),
+  difficulty: z.number().min(0, "invalidDifficulty").max(10, "invalidDifficulty").nullable().optional()
+    .transform((v) => v != null ? Math.round(v * 100) / 100 : v),
+  defaultLanguage: z.string().max(50).nullable().optional(),
+  testCases: z.array(problemTestCaseSchema).max(100, "tooManyTestCases").optional().default([]),
+  tags: z.array(z.string().min(1).max(50)).max(20, "tooManyTags").optional().default([]),
+});
+
 export type ProblemTestCaseInput = z.infer<typeof problemTestCaseSchema>;
 export type ProblemMutationInput = z.infer<typeof problemMutationSchema>;
+export type ProblemCreateInput = z.infer<typeof problemCreateSchema>;
