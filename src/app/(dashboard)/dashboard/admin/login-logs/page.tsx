@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { getLocale, getTranslations } from "next-intl/server";
 import { redirect } from "next/navigation";
-import { and, desc, eq, sql, type SQL } from "drizzle-orm";
+import { and, desc, eq, gte, lte, sql, type SQL } from "drizzle-orm";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { PaginationControls } from "@/components/pagination-controls";
@@ -69,6 +69,12 @@ function normalizeSearchQuery(value?: string) {
   return value.trim().slice(0, MAX_SEARCH_LENGTH);
 }
 
+function normalizeDateFilter(value?: string) {
+  if (typeof value !== "string" || !value) return "";
+  const parsed = new Date(value);
+  return isNaN(parsed.getTime()) ? "" : value;
+}
+
 function escapeLikePattern(value: string) {
   return value.replaceAll("\\", "\\\\").replaceAll("%", "\\%").replaceAll("_", "\\_");
 }
@@ -90,7 +96,7 @@ function summarizeUserAgent(value: string | null) {
   return `${normalized.slice(0, MAX_USER_AGENT_SUMMARY_LENGTH - 3)}...`;
 }
 
-function buildPageHref(page: number, outcome: OutcomeFilter, search: string) {
+function buildPageHref(page: number, outcome: OutcomeFilter, search: string, dateFrom: string, dateTo: string) {
   const params = new URLSearchParams();
 
   if (page > 1) {
@@ -105,6 +111,14 @@ function buildPageHref(page: number, outcome: OutcomeFilter, search: string) {
     params.set("search", search);
   }
 
+  if (dateFrom) {
+    params.set("dateFrom", dateFrom);
+  }
+
+  if (dateTo) {
+    params.set("dateTo", dateTo);
+  }
+
   const queryString = params.toString();
 
   return queryString ? `${PAGE_PATH}?${queryString}` : PAGE_PATH;
@@ -113,7 +127,7 @@ function buildPageHref(page: number, outcome: OutcomeFilter, search: string) {
 export default async function AdminLoginLogsPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ page?: string; outcome?: string; search?: string }>;
+  searchParams?: Promise<{ page?: string; outcome?: string; search?: string; dateFrom?: string; dateTo?: string }>;
 }) {
   const session = await auth();
   if (!session?.user) redirect("/login");
@@ -124,6 +138,8 @@ export default async function AdminLoginLogsPage({
   const requestedPage = normalizePage(resolvedSearchParams?.page);
   const outcomeFilter = normalizeOutcomeFilter(resolvedSearchParams?.outcome);
   const searchQuery = normalizeSearchQuery(resolvedSearchParams?.search);
+  const dateFrom = normalizeDateFilter(resolvedSearchParams?.dateFrom);
+  const dateTo = normalizeDateFilter(resolvedSearchParams?.dateTo);
   const normalizedSearch = searchQuery.toLowerCase();
   const t = await getTranslations("admin.loginLogs");
   const tCommon = await getTranslations("common");
@@ -159,6 +175,17 @@ export default async function AdminLoginLogsPage({
         or lower(coalesce(${loginEvents.userAgent}, '')) like ${likePattern} escape '\\'
       )
     `);
+  }
+
+  if (dateFrom) {
+    const fromDate = new Date(dateFrom);
+    filters.push(gte(loginEvents.createdAt, fromDate));
+  }
+
+  if (dateTo) {
+    const endOfDay = new Date(dateTo);
+    endOfDay.setHours(23, 59, 59, 999);
+    filters.push(lte(loginEvents.createdAt, endOfDay));
   }
 
   const whereClause = filters.length > 0 ? and(...filters) : undefined;
@@ -204,7 +231,7 @@ export default async function AdminLoginLogsPage({
 
       <Card>
         <CardContent>
-          <form className="flex flex-col gap-4 md:flex-row md:items-end" method="get">
+          <form className="flex flex-col gap-4 md:flex-row md:items-end md:flex-wrap" method="get">
             <div className="flex-1 space-y-1.5">
               <label className="block text-sm font-medium" htmlFor="login-log-search">
                 {t("filters.searchLabel")}
@@ -233,6 +260,30 @@ export default async function AdminLoginLogsPage({
                     label: outcomeLabels[value],
                   })),
                 ]}
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="block text-sm font-medium" htmlFor="login-log-date-from">
+                {t("filters.dateFromLabel")}
+              </label>
+              <Input
+                id="login-log-date-from"
+                name="dateFrom"
+                type="date"
+                defaultValue={dateFrom}
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="block text-sm font-medium" htmlFor="login-log-date-to">
+                {t("filters.dateToLabel")}
+              </label>
+              <Input
+                id="login-log-date-to"
+                name="dateTo"
+                type="date"
+                defaultValue={dateTo}
               />
             </div>
 
@@ -332,7 +383,7 @@ export default async function AdminLoginLogsPage({
       <PaginationControls
         currentPage={currentPage}
         totalPages={totalPages}
-        buildHref={(page) => buildPageHref(page, outcomeFilter, searchQuery)}
+        buildHref={(page) => buildPageHref(page, outcomeFilter, searchQuery, dateFrom, dateTo)}
       />
     </div>
   );

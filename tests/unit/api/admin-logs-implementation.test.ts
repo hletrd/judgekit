@@ -19,4 +19,25 @@ describe("admin log route capability guards", () => {
     expect(auditLogsRoute).toContain('auth: { capabilities: ["system.audit_logs"] }');
     expect(auditLogsRoute).not.toContain("isAdmin(user.role)");
   });
+
+  it("supports date range filters on both login-log surfaces", () => {
+    const loginLogsRoute = readFileSync(
+      join(process.cwd(), "src/app/api/v1/admin/login-logs/route.ts"),
+      "utf8"
+    );
+    const loginLogsPage = readFileSync(
+      join(process.cwd(), "src/app/(dashboard)/dashboard/admin/login-logs/page.tsx"),
+      "utf8"
+    );
+
+    expect(loginLogsRoute).toContain('searchParams.get("dateFrom")');
+    expect(loginLogsRoute).toContain('searchParams.get("dateTo")');
+    expect(loginLogsRoute).toContain("gte(loginEvents.createdAt, fromDate)");
+    expect(loginLogsRoute).toContain("lte(loginEvents.createdAt, endOfDay)");
+
+    expect(loginLogsPage).toContain('name="dateFrom"');
+    expect(loginLogsPage).toContain('name="dateTo"');
+    expect(loginLogsPage).toContain('t("filters.dateFromLabel")');
+    expect(loginLogsPage).toContain('t("filters.dateToLabel")');
+  });
 });

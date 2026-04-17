@@ -3,12 +3,18 @@ import { createApiHandler } from "@/lib/api/handler";
 import { apiSuccess } from "@/lib/api/responses";
 import { db } from "@/lib/db";
 import { loginEvents, users } from "@/lib/db/schema";
-import { and, desc, eq, sql, type SQL } from "drizzle-orm";
+import { and, desc, eq, gte, lte, sql, type SQL } from "drizzle-orm";
 
 const VALID_OUTCOMES = ["success", "invalid_credentials", "rate_limited", "policy_denied"] as const;
 
 function escapeLikePattern(value: string) {
   return value.replaceAll("\\", "\\\\").replaceAll("%", "\\%").replaceAll("_", "\\_");
+}
+
+function normalizeDateFilter(value?: string | null) {
+  if (typeof value !== "string" || !value) return "";
+  const parsed = new Date(value);
+  return isNaN(parsed.getTime()) ? "" : value;
 }
 
 export const GET = createApiHandler({
@@ -19,6 +25,8 @@ export const GET = createApiHandler({
     const limit = Math.min(100, Math.max(1, Number(searchParams.get("limit") ?? "50") || 50));
     const outcome = searchParams.get("outcome") ?? undefined;
     const search = searchParams.get("search")?.trim().slice(0, 100) ?? "";
+    const dateFrom = normalizeDateFilter(searchParams.get("dateFrom"));
+    const dateTo = normalizeDateFilter(searchParams.get("dateTo"));
 
     const filters: SQL[] = [];
 
@@ -36,6 +44,17 @@ export const GET = createApiHandler({
           or lower(coalesce(${loginEvents.ipAddress}, '')) like ${likePattern} escape '\\'
         )
       `);
+    }
+
+    if (dateFrom) {
+      const fromDate = new Date(dateFrom);
+      filters.push(gte(loginEvents.createdAt, fromDate));
+    }
+
+    if (dateTo) {
+      const endOfDay = new Date(dateTo);
+      endOfDay.setHours(23, 59, 59, 999);
+      filters.push(lte(loginEvents.createdAt, endOfDay));
     }
 
     const whereClause = filters.length > 0 ? and(...filters) : undefined;
