@@ -388,6 +388,7 @@ export const judgeWorkers = mysqlTable(
     alias: varchar("alias", { length: 255 }),
     ipAddress: varchar("ip_address", { length: 255 }),
     secretToken: text("secret_token"),
+    secretTokenHash: varchar("secret_token_hash", { length: 64 }),
     concurrency: int("concurrency").notNull().default(1),
     activeTasks: int("active_tasks").notNull().default(0),
     version: varchar("version", { length: 255 }),
@@ -885,6 +886,7 @@ export const recruitingInvitations = mysqlTable(
       .notNull()
       .references(() => assignments.id, { onDelete: "cascade" }),
     token: varchar("token", { length: 64 }).notNull(),
+    tokenHash: varchar("token_hash", { length: 64 }),
     candidateName: text("candidate_name").notNull(),
     candidateEmail: varchar("candidate_email", { length: 255 }),
     metadata: json("metadata").$type<Record<string, string>>().default({}),
@@ -906,6 +908,7 @@ export const recruitingInvitations = mysqlTable(
   },
   (table) => [
     uniqueIndex("ri_token_idx").on(table.token),
+    uniqueIndex("ri_token_hash_idx").on(table.tokenHash),
     index("ri_assignment_idx").on(table.assignmentId),
     index("ri_status_idx").on(table.status),
     index("ri_user_idx").on(table.userId),

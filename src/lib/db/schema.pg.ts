@@ -1,6 +1,7 @@
 import {
   pgTable,
   text,
+  varchar,
   integer,
   boolean,
   timestamp,
@@ -408,6 +409,7 @@ export const judgeWorkers = pgTable(
     alias: text("alias"),
     ipAddress: text("ip_address"),
     secretToken: text("secret_token"),
+    secretTokenHash: varchar("secret_token_hash", { length: 64 }),
     concurrency: integer("concurrency").notNull().default(1),
     activeTasks: integer("active_tasks").notNull().default(0),
     version: text("version"),
@@ -910,6 +912,7 @@ export const recruitingInvitations = pgTable(
       .notNull()
       .references(() => assignments.id, { onDelete: "cascade" }),
     token: text("token").notNull(),
+    tokenHash: varchar("token_hash", { length: 64 }),
     candidateName: text("candidate_name").notNull(),
     candidateEmail: text("candidate_email"),
     metadata: jsonb("metadata").$type<Record<string, string>>().default({}),
@@ -930,6 +933,7 @@ export const recruitingInvitations = pgTable(
   },
   (table) => [
     uniqueIndex("ri_token_idx").on(table.token),
+    uniqueIndex("ri_token_hash_idx").on(table.tokenHash),
     index("ri_assignment_idx").on(table.assignmentId),
     index("ri_status_idx").on(table.status),
     index("ri_user_idx").on(table.userId),

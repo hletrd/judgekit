@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { createHash } from "crypto";
 import { db } from "@/lib/db";
 import { recruitingInvitations, assignments } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
@@ -17,6 +18,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "invalidToken" }, { status: 400 });
   }
 
+  const tokenHash = createHash("sha256").update(parsed.data.token).digest("hex");
   const [invitation] = await db
     .select({
       status: recruitingInvitations.status,
@@ -24,7 +26,7 @@ export async function POST(req: NextRequest) {
       assignmentId: recruitingInvitations.assignmentId,
     })
     .from(recruitingInvitations)
-    .where(eq(recruitingInvitations.token, parsed.data.token))
+    .where(eq(recruitingInvitations.tokenHash, tokenHash))
     .limit(1);
 
   // Return a uniform invalid response for any failure case to avoid

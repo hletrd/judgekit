@@ -1,4 +1,4 @@
-import { randomBytes } from "crypto";
+import { randomBytes, createHash } from "crypto";
 import { nanoid } from "nanoid";
 import { hashPassword, verifyPassword } from "@/lib/security/password-hash";
 import { getPasswordValidationError } from "@/lib/security/password";
@@ -20,6 +20,10 @@ type RecruitingInvitationExecutor =
 
 const ACCOUNT_PASSWORD_RESET_REQUIRED_KEY = "accountPasswordResetRequired";
 
+function hashToken(token: string): string {
+  return createHash("sha256").update(token).digest("hex");
+}
+
 export function generateRecruitingToken(): string {
   return randomBytes(24).toString("base64url");
 }
@@ -38,6 +42,7 @@ export async function createRecruitingInvitation(params: {
     .values({
       assignmentId: params.assignmentId,
       token,
+      tokenHash: hashToken(token),
       candidateName: params.candidateName,
       candidateEmail: params.candidateEmail ?? null,
       metadata: params.metadata ?? {},
@@ -58,15 +63,19 @@ export async function bulkCreateRecruitingInvitations(params: {
   }[];
   createdBy: string;
 }, executor: RecruitingInvitationExecutor = db) {
-  const values = params.invitations.map((inv) => ({
-    assignmentId: params.assignmentId,
-    token: generateRecruitingToken(),
-    candidateName: inv.candidateName,
-    candidateEmail: inv.candidateEmail ?? null,
-    metadata: inv.metadata ?? {},
-    expiresAt: inv.expiresAt ?? null,
-    createdBy: params.createdBy,
-  }));
+  const values = params.invitations.map((inv) => {
+    const token = generateRecruitingToken();
+    return {
+      assignmentId: params.assignmentId,
+      token,
+      tokenHash: hashToken(token),
+      candidateName: inv.candidateName,
+      candidateEmail: inv.candidateEmail ?? null,
+      metadata: inv.metadata ?? {},
+      expiresAt: inv.expiresAt ?? null,
+      createdBy: params.createdBy,
+    };
+  });
   const created = await executor
     .insert(recruitingInvitations)
     .values(values)
@@ -116,7 +125,7 @@ export async function getRecruitingInvitationByToken(token: string) {
   const [invitation] = await db
     .select()
     .from(recruitingInvitations)
-    .where(eq(recruitingInvitations.token, token))
+    .where(eq(recruitingInvitations.tokenHash, hashToken(token)))
     .limit(1);
   return invitation ?? null;
 }
@@ -249,7 +258,7 @@ export async function redeemRecruitingToken(
       const [invitation] = await tx
         .select()
         .from(recruitingInvitations)
-        .where(eq(recruitingInvitations.token, token))
+        .where(eq(recruitingInvitations.tokenHash, hashToken(token)))
         .limit(1);
 
       if (!invitation) return { ok: false as const, error: "invalidToken" };

@@ -273,7 +273,7 @@ const SANITIZED_COLUMNS: Record<string, Set<string>> = {
   accounts: new Set(["refresh_token", "access_token", "id_token"]),
   apiKeys: new Set(["encryptedKey"]),
   judgeWorkers: new Set(["secretToken", "judgeClaimToken"]),
-  recruitingInvitations: new Set(["token"]),
+  recruitingInvitations: new Set(["token", "tokenHash"]),
   contestAccessTokens: new Set(["token"]),
 };
 
