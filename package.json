@@ -25,7 +25,7 @@
     "test:e2e": "playwright test"
   },
   "dependencies": {
-    "@auth/drizzle-adapter": "^1.11.1",
+    "@auth/drizzle-adapter": "^1.11.2",
     "@base-ui/react": "^1.2.0",
     "@codemirror/commands": "^6.10.2",
     "@codemirror/lang-cpp": "^6.0.3",
