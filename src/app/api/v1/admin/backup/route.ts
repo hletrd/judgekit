@@ -11,6 +11,7 @@ import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { streamDatabaseExport } from "@/lib/db/export";
+import { streamBackupWithFiles } from "@/lib/db/export-with-files";
 
 export const dynamic = "force-dynamic";
 
@@ -56,8 +57,11 @@ export async function POST(request: NextRequest) {
     }
 
     const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+    const includeFiles = new URL(request.url).searchParams.get("includeFiles") === "true";
 
-    const filename = `judgekit-backup-${timestamp}.json`;
+    const filename = includeFiles
+      ? `judgekit-backup-${timestamp}.zip`
+      : `judgekit-backup-${timestamp}.json`;
 
     recordAuditEvent({
       actorId: user.id,
@@ -66,9 +70,22 @@ export async function POST(request: NextRequest) {
       resourceType: "system_settings",
       resourceId: "database",
       resourceLabel: "Database backup",
-      summary: "Downloaded PostgreSQL backup as a streamed JSON export",
+      summary: includeFiles
+        ? "Downloaded PostgreSQL backup with file uploads as ZIP"
+        : "Downloaded PostgreSQL backup as a streamed JSON export",
       request,
     });
+
+    if (includeFiles) {
+      const body = await streamBackupWithFiles(request.signal);
+      return new Response(body, {
+        headers: {
+          "Content-Type": "application/zip",
+          "Content-Disposition": `attachment; filename="${filename}"`,
+          "Cache-Control": "no-store",
+        },
+      });
+    }
 
     return new Response(streamDatabaseExport({ signal: request.signal }), {
       headers: {
