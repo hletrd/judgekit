@@ -113,5 +113,28 @@ export const assignmentMutationSchema = z
     }
   });
 
+/**
+ * Schema for the raw request body of PATCH /api/v1/groups/[id]/assignments/[assignmentId].
+ * All fields are optional (partial update). The `allowLockedProblems` flag
+ * is a meta-field that does not appear in the mutation schema — it controls
+ * whether the handler permits changing problem links after submissions exist.
+ */
+export const assignmentPatchSchema = z.object({
+  title: z.string().min(1).max(200).optional(),
+  description: z.string().max(5000).optional(),
+  startsAt: z.number().int().nullable().optional(),
+  deadline: z.number().int().nullable().optional(),
+  lateDeadline: z.number().int().nullable().optional(),
+  latePenalty: z.number().min(0).max(100).optional(),
+  examMode: z.enum(["none", "scheduled", "windowed"]).optional(),
+  visibility: z.enum(["private", "public"]).optional(),
+  examDurationMinutes: z.number().int().min(1).max(1440).nullable().optional(),
+  scoringModel: z.enum(["ioi", "icpc"]).optional(),
+  enableAntiCheat: z.boolean().optional(),
+  problems: z.array(assignmentProblemSchema).min(1).max(100).optional(),
+  allowLockedProblems: z.boolean().optional(),
+}).strict();
+
 export type AssignmentProblemInput = z.infer<typeof assignmentProblemSchema>;
 export type AssignmentMutationInput = z.infer<typeof assignmentMutationSchema>;
+export type AssignmentPatchInput = z.infer<typeof assignmentPatchSchema>;

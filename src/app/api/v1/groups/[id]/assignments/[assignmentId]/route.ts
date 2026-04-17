@@ -10,7 +10,7 @@ import {
   getManageableProblemsForGroup,
   updateAssignmentWithProblems,
 } from "@/lib/assignments/management";
-import { assignmentMutationSchema } from "@/lib/validators/assignments";
+import { assignmentMutationSchema, assignmentPatchSchema } from "@/lib/validators/assignments";
 import { canAccessGroup } from "@/lib/auth/permissions";
 import { createApiHandler, isAdmin, forbidden, notFound } from "@/lib/api/handler";
 
@@ -43,7 +43,8 @@ export const GET = createApiHandler({
 
 export const PATCH = createApiHandler({
   rateLimit: "assignments:update",
-  handler: async (req: NextRequest, { user, params }) => {
+  schema: assignmentPatchSchema,
+  handler: async (req: NextRequest, { user, params, body }) => {
     const { id, assignmentId } = params;
     const group = await db.query.groups.findFirst({
       where: (groups, { eq: equals }) => equals(groups.id, id),
@@ -62,7 +63,6 @@ export const PATCH = createApiHandler({
     if (!canManage) return forbidden();
 
     // Use transaction for atomic read-check-update to prevent TOCTOU races
-    const body = await req.json();
     const allowLockedProblems = Boolean(body.allowLockedProblems);
     // Intentional built-in break-glass override: once submissions exist,
     // changing assignment problem links remains reserved to built-in admins.
