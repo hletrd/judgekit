@@ -13,22 +13,22 @@
 ## Open backlog by workstream
 
 ### 1. Authorization and trusted-context hardening
-**Plan:** `plans/open/2026-04-14-authorization-and-context-hardening-plan.md`  
-**Status:** partially implemented / still open
+**Plan:** `plans/archive/2026-04-14-authorization-and-context-hardening-plan.md`  
+**Status:** implemented and archived
 
-Remaining driver lines include:
-- custom-role consistency across user CRUD and page flows
-- assignment- and contest-scoped authorization edges
-- capability-vs-built-in-role cleanup that still affects real routes/pages
+Completed in this pass:
+- object-level authorization now uses shared scoped helpers
+- server-derived restricted context closes forged/omitted assignment paths
+- custom-role and capability cleanup reached user CRUD, problem sets, contest visibility, and submission/recruiting surfaces
 
 ### 2. Judge runtime, worker coordination, and deployment hardening
-**Plan:** `plans/open/2026-04-14-judge-runtime-and-deployment-hardening-plan.md`  
-**Status:** partially implemented / still open
+**Plan:** `plans/archive/2026-04-14-judge-runtime-and-deployment-hardening-plan.md`  
+**Status:** implemented and archived
 
-Remaining driver lines include:
-- claim freshness vs stale reclaim
-- worker-boundary token scope and dedicated-worker compose hardening
-- compile sandbox hardening and split-host runtime truth
+Completed in this pass:
+- worker lifecycle accounting, split-host fail-closed behavior, and runner-token split are aligned
+- compile/runtime contracts, similarity service status, and deploy fail-fast behavior are grounded in tests/docs
+- compile seccomp and high-stakes runtime contracts now require explicit insecure opt-ins
 
 ### 3. Test, docs, and contract alignment
 **Plan:** `plans/archive/2026-04-17-test-contract-alignment-plan.md`  
@@ -52,7 +52,9 @@ This pass also created or refreshed feature-focused plans under `.context/plans/
 - updated security/auth and judge-worker remediation
 
 ## Global acceptance condition for archiving this backlog
-This backlog can move to `plans/archive/` only when:
-- each root open plan is either implemented and verified, or explicitly deferred as an external prerequisite;
+This backlog can move to `plans/archive/` when:
+- each root open plan is implemented and verified, or explicitly deferred as an external prerequisite;
 - `plans/README.md` and `plans/open/README.md` reflect the new status;
 - the current-head review set no longer has unplanned repository-local criticism.
+
+The implementation/verification conditions above are now satisfied for the root repository lanes; remaining open planning is feature/domain work under `.context/plans/`.

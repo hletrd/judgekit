@@ -41,9 +41,11 @@ Track how the full review corpus maps to current implementation plans, including
 | `security-judge-worker.md` | `.context/plans/sec-plan-02-judge-worker.md` |
 | `seo-review-2026-04-15-current-head.md` | `.context/plans/seo-plan-01-indexability-locale.md` |
 | `competitive-programmer-review-2026-04-17.md` | `.context/plans/cp-plan-01-special-judge-subtask.md`, `.context/plans/cp-plan-04-interactive-problems.md`, `.context/plans/cp-plan-06-rating-progress.md`, `.context/plans/cp-plan-08-team-contests.md`, `.context/plans/cp-plan-13-contest-operations-gap-closure.md` |
-| repository current-head code/security reviews | `plans/open/2026-04-14-authorization-and-context-hardening-plan.md`, `plans/open/2026-04-14-judge-runtime-and-deployment-hardening-plan.md`, `plans/open/2026-04-17-test-contract-alignment-plan.md` |
+| repository current-head code/security reviews | `plans/archive/2026-04-14-authorization-and-context-hardening-plan.md`, `plans/archive/2026-04-14-judge-runtime-and-deployment-hardening-plan.md`, `plans/archive/2026-04-17-test-contract-alignment-plan.md` |
 
 ## Archive action taken in this pass
 - archived the fully implemented `.context/plans/cp-plan-03-contest-workflow.md` into `.context/plans/_archive/`
 - archived `plans/archive/2026-04-17-test-contract-alignment-plan.md` after full-suite and typecheck verification succeeded
-- left the remaining active plans open because they still contain unresolved work or need revalidation before closure
+- archived `plans/archive/2026-04-14-authorization-and-context-hardening-plan.md` after the root authz lane's targeted evidence plus a green full suite and typecheck
+- archived `plans/archive/2026-04-14-judge-runtime-and-deployment-hardening-plan.md` after the runtime lane's targeted evidence plus green `cargo test`, full unit suite, and typecheck
+- left the remaining feature/domain plans open because they still contain unresolved work or need revalidation before closure

@@ -8,11 +8,11 @@ This is the single prioritized roadmap across the root `plans/open/` backlog and
 - **`.context/plans/`** = product/domain implementation plans derived from the broader review corpus.
 
 ## Phase 0 — Current-head repository stabilization (do first)
-1. `plans/open/2026-04-14-authorization-and-context-hardening-plan.md`
-2. `plans/open/2026-04-14-judge-runtime-and-deployment-hardening-plan.md`
+1. `plans/archive/2026-04-14-authorization-and-context-hardening-plan.md` ✅
+2. `plans/archive/2026-04-14-judge-runtime-and-deployment-hardening-plan.md` ✅
 3. `plans/archive/2026-04-17-test-contract-alignment-plan.md` ✅
 
-**Why first:** these three lanes close the current-head correctness/security gaps and restore trust in the repo-level quality gates. The test-contract lane is now complete; the remaining Phase 0 work is the authorization and runtime lanes.
+**Why first:** these three lanes close the current-head correctness/security gaps and restore trust in the repo-level quality gates. Phase 0 is now complete and archived.
 
 ## Phase 1 — Security and operational hardening
 4. `.context/plans/sec-plan-01-api-auth.md`
