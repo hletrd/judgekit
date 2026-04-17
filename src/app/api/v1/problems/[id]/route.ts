@@ -66,7 +66,8 @@ export const GET = createApiHandler({
 
 export const PATCH = createApiHandler({
   rateLimit: "problems:update",
-  handler: async (req: NextRequest, { user, params }) => {
+  schema: problemPatchSchema,
+  handler: async (req: NextRequest, { user, params, body }) => {
     const { id } = params;
     const problem = await db.query.problems.findFirst({ where: eq(problems.id, id) });
     if (!problem) return notFound("Problem");
@@ -76,13 +77,6 @@ export const PATCH = createApiHandler({
     const canEditProblem = caps.has("problems.edit");
     const canBypassLockedTestCases = caps.has("problems.delete");
     if (!isAuthor && !canEditProblem) return forbidden();
-
-    const rawBody = await req.json();
-    const parsedBody = problemPatchSchema.safeParse(rawBody);
-    if (!parsedBody.success) {
-      return apiError(parsedBody.error.issues[0]?.message ?? "invalidInput", 400);
-    }
-    const body = parsedBody.data;
     const allowLockedTestCases = Boolean(body.allowLockedTestCases);
     const existingTestCases = await db.query.testCases.findMany({
       where: eq(testCases.problemId, id),
