@@ -64,7 +64,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
 
 export default async function CommunityThreadDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const [t, tCommon, session, locale, settings] = await Promise.all([
+  const [tShell, tCommon, session, locale, settings] = await Promise.all([
     getTranslations("publicShell"),
     getTranslations("common"),
     auth(),
@@ -96,10 +96,10 @@ export default async function CommunityThreadDetailPage({ params }: { params: Pr
     description: summarizeTextForMetadata(thread.content),
     locale,
     siteTitle: settings.siteTitle,
-    section: thread.scopeType === "general" ? t("nav.community") : t(thread.scopeType === "solution" ? "community.scopeSolution" : "community.scopeProblem"),
-    badge: thread.scopeType === "general" ? t("community.scopeGeneral") : t(thread.scopeType === "solution" ? "community.scopeSolution" : "community.scopeProblem"),
-    meta: [thread.author?.name, t("community.replyCount", { count: thread.posts.length })].filter(Boolean).join(" · "),
-    footer: thread.scopeType === "problem" ? thread.problem?.title ?? t("nav.community") : t("nav.community"),
+    section: thread.scopeType === "general" ? tShell("nav.community") : tShell(thread.scopeType === "solution" ? "community.scopeSolution" : "community.scopeProblem"),
+    badge: thread.scopeType === "general" ? tShell("community.scopeGeneral") : tShell(thread.scopeType === "solution" ? "community.scopeSolution" : "community.scopeProblem"),
+    meta: [thread.author?.name, tShell("community.replyCount", { count: thread.posts.length })].filter(Boolean).join(" · "),
+    footer: thread.scopeType === "problem" ? thread.problem?.title ?? tShell("nav.community") : tShell("nav.community"),
   });
   const threadJsonLd = {
     "@context": "https://schema.org",
@@ -143,7 +143,7 @@ export default async function CommunityThreadDetailPage({ params }: { params: Pr
       {
         "@type": "ListItem",
         position: 2,
-        name: t("nav.community"),
+        name: tShell("nav.community"),
         item: buildAbsoluteUrl(buildLocalePath("/community", locale)),
       },
       {
@@ -172,28 +172,28 @@ export default async function CommunityThreadDetailPage({ params }: { params: Pr
             threadId={thread.id}
             isLocked={Boolean(thread.lockedAt)}
             isPinned={Boolean(thread.pinnedAt)}
-            pinLabel={t("community.moderation.pin")}
-            unpinLabel={t("community.moderation.unpin")}
-            lockLabel={t("community.moderation.lock")}
-            unlockLabel={t("community.moderation.unlock")}
-            deleteLabel={t("community.moderation.deleteThread")}
-            successLabel={t("community.moderation.success")}
-            deleteSuccessLabel={t("community.moderation.deleteSuccess")}
+            pinLabel={tShell("community.moderation.pin")}
+            unpinLabel={tShell("community.moderation.unpin")}
+            lockLabel={tShell("community.moderation.lock")}
+            unlockLabel={tShell("community.moderation.unlock")}
+            deleteLabel={tShell("community.moderation.deleteThread")}
+            successLabel={tShell("community.moderation.success")}
+            deleteSuccessLabel={tShell("community.moderation.deleteSuccess")}
           />
         ) : null}
         <DiscussionThreadView
           title={thread.title}
           content={thread.content}
-          authorName={thread.author?.name ?? t("community.unknownAuthor")}
+          authorName={thread.author?.name ?? tShell("community.unknownAuthor")}
           scopeLabel={
             thread.scopeType === "general"
-              ? t("community.scopeGeneral")
+              ? tShell("community.scopeGeneral")
               : thread.scopeType === "solution"
-                ? t("community.scopeSolution")
-                : t("community.scopeProblem")
+                ? tShell("community.scopeSolution")
+                : tShell("community.scopeProblem")
           }
-          repliesTitle={t("community.repliesTitle")}
-          noRepliesLabel={t("community.noReplies")}
+          repliesTitle={tShell("community.repliesTitle")}
+          noRepliesLabel={tShell("community.noReplies")}
           actions={(
             <DiscussionVoteButtons
               targetType="thread"
@@ -201,14 +201,14 @@ export default async function CommunityThreadDetailPage({ params }: { params: Pr
               score={thread.voteScore}
               currentUserVote={thread.currentUserVote}
               canVote={Boolean(session?.user) && thread.authorId !== session?.user?.id}
-              upvoteLabel={t("community.upvote")}
-              downvoteLabel={t("community.downvote")}
+              upvoteLabel={tShell("community.upvote")}
+              downvoteLabel={tShell("community.downvote")}
             />
           )}
           posts={thread.posts.map((post) => ({
             id: post.id,
             content: post.content,
-            authorName: post.author?.name ?? t("community.unknownAuthor"),
+            authorName: post.author?.name ?? tShell("community.unknownAuthor"),
             actions: (
               <div className="flex items-center gap-2">
                 <DiscussionVoteButtons
@@ -217,14 +217,14 @@ export default async function CommunityThreadDetailPage({ params }: { params: Pr
                   score={post.voteScore}
                   currentUserVote={post.currentUserVote}
                   canVote={Boolean(session?.user) && post.author?.id !== session?.user?.id}
-                  upvoteLabel={t("community.upvote")}
-                  downvoteLabel={t("community.downvote")}
+                  upvoteLabel={tShell("community.upvote")}
+                  downvoteLabel={tShell("community.downvote")}
                 />
                 {canModerate ? (
                   <DiscussionPostDeleteButton
                     postId={post.id}
-                    deleteLabel={t("community.moderation.deletePost")}
-                    successLabel={t("community.moderation.replyDeleteSuccess")}
+                    deleteLabel={tShell("community.moderation.deletePost")}
+                    successLabel={tShell("community.moderation.replyDeleteSuccess")}
                   />
                 ) : null}
               </div>
@@ -233,10 +233,10 @@ export default async function CommunityThreadDetailPage({ params }: { params: Pr
         />
         <DiscussionPostForm
           threadId={thread.id}
-          contentLabel={t("community.reply.contentLabel")}
-          submitLabel={t("community.reply.submitLabel")}
-          successLabel={t("community.reply.success")}
-          signInLabel={t("community.reply.signIn")}
+          contentLabel={tShell("community.reply.contentLabel")}
+          submitLabel={tShell("community.reply.submitLabel")}
+          successLabel={tShell("community.reply.success")}
+          signInLabel={tShell("community.reply.signIn")}
           canPost={Boolean(session?.user)}
           signInHref={buildLocalePath(`/login?callbackUrl=${encodeURIComponent(callbackPath)}`, locale)}
         />
