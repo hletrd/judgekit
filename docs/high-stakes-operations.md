@@ -38,4 +38,5 @@ Do not expose shared standings or peer-identifying ranking data to recruiting ca
 ## See also
 - `docs/exam-integrity-model.md`
 - `docs/judge-worker-incident-runbook.md`
+- `docs/operator-incident-runbook.md`
 - `docs/high-stakes-validation-matrix.md`

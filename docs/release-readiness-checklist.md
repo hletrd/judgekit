@@ -222,6 +222,7 @@ These must pass for **any** release.
 - [ ] privacy/retention expectations are acceptable
 - [ ] high-stakes validation matrix reviewed (`docs/high-stakes-validation-matrix.md`)
 - [ ] judge worker incident runbook is reviewed for the target deployment (`docs/judge-worker-incident-runbook.md`)
+- [ ] operator incident runbook is reviewed for backup/credential scenarios (`docs/operator-incident-runbook.md`)
 - [ ] user-facing copy matches real behavior
 - [ ] dry run completed where required
 

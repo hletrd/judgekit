@@ -272,6 +272,7 @@ Default: `homework`. Change in admin settings or directly in the database (`syst
 - [High-Stakes Operations](docs/high-stakes-operations.md) — operational truth and launch checks for recruiting, exams, and serious contests
 - [Exam Integrity Model](docs/exam-integrity-model.md) — what the current anti-cheat telemetry does and does not prove
 - [Judge Worker Incident Runbook](docs/judge-worker-incident-runbook.md) — operational response guide for the privileged worker boundary
+- [Operator Incident Runbook](docs/operator-incident-runbook.md) — containment and recovery checklist for backup/restore failures and credential leaks
 - [High-Stakes Validation Matrix](docs/high-stakes-validation-matrix.md) — required evidence before changing exam/public-contest GO/NO-GO decisions
 
 ## License

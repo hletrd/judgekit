@@ -27,6 +27,19 @@ describe("high-stakes documentation implementation", () => {
     expect(runbook).toContain("Immediate containment");
   });
 
+  it("documents an operator incident runbook for backup and credential scenarios", () => {
+    const readme = read("README.md");
+    const opsGuide = read("docs/high-stakes-operations.md");
+    const checklist = read("docs/release-readiness-checklist.md");
+    const runbook = read("docs/operator-incident-runbook.md");
+
+    expect(readme).toContain("docs/operator-incident-runbook.md");
+    expect(opsGuide).toContain("docs/operator-incident-runbook.md");
+    expect(checklist).toContain("docs/operator-incident-runbook.md");
+    expect(runbook).toContain("Scenario: backup or restore incident");
+    expect(runbook).toContain("Scenario: credential leak");
+  });
+
   it("shows the explicit evidence model guidance in the anti-cheat dashboard", () => {
     const source = read("src/components/contest/anti-cheat-dashboard.tsx");
 
