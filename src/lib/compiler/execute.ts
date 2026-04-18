@@ -129,6 +129,23 @@ interface DockerRunResult {
  * table could inject malicious commands, but the sandbox limits the blast
  * radius to the container interior. No network exfiltration is possible.
  *
+ * Denylist (must match judge-worker-rs/src/runner.rs#validate_shell_command):
+ *   - Backtick: `
+ *   - Command substitution: $(
+ *   - Variable substitution: ${
+ *   - Process substitution: <( >(
+ *   - Logical OR: ||
+ *   - Pipe: |
+ *   - I/O redirect: > <
+ *   - Control chars: \n \r
+ *   - Null byte: \0
+ *   - eval keyword (word-boundary match)
+ *
+ * Minor divergence from Rust: \beval\b also rejects tokens like "eval-xxx"
+ * where hyphen follows "eval"; the Rust split_whitespace check only rejects
+ * the exact token "eval". This is a safe false-positive; no legitimate
+ * compile/run command begins with "eval-".
+ *
  * Kept in lock-step with judge-worker-rs/src/runner.rs#validate_shell_command.
  * Both validators share the same denylist so a command the Rust runner
  * accepts is also accepted here, and vice versa.
