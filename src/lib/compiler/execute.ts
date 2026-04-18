@@ -116,11 +116,18 @@ interface DockerRunResult {
 }
 
 /**
- * Validate shell command string. Since commands come from trusted DB configs,
- * we perform basic validation to detect obvious anomalies but don't enforce
- * strict character restrictions (needed for legitimate compiler flags).
- * Allow && and ; since trusted admin-configured compile commands legitimately
- * chain steps (e.g. "javac ... && jar ...").
+ * Validate shell command string. Since commands come from trusted DB configs
+ * (admin role), we perform basic validation to detect obvious anomalies but
+ * don't enforce strict character restrictions (needed for legitimate compiler
+ * flags). Allow && and ; since trusted admin-configured compile commands
+ * legitimately chain steps (e.g. "javac ... && jar ...").
+ *
+ * TRUST BOUNDARY: Commands are passed to `sh -c` inside a Docker sandbox
+ * (--network=none, --cap-drop=ALL, --read-only, --user 65534, seccomp).
+ * The sandbox is the primary security boundary; this validator is a secondary
+ * defense-in-depth layer. A compromised admin account or language_configs
+ * table could inject malicious commands, but the sandbox limits the blast
+ * radius to the container interior. No network exfiltration is possible.
  *
  * Kept in lock-step with judge-worker-rs/src/runner.rs#validate_shell_command.
  * Both validators share the same denylist so a command the Rust runner
