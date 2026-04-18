@@ -52,7 +52,7 @@ export type ProblemFormInitialData = {
 };
 
 type CreateProblemFormProps = {
-  mode?: "create" | "edit";
+  mode?: "create" | "edit" | "duplicate";
   initialProblem?: ProblemFormInitialData;
   testCasesLocked?: boolean;
   allowTestCaseOverride?: boolean;
@@ -73,6 +73,7 @@ export default function CreateProblemForm({
   const t = useTranslations("problems");
   const tCommon = useTranslations("common");
   const router = useRouter();
+  const isDuplicating = mode === "duplicate";
   const visibilityLabels = {
     public: t("visibilityOptions.public"),
     private: t("visibilityOptions.private"),
@@ -80,7 +81,11 @@ export default function CreateProblemForm({
   };
 
   const [isLoading, setIsLoading] = useState(false);
-  const [title, setTitle] = useState(initialProblem?.title ?? "");
+  const [title, setTitle] = useState(
+    isDuplicating
+      ? `${initialProblem?.title ?? ""}${t("duplicateTitleSuffix")}`
+      : (initialProblem?.title ?? "")
+  );
   const [description, setDescription] = useState(initialProblem?.description ?? "");
   const [descriptionTab, setDescriptionTab] = useState<"write" | "preview">("write");
   const [sequenceNumber, setSequenceNumber] = useState<string>(
@@ -112,7 +117,11 @@ export default function CreateProblemForm({
 
   const [currentTags, setCurrentTags] = useState<string[]>(initialProblem?.tags ?? []);
   const isDirty =
-    title !== (initialProblem?.title ?? "") ||
+    title !== (
+      isDuplicating
+        ? `${initialProblem?.title ?? ""}${t("duplicateTitleSuffix")}`
+        : (initialProblem?.title ?? "")
+    ) ||
     description !== (initialProblem?.description ?? "") ||
     sequenceNumber !== (initialProblem?.sequenceNumber?.toString() ?? "") ||
     timeLimitMs !== (initialProblem?.timeLimitMs ?? 2000) ||
@@ -414,7 +423,13 @@ export default function CreateProblemForm({
 
       const nextProblemId = data.data?.id ?? initialProblem?.id;
 
-      toast.success(isEditing ? t("updateSuccess") : t("createSuccess"));
+      toast.success(
+        isEditing
+          ? t("updateSuccess")
+          : isDuplicating
+            ? t("duplicateSuccess")
+            : t("createSuccess")
+      );
       allowNextNavigation();
       router.push(nextProblemId ? `/dashboard/problems/${nextProblemId}` : "/dashboard/problems");
       router.refresh();
@@ -942,6 +957,8 @@ export default function CreateProblemForm({
             ? tCommon("loading")
             : mode === "edit"
               ? tCommon("save")
+              : mode === "duplicate"
+                ? t("duplicateProblem")
               : tCommon("create")}
         </Button>
       </div>

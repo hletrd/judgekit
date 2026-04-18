@@ -1,6 +1,7 @@
 import { redirect, notFound } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { problems, submissions, problemTags, tags } from "@/lib/db/schema";
@@ -9,6 +10,7 @@ import CreateProblemForm from "@/app/(dashboard)/dashboard/problems/create/creat
 import { ProblemDeleteButton } from "../problem-delete-button";
 import { resolveCapabilities } from "@/lib/capabilities/cache";
 import { getResolvedPlatformMode, getPlatformModePolicy } from "@/lib/system-settings";
+import Link from "next/link";
 
 export default async function EditProblemPage({ params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
@@ -62,7 +64,12 @@ export default async function EditProblemPage({ params }: { params: Promise<{ id
           <h2 className="text-2xl font-bold">{t("editTitle")}</h2>
           <p className="text-sm text-muted-foreground">{t("deleteHelpText")}</p>
         </div>
-        <ProblemDeleteButton problemId={problem.id} problemTitle={problem.title} />
+        <div className="flex flex-wrap gap-2">
+          <Link href={`/dashboard/problems/create?duplicateFrom=${problem.id}`}>
+            <Button variant="outline">{t("duplicateProblem")}</Button>
+          </Link>
+          <ProblemDeleteButton problemId={problem.id} problemTitle={problem.title} />
+        </div>
       </div>
 
       <Card>
