@@ -115,7 +115,7 @@ export async function InstructorDashboard({ userId }: InstructorDashboardProps) 
           <Link href="/dashboard/contests">
             <Button size="sm" variant="outline">{tNav("contests")}</Button>
           </Link>
-          <Link href="/dashboard/submissions">
+          <Link href="/dashboard/admin/submissions">
             <Button size="sm" variant="outline">{tNav("submissions")}</Button>
           </Link>
           <Link href="/dashboard/problem-sets">

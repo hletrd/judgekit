@@ -114,4 +114,20 @@ describe("AppSidebar", () => {
     expect(screen.queryByText("problems")).not.toBeInTheDocument();
     expect(screen.getByText("contests")).toBeInTheDocument();
   });
+
+  it("routes scoped reviewers to the filtered review queue from the submissions nav item", () => {
+    render(
+      <AppSidebar
+        user={{ id: "user-2", username: "ta", name: "TA", role: "assistant" }}
+        siteTitle="JudgeKit"
+        platformMode="homework"
+        capabilities={["assignments.view_status"]}
+      />
+    );
+
+    expect(screen.getByRole("link", { name: "submissions" })).toHaveAttribute(
+      "href",
+      "/dashboard/admin/submissions"
+    );
+  });
 });

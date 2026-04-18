@@ -142,16 +142,19 @@ function NavItems({
   pathname,
   t,
   platformMode,
+  resolveHref,
 }: {
   items: NavItem[];
   pathname: string;
   t: (key: string) => string;
   platformMode: PlatformMode;
+  resolveHref: (item: NavItem) => string;
 }) {
   return (
     <>
       {items.map((item) => {
-        const isActive = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href + "/"));
+        const href = resolveHref(item);
+        const isActive = pathname === href || (href !== "/dashboard" && pathname.startsWith(href + "/"));
         const titleKey = item.titleKeyByMode?.[platformMode] ?? item.titleKey;
         return (
           <SidebarMenuItem key={item.href}>
@@ -159,7 +162,7 @@ function NavItems({
               isActive={isActive}
               aria-current={isActive ? "page" : undefined}
               tooltip={t(titleKey)}
-              render={<Link href={item.href} />}
+              render={<Link href={href} />}
             >
               <item.icon className="size-4" aria-hidden="true" />
               <span>{t(titleKey)}</span>
@@ -201,6 +204,16 @@ export function AppSidebar({
     || capsSet.has("groups.view_all")
     || capsSet.has("submissions.view_all")
     || capsSet.has("assignments.view_status");
+  const prefersScopedReviewQueue =
+    capsSet.has("submissions.view_all") || capsSet.has("assignments.view_status");
+
+  function resolveItemHref(item: NavItem) {
+    if (item.href === "/dashboard/submissions" && prefersScopedReviewQueue) {
+      return "/dashboard/admin/submissions";
+    }
+
+    return item.href;
+  }
 
   function filterItems(items: NavItem[]) {
     return items.filter((item) => {
@@ -259,7 +272,7 @@ export function AppSidebar({
               {group.labelKey && <SidebarGroupLabel>{t(group.labelKey)}</SidebarGroupLabel>}
               <SidebarGroupContent>
                 <SidebarMenu>
-                  <NavItems items={filtered} pathname={pathname} t={t} platformMode={platformMode} />
+                  <NavItems items={filtered} pathname={pathname} t={t} platformMode={platformMode} resolveHref={resolveItemHref} />
                 </SidebarMenu>
               </SidebarGroupContent>
             </SidebarGroup>
@@ -281,7 +294,7 @@ export function AppSidebar({
                   <SidebarGroupLabel>{t(group.labelKey)}</SidebarGroupLabel>
                   <SidebarGroupContent>
                     <SidebarMenu>
-                      <NavItems items={filtered} pathname={pathname} t={t} platformMode={platformMode} />
+                      <NavItems items={filtered} pathname={pathname} t={t} platformMode={platformMode} resolveHref={resolveItemHref} />
                     </SidebarMenu>
                   </SidebarGroupContent>
                 </SidebarGroup>

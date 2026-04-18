@@ -13,7 +13,7 @@ describe("instructor dashboard implementation", () => {
     expect(source).toContain('CardTitle>{t("instructorQuickActions")}');
     expect(source).toContain('href="/dashboard/groups"');
     expect(source).toContain('href="/dashboard/contests"');
-    expect(source).toContain('href="/dashboard/submissions"');
+    expect(source).toContain('href="/dashboard/admin/submissions"');
     expect(source).toContain('href="/dashboard/problem-sets"');
   });
 });
