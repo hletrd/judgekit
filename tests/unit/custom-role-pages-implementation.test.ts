@@ -105,11 +105,16 @@ describe("custom-role page/runtime implementation guards", () => {
     expect(userActions).not.toContain('actorRole === "admin"');
 
     expect(addDialog).toContain("availableRoles");
+    expect(addDialog).toContain('assistant: t("roleOptions.assistant")');
+    expect(addDialog).toContain('super_admin: t("roleOptions.super_admin")');
     expect(addDialog).not.toContain("actorRole");
+    expect(addDialog).not.toContain('.filter((r) => r.name !== "super_admin")');
 
     expect(editDialog).toContain("canEditRole");
     expect(editDialog).toContain("roleOptions");
+    expect(editDialog).toContain('assistant: t("roleOptions.assistant")');
     expect(editDialog).not.toContain("actorRole");
     expect(editDialog).not.toContain('actorRole === "instructor"');
+    expect(editDialog).not.toContain('.filter((r) => r.name !== "super_admin" || user.role === "super_admin")');
   });
 });

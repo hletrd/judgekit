@@ -33,8 +33,10 @@ export default function AddUserDialog({ availableRoles }: { availableRoles: Role
 
   const builtinRoleLabels: Record<string, string> = {
     student: t("roleOptions.student"),
+    assistant: t("roleOptions.assistant"),
     instructor: t("roleOptions.instructor"),
     admin: t("roleOptions.admin"),
+    super_admin: t("roleOptions.super_admin"),
   };
 
   function resetFormState() {
@@ -107,7 +109,6 @@ export default function AddUserDialog({ availableRoles }: { availableRoles: Role
                 </SelectTrigger>
                 <SelectContent>
                   {availableRoles
-                    .filter((r) => r.name !== "super_admin")
                     .map((r) => (
                       <SelectItem key={r.name} value={r.name} label={builtinRoleLabels[r.name] ?? r.displayName}>
                         {builtinRoleLabels[r.name] ?? r.displayName}

@@ -57,6 +57,7 @@ export default function EditUserDialog({ user, roleOptions, canEditRole = true }
 
   const builtinRoleLabels: Record<string, string> = {
     student: t("roleOptions.student"),
+    assistant: t("roleOptions.assistant"),
     instructor: t("roleOptions.instructor"),
     admin: t("roleOptions.admin"),
     super_admin: t("roleOptions.super_admin"),
@@ -109,18 +110,17 @@ export default function EditUserDialog({ user, roleOptions, canEditRole = true }
           <div className="space-y-2">
             <Label htmlFor="edit-role">{t("table.role")}</Label>
             <Select value={role} onValueChange={v => { if (v) setRole(v); }} disabled={!canEditRole}>
-              <SelectTrigger id="edit-role">
-                <SelectValue>{builtinRoleLabels[role] || role}</SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                {roleOptions
-                  .filter((r) => r.name !== "super_admin" || user.role === "super_admin")
+                <SelectTrigger id="edit-role">
+                  <SelectValue>{builtinRoleLabels[role] || role}</SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  {roleOptions
                   .map((r) => (
                     <SelectItem key={r.name} value={r.name} label={builtinRoleLabels[r.name] ?? r.displayName}>
                       {builtinRoleLabels[r.name] ?? r.displayName}
                     </SelectItem>
                   ))}
-              </SelectContent>
+                </SelectContent>
             </Select>
           </div>
           <div className="space-y-2">
