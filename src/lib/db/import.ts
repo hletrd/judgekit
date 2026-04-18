@@ -92,6 +92,7 @@ export interface ImportResult {
   totalRowsImported: number;
   tableResults: Record<string, { imported: number; skipped: number }>;
   errors: string[];
+  message?: string;
 }
 
 /**
@@ -223,6 +224,12 @@ export async function importDatabase(data: JudgeKitExport): Promise<ImportResult
     const message = err instanceof Error ? err.message : String(err);
     result.success = false;
     result.errors.push(`Import failed: ${message}`);
+    // Transaction was rolled back — no partial data exists in the database.
+    // Clear stale tableResults that reflect in-transaction state that was never committed.
+    result.tableResults = {};
+    result.tablesImported = 0;
+    result.totalRowsImported = 0;
+    result.message = "Import failed and was rolled back. No data was changed. Check errors and retry.";
   }
 
   return result;
