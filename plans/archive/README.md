@@ -29,6 +29,7 @@ This folder keeps **completed or historical planning artifacts**.
 - `2026-04-13-current-head-acceptance.md`
 - `2026-04-13-current-head-master-backlog.md`
 - `2026-04-13-current-head-remediation-plan.md`
+- `2026-04-19-current-head-followup.md`
 - `2026-04-13-e1051e9-master-review-backlog.md`
 - `2026-04-13-e1051e9-contest-integrity-plan.md`
 - `2026-04-13-e1051e9-role-and-authorization-consistency-plan.md`
@@ -43,4 +44,4 @@ This folder keeps **completed or historical planning artifacts**.
 `.omx/plans/` is part of the OMX runtime/state surface. These files were copied here so the repo has a stable, user-facing archive without mutating runtime history.
 
 ## Note on the current planning pass
-The historical current-head remediation plans listed above remain archived because their associated work was already completed or explicitly closed in earlier passes. The fresh actionable backlog now lives under `plans/open/` in the dated `2026-04-14-*` plan set.
+The historical current-head remediation plans listed above remain archived because their associated work was already completed or explicitly closed in earlier passes. The 2026-04-19 current-head follow-up lane also moved here once `npx tsc --noEmit` and `npx vitest run` were restored to green. The fresh actionable backlog now lives primarily under `.context/plans/`.

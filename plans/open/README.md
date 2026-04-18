@@ -3,17 +3,17 @@
 This directory contains **planning only** for repository-level findings that are still open at the current `HEAD`.
 
 ## Active plan set
-- `2026-04-19-current-head-followup.md`
 - `2026-04-17-execution-roadmap.md`
 - `2026-04-17-full-review-plan-index.md`
 - `2026-04-14-master-review-backlog.md`
 
 ## Repository-level implementation lanes
-- `2026-04-19-current-head-followup.md` owns the new repo-level current-head issues found after the 2026-04-18 remediation pass
+- no remaining root implementation lanes are open at the current `HEAD`
 - the completed root stabilization lanes now live in:
   - `plans/archive/2026-04-14-authorization-and-context-hardening-plan.md`
   - `plans/archive/2026-04-14-judge-runtime-and-deployment-hardening-plan.md`
   - `plans/archive/2026-04-17-test-contract-alignment-plan.md`
+  - `plans/archive/2026-04-19-current-head-followup.md`
 - remaining open work otherwise lives primarily under `.context/plans/`
 
 ## Source review set driving the backlog
