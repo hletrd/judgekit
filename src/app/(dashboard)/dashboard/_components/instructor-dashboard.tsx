@@ -11,12 +11,19 @@ import { getAssignedTeachingGroupIds } from "@/lib/assignments/management";
 
 type InstructorDashboardProps = {
   userId: string;
+  capabilities: string[];
 };
 
-export async function InstructorDashboard({ userId }: InstructorDashboardProps) {
+export async function InstructorDashboard({ userId, capabilities }: InstructorDashboardProps) {
   const t = await getTranslations("dashboard");
   const tCommon = await getTranslations("common");
   const tNav = await getTranslations("nav");
+  const caps = new Set(capabilities);
+  const canAccessProblemSets =
+    caps.has("problem_sets.create")
+    || caps.has("problem_sets.edit")
+    || caps.has("problem_sets.delete")
+    || caps.has("problem_sets.assign_groups");
 
   const instructorGroupIds = await getAssignedTeachingGroupIds(userId);
   const instructorGroups =
@@ -118,9 +125,11 @@ export async function InstructorDashboard({ userId }: InstructorDashboardProps) 
           <Link href="/dashboard/admin/submissions">
             <Button size="sm" variant="outline">{tNav("submissions")}</Button>
           </Link>
-          <Link href="/dashboard/problem-sets">
-            <Button size="sm" variant="outline">{tNav("problemSets")}</Button>
-          </Link>
+          {canAccessProblemSets ? (
+            <Link href="/dashboard/problem-sets">
+              <Button size="sm" variant="outline">{tNav("problemSets")}</Button>
+            </Link>
+          ) : null}
         </CardContent>
       </Card>
 

@@ -20,9 +20,12 @@ describe("dashboard scoped staff implementation", () => {
 
   it("builds the instructor dashboard from assigned teaching groups, not only primary ownership", () => {
     const source = read("src/app/(dashboard)/dashboard/_components/instructor-dashboard.tsx");
+    const dashboardPage = read("src/app/(dashboard)/dashboard/page.tsx");
 
     expect(source).toContain("getAssignedTeachingGroupIds(userId)");
     expect(source).toContain("inArrayOperator(groups.id, instructorGroupIds)");
     expect(source).not.toContain("where: eq(groups.instructorId, userId)");
+    expect(dashboardPage).toContain("const capabilityList = [...caps];");
+    expect(dashboardPage).toContain("<InstructorDashboard userId={session.user.id} capabilities={capabilityList} />");
   });
 });

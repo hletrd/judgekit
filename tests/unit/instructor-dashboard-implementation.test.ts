@@ -11,9 +11,12 @@ describe("instructor dashboard implementation", () => {
     const source = read("src/app/(dashboard)/dashboard/_components/instructor-dashboard.tsx");
 
     expect(source).toContain('CardTitle>{t("instructorQuickActions")}');
+    expect(source).toContain("const canAccessProblemSets =");
+    expect(source).toContain('caps.has("problem_sets.edit")');
     expect(source).toContain('href="/dashboard/groups"');
     expect(source).toContain('href="/dashboard/contests"');
     expect(source).toContain('href="/dashboard/admin/submissions"');
     expect(source).toContain('href="/dashboard/problem-sets"');
+    expect(source).toContain("{canAccessProblemSets ? (");
   });
 });

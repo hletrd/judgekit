@@ -20,6 +20,7 @@ export default async function DashboardPage() {
   const accessContext = await getRecruitingAccessContext(session.user.id);
   const platformMode = accessContext.effectivePlatformMode;
   const canReviewAssignments = caps.has("submissions.view_all") || caps.has("assignments.view_status");
+  const capabilityList = [...caps];
 
   const isAdminView = caps.has("system.settings");
   const isInstructorView = canReviewAssignments && !caps.has("system.settings");
@@ -83,7 +84,7 @@ export default async function DashboardPage() {
             </div>
           }
         >
-          <InstructorDashboard userId={session.user.id} />
+          <InstructorDashboard userId={session.user.id} capabilities={capabilityList} />
         </Suspense>
       )}
 
