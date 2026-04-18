@@ -31,7 +31,11 @@ export async function POST(request: NextRequest) {
       return apiError(parsed.error.issues[0]?.message ?? "invalidRequest", 400);
     }
 
-    const { workerId, workerSecret, activeTasks } = parsed.data;
+    // activeTasks is accepted in the request body for worker telemetry but is
+    // intentionally NOT persisted here: claim/route.ts increments active_tasks
+    // atomically in SQL and poll/route.ts decrements it. Overwriting it from
+    // the worker's self-report would defeat that atomicity.
+    const { workerId, workerSecret } = parsed.data;
     const now = new Date();
 
     const workerAuth = await isJudgeAuthorizedForWorker(request, workerId);
@@ -59,7 +63,6 @@ export async function POST(request: NextRequest) {
       .update(judgeWorkers)
       .set({
         lastHeartbeatAt: now,
-        activeTasks,
         status: "online",
       })
       .where(eq(judgeWorkers.id, workerId));
