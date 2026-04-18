@@ -8,14 +8,7 @@ import { Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-
-function getSafeRedirectUrl(callbackUrl: string | null): string {
-  if (!callbackUrl) return "/dashboard";
-  if (callbackUrl.startsWith("/") && !callbackUrl.startsWith("//")) {
-    return callbackUrl;
-  }
-  return "/dashboard";
-}
+import { getSafeRedirectUrl } from "@/lib/auth/redirect";
 
 export function LoginForm() {
   const router = useRouter();

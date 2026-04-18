@@ -11,14 +11,7 @@ import { registerPublicUser } from "@/lib/actions/public-signup";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-
-function getSafeRedirectUrl(callbackUrl: string | null): string {
-  if (!callbackUrl) return "/dashboard";
-  if (callbackUrl.startsWith("/") && !callbackUrl.startsWith("//")) {
-    return callbackUrl;
-  }
-  return "/dashboard";
-}
+import { getSafeRedirectUrl } from "@/lib/auth/redirect";
 
 export function SignupForm({
   hcaptchaEnabled,
