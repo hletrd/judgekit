@@ -9,7 +9,6 @@ import {
   problemSets,
 } from "@/lib/db/schema";
 import { resolveCapabilities } from "@/lib/capabilities/cache";
-import { isAtLeastRoleAsync } from "@/lib/auth/role-helpers";
 
 type ProblemSetListOptions = {
   limit?: number;
@@ -65,7 +64,6 @@ export type ProblemSetCapabilityFlags = {
 };
 
 async function canViewAllProblemSets(role: string) {
-  if (await isAtLeastRoleAsync(role, "admin")) return true;
   const caps = await resolveCapabilities(role);
   return caps.has("groups.view_all") && PROBLEM_SET_CAPABILITIES.some((capability) => caps.has(capability));
 }
