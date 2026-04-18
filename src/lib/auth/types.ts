@@ -10,7 +10,7 @@ export type AuthUserRecord = {
   name: string;
   className: string | null;
   role: string;
-  mustChangePassword: boolean | null;
+  mustChangePassword: boolean;
   preferredLanguage?: string | null;
   preferredTheme?: string | null;
   shareAcceptedSolutions?: boolean;
