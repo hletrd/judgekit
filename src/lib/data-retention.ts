@@ -4,6 +4,7 @@ const DEFAULT_DATA_RETENTION_DAYS = {
   antiCheatEvents: 180,
   recruitingRecords: 365,
   submissions: 365,
+  loginEvents: 180,
 } as const;
 
 function parseRetentionOverride(name: string, fallback: number) {
@@ -19,6 +20,7 @@ export const DATA_RETENTION_DAYS = {
   antiCheatEvents: parseRetentionOverride("ANTI_CHEAT_RETENTION_DAYS", DEFAULT_DATA_RETENTION_DAYS.antiCheatEvents),
   recruitingRecords: parseRetentionOverride("RECRUITING_RECORD_RETENTION_DAYS", DEFAULT_DATA_RETENTION_DAYS.recruitingRecords),
   submissions: parseRetentionOverride("SUBMISSION_RETENTION_DAYS", DEFAULT_DATA_RETENTION_DAYS.submissions),
+  loginEvents: parseRetentionOverride("LOGIN_EVENT_RETENTION_DAYS", DEFAULT_DATA_RETENTION_DAYS.loginEvents),
 } as const;
 
 export type DataRetentionKey = keyof typeof DATA_RETENTION_DAYS;

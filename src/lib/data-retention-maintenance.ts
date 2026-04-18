@@ -1,7 +1,7 @@
 import { and, inArray, lt, notInArray, or } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { logger } from "@/lib/logger";
-import { antiCheatEvents, chatMessages, recruitingInvitations, submissions } from "@/lib/db/schema";
+import { antiCheatEvents, chatMessages, loginEvents, recruitingInvitations, submissions } from "@/lib/db/schema";
 import { DATA_RETENTION_DAYS, DATA_RETENTION_LEGAL_HOLD, getRetentionCutoff } from "@/lib/data-retention";
 
 async function pruneChatMessages() {
@@ -46,6 +46,12 @@ async function pruneAntiCheatEvents() {
   logger.debug({ cutoff: cutoff.toISOString() }, "Pruned expired anti-cheat events");
 }
 
+async function pruneLoginEvents() {
+  const cutoff = getRetentionCutoff(DATA_RETENTION_DAYS.loginEvents);
+  await db.delete(loginEvents).where(lt(loginEvents.createdAt, cutoff));
+  logger.debug({ cutoff: cutoff.toISOString() }, "Pruned expired login events");
+}
+
 async function pruneSensitiveOperationalData() {
   if (DATA_RETENTION_LEGAL_HOLD) {
     logger.info("Data retention legal hold is active — skipping all automatic pruning");
@@ -57,6 +63,7 @@ async function pruneSensitiveOperationalData() {
     await pruneAntiCheatEvents();
     await pruneRecruitingInvitations();
     await pruneSubmissions();
+    await pruneLoginEvents();
   } catch (error) {
     logger.warn({ err: error }, "Failed to prune sensitive operational data");
   }

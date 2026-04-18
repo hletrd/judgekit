@@ -4,6 +4,7 @@ import { auditEvents } from "@/lib/db/schema";
 import { lt } from "drizzle-orm";
 import { normalizeText, getClientIp, getRequestPath, MAX_TEXT_LENGTH, MAX_PATH_LENGTH } from "@/lib/security/request-context";
 import { logger } from "@/lib/logger";
+import { DATA_RETENTION_DAYS, DATA_RETENTION_LEGAL_HOLD, getRetentionCutoff } from "@/lib/data-retention";
 
 type RequestLike = {
   headers: Headers;
@@ -173,7 +174,11 @@ export function getAuditEventHealthSnapshot() {
 }
 
 async function pruneOldAuditEvents() {
-  const cutoff = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
+  if (DATA_RETENTION_LEGAL_HOLD) {
+    logger.info("Data retention legal hold is active — skipping audit event pruning");
+    return;
+  }
+  const cutoff = getRetentionCutoff(DATA_RETENTION_DAYS.auditEvents);
   try {
     await db.delete(auditEvents).where(lt(auditEvents.createdAt, cutoff));
     logger.debug({ cutoff: cutoff.toISOString() }, "Pruned old audit events");
