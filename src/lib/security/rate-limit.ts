@@ -24,7 +24,7 @@ export const RATE_LIMIT_BLOCK_MS = getRateLimitConfig().blockMs;
 const RATE_LIMIT_EVICTION_AGE_MS = 24 * 60 * 60 * 1000;
 
 export function getRateLimitKey(action: string, headers: Headers) {
-  return `${action}:${extractClientIp(headers)}`;
+  return `${action}:${extractClientIp(headers) ?? "unknown"}`;
 }
 
 export function getUsernameRateLimitKey(action: string, username: string) {

@@ -34,7 +34,7 @@ function isValidIp(value: string) {
   return segments.every((segment) => segment === "" || /^[0-9a-fA-F]{1,4}$/.test(segment));
 }
 
-export function extractClientIp(headers: HeaderCarrier) {
+export function extractClientIp(headers: HeaderCarrier): string | null {
   const forwardedFor = headers.get("x-forwarded-for");
 
   // Process X-Forwarded-For first with hop validation to prevent spoofing.
@@ -69,5 +69,5 @@ export function extractClientIp(headers: HeaderCarrier) {
     logger.warn("[security] No X-Forwarded-For header in production — ensure a trusted reverse proxy is configured");
   }
 
-  return "0.0.0.0";
+  return process.env.NODE_ENV === "production" ? null : "0.0.0.0";
 }

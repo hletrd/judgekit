@@ -52,7 +52,7 @@ export async function registerPublicUser(input: PublicSignupInput): Promise<Publ
 
   const headerStore = await headers();
   const ipAddress = extractClientIp(headerStore);
-  const rateLimit = await checkServerActionRateLimit(`public-signup:${ipAddress}`, "registerPublicUser", 10, 60);
+  const rateLimit = await checkServerActionRateLimit(`public-signup:${ipAddress ?? "unknown"}`, "registerPublicUser", 10, 60);
   if (rateLimit) {
     return { success: false, error: "rateLimited" };
   }
