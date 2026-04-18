@@ -326,28 +326,29 @@ pub fn jaccard_similarity(a: &AHashSet<u64>, b: &AHashSet<u64>) -> f64 {
     }
 }
 
-/// Compute similarity pairs across all submissions, grouped by problem.
-/// Uses rayon for parallel pairwise comparison within each problem group.
+/// Compute similarity pairs across all submissions, grouped by (problem, language).
+/// Cross-language pairs are never compared, reducing false positives.
+/// Uses rayon for parallel pairwise comparison within each group.
 pub fn compute_similarity(
     submissions: Vec<Submission>,
     threshold: f64,
     ngram_size: usize,
 ) -> Vec<SimilarityPair> {
-    // Group by problem_id
-    let mut by_problem: HashMap<String, Vec<Submission>> = HashMap::new();
+    // Group by (problem_id, language) so cross-language pairs are never compared
+    let mut by_key: HashMap<(String, String), Vec<Submission>> = HashMap::new();
     for sub in submissions {
-        by_problem
-            .entry(sub.problem_id.clone())
+        by_key
+            .entry((sub.problem_id.clone(), sub.language.clone()))
             .or_default()
             .push(sub);
     }
 
-    // Process each problem group in parallel
-    let groups: Vec<(String, Vec<Submission>)> = by_problem.into_iter().collect();
+    // Process each group in parallel
+    let groups: Vec<((String, String), Vec<Submission>)> = by_key.into_iter().collect();
 
     groups
         .par_iter()
-        .flat_map(|(problem_id, subs)| {
+        .flat_map(|((problem_id, language), subs)| {
             // Pre-compute normalized n-grams for each submission
             let ngrams: Vec<(&str, AHashSet<u64>)> = subs
                 .iter()
@@ -370,6 +371,7 @@ pub fn compute_similarity(
                             user_id_1: ngrams[i].0.to_string(),
                             user_id_2: ngrams[j].0.to_string(),
                             problem_id: problem_id.clone(),
+                            language: language.clone(),
                             similarity: (sim * 1000.0).round() / 1000.0,
                         });
                     }
@@ -560,16 +562,19 @@ for (int i = 0; i < n; i++) return value;",
             Submission {
                 user_id: "user1".to_string(),
                 problem_id: "prob1".to_string(),
+            language: "cpp".to_string(),
                 source_code: "int main() { return 0; }".to_string(),
             },
             Submission {
                 user_id: "user2".to_string(),
                 problem_id: "prob1".to_string(),
+            language: "cpp".to_string(),
                 source_code: "int main() { return 0; }".to_string(),
             },
             Submission {
                 user_id: "user3".to_string(),
                 problem_id: "prob1".to_string(),
+            language: "cpp".to_string(),
                 source_code:
                     "completely different code with no overlap whatsoever unique tokens here"
                         .to_string(),
@@ -588,11 +593,13 @@ for (int i = 0; i < n; i++) return value;",
             Submission {
                 user_id: "user1".to_string(),
                 problem_id: "prob1".to_string(),
+            language: "cpp".to_string(),
                 source_code: "int main() { return 0; }".to_string(),
             },
             Submission {
                 user_id: "user2".to_string(),
                 problem_id: "prob2".to_string(),
+            language: "cpp".to_string(),
                 source_code: "int main() { return 0; }".to_string(),
             },
         ];
@@ -834,6 +841,7 @@ for (int i = 0; i < n; i++) return value;",
         let submissions = vec![Submission {
             user_id: "user1".to_string(),
             problem_id: "prob1".to_string(),
+            language: "cpp".to_string(),
             source_code: "int main() {}".to_string(),
         }];
         let pairs = compute_similarity(submissions, 0.85, 3);
@@ -846,11 +854,13 @@ for (int i = 0; i < n; i++) return value;",
             Submission {
                 user_id: "user1".to_string(),
                 problem_id: "prob1".to_string(),
+            language: "cpp".to_string(),
                 source_code: "int solve() { int total = left + right; return total; }".to_string(),
             },
             Submission {
                 user_id: "user2".to_string(),
                 problem_id: "prob1".to_string(),
+            language: "cpp".to_string(),
                 source_code: "while (value < limit) { value--; }".to_string(),
             },
         ];
@@ -864,21 +874,25 @@ for (int i = 0; i < n; i++) return value;",
             Submission {
                 user_id: "u1".to_string(),
                 problem_id: "p1".to_string(),
+            language: "cpp".to_string(),
                 source_code: "int main() { return 0; }".to_string(),
             },
             Submission {
                 user_id: "u2".to_string(),
                 problem_id: "p1".to_string(),
+            language: "cpp".to_string(),
                 source_code: "int main() { return 0; }".to_string(),
             },
             Submission {
                 user_id: "u3".to_string(),
                 problem_id: "p2".to_string(),
+            language: "cpp".to_string(),
                 source_code: "void foo() { bar(); }".to_string(),
             },
             Submission {
                 user_id: "u4".to_string(),
                 problem_id: "p2".to_string(),
+            language: "cpp".to_string(),
                 source_code: "void foo() { bar(); }".to_string(),
             },
         ];
@@ -908,11 +922,13 @@ for (int i = 0; i < n; i++) return value;",
             Submission {
                 user_id: "u1".to_string(),
                 problem_id: "p1".to_string(),
+            language: "cpp".to_string(),
                 source_code: "a b c d e f g h i j k".to_string(),
             },
             Submission {
                 user_id: "u2".to_string(),
                 problem_id: "p1".to_string(),
+            language: "cpp".to_string(),
                 source_code: "a b c d e f g h i j k l".to_string(),
             },
         ];
@@ -933,11 +949,13 @@ for (int i = 0; i < n; i++) return value;",
             Submission {
                 user_id: "u1".to_string(),
                 problem_id: "p1".to_string(),
+            language: "cpp".to_string(),
                 source_code: "int main() { return 0; } // author: alice".to_string(),
             },
             Submission {
                 user_id: "u2".to_string(),
                 problem_id: "p1".to_string(),
+            language: "cpp".to_string(),
                 source_code: "int main() { return 0; } // author: bob".to_string(),
             },
         ];
