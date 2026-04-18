@@ -41,7 +41,9 @@ export async function createRecruitingInvitation(params: {
     .insert(recruitingInvitations)
     .values({
       assignmentId: params.assignmentId,
-      token,
+      // Do not persist the plaintext token; only the hash goes to the DB.
+      // The caller still sees the token below via the returned object.
+      token: null,
       tokenHash: hashToken(token),
       candidateName: params.candidateName,
       candidateEmail: params.candidateEmail ?? null,
@@ -50,7 +52,7 @@ export async function createRecruitingInvitation(params: {
       createdBy: params.createdBy,
     })
     .returning();
-  return invitation;
+  return { ...invitation, token };
 }
 
 export async function bulkCreateRecruitingInvitations(params: {
@@ -63,24 +65,32 @@ export async function bulkCreateRecruitingInvitations(params: {
   }[];
   createdBy: string;
 }, executor: RecruitingInvitationExecutor = db) {
-  const values = params.invitations.map((inv) => {
+  const prepared = params.invitations.map((inv) => {
     const token = generateRecruitingToken();
     return {
-      assignmentId: params.assignmentId,
       token,
-      tokenHash: hashToken(token),
-      candidateName: inv.candidateName,
-      candidateEmail: inv.candidateEmail ?? null,
-      metadata: inv.metadata ?? {},
-      expiresAt: inv.expiresAt ?? null,
-      createdBy: params.createdBy,
+      insertValues: {
+        assignmentId: params.assignmentId,
+        // plaintext stays in memory for the returned response only
+        token: null as string | null,
+        tokenHash: hashToken(token),
+        candidateName: inv.candidateName,
+        candidateEmail: inv.candidateEmail ?? null,
+        metadata: inv.metadata ?? {},
+        expiresAt: inv.expiresAt ?? null,
+        createdBy: params.createdBy,
+      },
     };
   });
   const created = await executor
     .insert(recruitingInvitations)
-    .values(values)
+    .values(prepared.map((p) => p.insertValues))
     .returning();
-  return created;
+  // Re-attach each plaintext token to its returned row via tokenHash lookup.
+  const hashToPlaintext = new Map(
+    prepared.map((p) => [p.insertValues.tokenHash, p.token] as const)
+  );
+  return created.map((row) => ({ ...row, token: hashToPlaintext.get(row.tokenHash ?? "") ?? null }));
 }
 
 export async function getRecruitingInvitations(

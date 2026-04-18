@@ -514,6 +514,8 @@ export const systemSettings = pgTable("system_settings", {
   publicSignupEnabled: boolean("public_signup_enabled").notNull().default(false),
   signupHcaptchaEnabled: boolean("signup_hcaptcha_enabled").notNull().default(false),
   hcaptchaSiteKey: text("hcaptcha_site_key"),
+  // Stored encrypted via src/lib/security/encryption.ts — never write
+  // plaintext here. Read path runs decrypt() in src/lib/system-settings.ts.
   hcaptchaSecret: text("hcaptcha_secret"),
   // Rate Limiting (Login)
   loginRateLimitMaxAttempts: integer("login_rate_limit_max_attempts"),
@@ -916,7 +918,10 @@ export const recruitingInvitations = pgTable(
     assignmentId: text("assignment_id")
       .notNull()
       .references(() => assignments.id, { onDelete: "cascade" }),
-    token: text("token").notNull(),
+    // Plaintext token is deprecated: kept nullable for migration compatibility.
+    // Callers receive the plaintext only once from the creation server action;
+    // DB persistence relies on tokenHash alone for lookups.
+    token: text("token"),
     tokenHash: varchar("token_hash", { length: 64 }),
     candidateName: text("candidate_name").notNull(),
     candidateEmail: text("candidate_email"),

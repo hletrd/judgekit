@@ -88,7 +88,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Per-worker auth: when a workerId is provided, validate the Bearer token
-    // against the worker's secretToken (or fall back to shared JUDGE_AUTH_TOKEN).
+    // against the worker's secretTokenHash (or fall back to shared JUDGE_AUTH_TOKEN).
     // Without a workerId, use the shared token.
     if (workerId) {
       const workerAuth = await isJudgeAuthorizedForWorker(request, workerId);
@@ -107,7 +107,6 @@ export async function POST(request: NextRequest) {
       const [worker] = await db
         .select({
           status: judgeWorkers.status,
-          secretToken: judgeWorkers.secretToken,
           secretTokenHash: judgeWorkers.secretTokenHash,
         })
         .from(judgeWorkers)
@@ -119,20 +118,14 @@ export async function POST(request: NextRequest) {
       }
 
       // Defense-in-depth: also validate the workerSecret from the request body
-      // against the worker's stored secretTokenHash (or plaintext secretToken
-      // for backward compatibility during migration).
-      if (worker.secretTokenHash || worker.secretToken) {
+      // against the worker's stored secretTokenHash. Plaintext fallback is
+      // gone — workers registered before the hash rollout must re-register.
+      if (worker.secretTokenHash) {
         if (!workerSecret) {
           return apiError("workerSecretRequired", 400);
         }
-        if (worker.secretTokenHash) {
-          if (!safeTokenCompare(hashToken(workerSecret), worker.secretTokenHash)) {
-            return apiError("invalidWorkerSecret", 403);
-          }
-        } else {
-          if (!safeTokenCompare(workerSecret, worker.secretToken!)) {
-            return apiError("invalidWorkerSecret", 403);
-          }
+        if (!safeTokenCompare(hashToken(workerSecret), worker.secretTokenHash)) {
+          return apiError("invalidWorkerSecret", 403);
         }
       }
     }
