@@ -12,9 +12,9 @@ import {
 import { SubmissionStatusBadge } from "@/components/submission-status-badge";
 import { db } from "@/lib/db";
 import { problems, submissions, users } from "@/lib/db/schema";
-import { isInstructor } from "@/lib/api/auth";
 import { and, count, desc, eq, like, or } from "drizzle-orm";
 import { auth } from "@/lib/auth";
+import { resolveCapabilities } from "@/lib/capabilities/cache";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -73,7 +73,10 @@ export default async function SubmissionsPage({
   const tCommon = await getTranslations("common");
   const locale = await getLocale();
   const timeZone = await getResolvedSystemTimeZone();
-  const isPrivileged = isInstructor(session.user.role);
+  const caps = await resolveCapabilities(session.user.role);
+  if (caps.has("submissions.view_all") || caps.has("assignments.view_status")) {
+    redirect("/dashboard/admin/submissions");
+  }
   const statusLabels = buildStatusLabels(t);
 
   const searchFilter = searchQuery
@@ -186,7 +189,6 @@ export default async function SubmissionsPage({
             <TableHeader>
               <TableRow>
                 <TableHead>{t("table.id")}</TableHead>
-                {isPrivileged && <TableHead>{t("table.student")}</TableHead>}
                 <TableHead>{t("table.problem")}</TableHead>
                 <TableHead>{t("table.language")}</TableHead>
                 <TableHead>{t("table.status")}</TableHead>
@@ -203,11 +205,6 @@ export default async function SubmissionsPage({
                       {formatSubmissionIdPrefix(sub.id)}
                     </Link>
                   </TableCell>
-                  {isPrivileged && (
-                    <TableCell>
-                      {sub.user?.name ?? tCommon("unknown")}
-                    </TableCell>
-                  )}
                   <TableCell>
                     {sub.problem ? (
                       <Link href={`/dashboard/problems/${sub.problem.id}`} className="text-primary hover:underline">
@@ -243,7 +240,7 @@ export default async function SubmissionsPage({
               ))}
               {visibleSubmissions.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={isPrivileged ? 8 : 7} className="text-center text-muted-foreground">
+                  <TableCell colSpan={7} className="text-center text-muted-foreground">
                     {t("noSubmissions")}
                   </TableCell>
                 </TableRow>
