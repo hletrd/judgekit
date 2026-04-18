@@ -109,4 +109,20 @@ describe("deployment security defaults", () => {
     expect(workerDocs).toContain("WORKER_DOCKER_PROXY_IMAGES=1");
     expect(workerDocs).toContain("runner now defaults to `127.0.0.1`");
   });
+
+  it("documents the seccomp socket-policy rationale alongside the allowlist", () => {
+    const seccomp = read("docker/seccomp-profile.json");
+
+    expect(seccomp).toContain('"defaultAction": "SCMP_ACT_ERRNO"');
+    expect(seccomp).toContain("Network-family socket syscalls");
+    expect(seccomp).toContain("--network=none");
+    expect(seccomp).toContain("AF_UNIX");
+    expect(seccomp).toContain('"socket"');
+    expect(seccomp).toContain('"socketpair"');
+    expect(seccomp).toContain('"bind"');
+    expect(seccomp).toContain('"listen"');
+    expect(seccomp).toContain('"accept"');
+    expect(seccomp).toContain('"connect"');
+  });
+
 });
