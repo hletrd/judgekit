@@ -295,7 +295,7 @@ export function ProblemSubmissionForm({
           {DEFAULT_TEMPLATES[language] && (
             <Button
               type="button"
-              variant="ghost"
+              variant="outline"
               size="sm"
               onClick={() => setSourceCode(DEFAULT_TEMPLATES[language] ?? "")}
               title={t("resetToTemplate")}

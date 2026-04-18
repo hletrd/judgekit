@@ -3,7 +3,7 @@
 import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 
-const ACTIVE_INTERVAL_MS = 3000;
+const ACTIVE_INTERVAL_MS = 5000;
 const IDLE_INTERVAL_MS = 10000;
 
 export function SubmissionListAutoRefresh({
