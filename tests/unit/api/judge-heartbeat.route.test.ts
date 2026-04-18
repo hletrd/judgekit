@@ -1,5 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
+import { createHash } from "node:crypto";
+
+function sha256Hex(value: string): string {
+  return createHash("sha256").update(value).digest("hex");
+}
 
 const {
   isJudgeAuthorizedForWorkerMock,
@@ -13,9 +18,13 @@ const {
   loggerMock: { info: vi.fn(), error: vi.fn(), warn: vi.fn(), debug: vi.fn() },
 }));
 
-vi.mock("@/lib/judge/auth", () => ({
-  isJudgeAuthorizedForWorker: isJudgeAuthorizedForWorkerMock,
-}));
+vi.mock("@/lib/judge/auth", async () => {
+  const { createHash: realCreateHash } = await import("node:crypto");
+  return {
+    isJudgeAuthorizedForWorker: isJudgeAuthorizedForWorkerMock,
+    hashToken: (value: string) => realCreateHash("sha256").update(value).digest("hex"),
+  };
+});
 
 vi.mock("@/lib/logger", () => ({
   logger: loggerMock,
@@ -81,7 +90,7 @@ beforeEach(() => {
   vi.clearAllMocks();
 
   isJudgeAuthorizedForWorkerMock.mockResolvedValue({ authorized: true });
-  findFirstMock.mockResolvedValue({ secretToken: "secret-abc" });
+  findFirstMock.mockResolvedValue({ secretTokenHash: sha256Hex("secret-abc") });
   updateWhereMock.mockResolvedValue({ rowCount: 1 });
 });
 
@@ -120,7 +129,7 @@ describe("POST /api/v1/judge/heartbeat", () => {
   });
 
   it("returns 403 when worker secret is invalid", async () => {
-    findFirstMock.mockResolvedValue({ secretToken: "correct-secret" });
+    findFirstMock.mockResolvedValue({ secretTokenHash: sha256Hex("correct-secret") });
 
     const response = await POST(
       makeRequest({ ...VALID_BODY, workerSecret: "wrong-secret-x" })
@@ -131,9 +140,19 @@ describe("POST /api/v1/judge/heartbeat", () => {
     expect(payload.error).toBe("invalidWorkerSecret");
   });
 
+  it("returns 403 when worker has no secretTokenHash stored", async () => {
+    findFirstMock.mockResolvedValue({ secretTokenHash: null });
+
+    const response = await POST(makeRequest(VALID_BODY));
+
+    expect(response.status).toBe(403);
+    const payload = await response.json();
+    expect(payload.error).toBe("workerSecretNotConfigured");
+  });
+
   it("returns 404 when update affects zero rows", async () => {
     updateWhereMock.mockResolvedValue({ rowCount: 0 });
-    findFirstMock.mockResolvedValue({ secretToken: "secret-abc" });
+    findFirstMock.mockResolvedValue({ secretTokenHash: sha256Hex("secret-abc") });
 
     const response = await POST(
       makeRequest({ workerId: "nonexistent", workerSecret: "secret-abc", activeTasks: 0, availableSlots: 0 })

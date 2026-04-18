@@ -4,7 +4,7 @@ import { apiSuccess, apiError } from "@/lib/api/responses";
 import { db } from "@/lib/db";
 import { judgeWorkers } from "@/lib/db/schema";
 import { eq, lt, and } from "drizzle-orm";
-import { isJudgeAuthorizedForWorker } from "@/lib/judge/auth";
+import { isJudgeAuthorizedForWorker, hashToken } from "@/lib/judge/auth";
 import { isJudgeIpAllowed } from "@/lib/judge/ip-allowlist";
 import { logger } from "@/lib/logger";
 import { z } from "zod";
@@ -39,17 +39,20 @@ export async function POST(request: NextRequest) {
       return apiError(workerAuth.error ?? "unauthorized", 401);
     }
 
-    // Validate per-worker secret (mandatory)
+    // Validate per-worker secret against stored hash (mirrors deregister).
+    // The plaintext secretToken column is deprecated and no longer trusted here.
     const worker = await db.query.judgeWorkers.findFirst({
       where: eq(judgeWorkers.id, workerId),
-      columns: { secretToken: true },
+      columns: { secretTokenHash: true },
     });
     if (!worker) return apiError("workerNotFound", 404);
-    if (!worker.secretToken) return apiError("workerSecretNotConfigured", 403);
-    const a = Buffer.from(workerSecret);
-    const b = Buffer.from(worker.secretToken);
-    if (a.length !== b.length || !timingSafeEqual(a, b)) {
-      return apiError("invalidWorkerSecret", 403);
+    if (!worker.secretTokenHash) return apiError("workerSecretNotConfigured", 403);
+    {
+      const a = Buffer.from(hashToken(workerSecret));
+      const b = Buffer.from(worker.secretTokenHash);
+      if (a.length !== b.length || !timingSafeEqual(a, b)) {
+        return apiError("invalidWorkerSecret", 403);
+      }
     }
 
     const result = await db
