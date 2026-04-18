@@ -55,6 +55,16 @@ export async function AdminDashboard({ capabilities }: AdminDashboardProps) {
               <Button size="sm" variant="outline">{tNav("auditLogs")}</Button>
             </Link>
           ) : null}
+          {caps.has("system.login_logs") ? (
+            <Link href="/dashboard/admin/login-logs">
+              <Button size="sm" variant="outline">{tNav("loginLogs")}</Button>
+            </Link>
+          ) : null}
+          {caps.has("system.chat_logs") ? (
+            <Link href="/dashboard/admin/plugins/chat-logs">
+              <Button size="sm" variant="outline">{tNav("chatLogs")}</Button>
+            </Link>
+          ) : null}
         </CardContent>
       </Card>
 

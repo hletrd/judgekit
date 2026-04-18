@@ -16,11 +16,15 @@ describe("admin dashboard implementation", () => {
     expect(source).toContain('caps.has("system.settings")');
     expect(source).toContain('caps.has("users.view")');
     expect(source).toContain('caps.has("system.audit_logs")');
+    expect(source).toContain('caps.has("system.login_logs")');
+    expect(source).toContain('caps.has("system.chat_logs")');
     expect(source).toContain('CardTitle>{t("adminQuickActions")}');
     expect(source).toContain('href="/dashboard/admin/workers"');
     expect(source).toContain('href="/dashboard/admin/languages"');
     expect(source).toContain('href="/dashboard/admin/users"');
     expect(source).toContain('href="/dashboard/admin/audit-logs"');
+    expect(source).toContain('href="/dashboard/admin/login-logs"');
+    expect(source).toContain('href="/dashboard/admin/plugins/chat-logs"');
     expect(dashboardPage).toContain("<AdminDashboard capabilities={capabilityList} />");
   });
 
