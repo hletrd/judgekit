@@ -21,6 +21,8 @@ describe("admin security operations documentation", () => {
     expect(doc).toContain("AUTH_SECRET");
     expect(doc).toContain("JUDGE_AUTH_TOKEN");
     expect(doc).toContain("Reverse proxy and perimeter controls");
+    expect(doc).toContain("IP allowlisting / VPN requirements for admin-only entry points");
+    expect(doc).toContain("restrict admin access by network boundary where possible (VPN, allowlist, access proxy)");
     expect(doc).toContain("nginx rate limits");
     expect(doc).toContain("npm audit --audit-level=high");
     expect(doc).toContain("cargo audit");
