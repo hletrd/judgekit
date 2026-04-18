@@ -8,6 +8,7 @@ describe("data retention configuration", () => {
     delete process.env.ANTI_CHEAT_RETENTION_DAYS;
     delete process.env.RECRUITING_RECORD_RETENTION_DAYS;
     delete process.env.SUBMISSION_RETENTION_DAYS;
+    delete process.env.LOGIN_EVENT_RETENTION_DAYS;
   });
 
   it("uses documented defaults when no overrides are present", async () => {
@@ -19,6 +20,7 @@ describe("data retention configuration", () => {
       antiCheatEvents: 180,
       recruitingRecords: 365,
       submissions: 365,
+      loginEvents: 180,
     });
   });
 
