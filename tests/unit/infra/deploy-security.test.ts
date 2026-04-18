@@ -99,7 +99,8 @@ describe("deployment security defaults", () => {
     expect(production).toContain("judgekit-app-data:/app/data");
     expect(production).toContain("judgekit-app-data:");
     expect(production).toContain("- IMAGES=1");
-    expect(production).toContain("- BUILD=1");
+    expect(production).toContain("- BUILD=0");
+    expect(production).toContain("- DELETE=0");
     expect(workerCompose).toContain("WORKER_DOCKER_PROXY_IMAGES:-0");
     expect(workerCompose).toContain("WORKER_DOCKER_PROXY_BUILD:-0");
     expect(workerCompose).toContain("WORKER_DOCKER_PROXY_POST:-0");

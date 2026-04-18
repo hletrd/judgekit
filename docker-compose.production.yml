@@ -68,9 +68,9 @@ services:
     environment:
       - CONTAINERS=1
       - IMAGES=1
-      - BUILD=1
+      - BUILD=0
       - POST=1
-      - DELETE=1
+      - DELETE=0
       - LOG_LEVEL=warning
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
