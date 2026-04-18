@@ -80,4 +80,51 @@ describe("isJudgeIpAllowed", () => {
       expect(isJudgeIpAllowed(requestWithIp(null))).toBe(false);
     });
   });
+
+  describe("enforcement on judge routes", () => {
+    it("every judge route imports and calls isJudgeIpAllowed", () => {
+      const fs = require("node:fs");
+      const path = require("node:path");
+      const judgeRoutes = [
+        "src/app/api/v1/judge/claim/route.ts",
+        "src/app/api/v1/judge/register/route.ts",
+        "src/app/api/v1/judge/deregister/route.ts",
+        "src/app/api/v1/judge/heartbeat/route.ts",
+        "src/app/api/v1/judge/poll/route.ts",
+      ];
+
+      for (const relPath of judgeRoutes) {
+        const source = fs.readFileSync(path.resolve(process.cwd(), relPath), "utf8");
+        expect(source, `${relPath} should import isJudgeIpAllowed`).toContain("isJudgeIpAllowed");
+        expect(source, `${relPath} should call isJudgeIpAllowed`).toMatch(/isJudgeIpAllowed\s*\(/);
+        expect(source, `${relPath} should deny when IP is not allowed`).toMatch(
+          /if\s*\(\s*!isJudgeIpAllowed/
+        );
+      }
+    });
+
+    it("denies a non-allowed IP from judge claim route", () => {
+      vi.stubEnv("JUDGE_ALLOWED_IPS", "10.0.0.5");
+      resetIpAllowlistCache();
+
+      const request = new NextRequest("http://localhost:3000/api/v1/judge/claim", {
+        method: "POST",
+        headers: { "x-forwarded-for": "203.0.113.99" },
+      });
+
+      expect(isJudgeIpAllowed(request)).toBe(false);
+    });
+
+    it("allows a listed IP on judge claim route", () => {
+      vi.stubEnv("JUDGE_ALLOWED_IPS", "10.0.0.5");
+      resetIpAllowlistCache();
+
+      const request = new NextRequest("http://localhost:3000/api/v1/judge/claim", {
+        method: "POST",
+        headers: { "x-forwarded-for": "10.0.0.5" },
+      });
+
+      expect(isJudgeIpAllowed(request)).toBe(true);
+    });
+  });
 });

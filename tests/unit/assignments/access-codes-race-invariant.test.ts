@@ -46,8 +46,9 @@ describe("redeemAccessCode source invariants", () => {
     const txBlock = source.slice(source.indexOf("await db.transaction("));
     // The assignment SELECT must happen inside tx, not before it
     const beforeTx = source.slice(0, source.indexOf("await db.transaction("));
-    expect(beforeTx).not.toMatch(/await\s+tx\.select.*assignments/);
-    expect(txBlock).toMatch(/await\s+tx\.select/);
+    // tx.select is called with method chaining (tx\n.select), so match with a loose pattern
+    expect(beforeTx).not.toMatch(/await\s+tx[\s.]*select.*assignments/);
+    expect(txBlock).toMatch(/tx[\s.]*select/);
     expect(txBlock).toMatch(/assignments\.\w+/);
   });
 });
