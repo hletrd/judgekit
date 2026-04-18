@@ -7,48 +7,22 @@ function read(relativePath: string) {
 }
 
 describe("participant audit page implementation", () => {
-  it("shows the code timeline panel in the participant audit/timeline surface", () => {
+  it("loads contest participant data and delegates rendering to the shared timeline view", () => {
     const source = read("src/app/(dashboard)/dashboard/contests/[assignmentId]/participant/[userId]/page.tsx");
 
-    expect(source).toContain('import { CodeTimelinePanel } from "@/components/contest/code-timeline-panel";');
-    expect(source).toContain("<CodeTimelinePanel");
-    expect(source).toContain("assignmentId={assignmentId}");
-    expect(source).toContain("userId={userId}");
-    expect(source).toContain("userName={participant.name}");
-  });
-
-  it("shows exam-session and contest-access metadata in the participant header", () => {
-    const source = read("src/app/(dashboard)/dashboard/contests/[assignmentId]/participant/[userId]/page.tsx");
-
+    expect(source).toContain('import { ParticipantTimelineView } from "@/components/contest/participant-timeline-view";');
+    expect(source).toContain("getParticipantAuditData(assignmentId, userId)");
     expect(source).toContain("getParticipantTimeline(assignmentId, userId)");
-    expect(source).toContain("participant.examStartedAt");
-    expect(source).toContain("participant.personalDeadline");
-    expect(source).toContain("participant.contestAccessAt");
-    expect(source).toContain('t("header.examStarted")');
-    expect(source).toContain('t("header.personalDeadline")');
-    expect(source).toContain('t("header.contestAccess")');
+    expect(source).toContain("<ParticipantTimelineView");
+    expect(source).toContain("assignmentProblems={assignmentProblemRows}");
+    expect(source).toContain("participantTimeline={participantTimeline}");
   });
 
-  it("surfaces anti-cheat summary counts from the shared participant timeline data", () => {
+  it("keeps the page responsible for assignment-level access checks before rendering the shared view", () => {
     const source = read("src/app/(dashboard)/dashboard/contests/[assignmentId]/participant/[userId]/page.tsx");
 
-    expect(source).toContain("participantTimeline.antiCheatSummary.totalEvents > 0");
-    expect(source).toContain('t("antiCheatSummary.title")');
-    expect(source).toContain('t("antiCheatSummary.totalEvents"');
-    expect(source).toContain("participantTimeline.antiCheatSummary.byType");
-    expect(source).toContain("tAntiCheat(`eventTypes.${eventType}`");
-  });
-
-  it("shows per-problem timeline summary badges above each submission table", () => {
-    const source = read("src/app/(dashboard)/dashboard/contests/[assignmentId]/participant/[userId]/page.tsx");
-
-    expect(source).toContain('const summary = timeline?.summary;');
-    expect(source).toContain('t("problemSummary.bestScore")');
-    expect(source).toContain('t("problemSummary.attempts"');
-    expect(source).toContain('t("problemSummary.snapshots"');
-    expect(source).toContain('t("problemSummary.timeToFirstSubmission")');
-    expect(source).toContain('t("problemSummary.timeToSolve")');
-    expect(source).toContain('t("problemSummary.wrongBeforeAc"');
-    expect(source).toContain('t("problemSummary.relativeTime"');
+    expect(source).toContain("canViewAssignmentSubmissions(");
+    expect(source).toContain('redirect(`/dashboard/contests/${assignmentId}`)');
+    expect(source).toContain('notFound()');
   });
 });
