@@ -65,6 +65,21 @@ export async function AdminDashboard({ capabilities }: AdminDashboardProps) {
               <Button size="sm" variant="outline">{tNav("chatLogs")}</Button>
             </Link>
           ) : null}
+          {caps.has("files.manage") ? (
+            <Link href="/dashboard/admin/files">
+              <Button size="sm" variant="outline">{tNav("fileManagement")}</Button>
+            </Link>
+          ) : null}
+          {caps.has("system.plugins") ? (
+            <Link href="/dashboard/admin/plugins">
+              <Button size="sm" variant="outline">{tNav("plugins")}</Button>
+            </Link>
+          ) : null}
+          {caps.has("system.settings") ? (
+            <Link href="/dashboard/admin/api-keys">
+              <Button size="sm" variant="outline">{tNav("apiKeys")}</Button>
+            </Link>
+          ) : null}
         </CardContent>
       </Card>
 
