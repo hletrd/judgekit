@@ -6,6 +6,7 @@ import { NextRequest, NextResponse } from "next/server";
 // ---------------------------------------------------------------------------
 const {
   authMock,
+  getApiUserMock,
   resolveCapabilitiesMock,
   isPluginEnabledMock,
   getPluginStateMock,
@@ -26,6 +27,7 @@ const {
   fetchMock,
 } = vi.hoisted(() => ({
   authMock: vi.fn(),
+  getApiUserMock: vi.fn(),
   resolveCapabilitiesMock: vi.fn(),
   isPluginEnabledMock: vi.fn(),
   getPluginStateMock: vi.fn(),
@@ -52,6 +54,16 @@ const {
 
 vi.mock("@/lib/auth", () => ({
   auth: authMock,
+}));
+
+vi.mock("@/lib/api/auth", () => ({
+  getApiUser: getApiUserMock,
+  unauthorized: () => NextResponse.json({ error: "unauthorized" }, { status: 401 }),
+  forbidden: () => NextResponse.json({ error: "forbidden" }, { status: 403 }),
+  notFound: () => NextResponse.json({ error: "notFound" }, { status: 404 }),
+  csrfForbidden: () => null,
+  isAdmin: vi.fn(),
+  isInstructor: vi.fn(),
 }));
 
 vi.mock("@/lib/capabilities/cache", () => ({
@@ -186,7 +198,7 @@ const VALID_CHAT_BODY = {
 beforeEach(() => {
   vi.clearAllMocks();
 
-  authMock.mockResolvedValue(STUDENT_SESSION);
+  getApiUserMock.mockResolvedValue({ id: "student-1", role: "student", username: "student" });
   resolveCapabilitiesMock.mockImplementation((role: string) =>
     Promise.resolve(new Set(role === "student" ? [] : ["system.plugins"]))
   );
@@ -230,17 +242,14 @@ beforeEach(() => {
 
 describe("POST /api/v1/plugins/chat-widget/chat", () => {
   it("returns 401 when there is no session", async () => {
-    authMock.mockResolvedValue(null);
+    getApiUserMock.mockResolvedValue(null);
 
     const res = await chatPOST(makeChatRequest(VALID_CHAT_BODY));
     expect(res.status).toBe(401);
-    const body = await res.json();
-    expect(body.error).toBe("unauthorized");
-    expect(loggerWarnMock).toHaveBeenCalledOnce();
   });
 
   it("returns 401 when session has no user", async () => {
-    authMock.mockResolvedValue({ user: null });
+    getApiUserMock.mockResolvedValue(null);
 
     const res = await chatPOST(makeChatRequest(VALID_CHAT_BODY));
     expect(res.status).toBe(401);

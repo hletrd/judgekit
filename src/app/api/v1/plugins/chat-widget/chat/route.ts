@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { eq } from "drizzle-orm";
-import { auth } from "@/lib/auth";
 import { createApiHandler } from "@/lib/api/handler";
 import { isPluginEnabled, getPluginState } from "@/lib/plugins/data";
 import { getProvider, type ChatMessage } from "@/lib/plugins/chat-widget/providers";
@@ -30,9 +29,9 @@ const requestSchema = z.object({
   messages: z.array(
     z.object({
       role: z.enum(["user", "assistant"]),
-      content: z.string().min(1).max(10000),
+      content: z.string().min(1, "invalidRequest").max(10000, "invalidRequest"),
     })
-  ).min(1).max(50),
+  ).min(1, "invalidRequest").max(50, "invalidRequest"),
   context: z.object({
     problemId: z.string().max(100).nullish(),
     assignmentId: z.string().max(100).nullish(),
@@ -159,19 +158,10 @@ ${config.knowledgeBase}`;
 }
 
 export const POST = createApiHandler({
-  auth: false,
-  handler: async (req: NextRequest) => {
-    const session = await auth();
-    if (!session?.user) {
-      logger.warn("Chat API: no session/user");
-      return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-    }
-    logger.info({ userId: session.user.id, role: session.user.role }, "Chat API request");
-
-    // CSRF check — auth:false disables the handler's built-in check
-    const { validateCsrf } = await import("@/lib/security/csrf");
-    const csrfError = validateCsrf(req);
-    if (csrfError) return csrfError;
+  auth: true,
+  schema: requestSchema,
+  handler: async (req: NextRequest, { user, body }) => {
+    logger.info({ userId: user.id, role: user.role }, "Chat API request");
 
     const enabled = await isPluginEnabled("chat-widget");
     if (!enabled) {
@@ -200,7 +190,7 @@ export const POST = createApiHandler({
 
     // Rate limit check
     const rateLimitResult = await checkServerActionRateLimit(
-      session.user.id,
+      user.id,
       "chat-widget",
       config.rateLimitPerMinute,
       60
@@ -209,26 +199,19 @@ export const POST = createApiHandler({
       return NextResponse.json({ error: "rateLimit" }, { status: 429, headers: { "Retry-After": "60" } });
     }
 
-    // Parse and validate request body
-    const body = await req.json();
-    const parsed = requestSchema.safeParse(body);
-    if (!parsed.success) {
-      return NextResponse.json({ error: "invalidRequest" }, { status: 400 });
-    }
-
-    const { context } = parsed.data;
+    const { context } = body;
 
     const sessionId = context?.sessionId || generateSessionId();
 
     const assignmentContext = await resolvePlatformModeAssignmentContextDetails({
-      userId: session.user.id,
+      userId: user.id,
       assignmentId: context?.assignmentId ?? null,
       problemId: context?.problemId ?? null,
     });
     if (assignmentContext.mismatch) {
       logger.warn(
         {
-          userId: session.user.id,
+          userId: user.id,
           problemId: context?.problemId ?? null,
           providedAssignmentId: assignmentContext.mismatch.providedAssignmentId,
           resolvedAssignmentId: assignmentContext.mismatch.resolvedAssignmentId,
@@ -241,7 +224,7 @@ export const POST = createApiHandler({
 
     // Check global AI assistant toggle
     const globalEnabled = await isAiAssistantEnabledForContext({
-      userId: session.user.id,
+      userId: user.id,
       assignmentId: assignmentContext.assignmentId,
       problemId: context?.problemId ?? null,
     });
@@ -266,10 +249,10 @@ export const POST = createApiHandler({
 
     // Save the latest user message only after the request clears assistant
     // availability checks. Denied requests should not create chat transcripts.
-    const lastUserMessage = [...parsed.data.messages].reverse().find(m => m.role === "user");
+    const lastUserMessage = [...body.messages].reverse().find(m => m.role === "user");
     if (lastUserMessage) {
       await persistChatMessage({
-        userId: session.user.id,
+        userId: user.id,
         sessionId,
         role: "user",
         content: lastUserMessage.content,
@@ -326,8 +309,8 @@ export const POST = createApiHandler({
 
     // Build agent context for tool execution
     const agentContext: AgentContext = {
-      userId: session.user.id,
-      userRole: session.user.role,
+      userId: user.id,
+      userRole: user.role,
       problemId: context?.problemId ?? undefined,
       assignmentId: assignmentContext.assignmentId ?? undefined,
       editorCode: context?.editorCode ?? undefined,
@@ -340,7 +323,7 @@ export const POST = createApiHandler({
       if (systemContent) {
         messages.push({ role: "system", content: systemContent });
       }
-      messages.push(...parsed.data.messages);
+      messages.push(...body.messages);
 
       const stream = await provider.stream({
         apiKey,
@@ -371,7 +354,7 @@ export const POST = createApiHandler({
           } finally {
             reader.releaseLock();
             await persistChatMessage({
-              userId: session.user.id,
+              userId: user.id,
               sessionId,
               role: "assistant",
               content: assistantContent,
@@ -396,7 +379,7 @@ export const POST = createApiHandler({
     // Tool-calling agent loop
     const fullMessages: Array<ChatMessage | Record<string, unknown>> = [
       { role: "system", content: systemContent },
-      ...parsed.data.messages,
+      ...body.messages,
     ];
 
     for (let i = 0; i < MAX_TOOL_ITERATIONS; i++) {
@@ -422,7 +405,7 @@ export const POST = createApiHandler({
           sessionId,
           persistAssistantMessage: async (status) => {
             await persistChatMessage({
-              userId: session.user.id,
+              userId: user.id,
               sessionId,
               role: "assistant",
               content: assistantContent,
@@ -475,7 +458,7 @@ export const POST = createApiHandler({
         } finally {
           reader.releaseLock();
           await persistChatMessage({
-            userId: session.user.id,
+            userId: user.id,
             sessionId,
             role: "assistant",
             content: assistantContent,
