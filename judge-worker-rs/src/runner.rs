@@ -704,6 +704,18 @@ async fn execute_run(config: &Config, req: &RunRequest) -> Result<RunResponse, S
     let mut compile_output: Option<String> = None;
 
     // Compile phase
+    //
+    // TRUST BOUNDARY: compile_command is an admin-owned string supplied by the
+    // app server from the language_configs DB row. We intentionally wrap it in
+    // `sh -c` so admins can express chained builds, env-prefixed invocations,
+    // and shell globs. The trust boundary is therefore the admin role that
+    // can mutate language_configs. All execution happens inside a sandbox
+    // with --network=none, --cap-drop=ALL, --security-opt=no-new-privileges,
+    // read-only rootfs, the project seccomp profile, and --user 65534:65534,
+    // so the worst a malicious compile_command can do is corrupt its own
+    // ephemeral per-submission workspace. Keep this comment in sync with
+    // src/lib/compiler/execute.ts.
+    // See HIGH-15 in plans/open/2026-04-18-comprehensive-review-remediation.md.
     if let Some(ref compile_command) = req.compile_command {
         let compile_timeout_ms = (time_limit_ms.saturating_mul(2)).max(MIN_COMPILE_TIMEOUT_MS);
 

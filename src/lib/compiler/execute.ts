@@ -546,6 +546,17 @@ export async function executeCompilerRun(
     let compileOutput: string | null = null;
 
     // Compile phase (if needed)
+    //
+    // TRUST BOUNDARY: compileCommand is a user-owned-by-admin string read from
+    // the language_configs DB table. We intentionally pass it through `sh -c`
+    // so admins can express multi-step builds (&& chains, env var prefixes,
+    // shell-glob source-file selection). The trust boundary is therefore the
+    // admin role that can write language_configs — not the submitter. All
+    // execution happens inside a sandbox with --network=none, --cap-drop=ALL,
+    // --security-opt=no-new-privileges, read-only rootfs, the project
+    // seccomp profile, and --user 65534:65534, so the worst a malicious
+    // compile command can do is corrupt its own ephemeral workspace.
+    // See HIGH-15 in plans/open/2026-04-18-comprehensive-review-remediation.md.
     if (options.language.compileCommand) {
       const compileCmd = ["sh", "-c", options.language.compileCommand];
       const compileResult = await runDocker({
