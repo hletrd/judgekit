@@ -14,6 +14,24 @@ This is the single prioritized roadmap across the root `plans/open/` backlog and
 
 **Why first:** these three lanes close the current-head correctness/security gaps and restore trust in the repo-level quality gates. Phase 0 is now complete and archived.
 
+**Progress update (2026-04-18):** Additional security and operational fixes committed and pushed:
+- Removed plaintext `secretToken` fallback in judge auth; `isJudgeAuthorizedForWorker` returns `workerSecretNotMigrated` when no hash stored
+- Deregister route now uses hash-only comparison
+- `validateShellCommand` allows `&&` and `;` for trusted admin compile commands; removed `JUDGE_AUTH_TOKEN` fallback
+- Per-worker rate limiting on claim endpoint (30/min)
+- Chat-widget chat route migrated from `auth: false` to `createApiHandler` with `auth: true`
+- Docker proxy `BUILD=0`, `DELETE=0` in production compose
+- `passwordHash` always redacted in export and logger
+- `findSessionUserWithPassword` uses explicit column selection
+- SQL parameter name validation added
+- MySQL schema deleted (PG-only)
+- Accounts unique index on `(provider, providerAccountId)`
+- Import rollback clears stale tableResults
+- `runtimeErrorType` exposed in chat tools when `showRuntimeErrors` enabled
+- `encryptPluginSecret` null return and empty secret handling fixed
+- Test/seed endpoint restricted to localhost
+- `createApiHandler` function overloads for body typing
+
 ## Phase 1 — Security and operational hardening
 4. `.context/plans/sec-plan-01-api-auth.md`
 5. `.context/plans/sec-plan-02-judge-worker.md`
