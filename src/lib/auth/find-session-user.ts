@@ -43,12 +43,60 @@ export async function findSessionUserWithPassword(session: Session | null) {
   if (sessionUser?.id) {
     return db.query.users.findFirst({
       where: eq(users.id, sessionUser.id),
+      columns: {
+        id: true,
+        username: true,
+        email: true,
+        name: true,
+        className: true,
+        role: true,
+        isActive: true,
+        mustChangePassword: true,
+        passwordHash: true,
+        tokenInvalidatedAt: true,
+        preferredLanguage: true,
+        preferredTheme: true,
+        shareAcceptedSolutions: true,
+        acceptedSolutionsAnonymous: true,
+        editorTheme: true,
+        editorFontSize: true,
+        editorFontFamily: true,
+        lectureMode: true,
+        lectureFontScale: true,
+        lectureColorScheme: true,
+        createdAt: true,
+        updatedAt: true,
+      },
     });
   }
 
   if (sessionUser?.username) {
     return db.query.users.findFirst({
       where: sql`lower(${users.username}) = lower(${sessionUser.username})`,
+      columns: {
+        id: true,
+        username: true,
+        email: true,
+        name: true,
+        className: true,
+        role: true,
+        isActive: true,
+        mustChangePassword: true,
+        passwordHash: true,
+        tokenInvalidatedAt: true,
+        preferredLanguage: true,
+        preferredTheme: true,
+        shareAcceptedSolutions: true,
+        acceptedSolutionsAnonymous: true,
+        editorTheme: true,
+        editorFontSize: true,
+        editorFontFamily: true,
+        lectureMode: true,
+        lectureFontScale: true,
+        lectureColorScheme: true,
+        createdAt: true,
+        updatedAt: true,
+      },
     });
   }
 
