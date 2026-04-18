@@ -59,7 +59,7 @@ Tracked in `.context/reviews/comprehensive-code-review-2026-04-18.md` §3.* and 
 ## Status ledger
 | Story | Status | Commit |
 |---|---|---|
-| CRIT-1 | Open | — |
+| CRIT-1 | Done | `fix(judge): 🛡️ heartbeat auths workers against secretTokenHash only` |
 | CRIT-2 | Done | `test(seed): 🧪 localhost gate now derives IP via extractClientIp()` |
 | CRIT-3 | Done | `fix(accepted-solutions): 🔐 require auth and hide anonymous userId` |
 | CRIT-4 | Done | `fix(files): 🛡️ authenticate API-key deletes before CSRF` |
@@ -75,7 +75,7 @@ Tracked in `.context/reviews/comprehensive-code-review-2026-04-18.md` §3.* and 
 | HIGH-5 | Open | — |
 | HIGH-6 | Open | — |
 | HIGH-7 | Done | `fix(db): 🐛 add missing communityVotes Drizzle relation` |
-| HIGH-8 | Open | — |
+| HIGH-8 | Done | `fix(judge-sandbox): 🛡️ align shell validators + document seccomp socket policy` |
 | HIGH-9 | Open | — |
 | HIGH-10 | Done | `fix(problem-sets): 🛡️ route mutations run through createApiHandler schemas` |
 | HIGH-11 | Done | `fix(groups): 🛡️ move assignment overrides route under createApiHandler` |
