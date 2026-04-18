@@ -38,4 +38,26 @@ describe("resolveStoredPath path-traversal guard", () => {
     const { resolveStoredPath } = await import("@/lib/files/storage");
     expect(() => resolveStoredPath("/etc/passwd")).toThrow();
   });
+
+  it("rejects classic path-traversal attack strings", async () => {
+    const { resolveStoredPath } = await import("@/lib/files/storage");
+    expect(() => resolveStoredPath("../../etc/passwd")).toThrow();
+    expect(() => resolveStoredPath("../../../etc/shadow")).toThrow();
+    expect(() => resolveStoredPath("../../../../root/.ssh/id_rsa")).toThrow();
+    expect(() => resolveStoredPath("..\\..\\windows\\system32\\config\\sam")).toThrow();
+  });
+
+  it("rejects mixed traversal techniques", async () => {
+    const { resolveStoredPath } = await import("@/lib/files/storage");
+    // Double-encoded or alternation tricks still contain ".." or "/"
+    expect(() => resolveStoredPath("....//....//etc/passwd")).toThrow();
+    expect(() => resolveStoredPath("..%2f..%2fetc/passwd")).toThrow();
+    expect(() => resolveStoredPath("foo/../../etc/passwd")).toThrow();
+  });
+
+  it("rejects null-byte injection attempts", async () => {
+    const { resolveStoredPath } = await import("@/lib/files/storage");
+    // Null bytes could truncate the name in some runtimes
+    expect(() => resolveStoredPath("file.txt\x00../evil")).toThrow();
+  });
 });
