@@ -59,6 +59,17 @@ describe("code similarity status reporting", () => {
     });
   });
 
+  it("partitions best-submission selection by language in the similarity SQL", async () => {
+    rawQueryAllMock.mockResolvedValue([]);
+
+    await runSimilarityCheck("assignment-1");
+
+    expect(rawQueryAllMock).toHaveBeenCalledOnce();
+    expect(String(rawQueryAllMock.mock.calls[0]?.[0])).toContain(
+      "PARTITION BY user_id, problem_id, language"
+    );
+  });
+
   it("tries the Rust sidecar before reporting an unavailable service for oversized contests", async () => {
     rawQueryAllMock.mockResolvedValue(
       Array.from({ length: 501 }, (_, index) => ({

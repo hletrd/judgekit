@@ -307,11 +307,11 @@ export async function runSimilarityCheck(
     throw new DOMException("Similarity check timed out", "AbortError");
   }
 
-  // Get best submission per (user, problem) — the one with highest score
+  // Get best submission per (user, problem, language) — compare only same-language attempts and keep the highest-scoring/latest row within each language bucket
   const rows = await rawQueryAll<SubmissionRow>(
     `WITH best AS (
       SELECT user_id AS "userId", problem_id AS "problemId", source_code AS "sourceCode",
-             ROW_NUMBER() OVER (PARTITION BY user_id, problem_id ORDER BY score DESC, submitted_at DESC) AS rn
+             ROW_NUMBER() OVER (PARTITION BY user_id, problem_id, language ORDER BY score DESC, submitted_at DESC) AS rn
       FROM submissions
       WHERE assignment_id = @assignmentId
     )
