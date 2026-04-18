@@ -452,6 +452,11 @@ export const submissions = pgTable(
     problemId: text("problem_id")
       .notNull()
       .references(() => problems.id, { onDelete: "cascade" }),
+    // "set null" is intentional: deleting an assignment preserves the
+    // submissions table for user history / audit. Orphaned rows (assignmentId
+    // = NULL) are still swept by pruneSubmissions in
+    // src/lib/data-retention-maintenance.ts under the global
+    // SUBMISSION_RETENTION_DAYS policy, so they don't linger indefinitely.
     assignmentId: text("assignment_id").references(() => assignments.id, {
       onDelete: "set null",
     }),
