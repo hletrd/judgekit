@@ -10,6 +10,7 @@ import {
   bigint,
   uniqueIndex,
   index,
+  check,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
@@ -433,6 +434,9 @@ export const judgeWorkers = pgTable(
   (table) => [
     index("judge_workers_status_idx").on(table.status),
     index("judge_workers_last_heartbeat_idx").on(table.lastHeartbeatAt),
+    // activeTasks is a counter updated atomically by claim/poll; a negative
+    // value indicates a logic bug or a dropped update. Fail closed in the DB.
+    check("judge_workers_active_tasks_nonneg", sql`active_tasks >= 0`),
   ]
 );
 
@@ -479,6 +483,9 @@ export const submissions = pgTable(
     index("submissions_judge_worker_idx").on(table.judgeWorkerId),
     index("submissions_submitted_at_idx").on(table.submittedAt),
     index("submissions_leaderboard_idx").on(table.assignmentId, table.userId, table.submittedAt),
+    // Supports the data-retention DELETE: WHERE submittedAt < ? AND status NOT IN (...)
+    // Placing submittedAt first lets the retention cutoff use the leading column.
+    index("submissions_retention_idx").on(table.submittedAt, table.status),
   ]
 );
 
@@ -820,7 +827,9 @@ export const chatMessages = pgTable(
     content: text("content").notNull(),
     /** Tracks whether the assistant response completed fully or was interrupted. */
     completionStatus: text("completion_status"), // "complete" | "partial" | "error" — null for user messages
-    problemId: text("problem_id"),
+    problemId: text("problem_id").references(() => problems.id, {
+      onDelete: "set null",
+    }),
     model: text("model"),
     provider: text("provider"),
     createdAt: timestamp("created_at", { withTimezone: true })
@@ -829,6 +838,7 @@ export const chatMessages = pgTable(
   },
   (table) => [
     index("chat_messages_session_id_idx").on(table.sessionId),
+    index("chat_messages_problem_id_idx").on(table.problemId),
   ]
 );
 
