@@ -87,10 +87,10 @@ Tracked in `.context/reviews/comprehensive-code-review-2026-04-18.md` §3.* and 
 | HIGH-17 | Done | `chore(test-compose): 🔒 drop BUILD/DELETE from test-backends docker-proxy` |
 | HIGH-18 | Open | — |
 | HIGH-19 | Open (upload traversal regression covered; access-code race/admin IP allowlist/seccomp coverage still pending) | — |
-| HIGH-20 | Open | — |
-| HIGH-21 | Open | — |
-| HIGH-22 | Open | — |
-| HIGH-23 | Open | — |
+| HIGH-20 | Done | `fix(db): 🐛 strengthen chatMessages FK + judge/submissions constraints` |
+| HIGH-21 | Done | `fix(db): 🐛 strengthen chatMessages FK + judge/submissions constraints` |
+| HIGH-22 | Done | `docs(db): 📝 document submissions.assignmentId set-null cascade policy` |
+| HIGH-23 | Done | `fix(db): 🐛 strengthen chatMessages FK + judge/submissions constraints` |
 
 Each status update lands in the same commit as the fix.
 
