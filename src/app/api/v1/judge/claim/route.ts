@@ -11,24 +11,11 @@ import { recordAuditEvent } from "@/lib/audit/events";
 import { isJudgeAuthorized, isJudgeAuthorizedForWorker, hashToken } from "@/lib/judge/auth";
 import { isJudgeIpAllowed } from "@/lib/judge/ip-allowlist";
 import { logger } from "@/lib/logger";
+import { consumeUserApiRateLimit } from "@/lib/security/api-rate-limit";
+import { extractClientIp } from "@/lib/security/ip";
 import { deserializeStoredJudgeCommand } from "@/lib/judge/languages";
 
 import { getConfiguredSettings } from "@/lib/system-settings-config";
-
-// --- Per-worker rate limiting for judge claims ---
-const CLAIM_RATE_LIMIT_WINDOW_MS = 60_000;
-const CLAIM_RATE_LIMIT_MAX = 30;
-const claimTimestamps = new Map<string, number[]>();
-
-function isClaimRateLimited(workerId: string | null): boolean {
-  const key = workerId ?? "anonymous";
-  const now = Date.now();
-  const timestamps = claimTimestamps.get(key)?.filter((t) => now - t < CLAIM_RATE_LIMIT_WINDOW_MS) ?? [];
-  if (timestamps.length >= CLAIM_RATE_LIMIT_MAX) return true;
-  timestamps.push(now);
-  claimTimestamps.set(key, timestamps);
-  return false;
-}
 
 const claimedSubmissionRowSchema = z.object({
   id: z.string(),
@@ -82,9 +69,10 @@ export async function POST(request: NextRequest) {
     const workerId = parsed.data.workerId ?? null;
     const workerSecret = parsed.data.workerSecret ?? null;
 
-    // Per-worker rate limiting — prevent a misconfigured worker from draining the queue
-    if (isClaimRateLimited(workerId)) {
-      return apiError("rateLimited", 429);
+    const rateLimitScope = workerId ?? `ip:${extractClientIp(request.headers) ?? "anonymous"}`;
+    const rateLimitResponse = await consumeUserApiRateLimit(request, rateLimitScope, "judge:claim");
+    if (rateLimitResponse) {
+      return rateLimitResponse;
     }
 
     // Per-worker auth: when a workerId is provided, validate the Bearer token

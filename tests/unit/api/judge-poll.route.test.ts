@@ -1,12 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
 
-const { rawQueryOneMock, problemsFindFirstMock, dbSelectMock, recordAuditEventMock } =
+const { rawQueryOneMock, problemsFindFirstMock, dbSelectMock, recordAuditEventMock, consumeUserApiRateLimitMock } =
   vi.hoisted(() => ({
     rawQueryOneMock: vi.fn(),
     problemsFindFirstMock: vi.fn(),
     dbSelectMock: vi.fn(),
     recordAuditEventMock: vi.fn(),
+    consumeUserApiRateLimitMock: vi.fn(),
   }));
 
 vi.mock("@/lib/judge/auth", () => ({
@@ -25,6 +26,10 @@ vi.mock("@/lib/db/queries", () => ({
 
 vi.mock("@/lib/system-settings-config", () => ({
   getConfiguredSettings: () => ({ staleClaimTimeoutMs: 300_000 }),
+}));
+
+vi.mock("@/lib/security/api-rate-limit", () => ({
+  consumeUserApiRateLimit: consumeUserApiRateLimitMock,
 }));
 
 vi.mock("@/lib/db", () => ({
@@ -84,9 +89,38 @@ beforeEach(() => {
   });
 
   dbSelectMock.mockReturnValue(makeSelectChain([]));
+  consumeUserApiRateLimitMock.mockResolvedValue(null);
 });
 
 describe("POST /api/v1/judge/claim", () => {
+
+  it("uses the shared API rate limiter instead of a process-local map", async () => {
+    consumeUserApiRateLimitMock.mockResolvedValueOnce(
+      new Response(JSON.stringify({ error: "rateLimited" }), {
+        status: 429,
+        headers: { "Content-Type": "application/json" },
+      })
+    );
+
+    const response = await POST(
+      new NextRequest("http://localhost:3000/api/v1/judge/claim", {
+        method: "POST",
+        headers: {
+          Authorization: "Bearer test-token",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ workerId: "worker-1", workerSecret: "worker-secret" }),
+      })
+    );
+
+    expect(response.status).toBe(429);
+    expect(consumeUserApiRateLimitMock).toHaveBeenCalledWith(
+      expect.any(NextRequest),
+      "worker-1",
+      "judge:claim"
+    );
+    expect(rawQueryOneMock).not.toHaveBeenCalled();
+  });
   it("binds a primitive timestamp when claiming submissions", async () => {
     const response = await POST(
       new NextRequest("http://localhost:3000/api/v1/judge/claim", {
