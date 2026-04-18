@@ -5,6 +5,7 @@ const {
   updateSetMock,
   updateWhereMock,
   dbTransactionMock,
+  dbSelectMock,
   txSelectMock,
   txFromMock,
   txWhereMock,
@@ -16,6 +17,7 @@ const {
   updateSetMock: vi.fn(),
   updateWhereMock: vi.fn(),
   dbTransactionMock: vi.fn(),
+  dbSelectMock: vi.fn(),
   txSelectMock: vi.fn(),
   txFromMock: vi.fn(),
   txWhereMock: vi.fn(),
@@ -28,6 +30,7 @@ vi.mock("@/lib/db", () => ({
   db: {
     update: dbUpdateMock,
     transaction: dbTransactionMock,
+    select: dbSelectMock,
   },
 }));
 
@@ -81,6 +84,7 @@ describe("access code helpers", () => {
     updateSetMock.mockReturnValue({ where: updateWhereMock });
     dbUpdateMock.mockReturnValue({ set: updateSetMock });
 
+    dbSelectMock.mockReturnValue({ from: txFromMock });
     txLimitMock.mockResolvedValue([]);
     txWhereMock.mockReturnValue({ limit: txLimitMock });
     txFromMock.mockReturnValue({ where: txWhereMock });
@@ -158,6 +162,29 @@ describe("access code helpers", () => {
       id: "enrollments.id",
       groupId: "enrollments.groupId",
       userId: "enrollments.userId",
+    });
+  });
+
+  it("treats concurrent contest token redemption as already enrolled", async () => {
+    const duplicateError = Object.assign(new Error("duplicate"), { code: "23505" });
+    dbTransactionMock.mockRejectedValueOnce(duplicateError);
+
+    const selectChain = {
+      from: vi.fn(),
+      where: vi.fn(),
+      limit: vi.fn(),
+    };
+    selectChain.from.mockReturnValue(selectChain);
+    selectChain.where.mockReturnValue(selectChain);
+    selectChain.limit.mockResolvedValue([{ id: "assignment-1", groupId: "group-1" }]);
+    dbSelectMock.mockReturnValueOnce({ from: selectChain.from });
+
+    const accessCodesModule = await import("@/lib/assignments/access-codes");
+    await expect(accessCodesModule.redeemAccessCode("ABCDEFGH", "user-1")).resolves.toMatchObject({
+      ok: true,
+      alreadyEnrolled: true,
+      assignmentId: "assignment-1",
+      groupId: "group-1",
     });
   });
 });
