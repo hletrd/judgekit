@@ -6,12 +6,17 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DashboardJudgeSystemSection } from "@/app/(dashboard)/dashboard/_components/dashboard-judge-system-section";
 import { getAdminHealthSnapshot } from "@/lib/ops/admin-health";
 
-export async function AdminDashboard() {
+type AdminDashboardProps = {
+  capabilities: string[];
+};
+
+export async function AdminDashboard({ capabilities }: AdminDashboardProps) {
   const [t, tNav, health] = await Promise.all([
     getTranslations("dashboard"),
     getTranslations("nav"),
     getAdminHealthSnapshot(),
   ]);
+  const caps = new Set(capabilities);
 
   const healthVariant =
     health.status === "ok" ? "default" : health.status === "degraded" ? "secondary" : "destructive";
@@ -29,18 +34,26 @@ export async function AdminDashboard() {
           <CardTitle>{t("adminQuickActions")}</CardTitle>
         </CardHeader>
         <CardContent className="flex flex-wrap gap-2">
-          <Link href="/dashboard/admin/workers">
-            <Button size="sm" variant="outline">{tNav("judgeWorkers")}</Button>
-          </Link>
-          <Link href="/dashboard/admin/languages">
-            <Button size="sm" variant="outline">{tNav("languages")}</Button>
-          </Link>
-          <Link href="/dashboard/admin/users">
-            <Button size="sm" variant="outline">{tNav("userManagement")}</Button>
-          </Link>
-          <Link href="/dashboard/admin/audit-logs">
-            <Button size="sm" variant="outline">{tNav("auditLogs")}</Button>
-          </Link>
+          {caps.has("system.settings") ? (
+            <>
+              <Link href="/dashboard/admin/workers">
+                <Button size="sm" variant="outline">{tNav("judgeWorkers")}</Button>
+              </Link>
+              <Link href="/dashboard/admin/languages">
+                <Button size="sm" variant="outline">{tNav("languages")}</Button>
+              </Link>
+            </>
+          ) : null}
+          {caps.has("users.view") ? (
+            <Link href="/dashboard/admin/users">
+              <Button size="sm" variant="outline">{tNav("userManagement")}</Button>
+            </Link>
+          ) : null}
+          {caps.has("system.audit_logs") ? (
+            <Link href="/dashboard/admin/audit-logs">
+              <Button size="sm" variant="outline">{tNav("auditLogs")}</Button>
+            </Link>
+          ) : null}
         </CardContent>
       </Card>
 

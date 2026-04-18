@@ -97,7 +97,7 @@ export default async function DashboardPage() {
             </div>
           }
         >
-          <AdminDashboard />
+          <AdminDashboard capabilities={capabilityList} />
         </Suspense>
       )}
 
