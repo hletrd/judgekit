@@ -126,5 +126,7 @@ describe("custom-role page/runtime implementation guards", () => {
     expect(userDetailPage).toContain('const canEditUsers = caps.has("users.edit");');
     expect(userDetailPage).toContain("actorCanEdit={canEditUsers}");
     expect(userDetailPage).toContain('assistant: tCommon("roles.assistant")');
+    expect(userDetailPage).toContain("db.query.roles.findFirst");
+    expect(userDetailPage).toContain("roleRecord?.displayName");
   });
 });

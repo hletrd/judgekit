@@ -2,7 +2,7 @@ import { getLocale, getTranslations } from "next-intl/server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { db } from "@/lib/db";
-import { users } from "@/lib/db/schema";
+import { roles, users } from "@/lib/db/schema";
 import { auth } from "@/lib/auth";
 import { resolveCapabilities } from "@/lib/capabilities/cache";
 import { formatDateTimeInTimeZone } from "@/lib/datetime";
@@ -48,13 +48,20 @@ export default async function AdminUserDetailPage({
   const tCommon = await getTranslations("common");
   const locale = await getLocale();
   const timeZone = await getResolvedSystemTimeZone();
-  const roleLabels = {
+  const builtinRoleLabels = {
     student: tCommon("roles.student"),
     assistant: tCommon("roles.assistant"),
     instructor: tCommon("roles.instructor"),
     admin: tCommon("roles.admin"),
     super_admin: tCommon("roles.super_admin"),
   };
+  const roleRecord = await db.query.roles.findFirst({
+    where: eq(roles.name, user.role),
+    columns: { displayName: true },
+  });
+  const roleLabel = builtinRoleLabels[user.role as keyof typeof builtinRoleLabels]
+    ?? roleRecord?.displayName
+    ?? user.role;
 
   return (
     <div className="space-y-4">
@@ -104,7 +111,7 @@ export default async function AdminUserDetailPage({
           </div>
           <div className="space-y-1">
             <p className="text-sm text-muted-foreground">{t("table.role")}</p>
-            <Badge variant="outline">{roleLabels[user.role as keyof typeof roleLabels] ?? user.role}</Badge>
+            <Badge variant="outline">{roleLabel}</Badge>
           </div>
           <div className="space-y-1">
             <p className="text-sm text-muted-foreground">{t("table.status")}</p>
