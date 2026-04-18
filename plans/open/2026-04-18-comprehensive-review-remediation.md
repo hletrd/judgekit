@@ -67,7 +67,7 @@ Tracked in `.context/reviews/comprehensive-code-review-2026-04-18.md` §3.* and 
 | CRIT-6 | Open | — |
 | CRIT-7 | Open | — |
 | CRIT-8 | Open | — |
-| CRIT-9 | Open | — |
+| CRIT-9 | Done | key.pem removed from working tree; `*.pem`/`*.key`/`*.p12`/`*.pfx` added to `.dockerignore`. **Operator action:** rotate any TLS/private key that was present at `/key.pem` before this change, because it may have been copied into prior docker builder layers. |
 | HIGH-1 | Open | — |
 | HIGH-2 | Open | — |
 | HIGH-3 | Open | — |
