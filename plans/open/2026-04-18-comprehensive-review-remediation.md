@@ -85,7 +85,7 @@ Tracked in `.context/reviews/comprehensive-code-review-2026-04-18.md` §3.* and 
 | HIGH-15 | Done | `docs(runtime): 📝 document the admin-configured shell-command trust boundary` |
 | HIGH-16 | Done | `ci(workflow): 🧪 run integration suite against a real postgres service` |
 | HIGH-17 | Done | `chore(test-compose): 🔒 drop BUILD/DELETE from test-backends docker-proxy` |
-| HIGH-18 | Open | — |
+| HIGH-18 | Open (auth-flow/debug-contest-errors/contest-full-lifecycle sleeps removed; contest-nav-test still blocked by repo-local stale file handle) | — |
 | HIGH-19 | Open (upload traversal regression covered; access-code race/admin IP allowlist/seccomp coverage still pending) | — |
 | HIGH-20 | Done | `fix(db): 🐛 strengthen chatMessages FK + judge/submissions constraints` |
 | HIGH-21 | Done | `fix(db): 🐛 strengthen chatMessages FK + judge/submissions constraints` |
