@@ -38,4 +38,17 @@ describe("participant audit page implementation", () => {
     expect(source).toContain("participantTimeline.antiCheatSummary.byType");
     expect(source).toContain("tAntiCheat(`eventTypes.${eventType}`");
   });
+
+  it("shows per-problem timeline summary badges above each submission table", () => {
+    const source = read("src/app/(dashboard)/dashboard/contests/[assignmentId]/participant/[userId]/page.tsx");
+
+    expect(source).toContain('const summary = timeline?.summary;');
+    expect(source).toContain('t("problemSummary.bestScore")');
+    expect(source).toContain('t("problemSummary.attempts"');
+    expect(source).toContain('t("problemSummary.snapshots"');
+    expect(source).toContain('t("problemSummary.timeToFirstSubmission")');
+    expect(source).toContain('t("problemSummary.timeToSolve")');
+    expect(source).toContain('t("problemSummary.wrongBeforeAc"');
+    expect(source).toContain('t("problemSummary.relativeTime"');
+  });
 });

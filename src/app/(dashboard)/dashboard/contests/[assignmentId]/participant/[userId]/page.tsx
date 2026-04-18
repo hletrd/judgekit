@@ -107,6 +107,16 @@ export default async function ParticipantAuditPage({
 
   const statusLabels: Record<string, string> = buildStatusLabels(tSubmissions);
 
+  function formatRelativeSeconds(totalSeconds: number | null) {
+    if (totalSeconds === null || totalSeconds === undefined) {
+      return "-";
+    }
+
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return t("problemSummary.relativeTime", { minutes, seconds });
+  }
+
   // Build problem info map from ranking data
   const problemRankingMap = new Map(
     auditData?.entry.problems.map((p) => [p.problemId, p]) ?? []
@@ -261,6 +271,7 @@ export default async function ParticipantAuditPage({
           {assignmentProblemRows.map((problem) => {
             const timeline = timelineByProblem.get(problem.problemId);
             const submissionEvents = timeline?.timeline.filter((event) => event.type === "submission") ?? [];
+            const summary = timeline?.summary;
             return (
               <div key={problem.problemId}>
                 <h4 className="mb-2 flex items-center gap-2 text-sm font-medium">
@@ -274,6 +285,35 @@ export default async function ParticipantAuditPage({
                     {problem.points ?? 100} pt
                   </span>
                 </h4>
+                {summary ? (
+                  <div className="mb-3 flex flex-wrap gap-2">
+                    <Badge variant="secondary">
+                      {t("problemSummary.attempts", { count: summary.totalAttempts })}
+                    </Badge>
+                    <Badge variant="outline">
+                      {t("problemSummary.bestScore")}:{" "}
+                      {summary.bestScore !== null && summary.bestScore !== undefined
+                        ? summary.bestScore
+                        : "-"}
+                    </Badge>
+                    <Badge variant="outline">
+                      {t("problemSummary.snapshots", { count: summary.snapshotCount })}
+                    </Badge>
+                    <Badge variant="outline">
+                      {t("problemSummary.timeToFirstSubmission")}:{" "}
+                      {formatRelativeSeconds(summary.timeToFirstSubmission)}
+                    </Badge>
+                    <Badge variant="outline">
+                      {t("problemSummary.timeToSolve")}:{" "}
+                      {formatRelativeSeconds(summary.timeToFirstAc)}
+                    </Badge>
+                    <Badge variant="outline">
+                      {t("problemSummary.wrongBeforeAc", {
+                        count: summary.wrongBeforeAc,
+                      })}
+                    </Badge>
+                  </div>
+                ) : null}
                 {submissionEvents.length === 0 ? (
                   <p className="text-sm text-muted-foreground">
                     {t("submissionHistory.noSubmissions")}

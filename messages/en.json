@@ -2340,6 +2340,15 @@
       "title": "Submission History",
       "noSubmissions": "No submissions for this problem."
     },
+    "problemSummary": {
+      "bestScore": "Best Score",
+      "attempts": "{count} attempts",
+      "snapshots": "{count} snapshots",
+      "timeToFirstSubmission": "First submission",
+      "timeToSolve": "Time to solve",
+      "wrongBeforeAc": "{count} wrong before AC",
+      "relativeTime": "+{minutes}m {seconds}s"
+    },
     "antiCheatSummary": {
       "title": "Integrity Signal Summary",
       "totalEvents": "{count} recorded signals"
