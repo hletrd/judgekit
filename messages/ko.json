@@ -2321,7 +2321,10 @@
         "rank": "순위",
         "totalScore": "총점",
         "penalty": "페널티",
-        "class": "소속"
+        "class": "소속",
+        "examStarted": "시험 시작",
+        "personalDeadline": "개인 마감",
+        "contestAccess": "대회 입장"
       },
       "solvingTimeline": {
         "title": "풀이 타임라인",

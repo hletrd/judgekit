@@ -9,6 +9,8 @@ import { db } from "@/lib/db";
 import {
   assignmentProblems,
   assignments,
+  contestAccessTokens,
+  examSessions,
   problems,
   submissions,
   users,
@@ -80,10 +82,26 @@ export default async function ParticipantAuditPage({
 
   const auditData = await getParticipantAuditData(assignmentId, userId);
 
-  const student = await db.query.users.findFirst({
-    where: eq(users.id, userId),
-    columns: { id: true, name: true, username: true, className: true },
-  });
+  const [student, examSession, contestAccess] = await Promise.all([
+    db.query.users.findFirst({
+      where: eq(users.id, userId),
+      columns: { id: true, name: true, username: true, className: true },
+    }),
+    db.query.examSessions.findFirst({
+      where: and(
+        eq(examSessions.assignmentId, assignmentId),
+        eq(examSessions.userId, userId)
+      ),
+      columns: { startedAt: true, personalDeadline: true },
+    }),
+    db.query.contestAccessTokens.findFirst({
+      where: and(
+        eq(contestAccessTokens.assignmentId, assignmentId),
+        eq(contestAccessTokens.userId, userId)
+      ),
+      columns: { redeemedAt: true },
+    }),
+  ]);
 
   if (!student) {
     notFound();
@@ -176,6 +194,24 @@ export default async function ParticipantAuditPage({
           {student.className && (
             <Badge variant="outline">
               {t("header.class")}: {student.className}
+            </Badge>
+          )}
+          {examSession?.startedAt && (
+            <Badge variant="outline">
+              {t("header.examStarted")}:{" "}
+              {formatDateTimeInTimeZone(examSession.startedAt, locale, timeZone)}
+            </Badge>
+          )}
+          {examSession?.personalDeadline && (
+            <Badge variant="outline">
+              {t("header.personalDeadline")}:{" "}
+              {formatDateTimeInTimeZone(examSession.personalDeadline, locale, timeZone)}
+            </Badge>
+          )}
+          {contestAccess?.redeemedAt && (
+            <Badge variant="outline">
+              {t("header.contestAccess")}:{" "}
+              {formatDateTimeInTimeZone(contestAccess.redeemedAt, locale, timeZone)}
             </Badge>
           )}
         </div>

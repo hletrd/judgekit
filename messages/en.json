@@ -2321,7 +2321,10 @@
         "rank": "Rank",
         "totalScore": "Total Score",
         "penalty": "Penalty",
-        "class": "Affiliation"
+        "class": "Affiliation",
+        "examStarted": "Exam Started",
+        "personalDeadline": "Personal Deadline",
+        "contestAccess": "Contest Access"
       },
       "solvingTimeline": {
         "title": "Solving Timeline",

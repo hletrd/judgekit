@@ -16,4 +16,14 @@ describe("participant audit page implementation", () => {
     expect(source).toContain("userId={userId}");
     expect(source).toContain("userName={student.name}");
   });
+
+  it("shows exam-session and contest-access metadata in the participant header", () => {
+    const source = read("src/app/(dashboard)/dashboard/contests/[assignmentId]/participant/[userId]/page.tsx");
+
+    expect(source).toContain("db.query.examSessions.findFirst");
+    expect(source).toContain("db.query.contestAccessTokens.findFirst");
+    expect(source).toContain('t("header.examStarted")');
+    expect(source).toContain('t("header.personalDeadline")');
+    expect(source).toContain('t("header.contestAccess")');
+  });
 });
