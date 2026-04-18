@@ -77,7 +77,7 @@ Tracked in `.context/reviews/comprehensive-code-review-2026-04-18.md` §3.* and 
 | HIGH-7 | Done | `fix(db): 🐛 add missing communityVotes Drizzle relation` |
 | HIGH-8 | Open | — |
 | HIGH-9 | Open | — |
-| HIGH-10 | Open | — |
+| HIGH-10 | Done | `fix(problem-sets): 🛡️ route mutations run through createApiHandler schemas` |
 | HIGH-11 | Done | `fix(groups): 🛡️ move assignment overrides route under createApiHandler` |
 | HIGH-12 | Done | `fix(judge-claim): 🛡️ move claim throttling to the shared API rate limiter` |
 | HIGH-13 | Open (closed by CRIT-3) | — |
