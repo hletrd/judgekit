@@ -189,6 +189,7 @@ export function AppSidebar({
   const [isSigningOut, setIsSigningOut] = useState(false);
   const roleLabels: Record<string, string> = {
     student: tCommon("roles.student"),
+    assistant: tCommon("roles.assistant"),
     instructor: tCommon("roles.instructor"),
     admin: tCommon("roles.admin"),
     super_admin: tCommon("roles.super_admin"),
@@ -198,10 +199,7 @@ export function AppSidebar({
   const hideStandaloneCompiler = getPlatformModePolicy(platformMode).restrictStandaloneCompiler;
 
   const canBypassModeRestrictions =
-    user.role === "admin"
-    || user.role === "super_admin"
-    || user.role === "instructor"
-    || capsSet.has("groups.view_all")
+    capsSet.has("groups.view_all")
     || capsSet.has("submissions.view_all")
     || capsSet.has("assignments.view_status");
   const prefersScopedReviewQueue =

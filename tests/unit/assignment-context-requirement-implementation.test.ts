@@ -37,6 +37,9 @@ describe("assignment-context requirement implementation", () => {
     expect(sidebarSource).toContain('capsSet.has("groups.view_all")');
     expect(sidebarSource).toContain('capsSet.has("submissions.view_all")');
     expect(sidebarSource).toContain('capsSet.has("assignments.view_status")');
+    expect(sidebarSource).not.toContain('user.role === "admin"');
+    expect(sidebarSource).not.toContain('user.role === "super_admin"');
+    expect(sidebarSource).not.toContain('user.role === "instructor"');
   });
 
   it("routes AI and compiler context through the server-derived assignment helper", () => {

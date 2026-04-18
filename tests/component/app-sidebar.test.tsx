@@ -146,4 +146,18 @@ describe("AppSidebar", () => {
       "/dashboard/problem-sets"
     );
   });
+
+  it("shows the localized assistant role label instead of the raw role slug", () => {
+    render(
+      <AppSidebar
+        user={{ id: "user-4", username: "ta", name: "TA", role: "assistant" }}
+        siteTitle="JudgeKit"
+        platformMode="homework"
+        capabilities={[]}
+      />
+    );
+
+    expect(screen.getByText("roles.assistant")).toBeInTheDocument();
+    expect(screen.queryByText("assistant")).not.toBeInTheDocument();
+  });
 });
