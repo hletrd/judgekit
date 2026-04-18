@@ -250,7 +250,7 @@ This launch package should be re-reviewed:
 
 # Final recommendation
 
-JudgeKit has the shape of a serious platform, but it currently looks more like a **powerful beta** than a safely boring production system for high-stakes evaluation.
+JudgeKit has the shape of a serious platform, but it currently looks more like a **feature-complete beta** than a production system ready for high-stakes evaluation.
 
 ## Best path forward
 - make it solid for assignments first
