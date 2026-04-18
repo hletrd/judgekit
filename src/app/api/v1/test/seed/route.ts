@@ -21,6 +21,7 @@ import { users, problems } from "@/lib/db/schema";
 import { apiSuccess, apiError } from "@/lib/api/responses";
 import { logger } from "@/lib/logger";
 import { safeTokenCompare } from "@/lib/security/timing";
+import { extractClientIp } from "@/lib/security/ip";
 import { csrfForbidden } from "@/lib/api/auth";
 
 // ─── Auth helpers ────────────────────────────────────────────────────────────
@@ -36,8 +37,10 @@ function isTestEnvironment(): boolean {
 }
 
 function isLocalhostRequest(req: NextRequest): boolean {
-  const ip = req.headers.get("x-forwarded-for") ?? req.headers.get("x-real-ip") ?? "unknown";
-  return ip === "127.0.0.1" || ip === "::1" || ip === "localhost";
+  // Use extractClientIp so hop validation against TRUSTED_PROXY_HOPS applies.
+  // Raw X-Forwarded-For would be spoofable by any external caller.
+  const ip = extractClientIp(req.headers);
+  return ip === "127.0.0.1" || ip === "::1";
 }
 
 function isAuthorized(req: NextRequest): boolean {
