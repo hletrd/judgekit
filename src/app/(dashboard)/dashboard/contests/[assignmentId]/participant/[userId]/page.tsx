@@ -44,6 +44,7 @@ export default async function ParticipantAuditPage({
   const [
     { assignmentId, userId },
     t,
+    tAntiCheat,
     tSubmissions,
     tCommon,
     locale,
@@ -51,6 +52,7 @@ export default async function ParticipantAuditPage({
   ] = await Promise.all([
     params,
     getTranslations("contests.participantAudit"),
+    getTranslations("contests.antiCheat"),
     getTranslations("submissions"),
     getTranslations("common"),
     getLocale(),
@@ -362,7 +364,7 @@ export default async function ParticipantAuditPage({
         </CardContent>
       </Card>
 
-        <CodeTimelinePanel
+      <CodeTimelinePanel
         assignmentId={assignmentId}
         userId={userId}
         userName={participant.name}
@@ -370,10 +372,38 @@ export default async function ParticipantAuditPage({
 
       {/* Anti-Cheat Timeline */}
       {assignment.enableAntiCheat && (
-        <ParticipantAntiCheatTimeline
-          assignmentId={assignmentId}
-          userId={userId}
-        />
+        <>
+          {participantTimeline.antiCheatSummary.totalEvents > 0 ? (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">
+                  {t("antiCheatSummary.title")}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <Badge variant="secondary">
+                  {t("antiCheatSummary.totalEvents", {
+                    count: participantTimeline.antiCheatSummary.totalEvents,
+                  })}
+                </Badge>
+                <div className="flex flex-wrap gap-2">
+                  {Object.entries(participantTimeline.antiCheatSummary.byType)
+                    .sort((left, right) => right[1] - left[1])
+                    .map(([eventType, count]) => (
+                      <Badge key={eventType} variant="outline">
+                        {tAntiCheat(`eventTypes.${eventType}` as Parameters<typeof tAntiCheat>[0])}: {count}
+                      </Badge>
+                    ))}
+                </div>
+              </CardContent>
+            </Card>
+          ) : null}
+
+          <ParticipantAntiCheatTimeline
+            assignmentId={assignmentId}
+            userId={userId}
+          />
+        </>
       )}
     </div>
   );

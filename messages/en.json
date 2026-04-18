@@ -2336,13 +2336,17 @@
         "notSolved": "Not Solved",
         "noAttempts": "No Attempts"
       },
-      "submissionHistory": {
-        "title": "Submission History",
-        "noSubmissions": "No submissions for this problem."
-      },
-      "antiCheatTimeline": {
-        "title": "Anti-Cheat Signals Timeline",
-        "noEvents": "No anti-cheat signals for this participant."
+    "submissionHistory": {
+      "title": "Submission History",
+      "noSubmissions": "No submissions for this problem."
+    },
+    "antiCheatSummary": {
+      "title": "Integrity Signal Summary",
+      "totalEvents": "{count} recorded signals"
+    },
+    "antiCheatTimeline": {
+      "title": "Anti-Cheat Signals Timeline",
+      "noEvents": "No anti-cheat signals for this participant."
       }
     }
   },

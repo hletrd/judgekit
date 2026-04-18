@@ -28,4 +28,14 @@ describe("participant audit page implementation", () => {
     expect(source).toContain('t("header.personalDeadline")');
     expect(source).toContain('t("header.contestAccess")');
   });
+
+  it("surfaces anti-cheat summary counts from the shared participant timeline data", () => {
+    const source = read("src/app/(dashboard)/dashboard/contests/[assignmentId]/participant/[userId]/page.tsx");
+
+    expect(source).toContain("participantTimeline.antiCheatSummary.totalEvents > 0");
+    expect(source).toContain('t("antiCheatSummary.title")');
+    expect(source).toContain('t("antiCheatSummary.totalEvents"');
+    expect(source).toContain("participantTimeline.antiCheatSummary.byType");
+    expect(source).toContain("tAntiCheat(`eventTypes.${eventType}`");
+  });
 });

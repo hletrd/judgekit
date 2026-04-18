@@ -2336,13 +2336,17 @@
         "notSolved": "미풀이",
         "noAttempts": "시도 없음"
       },
-      "submissionHistory": {
-        "title": "제출 내역",
-        "noSubmissions": "이 문제에 대한 제출이 없습니다."
-      },
-      "antiCheatTimeline": {
-        "title": "부정행위 신호 타임라인",
-        "noEvents": "이 참가자에 대한 부정행위 신호가 없습니다."
+    "submissionHistory": {
+      "title": "제출 내역",
+      "noSubmissions": "이 문제에 대한 제출이 없습니다."
+    },
+    "antiCheatSummary": {
+      "title": "무결성 신호 요약",
+      "totalEvents": "기록된 신호 {count}건"
+    },
+    "antiCheatTimeline": {
+      "title": "부정행위 신호 타임라인",
+      "noEvents": "이 참가자에 대한 부정행위 신호가 없습니다."
       }
     }
   },
