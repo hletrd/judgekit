@@ -19,8 +19,15 @@ const DEV_ENCRYPTION_KEY = Buffer.from(
  * Get the 32-byte encryption key from the NODE_ENCRYPTION_KEY env var.
  * Returns the fixed development key if the env var is not set in non-production.
  * Throws in production if the key is missing.
+ *
+ * The key is parsed once and cached for the lifetime of the process since
+ * env vars do not change at runtime.
  */
+let _cachedKey: Buffer | undefined;
+
 function getKey(): Buffer {
+  if (_cachedKey) return _cachedKey;
+
   const hex = process.env.NODE_ENCRYPTION_KEY?.trim();
   if (!hex) {
     if (process.env.NODE_ENV === "production") {
@@ -28,7 +35,8 @@ function getKey(): Buffer {
         "NODE_ENCRYPTION_KEY must be set in production. Generate: openssl rand -hex 32"
       );
     }
-    return DEV_ENCRYPTION_KEY;
+    _cachedKey = DEV_ENCRYPTION_KEY;
+    return _cachedKey;
   }
   const buf = Buffer.from(hex, "hex");
   if (buf.length !== 32) {
@@ -36,7 +44,8 @@ function getKey(): Buffer {
       "NODE_ENCRYPTION_KEY must be a 32-byte (64-char) hex string. Generate: openssl rand -hex 32"
     );
   }
-  return buf;
+  _cachedKey = buf;
+  return _cachedKey;
 }
 
 /**
