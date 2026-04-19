@@ -49,7 +49,14 @@ export async function getAllPluginStates(
   options: GetPluginStateOptions = {}
 ): Promise<PluginState[]> {
   const definitions = getAllPluginDefinitions();
-  const rows = await db.select().from(plugins);
+  const rows = await db
+    .select({
+      id: plugins.id,
+      enabled: plugins.enabled,
+      config: plugins.config,
+      updatedAt: plugins.updatedAt,
+    })
+    .from(plugins);
   const rowMap = new Map(rows.map((r) => [r.id, r]));
   const includeSecrets = options.includeSecrets === true;
 
