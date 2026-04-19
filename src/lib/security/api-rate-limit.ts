@@ -34,11 +34,6 @@ async function sidecarConsume(key: string): Promise<boolean | null> {
   return !result.allowed;
 }
 
-/** @deprecated Use getConfiguredSettings().apiRateLimitMax */
-export const API_RATE_LIMIT_MAX = getApiRateLimitConfig().max;
-/** @deprecated Use getConfiguredSettings().apiRateLimitWindowMs */
-export const API_RATE_LIMIT_WINDOW_MS = getApiRateLimitConfig().windowMs;
-
 const consumedRequestKeys = new WeakMap<NextRequest, Set<string>>();
 
 function rememberRequestKey(request: NextRequest, key: string) {

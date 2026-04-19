@@ -15,13 +15,6 @@ function getRateLimitConfig() {
   };
 }
 
-/** @deprecated Use getConfiguredSettings().loginRateLimitMaxAttempts */
-export const RATE_LIMIT_MAX_ATTEMPTS = getRateLimitConfig().maxAttempts;
-/** @deprecated Use getConfiguredSettings().loginRateLimitWindowMs */
-export const RATE_LIMIT_WINDOW_MS = getRateLimitConfig().windowMs;
-/** @deprecated Use getConfiguredSettings().loginRateLimitBlockMs */
-export const RATE_LIMIT_BLOCK_MS = getRateLimitConfig().blockMs;
-
 const RATE_LIMIT_EVICTION_AGE_MS = 24 * 60 * 60 * 1000;
 
 export function getRateLimitKey(action: string, headers: Headers) {
