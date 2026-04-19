@@ -127,8 +127,9 @@ function syncTokenWithUser(
 
 /**
  * Map JWT token fields to the NextAuth session.user object.
- * Core fields are assigned explicitly; preference fields are mapped
- * via AUTH_PREFERENCE_FIELDS so new preferences are automatically included.
+ * Core fields are assigned explicitly; preference fields are assigned
+ * directly to the typed session.user (no cast needed since next-auth.d.ts
+ * declares all preference fields on Session["user"]).
  */
 function mapTokenToSession(token: JWT, session: Session) {
   // Core fields — each has a specific default pattern
@@ -143,20 +144,20 @@ function mapTokenToSession(token: JWT, session: Session) {
     session.user.email = token.email;
   }
 
-  // Preference fields — mapped from AUTH_PREFERENCE_FIELDS so new
-  // preferences are automatically included without a manual assignment.
-  // The Session["user"] type in next-auth.d.ts is kept in sync with this list.
-  for (const field of AUTH_PREFERENCE_FIELDS) {
-    const tokenVal = token[field as keyof JWT];
-    if (field === "shareAcceptedSolutions") {
-      // shareAcceptedSolutions defaults to true (opt-out model)
-      (session.user as Record<string, unknown>)[field] = (tokenVal as boolean | undefined) ?? true;
-    } else if (field === "acceptedSolutionsAnonymous") {
-      (session.user as Record<string, unknown>)[field] = (tokenVal as boolean | undefined) ?? false;
-    } else {
-      (session.user as Record<string, unknown>)[field] = tokenVal ?? null;
-    }
-  }
+  // Preference fields — assigned directly to the typed session.user.
+  // When adding a new preference field: add it to AUTH_PREFERENCE_FIELDS,
+  // AuthUserRecord, next-auth.d.ts (Session["user"] and JWT), AND here.
+  session.user.preferredLanguage = token.preferredLanguage ?? null;
+  session.user.preferredTheme = token.preferredTheme ?? null;
+  // shareAcceptedSolutions defaults to true (opt-out model)
+  session.user.shareAcceptedSolutions = token.shareAcceptedSolutions ?? true;
+  session.user.acceptedSolutionsAnonymous = token.acceptedSolutionsAnonymous ?? false;
+  session.user.editorTheme = token.editorTheme ?? null;
+  session.user.editorFontSize = token.editorFontSize ?? null;
+  session.user.editorFontFamily = token.editorFontFamily ?? null;
+  session.user.lectureMode = token.lectureMode ?? null;
+  session.user.lectureFontScale = token.lectureFontScale ?? null;
+  session.user.lectureColorScheme = token.lectureColorScheme ?? null;
 }
 
 validateAuthUrl();
