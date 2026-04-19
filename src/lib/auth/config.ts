@@ -145,6 +145,7 @@ function mapTokenToSession(token: JWT, session: Session) {
 
   // Preference fields — mapped from AUTH_PREFERENCE_FIELDS so new
   // preferences are automatically included without a manual assignment.
+  // The Session["user"] type in next-auth.d.ts is kept in sync with this list.
   for (const field of AUTH_PREFERENCE_FIELDS) {
     const tokenVal = token[field as keyof JWT];
     if (field === "shareAcceptedSolutions") {
