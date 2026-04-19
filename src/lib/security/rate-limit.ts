@@ -202,9 +202,9 @@ export async function recordRateLimitFailure(key: string) {
 
     const cfg = getRateLimitConfig();
     if (attempts >= cfg.maxAttempts) {
-      const blockDuration = calculateBlockDuration(consecutiveBlocks, cfg.blockMs);
-      blockedUntil = now + blockDuration;
       consecutiveBlocks += 1;
+      const blockDuration = calculateBlockDuration(consecutiveBlocks - 1, cfg.blockMs);
+      blockedUntil = now + blockDuration;
     }
 
     if (exists) {
