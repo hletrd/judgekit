@@ -2,18 +2,14 @@ import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { tags } from "@/lib/db/schema";
 import { asc, sql } from "drizzle-orm";
-import { getApiUser, unauthorized } from "@/lib/api/auth";
-import { apiSuccess, apiError } from "@/lib/api/responses";
-import { logger } from "@/lib/logger";
+import { apiSuccess } from "@/lib/api/responses";
 import { escapeLikePattern } from "@/lib/db/like";
 import { parsePositiveInt } from "@/lib/validators/query-params";
+import { createApiHandler } from "@/lib/api/handler";
 
-export async function GET(request: NextRequest) {
-  try {
-    const user = await getApiUser(request);
-    if (!user) return unauthorized();
-
-    const searchParams = request.nextUrl.searchParams;
+export const GET = createApiHandler({
+  handler: async (req: NextRequest) => {
+    const searchParams = req.nextUrl.searchParams;
     const query = searchParams.get("q")?.trim() ?? "";
     const limit = Math.min(parsePositiveInt(searchParams.get("limit"), 50), 100);
 
@@ -29,8 +25,5 @@ export async function GET(request: NextRequest) {
       .limit(limit);
 
     return apiSuccess(results);
-  } catch (error) {
-    logger.error({ err: error }, "GET /api/v1/tags error");
-    return apiError("internalServerError", 500);
-  }
-}
+  },
+});

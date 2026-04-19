@@ -315,6 +315,8 @@ export const config = {
     "/rankings/:path*",
     "/submissions/:path*",
     "/languages/:path*",
+    "/users/:path*",
+    "/problem-sets/:path*",
     "/api/v1/:path*",
     "/login",
     "/signup",

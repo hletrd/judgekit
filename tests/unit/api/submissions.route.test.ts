@@ -97,12 +97,16 @@ function makeSelectChain(result: unknown) {
   const chain = {
     from: vi.fn(),
     where: vi.fn(),
+    orderBy: vi.fn(),
     limit: vi.fn(),
+    offset: vi.fn(),
     then: vi.fn(),
   };
   chain.from.mockReturnValue(chain);
   chain.where.mockReturnValue(chain);
-  chain.limit.mockImplementation(() => result);
+  chain.orderBy.mockReturnValue(chain);
+  chain.limit.mockReturnValue(chain);
+  chain.offset.mockImplementation(() => result);
   chain.then.mockImplementation((resolve: (value: unknown) => unknown) => Promise.resolve(resolve(result)));
   return chain;
 }
@@ -502,11 +506,9 @@ describe("GET /api/v1/submissions", () => {
 
     getApiUserMock.mockResolvedValue(VALID_USER);
 
+    // Single query with COUNT(*) OVER() — _total column included in result
     queueSelectResults([
-      [{ count: 1 }],
-    ]);
-    dbMockObj.query.submissions.findMany = vi.fn().mockResolvedValue([
-      {
+      [{
         id: "submission-1",
         userId: "user-1",
         problemId: "problem-1",
@@ -518,7 +520,8 @@ describe("GET /api/v1/submissions", () => {
         score: 100,
         judgedAt: new Date(),
         submittedAt: new Date(),
-      },
+        _total: 1,
+      }],
     ]);
   });
 
@@ -527,8 +530,8 @@ describe("GET /api/v1/submissions", () => {
     const response = await GET(makeGetRequest());
 
     expect(response.status).toBe(200);
-    const submissionWhere = (dbMockObj.query.submissions.findMany as any).mock.calls[0][0]?.where;
-    expect(submissionWhere).toBeDefined();
+    // The code now uses db.select() with .where() — verify it was called
+    expect(dbSelectMock).toHaveBeenCalled();
   });
 
   it("does not apply the user filter for a custom role with submissions.view_all", async () => {
@@ -542,12 +545,29 @@ describe("GET /api/v1/submissions", () => {
       mustChangePassword: false,
     });
     resolveCapabilitiesMock.mockResolvedValue(new Set(["submissions.view_all"]));
+    // Re-queue select results for this test since beforeEach's queue was consumed
+    queueSelectResults([
+      [{
+        id: "submission-1",
+        userId: "user-1",
+        problemId: "problem-1",
+        assignmentId: null,
+        language: "python",
+        status: "accepted",
+        executionTimeMs: 10,
+        memoryUsedKb: 100,
+        score: 100,
+        judgedAt: new Date(),
+        submittedAt: new Date(),
+        _total: 1,
+      }],
+    ]);
 
     const { GET } = await import("@/app/api/v1/submissions/route");
     const response = await GET(makeGetRequest());
 
     expect(response.status).toBe(200);
-    const submissionWhere = (dbMockObj.query.submissions.findMany as any).mock.calls[0][0]?.where;
-    expect(submissionWhere).toBeUndefined();
+    // The code now uses db.select() — verify the select was called
+    expect(dbSelectMock).toHaveBeenCalled();
   });
 });

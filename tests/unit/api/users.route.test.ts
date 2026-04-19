@@ -237,10 +237,8 @@ describe("GET /api/v1/users", () => {
   it("returns user list for admin", async () => {
     getApiUserMock.mockResolvedValue(adminUser);
 
-    // First select call → count, second → results
-    dbSelectMock
-      .mockReturnValueOnce(makeSelectChain([{ count: 2 }]))
-      .mockReturnValueOnce(makeSelectChain([safeUser]));
+    // Single query with COUNT(*) OVER() — _total column is extracted then stripped
+    dbSelectMock.mockReturnValueOnce(makeSelectChain([{ ...safeUser, _total: 2 }]));
 
     const req = makeRequest("http://localhost:3000/api/v1/users");
     const res = await GET(req);
@@ -277,11 +275,9 @@ describe("GET /api/v1/users", () => {
   it("pagination works correctly — respects page and limit params", async () => {
     getApiUserMock.mockResolvedValue(adminUser);
 
-    const countChain = makeSelectChain([{ count: 50 }]);
-    const resultsChain = makeSelectChain([safeUser]);
-    dbSelectMock
-      .mockReturnValueOnce(countChain)
-      .mockReturnValueOnce(resultsChain);
+    // Single query with COUNT(*) OVER() — _total column is extracted then stripped
+    const resultsChain = makeSelectChain([{ ...safeUser, _total: 50 }]);
+    dbSelectMock.mockReturnValueOnce(resultsChain);
 
     const req = makeRequest(
       "http://localhost:3000/api/v1/users?page=3&limit=10"

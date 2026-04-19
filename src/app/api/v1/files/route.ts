@@ -159,11 +159,6 @@ export const GET = createApiHandler({
 
     const where = conditions.length > 0 ? and(...conditions) : undefined;
 
-    const [countResult] = await db
-      .select({ count: sql<number>`count(*)` })
-      .from(files)
-      .where(where);
-
     const rows = await db
       .select({
         id: files.id,
@@ -177,6 +172,7 @@ export const GET = createApiHandler({
         uploadedBy: files.uploadedBy,
         createdAt: files.createdAt,
         uploaderName: users.name,
+        _total: sql<number>`count(*) over()`,
       })
       .from(files)
       .leftJoin(users, eq(files.uploadedBy, users.id))
@@ -185,6 +181,9 @@ export const GET = createApiHandler({
       .limit(limit)
       .offset(offset);
 
-    return apiPaginated(rows, page, limit, countResult.count);
+    const total = rows.length > 0 ? Number(rows[0]._total) : 0;
+    const cleanRows = rows.map(({ _total, ...rest }) => rest);
+
+    return apiPaginated(cleanRows, page, limit, total);
   },
 });

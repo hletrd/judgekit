@@ -35,20 +35,21 @@ export const GET = createApiHandler({
 
     const whereClause = role ? eq(users.role, role) : undefined;
 
-    const [totalRow] = await db
-      .select({ count: sql<number>`count(*)` })
-      .from(users)
-      .where(whereClause);
-
     const results = await db
-      .select(safeUserSelect)
+      .select({
+        ...safeUserSelect,
+        _total: sql<number>`count(*) over()`,
+      })
       .from(users)
       .where(whereClause)
       .orderBy(desc(users.createdAt))
       .limit(limit)
       .offset(offset);
 
-    return apiPaginated(results, page, limit, Number(totalRow?.count ?? 0));
+    const total = results.length > 0 ? Number(results[0]._total) : 0;
+    const cleanResults = results.map(({ _total, ...rest }) => rest);
+
+    return apiPaginated(cleanResults, page, limit, total);
   },
 });
 

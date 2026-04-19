@@ -100,6 +100,8 @@ export const GET = createApiHandler({
     }
 
     // Offset-based pagination mode (default, backward compatible)
+    // Uses COUNT(*) OVER() window function in a single query to avoid
+    // count/data inconsistency under concurrent writes.
     const { page, limit, offset } = parsePagination(searchParams);
 
     const filters = [userFilter, problemFilter, statusFilter, assignmentFilter].flatMap((filter) =>
@@ -108,30 +110,30 @@ export const GET = createApiHandler({
     const whereClause =
       filters.length === 0 ? undefined : filters.length === 1 ? filters[0] : and(...filters);
 
-    const [totalRow] = await db
-      .select({ count: sql<number>`count(*)` })
+    const results = await db
+      .select({
+        id: submissions.id,
+        userId: submissions.userId,
+        problemId: submissions.problemId,
+        assignmentId: submissions.assignmentId,
+        language: submissions.language,
+        status: submissions.status,
+        executionTimeMs: submissions.executionTimeMs,
+        memoryUsedKb: submissions.memoryUsedKb,
+        score: submissions.score,
+        judgedAt: submissions.judgedAt,
+        submittedAt: submissions.submittedAt,
+        _total: sql<number>`count(*) over()`,
+      })
       .from(submissions)
-      .where(whereClause);
+      .where(whereClause)
+      .orderBy(desc(submissions.submittedAt))
+      .limit(limit)
+      .offset(offset);
 
-    const results = await db.query.submissions.findMany({
-      where: whereClause,
-      columns: {
-        id: true,
-        userId: true,
-        problemId: true,
-        assignmentId: true,
-        language: true,
-        status: true,
-        executionTimeMs: true,
-        memoryUsedKb: true,
-        score: true,
-        judgedAt: true,
-        submittedAt: true,
-      },
-      orderBy: [desc(submissions.submittedAt)],
-      limit,
-      offset,
-    });
+    const total = results.length > 0 ? Number(results[0]._total) : 0;
+    // Strip the internal _total field from the response
+    const cleanResults = results.map(({ _total, ...rest }) => rest);
 
     if (includeSummary) {
       const grouped = await db
@@ -148,15 +150,15 @@ export const GET = createApiHandler({
       );
 
       return apiSuccess({
-        submissions: results,
+        submissions: cleanResults,
         page,
         limit,
-        total: Number(totalRow?.count ?? 0),
+        total,
         summary,
       });
     }
 
-    return apiPaginated(results, page, limit, Number(totalRow?.count ?? 0));
+    return apiPaginated(cleanResults, page, limit, total);
   },
 });
 
