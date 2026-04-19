@@ -4,7 +4,7 @@ import { db, execTransaction } from "@/lib/db";
 import { roles, users } from "@/lib/db/schema";
 import { eq, sql } from "drizzle-orm";
 import { forbidden } from "@/lib/api/auth";
-import { resolveCapabilities, invalidateRoleCache } from "@/lib/capabilities/cache";
+import { resolveCapabilities, invalidateRoleCache, getRoleLevel } from "@/lib/capabilities/cache";
 import { recordAuditEvent } from "@/lib/audit/events";
 import { nanoid } from "nanoid";
 import { createRoleSchema } from "@/lib/validators/roles";
@@ -60,8 +60,7 @@ export const POST = createApiHandler({
     const { name, displayName, description, level, capabilities } = body;
 
     // Cannot create roles with level higher than own level
-    const ROLE_LEVELS: Record<string, number> = { student: 0, assistant: 0, ta: 1, instructor: 1, admin: 2, super_admin: 3 };
-    const creatorLevel = ROLE_LEVELS[user.role] ?? -1;
+    const creatorLevel = await getRoleLevel(user.role);
     if (level > creatorLevel) {
       return apiError("cannotCreateRoleAboveOwnLevel", 403);
     }
@@ -123,8 +122,20 @@ export const POST = createApiHandler({
       request: req,
     });
 
+    const ROLE_COLUMNS = {
+      id: roles.id,
+      name: roles.name,
+      displayName: roles.displayName,
+      description: roles.description,
+      isBuiltin: roles.isBuiltin,
+      level: roles.level,
+      capabilities: roles.capabilities,
+      createdAt: roles.createdAt,
+      updatedAt: roles.updatedAt,
+    } as const;
+
     const created = await db
-      .select()
+      .select(ROLE_COLUMNS)
       .from(roles)
       .where(eq(roles.id, id))
       .then((rows) => rows[0]);
