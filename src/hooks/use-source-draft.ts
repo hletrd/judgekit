@@ -60,14 +60,14 @@ function getPreferredLanguage(userId: string, languages: readonly string[]): str
   try {
     const value = window.localStorage.getItem(`${LANGUAGE_PREF_PREFIX}:${userId}`);
     if (value && languages.includes(value)) return value;
-  } catch {}
+  } catch { /* localStorage unavailable (private browsing, quota exceeded) */ }
   return null;
 }
 
 function savePreferredLanguage(userId: string, language: string) {
   try {
     window.localStorage.setItem(`${LANGUAGE_PREF_PREFIX}:${userId}`, language);
-  } catch {}
+  } catch { /* localStorage unavailable (private browsing, quota exceeded) */ }
 }
 
 function normalizeDrafts(drafts: unknown, languages: readonly string[]) {
