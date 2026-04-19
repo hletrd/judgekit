@@ -8,6 +8,7 @@ import { parsePositiveInt } from "@/lib/validators/query-params";
 import { createApiHandler } from "@/lib/api/handler";
 
 export const GET = createApiHandler({
+  rateLimit: "tags:read",
   handler: async (req: NextRequest) => {
     const searchParams = req.nextUrl.searchParams;
     const query = searchParams.get("q")?.trim() ?? "";

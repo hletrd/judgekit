@@ -11,6 +11,10 @@ vi.mock("@/lib/api/auth", () => ({
   forbidden: () => new Response(JSON.stringify({ error: "forbidden" }), { status: 403 }),
 }));
 
+vi.mock("@/lib/security/api-rate-limit", () => ({
+  consumeApiRateLimit: vi.fn().mockResolvedValue(null),
+}));
+
 vi.mock("@/lib/capabilities/cache", () => ({
   resolveCapabilities: resolveCapabilitiesMock,
   invalidateRoleCache: vi.fn(),
