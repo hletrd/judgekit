@@ -104,6 +104,8 @@ describe("CompilerClient", () => {
       />
     );
 
+    expect(screen.getByText("Test case 1")).toBeInTheDocument();
+
     fireEvent.change(screen.getByLabelText(/standard input/i), { target: { value: "1 2" } });
     fireEvent.click(screen.getByRole("button", { name: /run code/i }));
 
@@ -112,7 +114,7 @@ describe("CompilerClient", () => {
     });
 
     fireEvent.click(screen.getByRole("button", { name: /add test case/i }));
-    fireEvent.change(screen.getByLabelText(/test case label/i), { target: { value: "Edge case" } });
+    fireEvent.change(screen.getByLabelText(/test case 2/i), { target: { value: "Edge case" } });
     fireEvent.change(screen.getByLabelText(/standard input/i), { target: { value: "5 7" } });
     fireEvent.click(screen.getByRole("button", { name: /run code/i }));
 

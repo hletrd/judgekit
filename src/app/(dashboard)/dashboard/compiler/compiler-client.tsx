@@ -140,6 +140,8 @@ export function CompilerClient({ languages, title, description, preferredLanguag
   const hydratedPreferenceRef = useRef(false);
 
   const activeTestCase = testCases.find((testCase) => testCase.id === activeTestCaseId) ?? testCases[0] ?? initialTestCaseRef.current;
+  const activeTestCaseIndex = testCases.findIndex((testCase) => testCase.id === activeTestCase.id);
+  const activeTestCaseNumber = activeTestCaseIndex >= 0 ? activeTestCaseIndex + 1 : 1;
   const result = activeTestCase.result;
   const error = activeTestCase.error;
 
@@ -434,7 +436,10 @@ export function CompilerClient({ languages, title, description, preferredLanguag
 
               <div className="space-y-1.5">
                 <Label htmlFor="stdin-case-name" className="text-xs font-medium text-muted-foreground">
-                  {t("testCaseLabel", { defaultValue: "Test case label" })}
+                  {t("testCaseLabel", {
+                    number: activeTestCaseNumber,
+                    defaultValue: `Test case ${activeTestCaseNumber}`,
+                  })}
                 </Label>
                 <Input
                   id="stdin-case-name"
@@ -448,10 +453,9 @@ export function CompilerClient({ languages, title, description, preferredLanguag
                   }}
                   onBlur={() => {
                     if (activeTestCase.name.trim()) return;
-                    const activeIndex = testCases.findIndex((entry) => entry.id === activeTestCase.id);
                     updateTestCase(activeTestCase.id, (testCase) => ({
                       ...testCase,
-                      name: buildDefaultTestCaseName(activeIndex + 1),
+                      name: buildDefaultTestCaseName(activeTestCaseNumber),
                     }));
                   }}
                 />
