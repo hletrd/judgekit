@@ -12,7 +12,7 @@ import {
 } from "@/lib/assignments/management";
 import { assignmentMutationSchema, assignmentPatchSchema } from "@/lib/validators/assignments";
 import { canAccessGroup } from "@/lib/auth/permissions";
-import { createApiHandler, isAdmin, forbidden, notFound } from "@/lib/api/handler";
+import { createApiHandler, isAdminAsync, forbidden, notFound } from "@/lib/api/handler";
 
 export const GET = createApiHandler({
   handler: async (_req: NextRequest, { user, params }) => {
@@ -64,10 +64,10 @@ export const PATCH = createApiHandler({
 
     // Use transaction for atomic read-check-update to prevent TOCTOU races
     const allowLockedProblems = Boolean(body.allowLockedProblems);
-    // Intentional built-in break-glass override: once submissions exist,
-    // changing assignment problem links remains reserved to built-in admins.
-    // We do not currently expose a narrower capability for this destructive
-    // override, so custom roles continue to follow the locked default path.
+    // Intentional break-glass override: once submissions exist, changing
+    // assignment problem links requires admin-level privileges. Uses the
+    // async check so custom admin-level roles are also covered.
+    const isUserAdmin = await isAdminAsync(user.role);
 
     const patchResult = await db.transaction(async (tx) => {
       const assignment = await tx.query.assignments.findFirst({
@@ -106,7 +106,7 @@ export const PATCH = createApiHandler({
       if (
         body.problems !== undefined &&
         hasExistingSubmissions &&
-        !(allowLockedProblems && isAdmin(user.role))
+        !(allowLockedProblems && isUserAdmin)
       ) {
         return { error: apiError("assignmentProblemsLocked", 409) };
       }
@@ -178,7 +178,7 @@ export const PATCH = createApiHandler({
     try {
       await updateAssignmentWithProblems(assignmentId, parsedInput.data, {
         problemLinksChanged: body.problems !== undefined,
-        allowLockedProblemChanges: allowLockedProblems && isAdmin(user.role),
+        allowLockedProblemChanges: allowLockedProblems && isUserAdmin,
       });
     } catch (error) {
       if (
@@ -220,7 +220,7 @@ export const PATCH = createApiHandler({
           groupId: id,
           problemCount: updatedAssignment.assignmentProblems.length,
           problemLinksChanged: body.problems !== undefined,
-          problemLinkOverrideUsed: allowLockedProblems && isAdmin(user.role),
+          problemLinkOverrideUsed: allowLockedProblems && isUserAdmin,
           latePenalty: updatedAssignment.latePenalty ?? 0,
         },
         request: req,
