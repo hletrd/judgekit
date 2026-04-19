@@ -2,7 +2,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   dbSelectFromLimit: vi.fn<(...args: unknown[]) => Promise<unknown[]>>(),
-  dbQueryUsersFindFirst: vi.fn<(...args: unknown[]) => Promise<unknown>>(),
 }));
 
 vi.mock("@/lib/db", () => ({
@@ -14,11 +13,6 @@ vi.mock("@/lib/db", () => ({
         })),
       })),
     })),
-    query: {
-      users: {
-        findFirst: mocks.dbQueryUsersFindFirst,
-      },
-    },
   },
 }));
 
@@ -194,74 +188,75 @@ describe("findSessionUserWithPassword", () => {
   it("returns null for null session", async () => {
     const result = await findSessionUserWithPassword(null);
     expect(result).toBeNull();
-    expect(mocks.dbQueryUsersFindFirst).not.toHaveBeenCalled();
+    expect(mocks.dbSelectFromLimit).not.toHaveBeenCalled();
   });
 
   it("returns null for session with no identity", async () => {
     const result = await findSessionUserWithPassword({ user: {} } as any);
     expect(result).toBeNull();
-    expect(mocks.dbQueryUsersFindFirst).not.toHaveBeenCalled();
+    expect(mocks.dbSelectFromLimit).not.toHaveBeenCalled();
   });
 
   it("returns null for session with null user", async () => {
     const result = await findSessionUserWithPassword({ user: null } as any);
     expect(result).toBeNull();
-    expect(mocks.dbQueryUsersFindFirst).not.toHaveBeenCalled();
+    expect(mocks.dbSelectFromLimit).not.toHaveBeenCalled();
   });
 
-  it("looks up user by id using db.query.users.findFirst", async () => {
+  it("looks up user by id using db.select", async () => {
     const mockUser = { id: "user-1", username: "alice", passwordHash: "hash" };
-    mocks.dbQueryUsersFindFirst.mockResolvedValueOnce(mockUser);
+    mocks.dbSelectFromLimit.mockResolvedValueOnce([mockUser]);
 
     const result = await findSessionUserWithPassword({
       user: { id: "user-1" },
     } as any);
 
     expect(result).toBe(mockUser);
-    expect(mocks.dbQueryUsersFindFirst).toHaveBeenCalledTimes(1);
+    expect(mocks.dbSelectFromLimit).toHaveBeenCalledTimes(1);
   });
 
-  it("returns null when id lookup via findFirst finds no user", async () => {
-    mocks.dbQueryUsersFindFirst.mockResolvedValueOnce(undefined);
+  it("returns null when id lookup finds no user", async () => {
+    mocks.dbSelectFromLimit.mockResolvedValueOnce([]);
 
     const result = await findSessionUserWithPassword({
       user: { id: "nonexistent" },
     } as any);
 
-    expect(result).toBeUndefined();
+    expect(result).toBeNull();
   });
 
   it("falls back to username lookup when id is absent", async () => {
     const mockUser = { id: "user-2", username: "bob", passwordHash: "hash" };
-    mocks.dbQueryUsersFindFirst.mockResolvedValueOnce(mockUser);
+    mocks.dbSelectFromLimit.mockResolvedValueOnce([mockUser]);
 
     const result = await findSessionUserWithPassword({
       user: { username: "bob" },
     } as any);
 
     expect(result).toBe(mockUser);
-    expect(mocks.dbQueryUsersFindFirst).toHaveBeenCalledTimes(1);
+    expect(mocks.dbSelectFromLimit).toHaveBeenCalledTimes(1);
   });
 
-  it("returns null when username lookup via findFirst finds no user", async () => {
-    mocks.dbQueryUsersFindFirst.mockResolvedValueOnce(undefined);
+  it("returns null when username lookup finds no user", async () => {
+    mocks.dbSelectFromLimit.mockResolvedValueOnce([]);
 
     const result = await findSessionUserWithPassword({
       user: { username: "nobody" },
     } as any);
 
-    expect(result).toBeUndefined();
+    expect(result).toBeNull();
   });
 
   it("prefers id over username when both are present", async () => {
     const mockUser = { id: "user-1", username: "alice", passwordHash: "hash" };
-    mocks.dbQueryUsersFindFirst.mockResolvedValueOnce(mockUser);
+    mocks.dbSelectFromLimit.mockResolvedValueOnce([mockUser]);
 
     const result = await findSessionUserWithPassword({
       user: { id: "user-1", username: "alice" },
     } as any);
 
     expect(result).toBe(mockUser);
-    expect(mocks.dbQueryUsersFindFirst).toHaveBeenCalledTimes(1);
+    // Only one call should be made (the id-based lookup)
+    expect(mocks.dbSelectFromLimit).toHaveBeenCalledTimes(1);
   });
 });

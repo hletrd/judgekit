@@ -4,6 +4,16 @@ import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { authUserSelect } from "@/lib/db/selects";
 
+/**
+ * Column selection for password-verification flows.
+ * Extends authUserSelect with passwordHash; all other columns are derived
+ * from the shared constant so new preference fields are included automatically.
+ */
+const authUserWithPasswordColumns = {
+  ...authUserSelect,
+  passwordHash: users.passwordHash,
+};
+
 export function hasSessionIdentity(session: Session | null) {
   return Boolean(session?.user?.id || session?.user?.username);
 }
@@ -32,6 +42,9 @@ export async function findSessionUser(session: Session | null) {
 
 /**
  * Find the session user including passwordHash for credential verification.
+ * Uses db.select() with authUserWithPasswordColumns so the column set stays
+ * in sync with authUserSelect — adding a field to authUserSelect automatically
+ * includes it here too.
  */
 export async function findSessionUserWithPassword(session: Session | null) {
   const sessionUser = session?.user;
@@ -41,63 +54,11 @@ export async function findSessionUserWithPassword(session: Session | null) {
   }
 
   if (sessionUser?.id) {
-    return db.query.users.findFirst({
-      where: eq(users.id, sessionUser.id),
-      columns: {
-        id: true,
-        username: true,
-        email: true,
-        name: true,
-        className: true,
-        role: true,
-        isActive: true,
-        mustChangePassword: true,
-        passwordHash: true,
-        tokenInvalidatedAt: true,
-        preferredLanguage: true,
-        preferredTheme: true,
-        shareAcceptedSolutions: true,
-        acceptedSolutionsAnonymous: true,
-        editorTheme: true,
-        editorFontSize: true,
-        editorFontFamily: true,
-        lectureMode: true,
-        lectureFontScale: true,
-        lectureColorScheme: true,
-        createdAt: true,
-        updatedAt: true,
-      },
-    });
+    return (await db.select(authUserWithPasswordColumns).from(users).where(eq(users.id, sessionUser.id)).limit(1))[0] ?? null;
   }
 
   if (sessionUser?.username) {
-    return db.query.users.findFirst({
-      where: sql`lower(${users.username}) = lower(${sessionUser.username})`,
-      columns: {
-        id: true,
-        username: true,
-        email: true,
-        name: true,
-        className: true,
-        role: true,
-        isActive: true,
-        mustChangePassword: true,
-        passwordHash: true,
-        tokenInvalidatedAt: true,
-        preferredLanguage: true,
-        preferredTheme: true,
-        shareAcceptedSolutions: true,
-        acceptedSolutionsAnonymous: true,
-        editorTheme: true,
-        editorFontSize: true,
-        editorFontFamily: true,
-        lectureMode: true,
-        lectureFontScale: true,
-        lectureColorScheme: true,
-        createdAt: true,
-        updatedAt: true,
-      },
-    });
+    return (await db.select(authUserWithPasswordColumns).from(users).where(sql`lower(${users.username}) = lower(${sessionUser.username})`).limit(1))[0] ?? null;
   }
 
   return null;
