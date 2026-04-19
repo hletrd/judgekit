@@ -1,4 +1,4 @@
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import {
   antiCheatEvents,
@@ -157,14 +157,16 @@ export async function getParticipantTimeline(
       })
       .from(codeSnapshots)
       .where(and(eq(codeSnapshots.assignmentId, assignmentId), eq(codeSnapshots.userId, userId)))
-      .orderBy(asc(codeSnapshots.createdAt)),
+      .orderBy(asc(codeSnapshots.createdAt))
+      .limit(1000),
     db
       .select({
         eventType: antiCheatEvents.eventType,
+        count: sql<number>`count(*)`,
       })
       .from(antiCheatEvents)
       .where(and(eq(antiCheatEvents.assignmentId, assignmentId), eq(antiCheatEvents.userId, userId)))
-      .orderBy(asc(antiCheatEvents.createdAt)),
+      .groupBy(antiCheatEvents.eventType),
   ]);
 
   if (!participant) {
@@ -255,8 +257,11 @@ export async function getParticipantTimeline(
   });
 
   const byType: Record<string, number> = {};
-  for (const event of antiCheatRows) {
-    byType[event.eventType] = (byType[event.eventType] ?? 0) + 1;
+  let totalEvents = 0;
+  for (const row of antiCheatRows) {
+    const count = Number(row.count);
+    byType[row.eventType] = count;
+    totalEvents += count;
   }
 
   return {
@@ -271,7 +276,7 @@ export async function getParticipantTimeline(
     },
     problems: problemsTimeline,
     antiCheatSummary: {
-      totalEvents: antiCheatRows.length,
+      totalEvents,
       byType,
     },
   };
