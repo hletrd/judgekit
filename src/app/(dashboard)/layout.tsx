@@ -83,8 +83,9 @@ export default async function DashboardLayout({ children }: { children: React.Re
         <SidebarInset>
           <header className="flex h-14 items-center gap-2 px-4">
             <SidebarTrigger />
-            <div className="hidden min-w-0 flex-1 sm:block">
-              <Link href="/dashboard" className="block truncate text-sm font-semibold hover:text-primary transition-colors">{settings.siteTitle}</Link>
+            <div className="hidden min-w-0 flex-1 sm:flex sm:items-center sm:gap-3">
+              <Link href="/dashboard" className="truncate text-sm font-semibold hover:text-primary transition-colors">{settings.siteTitle}</Link>
+              <Link href="/" className="shrink-0 text-xs text-muted-foreground hover:text-primary transition-colors">{t("backToPublicSite")}</Link>
             </div>
             <div className="ml-auto flex shrink-0 items-center gap-1">
               {canUseLectureMode && <LectureModeToggle />}
