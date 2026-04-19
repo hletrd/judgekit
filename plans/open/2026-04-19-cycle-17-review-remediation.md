@@ -2,7 +2,7 @@
 
 **Date:** 2026-04-19
 **Source:** `.context/reviews/cycle-17-code-reviewer.md` and `.context/reviews/cycle-17-aggregate.md`
-**Status:** In Progress
+**Status:** DONE
 
 ---
 
@@ -11,7 +11,7 @@
 ### M1: Fix `sign-out.ts` `APP_STORAGE_PREFIXES` — add missing localStorage key prefixes
 
 - **File**: `src/lib/auth/sign-out.ts:11-14`
-- **Status**: Pending
+- **Status**: DONE
 - **Source**: AGG-1 (cycle 17 aggregate)
 - **Plan**:
   1. Add `"oj:"` prefix to `APP_STORAGE_PREFIXES` — covers both `"oj:submission-draft"` and `"oj:preferred-language"`
@@ -25,7 +25,7 @@
 ### M2: Fix `redeemRecruitingToken` post-atomic-claim error differentiation — remove `new Date()` check
 
 - **File**: `src/lib/assignments/recruiting-invitations.ts:510`
-- **Status**: Pending
+- **Status**: DONE
 - **Source**: AGG-2 (cycle 17 aggregate), same anti-pattern as cycle 16 L8
 - **Plan**:
   1. When the atomic update returns no rows (line 506-514), default to "alreadyRedeemed" error instead of using `new Date()` to differentiate
@@ -37,7 +37,7 @@
 ### M3: Fix `recruiting/validate` route — replace `new Date()` deadline/expiry checks with SQL NOW()
 
 - **File**: `src/app/api/v1/recruiting/validate/route.ts:39,51`
-- **Status**: Pending
+- **Status**: DONE
 - **Source**: AGG-3 (cycle 17 aggregate)
 - **Plan**:
   1. Replace the JS-side `invitation.expiresAt && invitation.expiresAt < new Date()` check with a SQL-level condition using `NOW()`
@@ -54,7 +54,7 @@
 ### L1: Fix `authorizeRecruitingToken` to use `authUserSelect` column restriction instead of fetching all columns
 
 - **File**: `src/lib/auth/recruiting-token.ts:23-26`
-- **Status**: Pending
+- **Status**: DONE
 - **Source**: AGG-4 (cycle 17 aggregate)
 - **Plan**:
   1. Import `authUserSelect` from `@/lib/db/selects`
@@ -66,7 +66,7 @@
 ### L2: Remove `\bexec\b` from `validateShellCommand` denylist — false positive with minimal security value
 
 - **File**: `src/lib/compiler/execute.ts:156`
-- **Status**: Pending
+- **Status**: DONE
 - **Source**: AGG-5 (cycle 17 aggregate)
 - **Plan**:
   1. Remove `\bexec\b` from the regex pattern at line 156
@@ -78,7 +78,7 @@
 ### L3: Add top-level try/catch to SSE re-auth IIFE for unhandled promise rejection safety
 
 - **File**: `src/app/api/v1/submissions/[id]/events/route.ts:375`
-- **Status**: Pending
+- **Status**: DONE
 - **Source**: AGG-6 (cycle 17 aggregate)
 - **Plan**:
   1. Wrap the async IIFE body (lines 375-406) in a try/catch that logs any unexpected errors
