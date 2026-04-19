@@ -2,7 +2,7 @@
 
 **Date:** 2026-04-19
 **Source:** `.context/reviews/cycle-17-comprehensive-review.md` and `.context/reviews/_aggregate.md`
-**Status:** In Progress
+**Status:** Complete
 
 ---
 
@@ -10,7 +10,7 @@
 
 ### M1: Fix `firstAcMap` key lookup to use exact matching instead of `endsWith`
 - **File**: `src/lib/assignments/contest-analytics.ts:187,251`
-- **Status**: PENDING
+- **Status**: DONE (commit f90ed8a6)
 - **Plan**:
   1. Restructure `firstAcMap` from `Map<string, number>` (keyed by `"userId:problemId"`) to `Map<string, Map<string, number>>` (keyed by `problemId`, then `userId`)
   2. Update the population loop (lines 173-179) to use the new structure
@@ -21,7 +21,7 @@
 
 ### M2: Add limit to participant timeline code snapshots query
 - **File**: `src/lib/assignments/participant-timeline.ts:151-161`
-- **Status**: PENDING
+- **Status**: DONE (commit 195603da — combined with L1)
 - **Plan**:
   1. Add `.limit(1000)` to the code snapshots query at line 160 (after `.orderBy(asc(codeSnapshots.createdAt))`)
   2. Add a code comment explaining the limit: 1000 snapshots covers ~16 hours of minute-by-minute saving, which is sufficient for the timeline view
@@ -36,7 +36,7 @@
 
 ### L1: Replace anti-cheat events full SELECT with aggregation query in participant timeline
 - **File**: `src/lib/assignments/participant-timeline.ts:161-168`
-- **Status**: PENDING
+- **Status**: DONE (commit 195603da — combined with M2)
 - **Plan**:
   1. Replace the current query (which selects all event rows) with a `GROUP BY` + `COUNT(*)` aggregation:
      ```ts
@@ -55,7 +55,7 @@
 
 ### L2: Add stale-while-revalidate to contest analytics cache
 - **File**: `src/app/api/v1/contests/[assignmentId]/analytics/route.ts:39-45`
-- **Status**: PENDING
+- **Status**: DONE (commit 692773f8)
 - **Plan**:
   1. Add a `CacheEntry` type with `data` and `createdAt` fields
   2. Change the cache to store `CacheEntry` objects
@@ -67,7 +67,7 @@
 
 ### L3: Remove JS-side expiry check in `redeemRecruitingToken`, rely on SQL `NOW()`
 - **File**: `src/lib/assignments/recruiting-invitations.ts:410`
-- **Status**: PENDING
+- **Status**: DONE (commit ecb25894)
 - **Plan**:
   1. Remove the JS-side expiry check at line 410 (`if (invitation.expiresAt && invitation.expiresAt < new Date())`)
   2. The SQL WHERE clause at line 485 already handles expiry atomically
@@ -79,7 +79,7 @@
 
 ### L4: Use epsilon comparison for IOI score tie detection
 - **File**: `src/lib/assignments/contest-scoring.ts:375`
-- **Status**: PENDING
+- **Status**: DONE (commit 7d18771a)
 - **Plan**:
   1. Replace `prev.totalScore === curr.totalScore` with `Math.abs(prev.totalScore - curr.totalScore) < 0.01`
   2. Add a helper function `isScoreTied(a: number, b: number): boolean` to centralize the comparison logic
@@ -89,7 +89,7 @@
 
 ### L5: Add concurrency limiter to `triggerAutoCodeReview`
 - **File**: `src/lib/judge/auto-review.ts:13`
-- **Status**: PENDING
+- **Status**: DONE (commit 076d63f9)
 - **Plan**:
   1. Import `pLimit` from `"p-limit"`
   2. Add `const reviewLimiter = pLimit(2)` at module level
