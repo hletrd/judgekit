@@ -14,7 +14,7 @@
   1. Create a helper function `buildIoiScoringCaseExpression(params)` that returns the SQL CASE expression for IOI late penalty handling (non-windowed vs windowed exam mode).
   2. Use this helper in both `contest-scoring.ts:buildScoringQuery` and `leaderboard.ts:computeSingleUserLiveRank`.
   3. Ensure the parameter names match between both call sites.
-- **Status**: TODO
+- **Status**: DONE (commit 301bbc56, 71b2c3c1)
 
 ### M2: Optimize `participant-audit.ts` single-user lookup
 - **Source**: code-reviewer F1, perf-reviewer F1, critic F2
@@ -22,7 +22,7 @@
 - **Plan**:
   1. Document that `getParticipantAuditData` computes the full leaderboard (the cache mitigates repeated calls within 15s).
   2. For a proper optimization, create a lightweight single-user query that fetches only the target user's per-problem data and computes their entry directly. This is a larger change — defer if time-constrained.
-- **Status**: TODO (document; defer optimization to next cycle if needed)
+- **Status**: DONE (documented in commit 7c21c5ac; optimization deferred)
 
 ### M3: Add tests for `computeSingleUserLiveRank`
 - **Source**: test-engineer F1, critic F4
@@ -50,19 +50,19 @@
 - **Source**: code-reviewer F2, critic F3
 - **Files**: `src/lib/assignments/contest-analytics.ts:242`
 - **Plan**: Rename the variable and update the comment.
-- **Status**: TODO
+- **Status**: DONE (commit ab8fe63b)
 
 ### L2: Fix anti-cheat `limit`/`offset` NaN handling
 - **Source**: code-reviewer F3, test-engineer F3, debugger F1
 - **Files**: `src/app/api/v1/contests/[assignmentId]/anti-cheat/route.ts:148-149`
 - **Plan**: Change `Number(...)` to `parseInt(..., 10) || defaultValue` for both `limit` and `offset`.
-- **Status**: TODO
+- **Status**: DONE (commit 88391c26)
 
 ### L3: Parallelize independent DB queries in `contest-analytics.ts`
 - **Source**: perf-reviewer F3
 - **Files**: `src/lib/assignments/contest-analytics.ts:92-292`
 - **Plan**: Wrap independent queries (problems, firstAcMap, contestMeta, cheatRows) in `Promise.all`.
-- **Status**: TODO
+- **Status**: DONE (commit ab8fe63b)
 
 ### L4: Make anti-cheat heartbeat gap detection lazy
 - **Source**: perf-reviewer F2
@@ -74,7 +74,7 @@
 - **Source**: verifier F1
 - **Files**: `src/lib/assignments/leaderboard.ts:186-187`
 - **Plan**: Change `us.total_score > t.total_score` to `ROUND(us.total_score, 2) > ROUND(t.total_score, 2)` in the IOI live rank query.
-- **Status**: TODO
+- **Status**: DONE (commit 71b2c3c1)
 
 ### L6: Add ICPC last-AC-time tiebreaker to live rank query
 - **Source**: debugger F3
@@ -86,13 +86,13 @@
 - **Source**: architect F1
 - **Files**: `src/app/api/v1/contests/[assignmentId]/leaderboard/route.ts:72`
 - **Plan**: Add a code comment explaining the anonymity-by-default design decision.
-- **Status**: TODO
+- **Status**: DONE (commit 7c21c5ac)
 
 ### L8: Improve IOI cell dark mode contrast
 - **Source**: designer F3
 - **Files**: `src/components/contest/leaderboard-table.tsx:189-201`
 - **Plan**: Increase dark mode text lightness from 65% to 70% for better contrast.
-- **Status**: TODO
+- **Status**: DONE (commit 559596bc)
 
 ### L9: Add audit log for anti-cheat PII access
 - **Source**: security-reviewer F1
