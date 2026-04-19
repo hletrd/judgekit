@@ -10,6 +10,31 @@ const mocks = vi.hoisted(() => ({
   >(),
   dbQueryUsersFindFirst: vi.fn<(...args: unknown[]) => Promise<unknown>>(),
   extractClientIp: vi.fn<(headers: Headers) => string | null>(),
+  createSuccessfulLoginResponse: vi.fn<(user: any, ctx: any) => any>(),
+}));
+
+// Mock @/lib/auth/config to avoid top-level validateAuthUrl() which requires AUTH_SECRET
+vi.mock("@/lib/auth/config", () => ({
+  createSuccessfulLoginResponse: mocks.createSuccessfulLoginResponse,
+  mapUserToAuthFields: (user: any) => ({
+    id: user.id ?? "",
+    username: user.username ?? "",
+    email: user.email ?? null,
+    name: user.name ?? "",
+    className: user.className ?? null,
+    role: user.role ?? "",
+    mustChangePassword: user.mustChangePassword ?? false,
+    preferredLanguage: user.preferredLanguage ?? null,
+    preferredTheme: user.preferredTheme ?? null,
+    shareAcceptedSolutions: user.shareAcceptedSolutions ?? true,
+    acceptedSolutionsAnonymous: user.acceptedSolutionsAnonymous ?? false,
+    editorTheme: user.editorTheme ?? null,
+    editorFontSize: user.editorFontSize ?? null,
+    editorFontFamily: user.editorFontFamily ?? null,
+    lectureMode: user.lectureMode ?? null,
+    lectureFontScale: user.lectureFontScale ?? null,
+    lectureColorScheme: user.lectureColorScheme ?? null,
+  }),
 }));
 
 vi.mock("@/lib/assignments/recruiting-invitations", () => ({
@@ -61,6 +86,28 @@ describe("authorizeRecruitingToken", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.extractClientIp.mockReturnValue("10.0.0.1");
+    // Make createSuccessfulLoginResponse behave like the real implementation:
+    // spread auth fields + loginEventContext
+    mocks.createSuccessfulLoginResponse.mockImplementation((user: any, ctx: any) => ({
+      id: user.id ?? "",
+      username: user.username ?? "",
+      email: user.email ?? null,
+      name: user.name ?? "",
+      className: user.className ?? null,
+      role: user.role ?? "",
+      mustChangePassword: user.mustChangePassword ?? false,
+      preferredLanguage: user.preferredLanguage ?? null,
+      preferredTheme: user.preferredTheme ?? null,
+      shareAcceptedSolutions: user.shareAcceptedSolutions ?? true,
+      acceptedSolutionsAnonymous: user.acceptedSolutionsAnonymous ?? false,
+      editorTheme: user.editorTheme ?? null,
+      editorFontSize: user.editorFontSize ?? null,
+      editorFontFamily: user.editorFontFamily ?? null,
+      lectureMode: user.lectureMode ?? null,
+      lectureFontScale: user.lectureFontScale ?? null,
+      lectureColorScheme: user.lectureColorScheme ?? null,
+      loginEventContext: ctx,
+    }));
   });
 
   afterEach(() => {
@@ -232,7 +279,7 @@ describe("authorizeRecruitingToken", () => {
     expect(result!.name).toBe("Test Candidate");
     expect(result!.className).toBe("CS101");
     expect(result!.role).toBe("student");
-    expect(result!.mustChangePassword).toBe(false);
+    expect(result!.mustChangePassword).toBe(true);
     expect(result!.preferredLanguage).toBe("en");
     expect(result!.preferredTheme).toBe("dark");
   });
