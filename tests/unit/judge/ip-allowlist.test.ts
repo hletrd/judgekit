@@ -29,9 +29,12 @@ describe("isJudgeIpAllowed", () => {
       expect(isJudgeIpAllowed(requestWithIp("127.0.0.1"))).toBe(true);
     });
 
-    it("denies every request in production (fail closed)", () => {
+    // TODO: Restore fail-closed behavior once JUDGE_ALLOWED_IPS is configured
+    // in production. The function currently allows all IPs when no allowlist
+    // is set (temporary change for judge worker access — see ff80dc23).
+    it("allows every request in production when no allowlist is set (temporary fail-open)", () => {
       vi.stubEnv("NODE_ENV", "production");
-      expect(isJudgeIpAllowed(requestWithIp("127.0.0.1"))).toBe(false);
+      expect(isJudgeIpAllowed(requestWithIp("127.0.0.1"))).toBe(true);
     });
   });
 
