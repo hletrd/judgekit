@@ -95,16 +95,34 @@ scp "${SSH_OPTS[@]}" docker-compose.worker.yml "${REMOTE}:${REMOTE_DIR}/docker-c
 echo "[3/4] Updating environment file..."
 
 # Required variables — these are always set/updated
+# Uses Python to update the .env file safely, avoiding sed/shell injection
+# from special characters in values (e.g., URLs with pipes or shell metacharacters).
 ensure_env_var() {
   local key="$1"
   local value="$2"
-  ssh "${SSH_OPTS[@]}" "${REMOTE}" "bash -c '
-    if [ -f ${REMOTE_DIR}/.env ] && grep -q \"^${key}=\" ${REMOTE_DIR}/.env; then
-      sed -i \"s|^${key}=.*|${key}=${value}|\" ${REMOTE_DIR}/.env
-    else
-      echo \"${key}=${value}\" >> ${REMOTE_DIR}/.env
-    fi
-  '"
+  # Encode key and value as base64 to safely pass through SSH + shell layers
+  local key_b64=$(printf '%s' "$key" | base64)
+  local val_b64=$(printf '%s' "$value" | base64)
+  ssh "${SSH_OPTS[@]}" "${REMOTE}" "python3 -c '
+import base64, os
+k = base64.b64decode(\"${key_b64}\").decode()
+v = base64.b64decode(\"${val_b64}\").decode()
+env_path = \"${REMOTE_DIR}/.env\"
+lines = []
+found = False
+if os.path.exists(env_path):
+    with open(env_path, \"r\") as f:
+        for line in f:
+            if line.startswith(k + \"=\"):
+                lines.append(k + \"=\" + v + \"\\n\")
+                found = True
+            else:
+                lines.append(line)
+if not found:
+    lines.append(k + \"=\" + v + \"\\n\")
+with open(env_path, \"w\") as f:
+    f.writelines(lines)
+'"
 }
 
 # Create .env if it doesn't exist
