@@ -18,7 +18,7 @@ import {
   SidebarFooter,
   SidebarHeader,
 } from "@/components/ui/sidebar";
-import { BookOpen, FileCode, Send, Users, User, GraduationCap, Shield, LogOut, LogIn, History, FolderOpen, Blocks, Trophy, MessageCircle, Timer, KeyRound, Code, Settings, Server, Play, Upload, Tags, Loader2 } from "lucide-react";
+import { BookOpen, FileCode, Send, Users, User, GraduationCap, Shield, LogOut, LogIn, History, FolderOpen, Blocks, MessageCircle, KeyRound, Code, Settings, Server, Play, Upload, Tags, Loader2 } from "lucide-react";
 import type { PlatformMode } from "@/types";
 import type { ActiveTimedAssignmentSummary } from "@/lib/assignments/active-timed-assignments";
 import { getPlatformModePolicy } from "@/lib/platform-mode";
