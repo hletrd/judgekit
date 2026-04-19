@@ -755,7 +755,7 @@ export async function cleanupOrphanedContainers(): Promise<number> {
     let cleaned = 0;
 
     for (const line of lines) {
-      const [container, status] = line.split("\t");
+      const [container, status, createdAtStr] = line.split("\t");
       if (!container || !status) continue;
 
       const statusLower = status.toLowerCase();
@@ -766,22 +766,41 @@ export async function cleanupOrphanedContainers(): Promise<number> {
         statusLower.startsWith("created") ||
         statusLower.startsWith("dead");
 
-      // For running containers, check if they've been running too long
+      // For running containers, check if they've been running too long.
+      // Prefer the CreatedAt from `docker ps` output (already in the format
+      // string) to avoid a redundant `docker inspect` call per container.
       let staleRunning = false;
       if (!shouldClean && statusLower.startsWith("up")) {
-        try {
-          const { stdout: inspectOut } = await exec("docker", [
-            "inspect",
-            "--format",
-            "{{.Created}}",
-            container,
-          ], { timeout: 5_000 });
-          const createdAt = new Date(inspectOut.trim()).getTime();
-          if (!Number.isNaN(createdAt) && Date.now() - createdAt > MAX_CONTAINER_AGE_MS) {
-            staleRunning = true;
+        let createdAt: number | null = null;
+
+        // Parse CreatedAt from docker ps output (format: "2026-04-19 12:34:56 +0000 UTC")
+        if (createdAtStr) {
+          const parsed = Date.parse(createdAtStr.trim());
+          if (!Number.isNaN(parsed)) {
+            createdAt = parsed;
           }
-        } catch {
-          // If inspect fails, skip this container
+        }
+
+        // Fall back to docker inspect if docker ps didn't provide CreatedAt
+        if (createdAt === null) {
+          try {
+            const { stdout: inspectOut } = await exec("docker", [
+              "inspect",
+              "--format",
+              "{{.Created}}",
+              container,
+            ], { timeout: 5_000 });
+            const inspectParsed = new Date(inspectOut.trim()).getTime();
+            if (!Number.isNaN(inspectParsed)) {
+              createdAt = inspectParsed;
+            }
+          } catch {
+            // If inspect fails, skip this container
+          }
+        }
+
+        if (createdAt !== null && Date.now() - createdAt > MAX_CONTAINER_AGE_MS) {
+          staleRunning = true;
         }
       }
 
