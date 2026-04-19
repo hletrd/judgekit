@@ -1,8 +1,9 @@
-# Aggregate Review — Cycle 6 Deep Code Review
+# Aggregate Review — Cycle 11 Deep Code Review
 
 **Date:** 2026-04-19
 **Source reviews:**
-- `cycle-6-comprehensive-review.md` (comprehensive multi-angle review covering code quality, security, performance, architecture, testing, and design)
+- `cycle-11-comprehensive-review.md` (comprehensive multi-angle review covering code quality, security, performance, architecture, correctness, testing, and design)
+- Prior cycles 1-10 reviews (findings already addressed or deferred in prior plan documents)
 
 ---
 
@@ -14,85 +15,76 @@ None.
 
 ## HIGH (Should Fix This Cycle)
 
-### A1: SSE route registers duplicate SIGTERM handler alongside audit shutdown handler
-- **Source**: F1
-- **Files**: `src/app/api/v1/submissions/[id]/events/route.ts:83-89`
-- **Description**: The SSE events route registers its own `process.on("SIGTERM")` handler at module evaluation time to clear in-memory connection tracking. This duplicates the pattern fixed in cycle 5b for the audit module. While the SSE handler only clears in-memory data (no async flush), it's inconsistent with the cycle 5b fix and adds unnecessary process-level signal handlers.
-- **Fix**: Remove the `process.on("SIGTERM")` handler. In-memory data structures are garbage-collected on process exit.
-
-### A2: Public user profile page uses raw SQL fragment as column reference
-- **Source**: F2, F8
-- **Files**: `src/app/(public)/users/[id]/page.tsx:52`
-- **Description**: `eq(sql\`id\`, id)` uses a raw SQL fragment as the column reference instead of `eq(users.id, id)`. This bypasses Drizzle's type system and table-qualified column references. The same file also uses the non-standard `db._.fullSchema.users.id` in `generateMetadata` (line 27).
-- **Fix**: Import `users` from `@/lib/db/schema` and use `eq(users.id, id)` in both `generateMetadata` and the default export.
+None.
 
 ---
 
 ## MEDIUM (Should Fix Soon)
 
-None beyond A1/A2.
+### M1: `api-key-auth.ts` loads full API key row including `encryptedKey` during authentication
+- **Source**: cycle-11 F1
+- **Files**: `src/lib/api/api-key-auth.ts:71-75`
+- **Description**: `authenticateApiKey()` calls `db.select().from(apiKeys)` without column restriction. Loads all columns including `encryptedKey` on every API key authentication request. Only `id`, `role`, `createdById`, `expiresAt`, `isActive` are needed.
+- **Fix**: Add explicit column selection.
+
+### M2: Roles PATCH route uses hardcoded `role.name === "super_admin"` instead of `isSuperAdminRole()`
+- **Source**: cycle-11 F4
+- **Files**: `src/app/api/v1/admin/roles/[id]/route.ts:59`
+- **Description**: Same class of bug fixed in cycle 3 AUTH-01 for other routes. Custom roles with super_admin-level privileges bypass this safety rail.
+- **Fix**: Import and use `isSuperAdminRole()` from `@/lib/capabilities/cache`.
 
 ---
 
-## LOW (Can Defer)
+## LOW (Best Effort / Track)
 
-### A3: `files/[id]` DELETE handler uses `select()` without column restriction
-- **Source**: F3
-- **Files**: `src/app/api/v1/files/[id]/route.ts:145-149`
-- **Description**: DELETE handler loads all columns when it only needs `id`, `storedName`, `originalName`, and `uploadedBy`. GET handler legitimately needs all columns.
+### L1: Admin API keys GET loads `encryptedKey` just to derive a boolean
+- **Source**: cycle-11 F2
+- **Files**: `src/app/api/v1/admin/api-keys/route.ts:33,39-42`
+- **Description**: Loads encrypted key data from DB for every API key row just to check if non-null. Should use SQL `IS NOT NULL` expression.
+- **Fix**: Replace `encryptedKey: apiKeys.encryptedKey` with `hasEncryptedKey: sql<boolean>\`${apiKeys.encryptedKey} IS NOT NULL\``.
 
-### A4: `getAllPluginStates()` fetches all rows/columns from plugins table
-- **Source**: F4
-- **Files**: `src/lib/plugins/data.ts:52`
-- **Description**: `db.select().from(plugins)` with no WHERE or column restriction. Plugin configs are loaded fully then immediately redacted.
+### L2: Docker image build route loads full `languageConfigs` row without column restriction
+- **Source**: cycle-11 F3
+- **Files**: `src/app/api/v1/admin/docker/images/build/route.ts:25`
+- **Description**: Only needs `dockerImage` column. Loads full row including compile/run commands.
+- **Fix**: Add explicit column selection `{ dockerImage: languageConfigs.dockerImage }`.
 
-### A5: SSE route not using `createApiHandler` creates maintenance gap
-- **Source**: F5
-- **Files**: `src/app/api/v1/submissions/[id]/events/route.ts:1`
-- **Description**: The route manually implements auth/CSRF/rate-limit that `createApiHandler` provides. Future middleware changes won't propagate.
+### L3: Roles PATCH route duplicates `ROLE_LEVELS` map with inconsistent values
+- **Source**: cycle-11 F5
+- **Files**: `src/app/api/v1/admin/roles/[id]/route.ts:70`
+- **Description**: Local `ROLE_LEVELS` map has different values than canonical `ROLE_LEVEL` in constants.ts. Also doesn't support custom roles.
+- **Fix**: Replace with `getRoleLevel()` from `@/lib/capabilities/cache`.
 
-### A6: Export Content-Disposition headers don't RFC 5987-encode non-ASCII filenames
-- **Source**: F6
-- **Files**: Multiple export routes
-- **Description**: Korean characters in assignment titles are stripped from export filenames rather than RFC 5987-encoded.
+### L4: `canManageRole`/`canManageRoleAsync` use hardcoded `=== "super_admin"` string comparison
+- **Source**: cycle-11 F6
+- **Files**: `src/lib/security/constants.ts:78,87`
+- **Description**: Should use `isSuperAdminRole()` for consistency with cycle 3 AUTH-01 fix.
+- **Fix**: Replace `requestedRole === "super_admin"` with `isSuperAdminRole(requestedRole)`.
 
-### A7: Judge claim route returns all test case columns
-- **Source**: F7
-- **Files**: `src/app/api/v1/judge/claim/route.ts:301-305`
-- **Description**: `db.select().from(testCases)` without column restriction. Authenticated endpoint, but column selection would be more defensive.
+### L5: `system-settings-config.ts` uses `select()` without column restriction
+- **Source**: cycle-11 F7
+- **Files**: `src/lib/system-settings-config.ts:109-113`
+- **Description**: Loads all columns from `systemSettings` table. Minor concern if table has non-settings columns.
+- **Fix**: Verify if all columns are settings keys; if not, add column selection.
 
-### A8: `db._.fullSchema` internal API access in user profile page
-- **Source**: F8
-- **Files**: `src/app/(public)/users/[id]/page.tsx:27`
-- **Description**: `db._.fullSchema.users.id` is fragile and could break on Drizzle upgrades. Same fix as A2.
-
----
-
-## PRIOR CYCLE OPEN ITEMS (Carried Forward)
-
-From previous cycles, still open:
-1. **Apr-19 C1:** Assistant roles can browse global user directory via `users.view`. OPEN -- design decision pending.
-2. **C6 (cycle 4):** Error boundary pages use `console.error` instead of server-side reporting. DEFERRED -- client-side convention.
-3. **C7 (cycle 4):** `as never` type assertion in problem-submission-form.tsx bypasses TypeScript type safety. DEFERRED -- LOW severity.
-4. **A2 (cycle 4 aggregate):** Rate limit eviction could delete SSE connection slots. LOW risk due to heartbeat refresh, but architecturally fragile.
-5. **A7 (cycle 4 aggregate):** Dual encryption key management systems. DEFERRED -- operational concern.
-6. **A12 (cycle 4 aggregate):** Inconsistent auth/authorization patterns in some routes. DEFERRED -- convention enforcement.
-7. **A17 (cycle 4 aggregate):** JWT contains excessive UI preference data. DEFERRED -- would require session restructure.
-8. **A19 (cycle 4 aggregate):** `new Date()` clock skew risk in distributed deployments. DEFERRED -- PostgreSQL `now()` for critical ordering.
-9. **A25 (cycle 4 aggregate):** Timing-unsafe bcrypt fallback. DEFERRED -- migration in progress.
-10. **A26 (cycle 4 aggregate):** Polling-based backpressure wait (busy-wait) in export. DEFERRED -- LOW priority.
+### L6: `exam-sessions.ts` uses `new Date()` for deadline comparison inside transaction
+- **Source**: cycle-11 F8
+- **Files**: `src/lib/assignments/exam-sessions.ts:49-57`
+- **Description**: Same class of clock-skew concern as deferred item A19.
+- **Fix**: Already tracked as deferred A19.
 
 ---
 
-## AGENT FAILURES
+## Previously Deferred Items (Still Active)
 
-None. (Single-agent review mode -- no fan-out agents available.)
+These remain from prior cycles and are not re-lifted:
 
----
-
-## SUMMARY STATISTICS
-- New findings this cycle: 8
-- Critical: 0
-- High: 2
-- Medium: 0
-- Low: 6
+| ID | Finding | Severity | Status |
+|----|---------|----------|--------|
+| A19 | `new Date()` clock skew risk | LOW | Deferred — only affects distributed deployments with unsynchronized clocks |
+| A7 | Dual encryption key management | MEDIUM | Deferred — consolidation requires migration |
+| A12 | Inconsistent auth/authorization patterns | MEDIUM | Deferred — existing routes work correctly |
+| A2 | Rate limit eviction could delete SSE slots | MEDIUM | Deferred — unlikely with heartbeat refresh |
+| A17 | JWT contains excessive UI preference data | LOW | Deferred — requires session restructure |
+| A25 | Timing-unsafe bcrypt fallback | LOW | Deferred — bcrypt-to-argon2 migration in progress |
+| A26 | Polling-based backpressure wait | LOW | Deferred — no production reports |
