@@ -12,61 +12,61 @@
 - **From:** AGG-7 (F12)
 - **File:** `src/lib/db/export.ts:249-251`
 - **Fix:** Add `encryptedKey` to the `apiKeys` entry in `ALWAYS_REDACT`
-- **Status:** TODO
+- **Status:** DONE (commit 0b359a0c)
 
 ### S2 — [LOW] Unify exponential backoff formula in rate-limit module
 - **From:** AGG-10 (F11)
 - **File:** `src/lib/security/rate-limit.ts:153,193`
 - **Fix:** Extract shared `calculateBlockDuration(consecutiveBlocks, blockMs)` helper, use in both `consumeRateLimitAttemptMulti` and `recordRateLimitFailure`
-- **Status:** TODO
+- **Status:** DONE (commit 656ef02a)
 
 ### S3 — [LOW] Fix rate-limit eviction timer `unref()` to always apply
 - **From:** AGG-11 (F18)
 - **File:** `src/lib/security/rate-limit.ts:45-51`
 - **Fix:** Always call `evictionTimer.unref()` after `setInterval`, matching `events.ts` pattern
-- **Status:** TODO
+- **Status:** DONE (commit 656ef02a)
 
 ### S4 — [LOW] Change compiler execute log level from INFO to DEBUG
 - **From:** AGG-14 (F17)
 - **File:** `src/lib/compiler/execute.ts:372`
 - **Fix:** Change `logger.info` to `logger.debug`
-- **Status:** TODO
+- **Status:** DONE (commit 89e70897)
 
 ### S5 — [LOW] Add `Cache-Control: no-store` to `createApiHandler` responses
 - **From:** AGG-15 (F10)
 - **File:** `src/lib/api/handler.ts`
 - **Fix:** Add `Cache-Control: no-store` header to the response before returning from `createApiHandler`
-- **Status:** TODO
+- **Status:** DONE (commit 57f5dea8)
 
 ### S6 — [LOW] Fix `syncTokenWithUser` missing fields in `createSuccessfulLoginResponse`
 - **From:** AGG-12 (F14)
 - **File:** `src/lib/auth/config.ts:42-66`
 - **Fix:** Add `shareAcceptedSolutions` and `acceptedSolutionsAnonymous` to `AuthenticatedLoginUser` type and `createSuccessfulLoginResponse` return
-- **Status:** TODO
+- **Status:** DONE (commit 074631c7)
 
 ### S7 — [LOW] Add audit logging for API key creation/deletion
 - **From:** AGG-13 (F16)
 - **File:** `src/app/api/v1/admin/api-keys/route.ts`, `src/app/api/v1/admin/api-keys/[id]/route.ts`
 - **Fix:** Add `recordAuditEvent` calls to POST and DELETE handlers
-- **Status:** TODO
+- **Status:** N/A — already has audit logging (POST: api_key.created, DELETE: api_key.deleted, PATCH: api_key.updated)
 
 ### S8 — [LOW] PublicHeader `loggedInUser.role` typed as `string` instead of `UserRole`
 - **From:** AGG-1 (F1)
 - **File:** `src/components/layout/public-header.tsx:40`
-- **Fix:** Change `role?: string` to `role?: UserRole` and import the type
-- **Status:** TODO
+- **Fix:** Added JSDoc documenting that role may be custom role string; keeping `string` type since NextAuth session declares role as `string`
+- **Status:** DONE (commit f4708a1c)
 
 ### S9 — [LOW] Collapse dual-query pagination in groups/assignments route
 - **From:** AGG-4 (F4)
 - **File:** `src/app/api/v1/groups/[id]/assignments/route.ts:45-67`
 - **Fix:** Use `count(*) over()` instead of separate count + data queries
-- **Status:** TODO
+- **Status:** DEFERRED — route uses Drizzle `findMany` with `with` relations; converting to `select`+`leftJoin` with `count(*) over()` is a non-trivial refactor that risks breaking the relation shape. Low priority.
 
 ### S10 — [LOW] Add `Cache-Control: no-store` to proxy middleware for API routes
 - **From:** AGG-15 companion
 - **File:** `src/proxy.ts`
 - **Fix:** Add `Cache-Control: no-store` header for `/api/v1/` routes in the proxy middleware
-- **Status:** TODO
+- **Status:** DONE (commit 57f5dea8)
 
 ---
 
