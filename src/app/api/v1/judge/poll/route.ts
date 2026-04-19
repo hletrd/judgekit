@@ -126,7 +126,6 @@ export async function POST(request: NextRequest) {
     const { score, maxExecutionTimeMs, maxMemoryUsedKb } = computeFinalJudgeMetrics(results);
 
     // Wrap status update + result replacement in a single transaction
-    let claimValid = false;
     try {
       await db.transaction(async (tx) => {
         const finalResult = await tx.update(submissions).set({
@@ -164,18 +163,12 @@ export async function POST(request: NextRequest) {
             })
             .where(eq(judgeWorkers.id, submission.judgeWorkerId));
         }
-
-        claimValid = true;
       });
     } catch (err: unknown) {
       if (err instanceof Error && err.message === "invalidJudgeClaim") {
         return apiError("invalidJudgeClaim", 403);
       }
       throw err;
-    }
-
-    if (!claimValid) {
-      return apiError("invalidJudgeClaim", 403);
     }
 
     const updated = await db.query.submissions.findFirst({
