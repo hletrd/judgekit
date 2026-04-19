@@ -208,6 +208,10 @@ declare global {
 export function startAuditEventPruning() {
   if (globalThis.__auditPruneTimer) clearInterval(globalThis.__auditPruneTimer);
   globalThis.__auditPruneTimer = setInterval(pruneOldAuditEvents, 24 * 60 * 60 * 1000);
+  // Allow the process to exit even if the timer is still active
+  if (globalThis.__auditPruneTimer && typeof globalThis.__auditPruneTimer === "object" && "unref" in globalThis.__auditPruneTimer) {
+    globalThis.__auditPruneTimer.unref();
+  }
   pruneTimer = globalThis.__auditPruneTimer;
 
   // Run an initial prune on startup so retention is enforced even if the app restarts frequently

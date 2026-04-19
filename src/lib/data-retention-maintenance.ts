@@ -102,6 +102,10 @@ declare global {
 export function startSensitiveDataPruning() {
   if (globalThis.__sensitiveDataPruneTimer) clearInterval(globalThis.__sensitiveDataPruneTimer);
   globalThis.__sensitiveDataPruneTimer = setInterval(pruneSensitiveOperationalData, 24 * 60 * 60 * 1000);
+  // Allow the process to exit even if the timer is still active
+  if (globalThis.__sensitiveDataPruneTimer && typeof globalThis.__sensitiveDataPruneTimer === "object" && "unref" in globalThis.__sensitiveDataPruneTimer) {
+    globalThis.__sensitiveDataPruneTimer.unref();
+  }
   pruneTimer = globalThis.__sensitiveDataPruneTimer;
 
   pruneSensitiveOperationalData().catch(() => {
