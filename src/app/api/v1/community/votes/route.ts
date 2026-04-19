@@ -107,6 +107,10 @@ export const POST = createApiHandler({
         });
       }
 
+      // Score summary runs inside the same transaction for consistent read.
+      // Under READ COMMITTED isolation, the returned score includes concurrent
+      // votes from other committed transactions — this is the desired behavior
+      // (users see the most up-to-date vote count).
       return tx
         .select({
           score: sql<number>`coalesce(sum(case when ${communityVotes.voteType} = 'up' then 1 when ${communityVotes.voteType} = 'down' then -1 else 0 end), 0)`,
