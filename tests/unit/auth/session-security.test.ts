@@ -172,7 +172,11 @@ describe("clearAuthToken", () => {
     expect(result).not.toHaveProperty("lectureMode");
     expect(result).not.toHaveProperty("lectureFontScale");
     expect(result).not.toHaveProperty("lectureColorScheme");
-    expect(result).not.toHaveProperty("authenticatedAt");
+    expect(result).not.toHaveProperty("uaHash");
+    // authenticatedAt is set to 0 instead of deleted, so that
+    // getTokenAuthenticatedAtSeconds returns 0 (not falling back to iat)
+    // and isTokenInvalidated always returns true for cleared tokens.
+    expect(result.authenticatedAt).toBe(0);
     expect(result).not.toHaveProperty("uaHash");
   });
 
@@ -199,7 +203,7 @@ describe("clearAuthToken", () => {
     const token = {} as Parameters<typeof clearAuthToken>[0];
     const first = clearAuthToken(token);
     const second = clearAuthToken(first);
-    expect(second).toEqual({});
+    expect(second).toEqual({ authenticatedAt: 0 });
   });
 });
 
