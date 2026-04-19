@@ -1,4 +1,5 @@
 import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
+import { logger } from "@/lib/logger";
 
 const ALGORITHM = "aes-256-gcm";
 const IV_LENGTH = 12; // 96-bit IV recommended for GCM
@@ -33,7 +34,7 @@ export function encrypt(plaintext: string): string {
         "NODE_ENCRYPTION_KEY must be set in production. Generate: openssl rand -hex 32"
       );
     }
-    console.warn(
+    logger.warn(
       "[encryption] NODE_ENCRYPTION_KEY not set — skipping encryption (dev only)"
     );
     return plaintext;
@@ -67,7 +68,7 @@ export function decrypt(encoded: string): string {
         "NODE_ENCRYPTION_KEY must be set in production to decrypt values"
       );
     }
-    console.warn(
+    logger.warn(
       "[encryption] NODE_ENCRYPTION_KEY not set — cannot decrypt (dev only)"
     );
     return encoded;
