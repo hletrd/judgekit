@@ -249,7 +249,7 @@ export async function recordRateLimitFailureMulti(...keys: string[]) {
       if (exists) {
         await tx.update(rateLimits).set({
           attempts: newAttempts,
-          windowStartedAt: entry.windowStartedAt === now ? now : entry.windowStartedAt,
+          windowStartedAt: entry.windowStartedAt,
           blockedUntil: blockedUntil > 0 ? blockedUntil : null,
           consecutiveBlocks,
           lastAttempt: now,
