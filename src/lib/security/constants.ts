@@ -1,6 +1,6 @@
 import type { SubmissionStatus, UserRole } from "@/types";
 import { DEFAULT_ROLE_LEVELS } from "@/lib/capabilities/defaults";
-import { getRoleLevel } from "@/lib/capabilities/cache";
+import { getRoleLevel, isSuperAdminRole, SUPER_ADMIN_LEVEL } from "@/lib/capabilities/cache";
 import { getConfiguredSettings } from "@/lib/system-settings-config";
 
 export function getMinPasswordLength() {
@@ -74,8 +74,8 @@ export function canManageRole(actorRole: string, requestedRole: string): boolean
   const actorLevel = getBuiltinRoleLevel(actorRole);
   const requestedLevel = getBuiltinRoleLevel(requestedRole);
 
-  // super_admin can only be assigned by super_admin
-  if (requestedRole === "super_admin") return actorRole === "super_admin";
+  // Roles at super_admin level can only be assigned by super_admin
+  if (requestedLevel >= SUPER_ADMIN_LEVEL) return actorLevel >= SUPER_ADMIN_LEVEL;
   // Actor must have strictly higher level than the target role
   return actorLevel > requestedLevel;
 }
@@ -84,7 +84,8 @@ export function canManageRole(actorRole: string, requestedRole: string): boolean
  * Async version of canManageRole that supports custom roles via DB cache.
  */
 export async function canManageRoleAsync(actorRole: string, requestedRole: string): Promise<boolean> {
-  if (requestedRole === "super_admin") return actorRole === "super_admin";
+  // Roles at super_admin level can only be assigned by super_admin-level roles
+  if (await isSuperAdminRole(requestedRole)) return await isSuperAdminRole(actorRole);
   const actorLevel = await getRoleLevel(actorRole);
   const requestedLevel = await getRoleLevel(requestedRole);
   return actorLevel > requestedLevel;

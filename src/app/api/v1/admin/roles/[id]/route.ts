@@ -4,7 +4,7 @@ import { db, execTransaction } from "@/lib/db";
 import { roles, users } from "@/lib/db/schema";
 import { eq, sql } from "drizzle-orm";
 import { forbidden } from "@/lib/api/auth";
-import { resolveCapabilities, invalidateRoleCache } from "@/lib/capabilities/cache";
+import { resolveCapabilities, invalidateRoleCache, isSuperAdminRole, getRoleLevel } from "@/lib/capabilities/cache";
 import { recordAuditEvent } from "@/lib/audit/events";
 import { updateRoleSchema } from "@/lib/validators/roles";
 import { withUpdatedAt } from "@/lib/db/helpers";
@@ -56,7 +56,7 @@ export const PATCH = createApiHandler({
     const updates = body;
 
     // super_admin capabilities cannot be reduced
-    if (role.name === "super_admin" && updates.capabilities) {
+    if ((await isSuperAdminRole(role.name)) && updates.capabilities) {
       return apiError("cannotReduceSuperAdminCapabilities", 403);
     }
 
@@ -67,8 +67,7 @@ export const PATCH = createApiHandler({
     }
 
     // Cannot update a role's level above your own
-    const ROLE_LEVELS: Record<string, number> = { student: 0, assistant: 0, ta: 1, instructor: 1, admin: 2, super_admin: 3 };
-    const creatorLevel = ROLE_LEVELS[user.role] ?? -1;
+    const creatorLevel = await getRoleLevel(user.role);
     if (updates.level !== undefined && updates.level > creatorLevel) {
       return apiError("cannotSetRoleLevelAboveOwnLevel", 403);
     }
