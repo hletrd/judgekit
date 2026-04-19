@@ -15,7 +15,7 @@
   2. `getDropdownItems` already only adds instructor/admin items when the role matches -- the filtering is done at item creation time, not rendering time. Verify this by checking that items like "Problems" and "Groups" are only pushed when `isInstructor` is true, and "Admin" is only pushed when `isAdmin` is true.
   3. The bug is that items ARE being filtered at creation time. Re-examine the code: lines 59-69 show that "Problems" and "Groups" are only added inside `if (isInstructor)`, and "Admin" is only added inside `if (isAdmin)`. The `adminOnly`/`instructorOnly` FLAGS are dead code, but the actual filtering works correctly via the `if` blocks.
   4. **Correction**: On closer inspection, `getDropdownItems` already filters correctly at creation time. The `adminOnly`/`instructorOnly` fields are dead code (set but never read), but they don't cause a bug because the items are never added to the array for unauthorized roles. Remove the dead fields from the type definition.
-- **Status**: TODO (verify and clean up dead code)
+- **Status**: DONE (commit 84580d50) - Confirmed that `getDropdownItems` already filters correctly at creation time via `if (isInstructor)` / `if (isAdmin)` blocks. The dead `adminOnly`/`instructorOnly` flags were removed. Added mobile menu grouping heading.
 
 ---
 
@@ -28,27 +28,21 @@
   1. Add `const MAX_EXPORT_ROWS = 10_000;` at the top of the route handler (matching contest export pattern).
   2. After `const statusData = await getAssignmentStatusRows(assignmentId);`, add truncation check: if `statusData.rows.length > MAX_EXPORT_ROWS`, slice and add a truncated indicator row to the CSV.
   3. If JSON format is ever added, include a `truncated` flag in the response.
-- **Status**: TODO
-
-### M2: Group assignment export route lacks rate limiting
+- **Status**: DONE (commit 6bf927d2) - Added MAX_EXPORT_ROWS = 10_000 cap with truncation indicator.
 - **Source**: security-reviewer F1, code-reviewer F6
 - **Files**: `src/app/api/v1/groups/[id]/assignments/[assignmentId]/export/route.ts`
 - **Plan**:
   1. Migrate from manual `getApiUser` + try/catch pattern to `createApiHandler` with `rateLimit: "export"`.
   2. This also adds consistent error handling and auth checks.
   3. Combine with M1 (row limit) in the same change.
-- **Status**: TODO
-
-### M3: Deploy-worker.sh `ensure_env_var` sed injection risk
+- **Status**: DONE (commit 6bf927d2) - Migrated to createApiHandler with rateLimit: "export".
 - **Source**: security-reviewer F2, critic F3
 - **Files**: `scripts/deploy-worker.sh:98-108`
 - **Plan**:
   1. Replace the `sed -i` approach with a Python one-liner that properly handles special characters in key/value pairs.
   2. Alternative: use `awk` which handles special characters better than `sed` with shell interpolation.
   3. Quote the value in the Python/awk command to prevent shell interpretation.
-- **Status**: TODO
-
-### M4: Add tests for group assignment export route
+- **Status**: DONE (commit 10712b8c) - Replaced sed with base64-encoded Python one-liner.
 - **Source**: test-engineer F1, cycle 4 AGG-10
 - **Files**: New test file `tests/unit/api/group-assignment-export-route.test.ts`
 - **Plan**:
@@ -95,9 +89,7 @@
 - **Source**: code-reviewer F6, architect F1, security-reviewer F5, cycle 4 AGG-12
 - **Files**: 11 routes (listed in code-reviewer F6)
 - **Plan**: Migrate simple routes first (tags, backup, admin/restore, admin/migrate/*). Skip SSE and file-upload routes (legitimate reasons).
-- **Status**: TODO
-
-### L3: Fix group assignment export `bestTotalScore` rendering "null" in CSV
+- **Status**: DONE (commit 6bf927d2) - Fixed as part of M1/M2 refactor: `row.bestTotalScore ?? ""`.
 - **Source**: debugger F1
 - **Files**: `src/app/api/v1/groups/[id]/assignments/[assignmentId]/export/route.ts:68`
 - **Plan**: Change `String(row.bestTotalScore)` to `String(row.bestTotalScore ?? "")`.
@@ -107,15 +99,11 @@
 - **Source**: verifier F1, debugger F3, designer F1
 - **Files**: `src/components/layout/public-header.tsx:30-32`
 - **Plan**: Remove the unused `adminOnly` and `instructorOnly` optional fields from the `DropdownItem` type and from where they are set in `getDropdownItems`.
-- **Status**: TODO
-
-### L5: Add mobile menu grouping for authenticated navigation items
+- **Status**: DONE (commit 84580d50) - Removed as part of H1 fix.
 - **Source**: designer F2, architect F4
 - **Files**: `src/components/layout/public-header.tsx:300-312`
 - **Plan**: Add a separator or heading above the authenticated items section in the mobile menu.
-- **Status**: TODO
-
-### L6: `parsePagination` silently caps at MAX_PAGE
+- **Status**: DONE (commit 84580d50) - Added "Dashboard" heading and sign-out separator in mobile menu.
 - **Source**: critic F5
 - **Files**: `src/lib/api/pagination.ts:3,16`
 - **Plan**: Consider adding a `maxPage` field to paginated responses or returning an error when page exceeds MAX_PAGE.
