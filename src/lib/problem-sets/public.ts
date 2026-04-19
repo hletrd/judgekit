@@ -1,4 +1,4 @@
-import { and, count, desc, eq, inArray, like, or, sql } from "drizzle-orm";
+import { and, count, desc, eq, inArray, or, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { problemSetProblems, problemSets, problemTags, problems, submissions, tags } from "@/lib/db/schema";
 import { escapePracticeLike, normalizePracticeSearch } from "@/lib/practice/search";
@@ -66,8 +66,8 @@ function buildPublicProblemSetSearchFilter(search?: string, tag?: string) {
   if (normalizedSearch) {
     const escapedSearch = `%${escapePracticeLike(normalizedSearch)}%`;
     filters.push(or(
-      like(problemSets.name, escapedSearch),
-      like(problemSets.description, escapedSearch),
+      sql`${problemSets.name} LIKE ${escapedSearch} ESCAPE '\\'`,
+      sql`${problemSets.description} LIKE ${escapedSearch} ESCAPE '\\'`,
     )!);
   }
 
