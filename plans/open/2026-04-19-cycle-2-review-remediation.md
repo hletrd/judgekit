@@ -1,152 +1,87 @@
-# Cycle 2 Review Remediation Plan
+# Cycle 2 Review Remediation Plan (current loop pass)
 
-**Date:** 2026-04-19
-**Source:** `.context/reviews/cycle-2-comprehensive-review.md`, `.context/reviews/_aggregate.md`
-**Status:** COMPLETE
+**Date:** 2026-04-19  
+**Source:** `.context/reviews/_aggregate.md`, per-agent reviews under `.context/reviews/`  
+**Status:** PARTIALLY COMPLETE
 
-## Deduplication note
-Cycle 1 plan (`2026-04-19-cycle-1-review-remediation.md`) is COMPLETE. The 2026-04-18 plan is also COMPLETE. This plan covers findings that are genuinely NEW from the cycle 2 review.
+## Planning notes
+- This pass re-read repo rules first: `CLAUDE.md`, `AGENTS.md`, `.context/development/*.md`, and `docs/deployment.md`.
+- The prior `plans/open/2026-04-19-cycle-2-review-remediation.md` was already complete and has been archived to `plans/archive/2026-04-19-cycle-2-review-remediation-initial.md`.
+- Review findings are mapped below to either implementation stories or explicit deferred / invalidated items. No review finding is intentionally dropped.
 
 ---
 
-## Implementation Stories
+## Implementation stories for this pass
 
-### I18N-01: Add missing `language` key to anti-cheat i18n bundles
-**Severity:** MEDIUM | **Confidence:** HIGH | **Effort:** Quick win
+### AUTH-01 — Honor reverse-proxy trusted-host mode for auth route validation
+**Sources:** AGG-1  
+**Severity:** HIGH | **Confidence:** HIGH | **Effort:** Quick win
 
 **Files:**
-- `messages/en.json:2058` — add `"language": "Language"` under `contests.antiCheat`
-- `messages/ko.json:2058` — add `"language": "언어"` under `contests.antiCheat`
+- `src/lib/auth/trusted-host.ts`
+- `tests/unit/auth/trusted-host.test.ts`
 
-**Problem:** The anti-cheat dashboard renders `t("language")` but neither locale bundle defines `contests.antiCheat.language`.
-
-**Fix:** Add the key to both locale files.
-
-**Verification:** `npx vitest run tests/unit/ui-i18n-keys-implementation.test.ts`, visual check
-
----
-
-### SEC-04: Fix CSRF-before-auth ordering on 6 unwrapped API routes
-**Severity:** MEDIUM | **Confidence:** HIGH | **Effort:** Moderate
-
-**Files:**
-- `src/app/api/v1/groups/[id]/assignments/route.ts:79` — CSRF before auth
-- `src/app/api/v1/admin/backup/route.ts:21` — CSRF before auth
-- `src/app/api/v1/admin/restore/route.ts:21` — CSRF before auth
-- `src/app/api/v1/admin/migrate/export/route.ts:17` — CSRF before auth
-- `src/app/api/v1/admin/migrate/validate/route.ts:12` — CSRF before auth
-- `src/app/api/v1/admin/migrate/import/route.ts:19` — CSRF before auth
-
-**Problem:** These routes check CSRF before resolving auth. API-key callers (no cookies, no browser origin) are rejected by CSRF before their identity is checked. The files DELETE route already has the correct pattern.
-
-**Fix:** For each route, reorder to resolve auth first, then skip CSRF for API-key callers:
-```
-const user = await getApiUser(request);
-if (!user) return unauthorized();
-const isApiKeyAuth = "_apiKeyAuth" in user;
-if (!isApiKeyAuth) {
-  const csrfError = csrfForbidden(request);
-  if (csrfError) return csrfError;
-}
-```
-
-**Verification:** `npx tsc --noEmit`, `npx vitest run`
-
----
-
-### TEST-04: Fix api-key-auth test mock chain
-**Severity:** MEDIUM | **Confidence:** HIGH | **Effort:** Quick win
-
-**File:** `tests/unit/api-key-auth.test.ts:8-19`
-
-**Problem:** `makeSelectChain` creates a mock where `limit()` returns the rows array directly instead of a chainable thenable. The `authenticateApiKey` function does two `db.select()` calls; the mock fails for both.
-
-**Fix:** Restructure `makeSelectChain` so `limit()` returns the chain object (which has `.then()`), and `.then()` resolves with the rows array. The key issue is that `limit()` must return something with a `.then()` method, not the raw rows.
-
-**Verification:** `npx vitest run tests/unit/api-key-auth.test.ts`
-
----
-
-### TEST-05: Fix data-retention-maintenance test expected call counts
-**Severity:** MEDIUM | **Confidence:** HIGH | **Effort:** Quick win
-
-**File:** `tests/unit/data-retention-maintenance.test.ts:68,81,85`
-
-**Problem:** After `pruneLoginEvents` was added (cycle 1 CRIT-7), the prune pass now makes 5 delete calls instead of 4. Test expects 4 (initial) and 8 (double-start), should be 5 and 10.
+**Problem:** Live browser audit showed `/login` submits to `/api/auth/error` with `{"error":"UntrustedHost"}` on `algo.xylolabs.com`. The custom auth-route wrapper validates trusted hosts before delegating to Auth.js, but it does not honor `AUTH_TRUST_HOST=true`, even though the repo already uses that flag in `authConfig` and deployment docs.
 
 **Fix:**
-- Line 68: change `toHaveBeenCalledTimes(4)` to `toHaveBeenCalledTimes(5)`
-- Line 81: change `toBe(8)` to `toBe(10)`
-- Line 85: change `initialPruneCalls + 4` to `initialPruneCalls + 5`
+- Import and honor `shouldTrustAuthHost()` in `validateTrustedAuthHost()`.
+- When trusted-proxy mode is enabled, skip the custom host rejection and let Auth.js trust the forwarded host.
+- Add regression coverage for the trusted-proxy path without weakening the existing explicit-host checks.
 
-**Verification:** `npx vitest run tests/unit/data-retention-maintenance.test.ts`
+**Verification:**
+- `npx vitest run tests/unit/auth/trusted-host.test.ts`
+- targeted browser reasoning against the captured live failure (`browser-audit-input-cycle-2.md`)
 
 ---
 
-### TEST-06: Fix audit events test mock for batched DELETE
+### UX-01 — Remove the raw `compiler.testCaseLabel` leak from the public playground
+**Sources:** AGG-2  
 **Severity:** MEDIUM | **Confidence:** HIGH | **Effort:** Quick win
 
-**File:** `tests/unit/audit/events.test.ts`
-
-**Problem:** After PERF-01 fix (batched DELETE), the audit event pruning uses `db.execute(sql\`DELETE ... LIMIT\`)` instead of `db.delete().where()`. The test still mocks `db.delete().where()` which is never called.
-
-**Fix:** Update the test mock to mock `db.execute()` instead of `db.delete().where()`. The mock should return an object with `rowCount: BATCH_SIZE` (or 0 to terminate the loop).
-
-**Verification:** `npx vitest run tests/unit/audit/events.test.ts`
-
----
-
-### TEST-07: Update source-grep inventory baseline
-**Severity:** LOW | **Confidence:** HIGH | **Effort:** Quick win
-
-**File:** `tests/unit/infra/source-grep-inventory.test.ts:85-86`
-
-**Problem:** `DOCUMENTED_BASELINE = 115` but current count is 118.
-
-**Fix:** Update `DOCUMENTED_BASELINE` to 118.
-
-**Verification:** `npx vitest run tests/unit/infra/source-grep-inventory.test.ts`
-
----
-
-### LOGIC-03: Replace `role !== "student"` with capability-based enrollment check
-**Severity:** MEDIUM | **Confidence:** MEDIUM | **Effort:** Moderate
-
 **Files:**
-- `src/app/api/v1/groups/[id]/members/route.ts:94` — `if (student.role !== "student")`
-- `src/app/(dashboard)/dashboard/groups/[id]/page.tsx:201` — `u.role !== "student"`
-- `src/app/(dashboard)/dashboard/groups/page.tsx:87` — `user.role !== "student"`
+- `src/app/(dashboard)/dashboard/compiler/compiler-client.tsx`
+- `tests/component/compiler-client.test.tsx`
 
-**Problem:** Hardcoded `role !== "student"` blocks custom non-student roles from enrollment. The system has a capability model but these routes don't use it.
+**Problem:** The public playground currently renders the untranslated key `compiler.testCaseLabel` for the active test-case label. The label uses the `compiler.testCaseLabel` message without providing the required `{number}` interpolation value.
 
-**Fix:** Use `getRoleLevel(role)` for server-side checks and `getRoleLevel` for UI filtering:
-- Members route: `if (await getRoleLevel(student.role) > 0)` (non-student level roles cannot be enrolled as students)
-- Groups pages: filter by `getRoleLevel > 0` for instructor dropdown
+**Fix:**
+- Render the label with a concrete number (derived from the active tab index), or switch to a non-interpolated label string.
+- Add a regression test asserting the rendered label is user-facing text, not the message key.
 
-**Verification:** `npx tsc --noEmit`, `npx vitest run`
-
----
-
-## Deferred Items
-
-These findings are explicitly deferred per the review. Each records the file+line citation, original severity/confidence, concrete reason, and exit criterion.
-
-| ID | Finding | Severity | Confidence | Reason for deferral | Exit criterion |
-|----|---------|----------|------------|---------------------|----------------|
-| PERF-03 | `/api/metrics` computes redundant `select 1` probe alongside worker/queue queries | LOW | HIGH | The overhead is one trivial query per metrics poll. Not impactful at typical Prometheus scrape intervals (15-60s). | Performance profiling shows metrics route is a bottleneck |
-| OPS-03 | SSE connection tracking is per-pod when shared coordination is disabled | LOW | HIGH | By design: shared coordination via Redis is available for multi-pod deployments. Single-pod deployments don't need it. | Deployment architecture requires multi-pod SSE coordination |
-| OPS-04 | Groups pages fetch all users for instructor dropdown instead of server-side filtering | LOW | MEDIUM | The current approach works for small-to-medium deployments. The query is already filtered by `isActive: true` and client-side role filter. | Platform exceeds 10K users and page load time becomes noticeable |
+**Verification:**
+- `npx vitest run tests/component/compiler-client.test.tsx`
 
 ---
 
-## Progress Ledger
+## Deferred / invalidated review register
+
+| Bucket | Source finding IDs | File + line citation | Original severity / confidence | Disposition | Reason | Exit criterion |
+| --- | --- | --- | --- | --- | --- | --- |
+| LIVE-01 | AGG-3 | `src/app/(public)/practice/page.tsx` | High / High (live), Medium (repo root cause) | Deferred | Confirmed live failure on `algo.xylolabs.com`, but root cause was not reproducible from current repo state within this pass; needs production-like data/log inspection before a safe code change. | Re-open when the failure is reproduced locally or a production stack trace identifies the failing query/render path. |
+| LIVE-02 | AGG-4 | `src/app/(public)/rankings/page.tsx` | High / High (live), Medium (repo root cause) | Deferred | Same as above: confirmed live failure, but root cause needs reproducible evidence before changing the ranking query/render path. | Re-open when current HEAD reproduces the failure locally or live logs isolate the failing statement/component. |
+| LIVE-03 | AGG-5 | `src/app/(public)/languages/page.tsx`, `src/lib/judge/dashboard-data.ts` | Medium / High (live), Medium (repo root cause) | Deferred | Confirmed live hanging state only. No safe code-level root cause isolated in this pass. | Re-open when the loading hang is reproduced against current HEAD or traced to a specific data fetch / hydration failure. |
+| REVIEW-INVALID-01 | F1, S1, C1, T1 | `src/lib/security/password.ts:1-73` | High / High | Invalidated by repo policy | `AGENTS.md` explicitly requires password validation to check **only** minimum length (8 chars) and forbids complexity/similarity/dictionary rules. These review requests cannot be implemented as written. | Re-open only if the repository's password policy changes. |
+| REVIEW-STALE-01 | V1 | `src/lib/security/password.ts:36-73` | High / Confirmed | Invalidated as stale | Current HEAD already uses `context?.username` and `context?.email`; the review claim that the parameter is dead code no longer matches the file. | Re-open if the context checks are removed/regressed in a future change. |
+| ARCH-01 | F7, C3, V2, A2, D1, T4 | `src/lib/security/rate-limit.ts:35-43`, `src/lib/realtime/realtime-coordination.ts:92-128` | High / High | Deferred | Real architectural risk, but fixing it safely requires a schema / migration / coordination redesign beyond this pass. | Re-open when a dedicated persistence-lane plan exists for separating SSE coordination from generic rate-limit rows. |
+| PERF-EXPORT-01 | P1, P3, P4, C4, D2 | `src/lib/db/export.ts:36-76,332-364` | High / High | Deferred | Deprecated export helpers are not on the critical user path; cleanup should happen in a focused export-subsystem pass with compatibility review. | Re-open when the export subsystem cleanup lane is scheduled. |
+| DATA-ACCESS-01 | F3, S4 | `src/app/api/v1/languages/route.ts:12`, `src/app/api/v1/admin/roles/[id]/route.ts:20`, representative multi-file pattern | Medium / High | Deferred | Plausible repo-wide hardening opportunity, but the safe fix is a larger explicit-column audit that exceeds this pass. | Re-open when a repository-wide sensitive-column selection audit is scheduled. |
+| PERF-RATE-01 | P2 | `src/lib/security/rate-limit.ts:130-178` | Medium / High | Deferred | Multi-key batching is worthwhile but needs benchmarking and careful SQL changes in the auth path. | Re-open when auth/rate-limit performance profiling shows this path is material. |
+| SEC-CRYPTO-01 | S2, C2, A1 | `src/lib/security/password-hash.ts`, `src/lib/security/encryption.ts`, `src/lib/security/derive-key.ts` | Medium / High | Deferred | These are broader auth/crypto architecture concerns requiring coordinated migration planning. | Re-open when a dedicated auth/crypto migration plan is approved. |
+| SEC-REVIEW-STALE-01 | S5, C6, V5 | `src/components/seo/json-ld.tsx:19` | Low / Medium | Invalidated as stale | Current HEAD already uses `safeJsonForScript(data)` rather than raw `JSON.stringify(...)` into `dangerouslySetInnerHTML`. | Re-open if `safeJsonForScript` is removed or bypassed. |
+| SEC-REVIEW-STALE-02 | S6, V3 | `src/lib/compiler/execute.ts:188-221` | Medium / Confirmed | Invalidated as stale | Current HEAD already replaced raw `startsWith()` command validation with `isValidCommandPrefix()` and suffix validation. | Re-open if strict command-prefix validation regresses. |
+| SEC-LOW-01 | S7, S9 | `src/lib/security/rate-limit.ts:27-32`, `src/lib/security/ip.ts:71` | Low / Low-High | Deferred | Low-severity defense-in-depth ideas; not cycle-critical next to live-user failures. | Re-open when rate-limit / IP extraction behavior is revisited. |
+| AUTH-DATA-01 | S8, A5 | `src/lib/auth/config.ts:68-93,354-377` | Low / Medium | Deferred | JWT payload trimming is a broader auth/session optimization and not tied to the confirmed live failures in this pass. | Re-open when auth/session payload optimization is prioritized. |
+| CODE-LOW-01 | F4, F5, F6, C5 | representative: `src/hooks/use-source-draft.ts`, `src/app/api/v1/users/route.ts:89-90`, `src/lib/audit/events.ts:89-121` | Low-Medium / Medium-High | Deferred | Valid maintainability concerns, but secondary to confirmed public regressions. | Re-open when a focused cleanup / observability pass is scheduled. |
+| PERF-LOW-01 | P5, P6, P7 | representative: `src/lib/security/rate-limiter-client.ts`, `src/lib/docker/client.ts`, `src/lib/audit/events.ts:118-121` | Low-Medium / Medium | Deferred | Lower-risk performance hardening items; not critical this pass. | Re-open when performance profiling or incident evidence elevates them. |
+| DEBUG-LOW-01 | D3, D4, D5 | representative: `src/lib/db/import-transfer.ts`, `src/lib/actions/*.ts`, `src/lib/docker/client.ts:28` | Low-Medium / Low-Medium | Deferred | Useful hardening items, but not the highest-signal cycle-2 fixes. | Re-open when import/runtime hardening is the active lane. |
+| UX-LOW-01 | UX1, UX2, UX3, UX5, UX6 | representative: `src/app/(dashboard)/dashboard/*/error.tsx`, `src/components/layout/skip-to-content.tsx`, `src/components/exam/countdown-timer.tsx`, `src/components/code/code-editor-skeleton.tsx` | Low / Medium-High | Deferred | Worthwhile UX polish, but lower priority than confirmed live public breakages. | Re-open when the next dedicated UX/accessibility pass is scheduled. |
+| UX-PASS-01 | UX4 | CLAUDE Korean letter-spacing rule | N/A / High | Closed / pass | Review explicitly confirmed compliance with current repo rule. | Re-open only if Korean typography changes. |
+
+---
+
+## Progress ledger
 
 | Story | Status | Commit |
-|---|---|---|
-| I18N-01 | Done | f7653631 |
-| SEC-04 | Done | 24ea28a8 |
-| TEST-04 | Done | f4ed1ce4 |
-| TEST-05 | Done | 61a94fdc |
-| TEST-06 | Done | 18c41fa9 |
-| TEST-07 | Done | 7b062268 |
-| LOGIC-03 | Done | 0ce2fb11 |
+| --- | --- | --- |
+| AUTH-01 | Done | `5353f41f` |
+| UX-01 | Done | `c5363d87` |
