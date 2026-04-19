@@ -3,7 +3,6 @@ import { rateLimits } from "@/lib/db/schema";
 import { extractClientIp } from "@/lib/security/ip";
 import { getConfiguredSettings } from "@/lib/system-settings-config";
 import { eq, lt } from "drizzle-orm";
-import { nanoid } from "nanoid";
 import { logger } from "@/lib/logger";
 
 function getRateLimitConfig() {
@@ -203,7 +202,7 @@ export async function recordRateLimitFailure(key: string) {
 
     const cfg = getRateLimitConfig();
     if (attempts >= cfg.maxAttempts) {
-      const blockDuration = calculateBlockDuration(consecutiveBlocks, cfg.blockMs);
+      const blockDuration = calculateBlockDuration(consecutiveBlocks - 1, cfg.blockMs);
       blockedUntil = now + blockDuration;
       consecutiveBlocks += 1;
     }
@@ -221,7 +220,6 @@ export async function recordRateLimitFailure(key: string) {
     } else {
       await tx.insert(rateLimits)
         .values({
-          id: nanoid(),
           key,
           attempts,
           windowStartedAt: entry.windowStartedAt,
