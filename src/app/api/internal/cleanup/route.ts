@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cleanupOldEvents } from "@/lib/db/cleanup";
 import { safeTokenCompare } from "@/lib/security/timing";
+import { consumeApiRateLimit } from "@/lib/security/api-rate-limit";
+import { logger } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 
@@ -19,6 +21,20 @@ export async function POST(request: NextRequest) {
   if (!isValid) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  // Rate limit as defense-in-depth: if CRON_SECRET is leaked, this prevents
+  // unbounded calls to the expensive batched DELETE endpoint.
+  const rateLimitResponse = await consumeApiRateLimit(request, "internal:cleanup");
+  if (rateLimitResponse) return rateLimitResponse;
+
+  // Log deprecation notice: the in-process pruners (audit/events.ts and
+  // data-retention-maintenance.ts) are the canonical cleanup mechanism.
+  // This cron endpoint is kept for backward compatibility with external
+  // cron jobs that may reference it.
+  logger.info(
+    "[cleanup] Cron endpoint called — this endpoint is deprecated in favor of in-process pruners. " +
+    "See db/cleanup.ts JSDoc for details."
+  );
 
   const result = await cleanupOldEvents();
   return NextResponse.json({ success: true, ...result });
