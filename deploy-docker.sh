@@ -276,6 +276,15 @@ ensure_env_secret PLUGIN_CONFIG_ENCRYPTION_KEY hex
 # rather than the external domain.
 ensure_env_secret AUTH_TRUST_HOST true
 
+# When the local judge worker is disabled, the app container needs to reach the
+# external worker via COMPILER_RUNNER_URL. Auto-inject the default Docker host
+# URL if the key is missing — the operator can override it in .env.production
+# with a custom URL (e.g., pointing at a remote worker host).
+if [[ "${INCLUDE_WORKER}" != "true" ]]; then
+    COMPILER_RUNNER_DEFAULT="http://host.docker.internal:3001"
+    ensure_env_secret COMPILER_RUNNER_URL "${COMPILER_RUNNER_DEFAULT}"
+fi
+
 # ---------------------------------------------------------------------------
 # Step 2: Sync source code to remote host
 # ---------------------------------------------------------------------------
@@ -336,7 +345,7 @@ if [[ "${INCLUDE_WORKER}" != "true" ]]; then
     REMOTE_COMPILER_RUNNER_URL=$(remote "grep '^COMPILER_RUNNER_URL=' ${REMOTE_DIR}/.env.production 2>/dev/null | cut -d= -f2-" || true)
     REMOTE_COMPILER_RUNNER_URL="${REMOTE_COMPILER_RUNNER_URL:-http://judge-worker:3001}"
     if [[ -z "${REMOTE_COMPILER_RUNNER_URL}" || "${REMOTE_COMPILER_RUNNER_URL}" == "http://judge-worker:3001" ]]; then
-        die "INCLUDE_WORKER=false requires a non-local COMPILER_RUNNER_URL in ${REMOTE_DIR}/.env.production (pointing at a live external runner)"
+        warn "COMPILER_RUNNER_URL is still the local default (${REMOTE_COMPILER_RUNNER_URL:-unset}) — the app may not reach the judge worker. Set it to the external worker URL in ${REMOTE_DIR}/.env.production."
     fi
 fi
 
