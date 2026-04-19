@@ -2,7 +2,7 @@
 
 **Date:** 2026-04-19
 **Source:** `.context/reviews/cycle-6-comprehensive-review.md`, `.context/reviews/_aggregate.md`
-**Status:** IN PROGRESS
+**Status:** COMPLETE
 
 ## Deduplication note
 Cycle 5b plan is COMPLETE. This plan covers findings that are genuinely NEW from the cycle 6 deep review.
@@ -148,8 +148,8 @@ These findings are explicitly deferred per the review. Each records the file+lin
 
 | Story | Status | Commit |
 |---|---|---|
-| SHUTDOWN-02 | Pending | |
-| SQL-01 | Pending | |
-| DATA-06 | Pending | |
-| DATA-07 | Pending | |
-| DATA-08 | Pending | |
+| SHUTDOWN-02 | Done | `92f7e272` |
+| SQL-01 | Done | `055622ac` |
+| DATA-06 | Done | `7e21505d` |
+| DATA-07 | Done | `c72a96e8` |
+| DATA-08 | Done | `cd2ef4ed` |
