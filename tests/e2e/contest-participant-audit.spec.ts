@@ -41,7 +41,7 @@ test.describe("Contest Participant Audit", () => {
 
     // Go to contests list
     await page.goto("/dashboard/contests");
-    await page.waitForLoadState("networkidle");
+    await page.waitForLoadState("domcontentloaded");
 
     // Find the first contest link and click
     const contestLink = page
@@ -54,7 +54,7 @@ test.describe("Contest Participant Audit", () => {
     }
 
     await contestLink.click();
-    await page.waitForLoadState("networkidle");
+    await page.waitForLoadState("domcontentloaded");
 
     // Click on Submissions tab
     const submissionsTab = page.getByRole("tab", {
@@ -66,7 +66,7 @@ test.describe("Contest Participant Audit", () => {
       return;
     }
     await submissionsTab.click();
-    await page.waitForLoadState("networkidle");
+    await page.waitForLoadState("domcontentloaded");
 
     // Find a participant link in the status board
     const participantLink = page
@@ -81,7 +81,7 @@ test.describe("Contest Participant Audit", () => {
     }
 
     await participantLink.click();
-    await page.waitForLoadState("networkidle");
+    await page.waitForLoadState("domcontentloaded");
 
     // Verify URL contains /participant/
     expect(page.url()).toContain("/participant/");
@@ -101,7 +101,7 @@ test.describe("Contest Participant Audit", () => {
     await login(page);
 
     await page.goto("/dashboard/contests");
-    await page.waitForLoadState("networkidle");
+    await page.waitForLoadState("domcontentloaded");
 
     const contestLink = page
       .locator("a[href*='/dashboard/contests/']")
@@ -113,7 +113,7 @@ test.describe("Contest Participant Audit", () => {
     }
 
     await contestLink.click();
-    await page.waitForLoadState("networkidle");
+    await page.waitForLoadState("domcontentloaded");
 
     const submissionsTab = page.getByRole("tab", {
       name: /Submissions|제출/,
@@ -124,7 +124,7 @@ test.describe("Contest Participant Audit", () => {
       return;
     }
     await submissionsTab.click();
-    await page.waitForLoadState("networkidle");
+    await page.waitForLoadState("domcontentloaded");
 
     const participantLink = page
       .locator("a[href*='/participant/']")
@@ -138,7 +138,7 @@ test.describe("Contest Participant Audit", () => {
     }
 
     await participantLink.click();
-    await page.waitForLoadState("networkidle");
+    await page.waitForLoadState("domcontentloaded");
 
     // Verify header with rank/score badges
     const badges = page.locator("[data-slot='badge']");
@@ -167,7 +167,7 @@ test.describe("Contest Participant Audit", () => {
     await login(page);
 
     await page.goto("/dashboard/contests");
-    await page.waitForLoadState("networkidle");
+    await page.waitForLoadState("domcontentloaded");
 
     const contestLink = page
       .locator("a[href*='/dashboard/contests/']")
@@ -179,7 +179,7 @@ test.describe("Contest Participant Audit", () => {
     }
 
     await contestLink.click();
-    await page.waitForLoadState("networkidle");
+    await page.waitForLoadState("domcontentloaded");
     const contestUrl = page.url();
 
     const submissionsTab = page.getByRole("tab", {
@@ -191,7 +191,7 @@ test.describe("Contest Participant Audit", () => {
       return;
     }
     await submissionsTab.click();
-    await page.waitForLoadState("networkidle");
+    await page.waitForLoadState("domcontentloaded");
 
     const participantLink = page
       .locator("a[href*='/participant/']")
@@ -205,14 +205,14 @@ test.describe("Contest Participant Audit", () => {
     }
 
     await participantLink.click();
-    await page.waitForLoadState("networkidle");
+    await page.waitForLoadState("domcontentloaded");
 
     // Click back link
     const backLink = page.locator(
       "a[href*='/dashboard/contests/']"
     ).first();
     await backLink.click();
-    await page.waitForLoadState("networkidle");
+    await page.waitForLoadState("domcontentloaded");
 
     // Should be back on the contest detail page
     expect(page.url()).toBe(contestUrl);

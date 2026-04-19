@@ -1,4 +1,4 @@
-import { act, render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
 import { ContestQuickStats } from "@/components/contest/contest-quick-stats";
 
@@ -17,6 +17,7 @@ describe("ContestQuickStats", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.useFakeTimers();
     visibilityState = "visible";
     Object.defineProperty(document, "visibilityState", {
       configurable: true,
@@ -34,6 +35,7 @@ describe("ContestQuickStats", () => {
   });
 
   afterEach(() => {
+    vi.useRealTimers();
     vi.restoreAllMocks();
   });
 
@@ -52,17 +54,18 @@ describe("ContestQuickStats", () => {
       />
     );
 
-    await waitFor(() => {
-      expect(apiFetchMock).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      await Promise.resolve();
     });
+
+    expect(apiFetchMock).toHaveBeenCalledTimes(1);
 
     await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 35));
+      vi.advanceTimersByTime(25);
+      await Promise.resolve();
     });
 
-    await waitFor(() => {
-      expect(apiFetchMock).toHaveBeenCalledTimes(2);
-    });
+    expect(apiFetchMock).toHaveBeenCalledTimes(2);
 
     expect(screen.getByText("1/1")).toBeInTheDocument();
   });
@@ -85,7 +88,8 @@ describe("ContestQuickStats", () => {
     );
 
     await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 35));
+      vi.advanceTimersByTime(35);
+      await Promise.resolve();
     });
 
     expect(apiFetchMock).not.toHaveBeenCalled();
@@ -95,14 +99,13 @@ describe("ContestQuickStats", () => {
       document.dispatchEvent(new Event("visibilitychange"));
     });
 
-    await waitFor(() => {
-      expect(apiFetchMock).toHaveBeenCalledTimes(1);
-    });
+    expect(apiFetchMock).toHaveBeenCalledTimes(1);
 
     visibilityState = "hidden";
     await act(async () => {
       document.dispatchEvent(new Event("visibilitychange"));
-      await new Promise((resolve) => setTimeout(resolve, 35));
+      vi.advanceTimersByTime(35);
+      await Promise.resolve();
     });
 
     expect(apiFetchMock).toHaveBeenCalledTimes(1);

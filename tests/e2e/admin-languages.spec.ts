@@ -35,13 +35,13 @@ test.describe.serial("Admin Languages", () => {
 
   test("Step 2: Navigate to languages page", async ({ page }) => {
     await loginAsAdmin(page);
-    await page.goto(LANGUAGES_PATH, { waitUntil: "networkidle" });
+    await page.goto(LANGUAGES_PATH, { waitUntil: "domcontentloaded" });
     await expect(page).toHaveURL(new RegExp(LANGUAGES_PATH.replace(/\//g, "\\/")));
   });
 
   test("Step 3: Language list renders with entries", async ({ page }) => {
     await loginAsAdmin(page);
-    await page.goto(LANGUAGES_PATH, { waitUntil: "networkidle" });
+    await page.goto(LANGUAGES_PATH, { waitUntil: "domcontentloaded" });
 
     const mainContent = page.locator("#main-content");
     await expect(mainContent).toBeVisible();
@@ -66,7 +66,7 @@ test.describe.serial("Admin Languages", () => {
 
   test("Step 4: Search filters languages", async ({ page }) => {
     await loginAsAdmin(page);
-    await page.goto(LANGUAGES_PATH, { waitUntil: "networkidle" });
+    await page.goto(LANGUAGES_PATH, { waitUntil: "domcontentloaded" });
 
     // Look for a search/filter input
     const searchInput = page.locator(
@@ -77,7 +77,7 @@ test.describe.serial("Admin Languages", () => {
     if (inputCount > 0) {
       // Search for a well-known language
       await searchInput.first().fill("Python");
-      await page.waitForLoadState("networkidle");
+      await page.waitForLoadState("domcontentloaded");
 
       const mainContent = page.locator("#main-content");
       await expect(mainContent).toBeVisible();
@@ -92,7 +92,7 @@ test.describe.serial("Admin Languages", () => {
 
       // Clear search and verify page is still functional
       await searchInput.first().fill("");
-      await page.waitForLoadState("networkidle");
+      await page.waitForLoadState("domcontentloaded");
       await expect(mainContent).toBeVisible();
     } else {
       // No search input present — skip gracefully
@@ -103,7 +103,7 @@ test.describe.serial("Admin Languages", () => {
 
   test("Step 5: Language rows have enable/disable controls", async ({ page }) => {
     await loginAsAdmin(page);
-    await page.goto(LANGUAGES_PATH, { waitUntil: "networkidle" });
+    await page.goto(LANGUAGES_PATH, { waitUntil: "domcontentloaded" });
 
     const mainContent = page.locator("#main-content");
     await expect(mainContent).toBeVisible();
@@ -123,7 +123,7 @@ test.describe.serial("Admin Languages", () => {
 
   test("Step 6: Languages page heading is visible", async ({ page }) => {
     await loginAsAdmin(page);
-    await page.goto(LANGUAGES_PATH, { waitUntil: "networkidle" });
+    await page.goto(LANGUAGES_PATH, { waitUntil: "domcontentloaded" });
 
     // Page should have a heading or title indicating the languages section
     const heading = page.getByRole("heading", { name: /language|언어/i });

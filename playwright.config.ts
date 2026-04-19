@@ -10,15 +10,14 @@ const evidenceRoot = path.join(".sisyphus", "evidence", "playwright");
 /**
  * Specs that are safe to execute against a live remote deployment.
  * These tests do not mutate critical state, create heavy DB load, or
- * require local-only fixtures.
+ * require local-only fixtures or seeded contest data that may be absent on a
+ * shared test host.
  */
 const remoteSafeSpecs = [
   "tests/e2e/admin-languages.spec.ts",
   "tests/e2e/admin-workers.spec.ts",
   "tests/e2e/auth-flow.spec.ts",
   "tests/e2e/contest-nav-test.spec.ts",
-  "tests/e2e/contest-participant-audit.spec.ts",
-  "tests/e2e/contest-system.spec.ts",
   "tests/e2e/ops-health.spec.ts",
   "tests/e2e/rankings.spec.ts",
 ];

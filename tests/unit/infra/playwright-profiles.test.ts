@@ -36,8 +36,6 @@ describe("Playwright profile configuration", () => {
     expect(config).toContain('"tests/e2e/admin-workers.spec.ts"');
     expect(config).toContain('"tests/e2e/auth-flow.spec.ts"');
     expect(config).toContain('"tests/e2e/contest-nav-test.spec.ts"');
-    expect(config).toContain('"tests/e2e/contest-participant-audit.spec.ts"');
-    expect(config).toContain('"tests/e2e/contest-system.spec.ts"');
     expect(config).toContain('"tests/e2e/ops-health.spec.ts"');
     expect(config).toContain('"tests/e2e/rankings.spec.ts"');
   });
@@ -53,5 +51,7 @@ describe("Playwright profile configuration", () => {
     expect(arrayBody).not.toContain("problem-management.spec.ts");
     expect(arrayBody).not.toContain("contest-full-lifecycle.spec.ts");
     expect(arrayBody).not.toContain("student-submission-flow.spec.ts");
+    expect(arrayBody).not.toContain("contest-participant-audit.spec.ts");
+    expect(arrayBody).not.toContain("contest-system.spec.ts");
   });
 });

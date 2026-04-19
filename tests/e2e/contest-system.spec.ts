@@ -33,7 +33,7 @@ test.describe("Contest System", () => {
     test("loads contest list page and shows filter tabs", async ({ page }) => {
       await login(page);
       await page.goto("/dashboard/contests");
-      await page.waitForLoadState("networkidle");
+      await page.waitForLoadState("domcontentloaded");
 
       await expect(page.getByRole("heading", { level: 2 }).first()).toContainText(/Contests|대회/);
 
@@ -45,7 +45,7 @@ test.describe("Contest System", () => {
     test("shows Create Contest button for non-student users", async ({ page }) => {
       await login(page);
       await page.goto("/dashboard/contests");
-      await page.waitForLoadState("networkidle");
+      await page.waitForLoadState("domcontentloaded");
 
       const createBtn = page.getByRole("link", { name: /Create Contest|대회 만들기/ });
       await expect(createBtn).toBeVisible();
@@ -54,7 +54,7 @@ test.describe("Contest System", () => {
     test("shows Join with Code button", async ({ page }) => {
       await login(page);
       await page.goto("/dashboard/contests");
-      await page.waitForLoadState("networkidle");
+      await page.waitForLoadState("domcontentloaded");
 
       const joinBtn = page.getByRole("link", { name: /Join with Code|코드로 참가/ });
       await expect(joinBtn).toBeVisible();
@@ -63,7 +63,7 @@ test.describe("Contest System", () => {
     test("filter tabs exist and are clickable", async ({ page }) => {
       await login(page);
       await page.goto("/dashboard/contests");
-      await page.waitForLoadState("networkidle");
+      await page.waitForLoadState("domcontentloaded");
 
       // Verify filter badges exist (All, Upcoming, Active, Past)
       const pastFilter = page.getByRole("link").filter({ hasText: /Past|지난/ });
@@ -71,7 +71,7 @@ test.describe("Contest System", () => {
 
       // Click the Past filter and verify we stay on the contests list page
       await pastFilter.click();
-      await page.waitForLoadState("networkidle");
+      await page.waitForLoadState("domcontentloaded");
       await expect(page).toHaveURL(/\/dashboard\/contests/);
       await expect(page.locator("h2.text-3xl").first()).toContainText(/Contests|대회/);
     });
@@ -81,7 +81,7 @@ test.describe("Contest System", () => {
     test("navigates to create page and shows group selection", async ({ page }) => {
       await login(page);
       await page.goto("/dashboard/contests/create");
-      await page.waitForLoadState("networkidle");
+      await page.waitForLoadState("domcontentloaded");
 
       await expect(page.getByRole("heading", { level: 2 }).first()).toContainText(/Create Contest|대회 만들기/);
     });
@@ -89,7 +89,7 @@ test.describe("Contest System", () => {
     test("create page has back link to contests", async ({ page }) => {
       await login(page);
       await page.goto("/dashboard/contests/create");
-      await page.waitForLoadState("networkidle");
+      await page.waitForLoadState("domcontentloaded");
 
       const backLink = page.getByRole("link", { name: /Back|뒤로/ });
       await expect(backLink).toBeVisible();
@@ -102,7 +102,7 @@ test.describe("Contest System", () => {
     test("loads join page with code input", async ({ page }) => {
       await login(page);
       await page.goto("/dashboard/contests/join");
-      await page.waitForLoadState("networkidle");
+      await page.waitForLoadState("domcontentloaded");
 
       const codeInput = page.locator("#access-code");
       await expect(codeInput).toBeVisible();
@@ -112,7 +112,7 @@ test.describe("Contest System", () => {
     test("join button is disabled when code is empty", async ({ page }) => {
       await login(page);
       await page.goto("/dashboard/contests/join");
-      await page.waitForLoadState("networkidle");
+      await page.waitForLoadState("domcontentloaded");
 
       const joinBtn = page.getByRole("button", { name: /^Join$|^참가$/ });
       await expect(joinBtn).toBeDisabled();
@@ -121,7 +121,7 @@ test.describe("Contest System", () => {
     test("shows error for invalid access code", async ({ page }) => {
       await login(page);
       await page.goto("/dashboard/contests/join");
-      await page.waitForLoadState("networkidle");
+      await page.waitForLoadState("domcontentloaded");
 
       await page.locator("#access-code").fill("INVALIDCODE99");
       await page.getByRole("button", { name: /^Join$|^참가$/ }).click();
@@ -134,7 +134,7 @@ test.describe("Contest System", () => {
     test("pre-fills code from URL param", async ({ page }) => {
       await login(page);
       await page.goto("/dashboard/contests/join?code=TEST1234");
-      await page.waitForLoadState("networkidle");
+      await page.waitForLoadState("domcontentloaded");
 
       await expect(page.locator("#access-code")).toHaveValue("TEST1234");
     });
@@ -187,7 +187,7 @@ test.describe("Contest System", () => {
     test("sidebar has Contests link", async ({ page }) => {
       await login(page);
       await page.goto("/dashboard");
-      await page.waitForLoadState("networkidle");
+      await page.waitForLoadState("domcontentloaded");
 
       const contestsLink = page.getByRole("link", { name: /Contests|대회/ });
       await expect(contestsLink.first()).toBeVisible();
@@ -196,7 +196,7 @@ test.describe("Contest System", () => {
     test("clicking Contests nav leads to contest list", async ({ page }) => {
       await login(page);
       await page.goto("/dashboard");
-      await page.waitForLoadState("networkidle");
+      await page.waitForLoadState("domcontentloaded");
 
       await page.getByRole("link", { name: /Contests|대회/ }).first().click();
       await page.waitForURL("**/dashboard/contests", { timeout: 15_000 });

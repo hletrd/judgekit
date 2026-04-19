@@ -8,8 +8,9 @@ describe("playwright remote safety configuration", () => {
 
     expect(source).toContain("const remoteSafeSpecs = [");
     expect(source).toContain('"tests/e2e/admin-languages.spec.ts"');
-    expect(source).toContain('"tests/e2e/contest-system.spec.ts"');
+    expect(source).toContain('"tests/e2e/admin-workers.spec.ts"');
     expect(source).toContain('"tests/e2e/contest-nav-test.spec.ts"');
+    expect(source).toContain('"tests/e2e/rankings.spec.ts"');
     // Profile-based selection: smoke uses remoteSafeSpecs, full uses all specs
     expect(source).toContain('PLAYWRIGHT_PROFILE');
     expect(source).toContain('profile === "smoke" ? remoteSafeSpecs : undefined');
@@ -22,5 +23,7 @@ describe("playwright remote safety configuration", () => {
     expect(source).not.toContain('"tests/e2e/problem-management.spec.ts"');
     expect(source).not.toContain('"tests/e2e/contest-full-lifecycle.spec.ts"');
     expect(source).not.toContain('"tests/e2e/student-submission-flow.spec.ts"');
+    expect(source).not.toContain('"tests/e2e/contest-participant-audit.spec.ts"');
+    expect(source).not.toContain('"tests/e2e/contest-system.spec.ts"');
   });
 });

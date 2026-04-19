@@ -150,12 +150,10 @@ describe("ThemeToggle", () => {
     expect(trigger.className).toContain("custom-toggle-class");
   });
 
-  it("renders sr-only span with theme label", () => {
+  it("uses the translated theme label on the trigger", () => {
     render(<ThemeToggle />);
-    const srOnly = screen.getAllByText("theme").find(
-      (el) => el.classList.contains("sr-only")
-    );
-    expect(srOnly).toBeInTheDocument();
+    expect(screen.getByTestId("dropdown-label")).toHaveTextContent("theme");
+    expect(screen.getByTestId("dropdown-trigger")).toHaveAttribute("aria-label", "theme");
   });
 
   it("renders all three theme option labels", () => {

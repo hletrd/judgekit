@@ -36,7 +36,7 @@ async function loginAsAdmin(page: Page) {
 async function navigateToRankings(page: Page): Promise<string | null> {
   // Try each known rankings path
   for (const path of RANKINGS_PATHS) {
-    await page.goto(path, { waitUntil: "networkidle" });
+    await page.goto(path, { waitUntil: "domcontentloaded" });
     const url = page.url();
     // If not redirected away (to /dashboard or /login), this path exists
     if (url.includes(path.replace("/dashboard/", ""))) {
@@ -45,13 +45,13 @@ async function navigateToRankings(page: Page): Promise<string | null> {
   }
 
   // Fallback: look for rankings link in sidebar
-  await page.goto("/dashboard", { waitUntil: "networkidle" });
+  await page.goto("/dashboard", { waitUntil: "domcontentloaded" });
   const rankingsLink = page.getByRole("link", { name: /ranking|leaderboard|scoreboard|순위/i });
   const count = await rankingsLink.count();
   if (count > 0) {
     const href = await rankingsLink.first().getAttribute("href");
     if (href) {
-      await page.goto(href, { waitUntil: "networkidle" });
+      await page.goto(href, { waitUntil: "domcontentloaded" });
       return href;
     }
   }
@@ -72,7 +72,7 @@ test.describe.serial("Rankings Page", () => {
     // If no dedicated rankings page exists, assert from sidebar navigation
     if (!foundPath) {
       // Navigate to dashboard and look for rankings in nav
-      await page.goto("/dashboard", { waitUntil: "networkidle" });
+      await page.goto("/dashboard", { waitUntil: "domcontentloaded" });
       const rankingsLink = page.getByRole("link", { name: /ranking|leaderboard|scoreboard|순위/i });
       const count = await rankingsLink.count();
 
@@ -135,7 +135,7 @@ test.describe.serial("Rankings Page", () => {
 
   test("Step 5: Sidebar has Rankings navigation link", async ({ page }) => {
     await loginAsAdmin(page);
-    await page.goto("/dashboard", { waitUntil: "networkidle" });
+    await page.goto("/dashboard", { waitUntil: "domcontentloaded" });
 
     // Check if rankings appears in sidebar navigation
     const rankingsNavLink = page.getByRole("link", { name: /ranking|leaderboard|scoreboard|순위/i });

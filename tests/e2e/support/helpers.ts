@@ -45,7 +45,7 @@ export async function loginWithCredentials(
  */
 export async function navigateTo(page: Page, path: string): Promise<void> {
   const url = `${BASE_URL.replace(/\/$/, "")}/${path.replace(/^\//, "")}`;
-  await page.goto(url, { waitUntil: "networkidle" });
+  await page.goto(url, { waitUntil: "domcontentloaded" });
 }
 
 /**

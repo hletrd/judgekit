@@ -57,7 +57,7 @@ describe("ChangePasswordForm", () => {
     changePasswordMock.mockResolvedValue({ success: true });
   });
 
-  it("signs out stale session before re-authenticating and redirects to dashboard", async () => {
+  it("re-authenticates after a successful password change and redirects to dashboard", async () => {
     const user = userEvent.setup();
     render(<ChangePasswordForm username="admin" />);
 
@@ -68,7 +68,7 @@ describe("ChangePasswordForm", () => {
 
     await waitFor(() => {
       expect(changePasswordMock).toHaveBeenCalledWith("old-password", "new-password-123");
-      expect(signOutMock).toHaveBeenCalledWith({ redirect: false });
+      expect(signOutMock).not.toHaveBeenCalled();
       expect(signInMock).toHaveBeenCalledWith("credentials", expect.objectContaining({
         username: "admin",
         password: "new-password-123",

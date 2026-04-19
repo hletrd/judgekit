@@ -19,7 +19,7 @@ test("full contest navigation test", async ({ page }) => {
   // Sidebar -> contests list
   await page.locator('a[href="/dashboard/contests"]').first().click();
   await page.waitForURL("**/dashboard/contests**", { timeout: 10000 });
-  await page.waitForLoadState("networkidle");
+  await page.waitForLoadState("domcontentloaded");
   console.log(`sidebar->contests: ${errors.length} errors`);
 
   // Contests list -> create
@@ -28,7 +28,7 @@ test("full contest navigation test", async ({ page }) => {
     const e1 = errors.length;
     await create.click();
     await page.waitForURL("**/dashboard/contests/create**", { timeout: 10000 });
-    await page.waitForLoadState("networkidle");
+    await page.waitForLoadState("domcontentloaded");
     console.log(`list->create: ${errors.length - e1} errors, url=${page.url()}`);
   }
 
@@ -38,14 +38,14 @@ test("full contest navigation test", async ({ page }) => {
     const e2 = errors.length;
     await prob.click();
     await page.waitForURL("**/dashboard/problems**", { timeout: 10000 });
-    await page.waitForLoadState("networkidle");
+    await page.waitForLoadState("domcontentloaded");
     console.log(`create->problems: ${errors.length - e2} errors, url=${page.url()}`);
   }
 
   // Go back to contests via sidebar
   await page.locator('a[href="/dashboard/contests"]').first().click();
   await page.waitForURL("**/dashboard/contests**", { timeout: 10000 });
-  await page.waitForLoadState("networkidle");
+  await page.waitForLoadState("domcontentloaded");
 
   // Click a real contest
   const detail = page.locator('a[href*="/dashboard/contests/"]:not([href*="create"]):not([href*="join"])').first();
@@ -53,7 +53,7 @@ test("full contest navigation test", async ({ page }) => {
     const e3 = errors.length;
     await detail.click();
     await page.waitForURL(/\/dashboard\/contests\/[^/]+/, { timeout: 10000 });
-    await page.waitForLoadState("networkidle");
+    await page.waitForLoadState("domcontentloaded");
     console.log(`list->detail: ${errors.length - e3} errors, url=${page.url()}`);
 
     // From detail -> sidebar dashboard
@@ -62,7 +62,7 @@ test("full contest navigation test", async ({ page }) => {
       const e4 = errors.length;
       await dash.click();
       await page.waitForURL("**/dashboard**", { timeout: 10000 });
-      await page.waitForLoadState("networkidle");
+      await page.waitForLoadState("domcontentloaded");
       console.log(`detail->dashboard: ${errors.length - e4} errors, url=${page.url()}`);
     }
   }

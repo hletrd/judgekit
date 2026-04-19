@@ -3,6 +3,10 @@ import userEvent from "@testing-library/user-event";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { DestructiveActionDialog } from "@/components/destructive-action-dialog";
 
+vi.mock("next-intl", () => ({
+  useTranslations: () => (key: string) => key,
+}));
+
 // Mock Button to render a real button element, forwarding relevant props
 vi.mock("@/components/ui/button", () => ({
   Button: ({

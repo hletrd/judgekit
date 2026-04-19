@@ -23,12 +23,13 @@ export function FilterSelect({
   placeholder,
 }: FilterSelectProps) {
   const [value, setValue] = useState(defaultValue);
+  const selectedLabel = options.find((opt) => opt.value === value)?.label || value;
   return (
     <div>
       <input type="hidden" name={name} value={value} />
       <Select value={value} onValueChange={(v) => setValue(v ?? "")}>
         <SelectTrigger className="min-w-[12rem] max-w-[12rem] h-10">
-          <SelectValue placeholder={placeholder}><span className="truncate">{options.find((opt) => opt.value === value)?.label || value}</span></SelectValue>
+          <SelectValue placeholder={placeholder}>{selectedLabel}</SelectValue>
         </SelectTrigger>
         <SelectContent>
           {options.map((opt) => (

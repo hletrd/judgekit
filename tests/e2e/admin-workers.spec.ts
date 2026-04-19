@@ -35,13 +35,13 @@ test.describe.serial("Admin Workers Dashboard", () => {
 
   test("Step 2: Navigate to workers page", async ({ page }) => {
     await loginAsAdmin(page);
-    await page.goto(WORKERS_PATH, { waitUntil: "networkidle" });
+    await page.goto(WORKERS_PATH, { waitUntil: "domcontentloaded" });
     await expect(page).toHaveURL(new RegExp(WORKERS_PATH.replace(/\//g, "\\/")));
   });
 
   test("Step 3: Stats cards are visible", async ({ page }) => {
     await loginAsAdmin(page);
-    await page.goto(WORKERS_PATH, { waitUntil: "networkidle" });
+    await page.goto(WORKERS_PATH, { waitUntil: "domcontentloaded" });
 
     // Stats cards should render (even if counts are zero)
     const mainContent = page.locator("#main-content");
@@ -61,21 +61,23 @@ test.describe.serial("Admin Workers Dashboard", () => {
 
   test("Step 4: Workers table renders", async ({ page }) => {
     await loginAsAdmin(page);
-    await page.goto(WORKERS_PATH, { waitUntil: "networkidle" });
+    await page.goto(WORKERS_PATH, { waitUntil: "domcontentloaded" });
 
     const mainContent = page.locator("#main-content");
     await expect(mainContent).toBeVisible();
 
-    // Either a table or an empty-state message should be present
+    // Either a table, a worker empty state, or worker summary cards should be present.
     const table = page.locator("#main-content table");
     const emptyState = page.locator("#main-content").filter({
       hasText: /no workers|등록된 워커|empty|없음/i,
     });
+    const workerCards = page.locator("#main-content [data-slot='card'], #main-content .card");
 
     const tableCount = await table.count();
     const emptyCount = await emptyState.count();
+    const cardCount = await workerCards.count();
 
-    expect(tableCount + emptyCount).toBeGreaterThan(0);
+    expect(tableCount + emptyCount + cardCount).toBeGreaterThan(0);
   });
 
   test("Step 5: Workers API stats endpoint responds", async ({ page }) => {

@@ -54,4 +54,13 @@ describe("FilterSelect", () => {
     const hidden = container.querySelector('input[type="hidden"]') as HTMLInputElement;
     expect(hidden.value).toBe("b");
   });
+
+  it("renders the selected label instead of the raw value", () => {
+    render(
+      <FilterSelect name="lang" defaultValue="b" options={OPTIONS} />
+    );
+
+    expect(screen.getByTestId("select-value")).toHaveTextContent("Option B");
+    expect(screen.getByTestId("select-value")).not.toHaveTextContent(/^b$/);
+  });
 });

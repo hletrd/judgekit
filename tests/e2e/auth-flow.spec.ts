@@ -36,7 +36,7 @@ test.describe.serial("Auth Flow", () => {
   });
 
   test("Login with invalid credentials shows error", async ({ page }) => {
-    await page.goto("/login", { waitUntil: "networkidle" });
+    await page.goto("/login", { waitUntil: "domcontentloaded" });
     await page.locator("#username").fill(DEFAULT_CREDENTIALS.username);
     await page.locator("#password").fill(`wrong-password-${Date.now()}`);
     await page.getByRole("button", { name: /sign in|로그인/i }).click();
@@ -91,7 +91,7 @@ test.describe.serial("Auth Flow", () => {
       if (btnCount > 0) {
         await logoutButton.first().click();
       } else {
-        await page.goto("/api/auth/signout", { waitUntil: "networkidle" });
+        await page.goto("/api/auth/signout", { waitUntil: "domcontentloaded" });
       }
     }
 
@@ -101,12 +101,12 @@ test.describe.serial("Auth Flow", () => {
 
   test("Unauthenticated access to dashboard redirects to login", async ({ page }) => {
     // Visit dashboard without logging in — should redirect to login
-    await page.goto("/dashboard", { waitUntil: "networkidle" });
+    await page.goto("/dashboard", { waitUntil: "domcontentloaded" });
     await expect(page).toHaveURL(/\/login/);
   });
 
   test("Login page has username and password fields", async ({ page }) => {
-    await page.goto("/login", { waitUntil: "networkidle" });
+    await page.goto("/login", { waitUntil: "domcontentloaded" });
     await expect(page.locator("#username")).toBeVisible();
     await expect(page.locator("#password")).toBeVisible();
     await expect(page.getByRole("button", { name: /sign in|로그인/i })).toBeVisible();
