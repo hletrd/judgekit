@@ -75,6 +75,10 @@ globalThis.__sseCleanupTimer = setInterval(() => {
     }
   }
 }, CLEANUP_INTERVAL_MS);
+// Allow the process to exit even if the timer is still active
+if (globalThis.__sseCleanupTimer && typeof globalThis.__sseCleanupTimer === "object" && "unref" in globalThis.__sseCleanupTimer) {
+  globalThis.__sseCleanupTimer.unref();
+}
 
 // Graceful shutdown: in-memory connection tracking is cleaned up on process
 // exit automatically. The audit-buffer flush is handled by
@@ -125,6 +129,10 @@ function startSharedPollTimer(): void {
   sharedPollTimer = setInterval(() => {
     void sharedPollTick();
   }, pollIntervalMs);
+  // Allow the process to exit even if the timer is still active
+  if (sharedPollTimer && typeof sharedPollTimer === "object" && "unref" in sharedPollTimer) {
+    sharedPollTimer.unref();
+  }
 }
 
 async function sharedPollTick(): Promise<void> {
