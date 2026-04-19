@@ -27,8 +27,6 @@ type DropdownItem = {
   href: string;
   label: string;
   icon?: React.ReactNode;
-  adminOnly?: boolean;
-  instructorOnly?: boolean;
 };
 
 type PublicHeaderProps = {
@@ -57,15 +55,15 @@ function getDropdownItems(role?: string): DropdownItem[] {
   ];
 
   if (isInstructor) {
-    items.push({ href: "/dashboard/problems", label: "problems", icon: <FileText className="size-4" />, instructorOnly: true });
-    items.push({ href: "/dashboard/groups", label: "groups", icon: <Users className="size-4" />, instructorOnly: true });
+    items.push({ href: "/dashboard/problems", label: "problems", icon: <FileText className="size-4" /> });
+    items.push({ href: "/dashboard/groups", label: "groups", icon: <Users className="size-4" /> });
   }
 
   items.push({ href: "/dashboard/submissions", label: "mySubmissions", icon: <ClipboardList className="size-4" /> });
   items.push({ href: "/dashboard/profile", label: "profile", icon: <Settings className="size-4" /> });
 
   if (isAdmin) {
-    items.push({ href: "/dashboard/admin", label: "admin", icon: <Shield className="size-4" />, adminOnly: true });
+    items.push({ href: "/dashboard/admin", label: "admin", icon: <Shield className="size-4" /> });
   }
 
   return items;
@@ -299,6 +297,9 @@ export function PublicHeader({ siteTitle, items, actions, loggedInUser }: Public
             </nav>
             {loggedInUser && (
               <div className="mt-2 flex flex-col gap-0.5 border-t pt-2">
+                <p className="px-3 py-1 text-xs font-medium uppercase tracking-wide text-muted-foreground/60">
+                  {tShell("nav.dashboard")}
+                </p>
                 {dropdownItems.map((item) => (
                   <Link
                     key={item.href}
@@ -310,6 +311,7 @@ export function PublicHeader({ siteTitle, items, actions, loggedInUser }: Public
                     {tShell(`nav.${item.label}`)}
                   </Link>
                 ))}
+                <div className="mt-1 border-t pt-1">
                 <button
                   onClick={() => { closeMobileMenu(); handleSignOut(); }}
                   disabled={isSigningOut}
@@ -318,6 +320,7 @@ export function PublicHeader({ siteTitle, items, actions, loggedInUser }: Public
                   <LogOut className="size-4" />
                   {isSigningOut ? tCommon("signingOut") : tAuth("signOut")}
                 </button>
+                </div>
               </div>
             )}
             {!loggedInUser && (
