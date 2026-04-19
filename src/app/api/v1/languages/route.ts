@@ -9,7 +9,11 @@ export const GET = createApiHandler({
   auth: false,
   handler: async () => {
     const languages = await db
-      .select()
+      .select({
+        id: languageConfigs.id,
+        language: languageConfigs.language,
+        isEnabled: languageConfigs.isEnabled,
+      })
       .from(languageConfigs)
       .where(eq(languageConfigs.isEnabled, true));
 
