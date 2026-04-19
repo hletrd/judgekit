@@ -37,6 +37,12 @@ type PublicHeaderProps = {
     name: string;
     href: string;
     label: string;
+    /**
+     * User capabilities — used for capability-based filtering of dropdown
+     * items. Must stay aligned with AppSidebar's capability checks.
+     * When absent, falls back to role-based checks for backwards compatibility.
+     */
+    capabilities?: string[];
     /** User role — may be a built-in UserRole or a custom role string */
     role?: string;
   } | null;
@@ -47,23 +53,35 @@ function isActivePath(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-function getDropdownItems(role?: string): DropdownItem[] {
-  const isInstructor = role === "instructor" || role === "admin" || role === "super_admin";
-  const isAdmin = role === "admin" || role === "super_admin";
+/**
+ * Build dropdown menu items for the authenticated user.
+ *
+ * Uses capability-based filtering when `capabilities` is available,
+ * falling back to role-based checks otherwise.
+ * Capability checks must stay aligned with AppSidebar's filterItems().
+ */
+function getDropdownItems(role?: string, capabilities?: string[]): DropdownItem[] {
+  const capsSet = capabilities ? new Set(capabilities) : null;
+
+  const canCreateProblems = capsSet ? capsSet.has("problems.create") : (role === "instructor" || role === "admin" || role === "super_admin");
+  const canViewAllGroups = capsSet ? capsSet.has("groups.view_all") : (role === "instructor" || role === "admin" || role === "super_admin");
+  const canAdminSystem = capsSet ? capsSet.has("system.settings") : (role === "admin" || role === "super_admin");
 
   const items: DropdownItem[] = [
     { href: "/dashboard", label: "dashboard", icon: <LayoutDashboard className="size-4" /> },
   ];
 
-  if (isInstructor) {
+  if (canCreateProblems) {
     items.push({ href: "/dashboard/problems", label: "problems", icon: <FileText className="size-4" /> });
+  }
+  if (canViewAllGroups) {
     items.push({ href: "/dashboard/groups", label: "groups", icon: <Users className="size-4" /> });
   }
 
   items.push({ href: "/dashboard/submissions", label: "mySubmissions", icon: <ClipboardList className="size-4" /> });
   items.push({ href: "/dashboard/profile", label: "profile", icon: <Settings className="size-4" /> });
 
-  if (isAdmin) {
+  if (canAdminSystem) {
     items.push({ href: "/dashboard/admin", label: "admin", icon: <Shield className="size-4" /> });
   }
 
@@ -83,7 +101,7 @@ export function PublicHeader({ siteTitle, items, actions, loggedInUser }: Public
   const panelRef = useRef<HTMLDivElement>(null);
   const previousPathnameRef = useRef(pathname);
 
-  const dropdownItems = getDropdownItems(loggedInUser?.role);
+  const dropdownItems = getDropdownItems(loggedInUser?.role, loggedInUser?.capabilities);
 
   // Close menu on route change
   useEffect(() => {
@@ -173,7 +191,7 @@ export function PublicHeader({ siteTitle, items, actions, loggedInUser }: Public
       <div className="mx-auto flex w-full max-w-6xl items-center gap-2 px-4 py-3 sm:gap-4">
         <Link
           href={buildLocalizedHref("/", locale)}
-          className="min-w-0 flex-1 text-base font-semibold tracking-tight md:flex-none md:shrink-0"
+          className="min-w-0 flex-1 text-base font-semibold md:flex-none md:shrink-0"
         >
           <span className="block truncate">{siteTitle}</span>
         </Link>
@@ -298,6 +316,7 @@ export function PublicHeader({ siteTitle, items, actions, loggedInUser }: Public
             </nav>
             {loggedInUser && (
               <div className="mt-2 flex flex-col gap-0.5 border-t pt-2">
+                {/* tracking-wide is for English uppercase text only (e.g. "DASHBOARD") — do not apply to Korean labels */}
                 <p className="px-3 py-1 text-xs font-medium uppercase tracking-wide text-muted-foreground/60">
                   {tShell("nav.dashboard")}
                 </p>

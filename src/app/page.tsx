@@ -10,6 +10,7 @@ import { auth } from "@/lib/auth";
 import { SkipToContent } from "@/components/layout/skip-to-content";
 import { getHomepageInsights } from "@/lib/homepage-insights";
 import { getJudgeSystemSnapshot } from "@/lib/judge/dashboard-data";
+import { resolveCapabilities } from "@/lib/capabilities/cache";
 
 function pick(defaultVal: string, override?: string): string {
   return override && override.trim() ? override : defaultVal;
@@ -54,10 +55,13 @@ export default async function HomePage() {
     getJudgeSystemSnapshot(),
   ]);
 
-  const settings = await getResolvedSystemSettings({
-    siteTitle: tCommon("appName"),
-    siteDescription: tCommon("appDescription"),
-  });
+  const [settings, capabilities] = await Promise.all([
+    getResolvedSystemSettings({
+      siteTitle: tCommon("appName"),
+      siteDescription: tCommon("appDescription"),
+    }),
+    session?.user ? resolveCapabilities(session.user.role).then(c => [...c]) : undefined,
+  ]);
 
   const o = settings.homePageContent?.[locale];
   const seoDescription = pick(tShell("home.description"), o?.description);
@@ -96,7 +100,7 @@ export default async function HomePage() {
           { href: "/login", label: tAuth("signIn") },
           ...(settings.publicSignupEnabled ? [{ href: "/signup", label: tAuth("signUp") }] : []),
         ]}
-        loggedInUser={session?.user ? { name: session.user.name, href: "/dashboard", label: tShell("nav.workspace") } : null}
+        loggedInUser={session?.user ? { name: session.user.name, href: "/dashboard", label: tShell("nav.workspace"), role: session.user.role, capabilities } : null}
       />
       <main id="main-content" className="mx-auto w-full max-w-6xl px-4 py-10 sm:px-6 lg:px-8">
         <PublicHomePage

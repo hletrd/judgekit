@@ -4,6 +4,7 @@ import { PublicFooter } from "@/components/layout/public-footer";
 import { SkipToContent } from "@/components/layout/skip-to-content";
 import { getResolvedSystemSettings } from "@/lib/system-settings";
 import { auth } from "@/lib/auth";
+import { resolveCapabilities } from "@/lib/capabilities/cache";
 
 export default async function PublicLayout({ children }: { children: React.ReactNode }) {
   const [tCommon, tAuth, tShell, session] = await Promise.all([
@@ -12,6 +13,8 @@ export default async function PublicLayout({ children }: { children: React.React
     getTranslations("publicShell"),
     auth(),
   ]);
+
+  const capabilities = session?.user ? [...await resolveCapabilities(session.user.role)] : undefined;
   const settings = await getResolvedSystemSettings({
     siteTitle: tCommon("appName"),
     siteDescription: tCommon("appDescription"),
@@ -34,7 +37,7 @@ export default async function PublicLayout({ children }: { children: React.React
           { href: "/login", label: tAuth("signIn") },
           ...(settings.publicSignupEnabled ? [{ href: "/signup", label: tAuth("signUp") }] : []),
         ]}
-        loggedInUser={session?.user ? { name: session.user.name, href: "/dashboard", label: tShell("nav.dashboard"), role: session.user.role } : null}
+        loggedInUser={session?.user ? { name: session.user.name, href: "/dashboard", label: tShell("nav.dashboard"), role: session.user.role, capabilities } : null}
       />
       <main id="main-content" className="mx-auto w-full max-w-6xl px-4 py-10 sm:px-6 lg:px-8">{children}</main>
       <PublicFooter siteTitle={settings.siteTitle} footerContent={settings.footerContent} />

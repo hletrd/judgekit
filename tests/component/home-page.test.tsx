@@ -64,6 +64,10 @@ vi.mock("@/lib/auth", () => ({
   auth: authMock,
 }));
 
+vi.mock("@/lib/capabilities/cache", () => ({
+  resolveCapabilities: vi.fn().mockResolvedValue(new Set()),
+}));
+
 vi.mock("@/lib/system-settings", () => ({
   getResolvedSystemSettings: getResolvedSystemSettingsMock,
 }));

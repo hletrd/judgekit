@@ -7,6 +7,7 @@ import { auth } from "@/lib/auth";
 import { SkipToContent } from "@/components/layout/skip-to-content";
 import { buildLocalePath, NO_INDEX_METADATA } from "@/lib/seo";
 import { getResolvedSystemSettings } from "@/lib/system-settings";
+import { resolveCapabilities } from "@/lib/capabilities/cache";
 
 export async function generateMetadata() {
   const tState = await getTranslations("dashboardState");
@@ -27,10 +28,13 @@ export default async function NotFoundPage() {
     getLocale(),
   ]);
 
-  const settings = await getResolvedSystemSettings({
-    siteTitle: tCommon("appName"),
-    siteDescription: tCommon("appDescription"),
-  });
+  const [settings, capabilities] = await Promise.all([
+    getResolvedSystemSettings({
+      siteTitle: tCommon("appName"),
+      siteDescription: tCommon("appDescription"),
+    }),
+    session?.user ? resolveCapabilities(session.user.role).then(c => [...c]) : undefined,
+  ]);
 
   const homeHref = buildLocalePath(session?.user ? "/dashboard" : "/", locale);
   const homeLabel = session?.user ? tState("backToDashboard") : tCommon("back");
@@ -53,7 +57,7 @@ export default async function NotFoundPage() {
           { href: "/login", label: tAuth("signIn") },
           ...(settings.publicSignupEnabled ? [{ href: "/signup", label: tAuth("signUp") }] : []),
         ]}
-        loggedInUser={session?.user ? { name: session.user.name, href: "/dashboard", label: tShell("nav.workspace") } : null}
+        loggedInUser={session?.user ? { name: session.user.name, href: "/dashboard", label: tShell("nav.workspace"), role: session.user.role, capabilities } : null}
       />
       <main id="main-content" className="mx-auto flex min-h-[calc(100dvh-80px)] w-full max-w-6xl items-center justify-center px-4 py-10 sm:px-6 lg:px-8">
         <div className="w-full max-w-xl rounded-3xl border bg-background p-8 text-center shadow-sm sm:p-10">

@@ -38,6 +38,9 @@ vi.mock("next-intl/server", () => ({
 
 vi.mock("@/lib/auth", () => ({ auth: authMock }));
 vi.mock("@/lib/system-settings", () => ({ getResolvedSystemSettings: getResolvedSystemSettingsMock }));
+vi.mock("@/lib/capabilities/cache", () => ({
+  resolveCapabilities: vi.fn().mockResolvedValue(new Set()),
+}));
 vi.mock("@/components/layout/public-header", () => ({
   PublicHeader: () => <div>public-header</div>,
 }));
