@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { apiKeys, users, roles } from "@/lib/db/schema";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, sql } from "drizzle-orm";
 import { createApiHandler } from "@/lib/api/handler";
 import { apiSuccess, apiError } from "@/lib/api/responses";
 import { generateApiKey, encryptApiKey } from "@/lib/api/api-key-auth";
@@ -30,18 +30,13 @@ export const GET = createApiHandler({
         expiresAt: apiKeys.expiresAt,
         isActive: apiKeys.isActive,
         createdAt: apiKeys.createdAt,
-        encryptedKey: apiKeys.encryptedKey,
+        hasEncryptedKey: sql<boolean>`${apiKeys.encryptedKey} IS NOT NULL`,
       })
       .from(apiKeys)
       .leftJoin(users, eq(apiKeys.createdById, users.id))
       .orderBy(desc(apiKeys.createdAt));
 
-    const keys = rows.map(({ encryptedKey, ...rest }) => ({
-      ...rest,
-      hasEncryptedKey: encryptedKey != null,
-    }));
-
-    return apiSuccess(keys);
+    return apiSuccess(rows);
   },
 });
 
