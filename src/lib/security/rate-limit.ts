@@ -258,7 +258,7 @@ export async function recordRateLimitFailureMulti(...keys: string[]) {
         await tx.insert(rateLimits).values({
           key,
           attempts: newAttempts,
-          windowStartedAt: now,
+          windowStartedAt: entry.windowStartedAt,
           blockedUntil: blockedUntil > 0 ? blockedUntil : null,
           consecutiveBlocks,
           lastAttempt: now,
