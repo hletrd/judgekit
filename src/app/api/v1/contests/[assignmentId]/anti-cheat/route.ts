@@ -182,9 +182,11 @@ export const GET = createApiHandler({
     // without a heartbeat during the contest window
     const heartbeatGaps: Array<{ userId: string; gapStartedAt: string; gapEndedAt: string; gapSeconds: number }> = [];
     if (userIdFilter && assignment.enableAntiCheat) {
-      // Limit heartbeat rows to prevent memory spikes for very long contests.
-      // 5000 rows covers ~83 hours of heartbeats at 60-second intervals.
-      const heartbeats = await db
+      // Fetch the most recent heartbeat rows to prevent memory spikes for very
+      // long contests. 5000 rows covers ~83 hours of heartbeats at 60-second
+      // intervals. Using DESC order ensures we detect gaps near the *end* of the
+      // contest (most relevant for instructors reviewing recent activity).
+      const heartbeatsDesc = await db
         .select({ createdAt: antiCheatEvents.createdAt })
         .from(antiCheatEvents)
         .where(and(
@@ -192,8 +194,11 @@ export const GET = createApiHandler({
           eq(antiCheatEvents.userId, userIdFilter),
           eq(antiCheatEvents.eventType, "heartbeat"),
         ))
-        .orderBy(antiCheatEvents.createdAt)
+        .orderBy(desc(antiCheatEvents.createdAt))
         .limit(5000);
+
+      // Reverse to chronological order for gap detection
+      const heartbeats = heartbeatsDesc.reverse();
 
       const GAP_THRESHOLD_MS = 120_000; // 2 minutes
       for (let i = 1; i < heartbeats.length; i++) {
