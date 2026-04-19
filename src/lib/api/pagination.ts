@@ -1,3 +1,5 @@
+import { parsePositiveInt } from "@/lib/validators/query-params";
+
 const MAX_PAGE = 10_000;
 
 type PaginationOptions = {
@@ -11,11 +13,8 @@ export function parsePagination(
 ) {
   const defaultLimit = options.defaultLimit ?? 20;
   const maxLimit = options.maxLimit ?? 100;
-  const page = Math.max(1, Math.min(MAX_PAGE, parseInt(searchParams.get("page") || "1", 10) || 1));
-  const limit = Math.min(
-    maxLimit,
-    Math.max(1, parseInt(searchParams.get("limit") || String(defaultLimit), 10) || defaultLimit)
-  );
+  const page = Math.min(MAX_PAGE, parsePositiveInt(searchParams.get("page"), 1));
+  const limit = Math.min(maxLimit, parsePositiveInt(searchParams.get("limit"), defaultLimit));
 
   return {
     page,
@@ -26,6 +25,9 @@ export function parsePagination(
 
 export function parseCursorParams(searchParams: Record<string, string | string[] | undefined>) {
   const cursor = typeof searchParams.cursor === "string" ? searchParams.cursor : undefined;
-  const limit = Math.min(Math.max(1, parseInt(String(searchParams.limit ?? "20"), 10) || 20), 100);
+  const limit = Math.min(Math.max(1, parsePositiveInt(
+    typeof searchParams.limit === "string" ? searchParams.limit : undefined,
+    20
+  )), 100);
   return { cursor, limit };
 }

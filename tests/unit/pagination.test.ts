@@ -71,9 +71,9 @@ describe("parsePagination", () => {
       expect(result.limit).toBe(20);
     });
 
-    it("clamps limit to 1 for a negative limit value", () => {
+    it("falls back to defaultLimit for a negative limit value", () => {
       const result = parsePagination(params({ limit: "-10" }));
-      expect(result.limit).toBe(1);
+      expect(result.limit).toBe(20);
     });
 
     it("falls back to defaultLimit for a non-numeric limit", () => {
