@@ -1,8 +1,8 @@
 # Cycle 16 Review Remediation Plan
 
 **Date:** 2026-04-19
-**Source:** `.context/reviews/cycle-16-comprehensive-review.md` and `.context/reviews/_aggregate.md`
-**Status:** Complete
+**Source:** `.context/reviews/cycle-16-code-reviewer.md` and `.context/reviews/cycle-16-aggregate.md`
+**Status:** In Progress
 
 ---
 
@@ -27,6 +27,28 @@
   4. Run the recruiting invitation tests
 - **Exit criterion**: `mustChangePassword: true` is set in the reset function. The redeem flow still works correctly.
 
+### M3: Fix `PublicHeader.handleSignOut` error handling — add try/catch to reset `isSigningOut` on failure
+- **File**: `src/components/layout/public-header.tsx:183-186`
+- **Status**: PENDING
+- **Source**: AGG-1 (cycle 16 aggregate)
+- **Plan**:
+  1. Wrap `await signOut({ callbackUrl: "/login" })` in a try/catch block
+  2. In the catch handler, reset `isSigningOut` to `false` so the user can retry
+  3. Optionally show an error toast via `toast.error()`
+  4. Match the pattern already used in `AppSidebar.handleSignOut` (commit 50f84172)
+- **Exit criterion**: `isSigningOut` is reset on `signOut()` failure. User can retry sign-out without refreshing.
+
+### M4: Fix `AppSidebar` "ADMINISTRATION" label `tracking-wider` to be locale-conditional
+- **File**: `src/components/layout/app-sidebar.tsx:290`
+- **Status**: PENDING
+- **Source**: AGG-2 (cycle 16 aggregate), CLAUDE.md Korean letter-spacing rule
+- **Plan**:
+  1. Import `useLocale` from `next-intl` in `app-sidebar.tsx`
+  2. Get the current locale with `const locale = useLocale()`
+  3. Apply `tracking-wider` conditionally: `className={... + (locale !== "ko" ? " tracking-wider" : "")}`
+  4. Update the existing comment to note the locale-conditional behavior
+- **Exit criterion**: `tracking-wider` is only applied when locale is not Korean. CLAUDE.md compliance verified.
+
 ---
 
 ## LOW Priority
@@ -34,63 +56,71 @@
 ### L1: Add failure backoff to `computeContestRanking` stale-while-revalidate
 - **File**: `src/lib/assignments/contest-scoring.ts:101-113`
 - **Status**: DONE (commit 4d94adfe)
-- **Plan**:
-  1. Add a `_lastRefreshFailureAt` variable alongside `_refreshingKeys`
-  2. In the stale-while-revalidate path, check if a refresh was attempted recently (within 5 seconds) and failed. If so, return stale data without re-triggering.
-  3. In the `.catch()` handler, set `_lastRefreshFailureAt = Date.now()` for the specific key
-  4. In the `.finally()` handler, clear the failure timestamp on success (via a different mechanism)
-  5. Use a `Map<string, number>` to track per-key failure timestamps
 - **Exit criterion**: Background refresh is not re-triggered within 5 seconds of a failure.
 
 ### L2: Make `isAdmin()` module-private like `isInstructor()`
 - **File**: `src/lib/api/auth.ts:97`, `src/lib/api/handler.ts:191`
 - **Status**: DONE (commit 042c82f9)
-- **Plan**:
-  1. Remove `export` from `isAdmin()` in `auth.ts`, making it module-private
-  2. Add `@internal` JSDoc like was done for `isInstructor()`
-  3. Remove `isAdmin` from the re-export in `handler.ts` line 191
-  4. Search for any imports of `isAdmin` from `handler.ts` or `auth.ts` in route files and update them to use `isAdminAsync()` instead
-  5. Verify no compilation errors and all tests pass
 - **Exit criterion**: `isAdmin` is not exported from any module. All callers use `isAdminAsync()`.
 
 ### L3: Add per-user rate limit to code snapshot endpoint
 - **File**: `src/app/api/v1/code-snapshots/route.ts`
 - **Status**: DONE (commit 0db6a4c3)
-- **Plan**:
-  1. Import `consumeUserApiRateLimit` from `@/lib/security/api-rate-limit`
-  2. After the existing `createApiHandler` rate limit, add a per-user check: `const userRateLimitResponse = await consumeUserApiRateLimit(_req, user.id, "code-snapshot:user"); if (userRateLimitResponse) return userRateLimitResponse;`
-  3. Or add a second rate limit key in the handler config if the framework supports it
-  4. Verify with a manual test that rapid snapshot creation is rate-limited
 - **Exit criterion**: Code snapshot endpoint has per-user rate limiting in addition to IP-based limiting.
 
 ### L4: Fix anti-cheat heartbeat gap detection to use most recent heartbeats
 - **File**: `src/app/api/v1/contests/[assignmentId]/anti-cheat/route.ts:195`
 - **Status**: DONE (commit c56e5175)
-- **Plan**:
-  1. Change `.orderBy(antiCheatEvents.createdAt)` to `.orderBy(desc(antiCheatEvents.createdAt))` at line 195
-  2. Reverse the resulting array before computing gaps (since gaps need to be computed in chronological order)
-  3. Update the gap computation loop to work on the reversed array
-  4. Verify the anti-cheat tests still pass
 - **Exit criterion**: Heartbeat gap detection uses the most recent 5000 heartbeats instead of the oldest.
 
 ### L5: Fix `getInvitationStats` to use atomic single-query aggregation
 - **File**: `src/lib/assignments/recruiting-invitations.ts:260-295`
-- **Status**: DONE (commit 3d879777 — included in the mustChangePassword commit as it was the same file)
-- **Plan**:
-  1. Replace the two-query approach with a single SQL query using conditional aggregation:
-     ```sql
-     SELECT
-       COUNT(*) AS total,
-       SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) AS pending,
-       SUM(CASE WHEN status = 'redeemed' THEN 1 ELSE 0 END) AS redeemed,
-       SUM(CASE WHEN status = 'revoked' THEN 1 ELSE 0 END) AS revoked,
-       SUM(CASE WHEN status = 'pending' AND expires_at IS NOT NULL AND expires_at < NOW() THEN 1 ELSE 0 END) AS expired
-     FROM recruiting_invitations
-     WHERE assignment_id = @assignmentId
-     ```
-  2. Compute `stats.pending -= stats.expired` from the single result (no race condition)
-  3. This also fixes the `new Date()` vs `NOW()` inconsistency
+- **Status**: DONE (commit 3d879777)
 - **Exit criterion**: `getInvitationStats` uses a single SQL query with conditional aggregation. No negative pending count possible.
+
+### L6: Parse `CreatedAt` from `docker ps` output instead of making redundant `docker inspect` calls
+- **File**: `src/lib/compiler/execute.ts:746-786`
+- **Status**: PENDING
+- **Source**: AGG-4 (cycle 16 aggregate), carried from AGG-8 (cycle 15)
+- **Plan**:
+  1. Change the destructuring from `const [container, status] = line.split("\t")` to `const [container, status, createdAtStr] = line.split("\t")`
+  2. When `statusLower.startsWith("up")` and `createdAtStr` is present, parse it directly instead of calling `docker inspect`
+  3. Only fall back to `docker inspect` if the `createdAtStr` column is empty or cannot be parsed
+  4. Add a comment explaining the optimization
+- **Exit criterion**: No redundant `docker inspect` calls for containers where `CreatedAt` is available in `docker ps` output.
+
+### L7: Extract shared sign-out utility for PublicHeader and AppSidebar
+- **File**: `src/components/layout/public-header.tsx:183-186`, `src/components/layout/app-sidebar.tsx:229-245`
+- **Status**: PENDING
+- **Source**: AGG-6 (cycle 16 aggregate)
+- **Plan**:
+  1. Create a shared `handleSignOutWithCleanup` utility function in a new file or an existing shared module (e.g., `src/lib/auth/sign-out.ts`)
+  2. The utility should: (a) set `isSigningOut` state, (b) clear localStorage/sessionStorage for known app keys, (c) call `signOut()`, (d) reset `isSigningOut` on failure
+  3. Replace the inline implementations in both PublicHeader and AppSidebar with calls to the shared utility
+  4. For AGG-3 (localStorage.clear() clears all origin), use targeted key removal with a namespace prefix (e.g., keys starting with `jk_` or known specific keys like `source-draft-*`)
+- **Exit criterion**: Both components use a shared sign-out utility. localStorage/sessionStorage clearing is targeted, not blanket.
+
+### L8: Remove redundant JS-side deadline checks in `redeemRecruitingToken`
+- **File**: `src/lib/assignments/recruiting-invitations.ts:405,440`
+- **Status**: PENDING
+- **Source**: AGG-7 (cycle 16 aggregate)
+- **Plan**:
+  1. Remove the `if (assignment.deadline && assignment.deadline < new Date())` checks at lines 405 and 440
+  2. The SQL atomic claim step at line 497 already validates the deadline via `NOW()`, which is the authoritative check
+  3. Add a comment explaining why the JS check is omitted: to avoid clock skew between app server and DB server
+  4. Verify that the existing "contestClosed" error is still returned via the SQL path when appropriate
+- **Exit criterion**: No `new Date()` deadline comparisons in `redeemRecruitingToken`. Deadline enforcement relies solely on the SQL atomic check.
+
+### L9: Extract SSE terminal-state-fetch into a shared helper
+- **File**: `src/app/api/v1/submissions/[id]/events/route.ts:316-428`
+- **Status**: PENDING
+- **Source**: AGG-8 (cycle 16 aggregate)
+- **Plan**:
+  1. Extract the terminal-state handling (fetch full submission, sanitize, enqueue result event, close) into a helper function
+  2. Call the helper from both the re-auth IIFE path and the fast path
+  3. Ensure the helper properly checks `closed` before enqueuing and closing
+  4. Verify SSE tests still pass
+- **Exit criterion**: Terminal-state handling logic exists in a single helper function. No duplicate code paths.
 
 ---
 
@@ -98,4 +128,5 @@
 
 | Finding | Severity | Reason | Exit Criterion |
 |---------|----------|--------|----------------|
-| L6 (sanitizeSubmissionForViewer DB query) | LOW | Same as D16 — only called from one place, no N+1 risk today | Re-open if function is added to list endpoints |
+| AGG-5 (ri_token_idx unique index on deprecated token column) | LOW | Requires a DB migration; token column is always null today so the index has zero operational impact | Re-open if token column is repurposed or if migration tooling is available |
+| AGG-4(c15) (no test coverage for API rate-limiting functions) | MEDIUM | Test setup requires mocking execTransaction and the sidecar; significant effort for stable tests | Re-open when dedicated rate-limit test infrastructure is available |
