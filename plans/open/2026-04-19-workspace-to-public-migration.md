@@ -192,13 +192,13 @@ Same as instructor, with additional "Admin" dropdown entry that navigates to `/d
 
 ### Phase 3 — Dashboard layout refinement (Medium risk)
 
-**Status:** IN PROGRESS (cycle 13)
+**Status:** IN PROGRESS (cycle 19 — breadcrumb move pending)
 
 **Goal:** Simplify the dashboard layout to complement the top navbar.
 
 1. ~~Ensure the top navbar is visible on dashboard pages (currently it is not — dashboard has its own header).~~ DONE (commit bbf36ec2 — PublicHeader added to dashboard layout)
 2. ~~Consider converting `AppSidebar` from a full sidebar to a slimmer icon rail or contextual sub-navigation within each section.~~ PARTIALLY DONE (cycle 13 — removed duplicate items from AppSidebar that are already in PublicHeader dropdown; remaining items: problems, submissions, contests, compiler, rankings, groups, problem sets, admin)
-3. Move breadcrumb to top navbar area.
+3. Move breadcrumb to top navbar area. **(cycle 19 — L4 scheduled)**
 4. Evaluate whether `(control)` route group should merge into `(dashboard)/admin` or remain separate.
 
 **Additional Phase 3 improvements identified in cycle 10 review:**
