@@ -326,7 +326,7 @@ export function PublicHeader({ siteTitle, items, actions, loggedInUser, leadingS
             {loggedInUser && (
               <div className="mt-2 flex flex-col gap-0.5 border-t pt-2">
                 {/* tracking-wide is for English uppercase text only (e.g. "DASHBOARD") — do not apply to Korean labels */}
-                <p className="px-3 py-1 text-xs font-medium uppercase tracking-wide text-muted-foreground/60">
+                <p className={`px-3 py-1 text-xs font-medium uppercase text-muted-foreground/60${locale !== "ko" ? " tracking-wide" : ""}`}>
                   {tShell("nav.dashboard")}
                 </p>
                 {dropdownItems.map((item) => (
