@@ -6,7 +6,7 @@ import { importDatabase } from "@/lib/db/import";
 import { validateExport, type JudgeKitExport } from "@/lib/db/export";
 import { MAX_IMPORT_BYTES, readJsonBodyWithLimit, readUploadedJsonFileWithLimit } from "@/lib/db/import-transfer";
 import { recordAuditEvent } from "@/lib/audit/events";
-import { verifyPassword } from "@/lib/security/password-hash";
+import { verifyPassword, hashPassword } from "@/lib/security/password-hash";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
@@ -55,9 +55,23 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: "authenticationFailed" }, { status: 403 });
       }
 
-      const { valid } = await verifyPassword(password, dbUser.passwordHash);
+      const { valid, needsRehash } = await verifyPassword(password, dbUser.passwordHash);
       if (!valid) {
         return NextResponse.json({ error: "invalidPassword" }, { status: 403 });
+      }
+
+      // Transparent rehash: migrate legacy bcrypt hashes to argon2id when the
+      // admin re-confirms their password for a sensitive operation.
+      if (needsRehash) {
+        try {
+          const newHash = await hashPassword(password);
+          await db
+            .update(users)
+            .set({ passwordHash: newHash })
+            .where(eq(users.id, user.id));
+        } catch (err) {
+          logger.error({ err, userId: user.id }, "[migrate-import] Failed to rehash password");
+        }
       }
 
       if (!file) {
@@ -140,9 +154,23 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "authenticationFailed" }, { status: 403 });
     }
 
-    const { valid } = await verifyPassword(jsonPassword, dbUser.passwordHash);
+    const { valid, needsRehash } = await verifyPassword(jsonPassword, dbUser.passwordHash);
     if (!valid) {
       return NextResponse.json({ error: "invalidPassword" }, { status: 403 });
+    }
+
+    // Transparent rehash: migrate legacy bcrypt hashes to argon2id when the
+    // admin re-confirms their password for a sensitive operation.
+    if (needsRehash) {
+      try {
+        const newHash = await hashPassword(jsonPassword);
+        await db
+          .update(users)
+          .set({ passwordHash: newHash })
+          .where(eq(users.id, user.id));
+      } catch (err) {
+        logger.error({ err, userId: user.id }, "[migrate-import] Failed to rehash password");
+      }
     }
 
     // Extract the actual export data, stripping the password field
