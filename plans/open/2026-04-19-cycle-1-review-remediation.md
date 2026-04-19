@@ -144,11 +144,11 @@
 | UX-01 | Done | Added semantic `h1` coverage |
 | UX-02 | Done | Localized public-header ARIA labels |
 | UI-01 | Done | Simplified `FilterSelect` |
-| M1 | TODO | Fix Tags API `limit` NaN handling |
-| M2 | TODO | Add proxy `x-forwarded-host` deletion comment |
-| M3 | TODO | Add optional parameters to `sanitizeSubmissionForViewer` |
-| L1 | TODO | Add error handling for chat widget tool-calling loop |
-| L2 | TODO | Add `/languages` to proxy matcher |
+| M1 | Done | Fix Tags API `limit` NaN handling (commit fb13bfab) |
+| M2 | Done | Add proxy `x-forwarded-host` deletion comment + `/languages` matcher (commit 7199bec4) |
+| M3 | Done | Add optional parameters to `sanitizeSubmissionForViewer` (commit efdde4b1) |
+| L1 | Done | Add error handling for chat widget tool-calling loop (commit ef214219) |
+| L2 | Done | Add `/languages` to proxy matcher (included in commit 7199bec4) |
 | DEF-01 | Deferred | Needs reproduction against current-head runtime/data |
 
 ## Gate notes
