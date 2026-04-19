@@ -369,7 +369,7 @@ async function runDocker(opts: {
 
   args.push("--init", opts.image, ...opts.command);
 
-  logger.info({ container: containerName, command: args.join(" ") }, "[compiler] Docker run");
+  logger.debug({ container: containerName, command: args.join(" ") }, "[compiler] Docker run");
 
   // Gate on the concurrency limiter so we never exceed CPU-count containers
   return executionLimiter(() => {
