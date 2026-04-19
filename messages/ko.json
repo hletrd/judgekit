@@ -2060,6 +2060,7 @@
       "dashboard": "부정행위 신호 대시보드",
       "events": "이벤트",
       "noEvents": "기록된 부정행위 신호가 없습니다.",
+      "language": "언어",
       "eventTypes": {
         "tab_switch": "탭 전환",
         "copy": "복사",

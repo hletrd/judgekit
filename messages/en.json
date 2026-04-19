@@ -2060,6 +2060,7 @@
       "dashboard": "Anti-Cheat Signals Dashboard",
       "events": "Events",
       "noEvents": "No anti-cheat signals recorded.",
+      "language": "Language",
       "eventTypes": {
         "tab_switch": "Tab Switch",
         "copy": "Copy",
