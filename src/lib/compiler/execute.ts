@@ -153,7 +153,7 @@ interface DockerRunResult {
 function validateShellCommand(cmd: string): boolean {
   if (!cmd || cmd.length > 10_000) return false;
   if (cmd.includes("\0")) return false;
-  const dangerous = /`|\$\(|\$\{|[<>]\(|\|\||\||>|<|\n|\r|\beval\b/;
+  const dangerous = /`|\$\(|\$\{|[<>]\(|\|\||\||>|<|\n|\r|\beval\b|\bexec\b|\bsource\b/;
   return !dangerous.test(cmd);
 }
 
