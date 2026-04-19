@@ -294,7 +294,7 @@ export const PATCH = createApiHandler({
 
     if (!found) return notFound("User");
 
-    const { error: profileValidationError, data: validatedProfileFields } = validateProfileFields(body, isAdminActor);
+    const { error: profileValidationError } = validateProfileFields(body, isAdminActor);
     if (profileValidationError) return profileValidationError;
 
     if (!isAdminActor && body.username !== undefined) {

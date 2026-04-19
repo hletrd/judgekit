@@ -24,7 +24,6 @@ export function getSafeRedirectUrl(callbackUrl: string | null | undefined): stri
 
   // Strip CR/LF and other control characters. These have no place in a
   // path and would otherwise enable CRLF injection downstream.
-  // eslint-disable-next-line no-control-regex
   const clean = callbackUrl.replace(/[\x00-\x1f\x7f]/g, "");
 
   if (clean.length === 0) return DEFAULT_POST_AUTH_REDIRECT;

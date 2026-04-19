@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { problems, problemGroupAccess, enrollments } from "@/lib/db/schema";
 import { eq, desc, sql, and, or } from "drizzle-orm";
-import { forbidden, createApiHandler } from "@/lib/api/handler";
+import { createApiHandler } from "@/lib/api/handler";
 import { recordAuditEvent } from "@/lib/audit/events";
 import { parsePagination } from "@/lib/api/pagination";
 import { apiError, apiPaginated, apiSuccess } from "@/lib/api/responses";
