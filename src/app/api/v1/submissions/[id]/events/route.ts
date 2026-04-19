@@ -25,6 +25,8 @@ interface ConnectionInfo {
 }
 const activeConnectionSet = new Set<string>();
 const connectionInfoMap = new Map<string, ConnectionInfo>();
+/** Per-user connection count index for O(1) lookup instead of O(n) iteration. */
+const userConnectionCounts = new Map<string, number>();
 
 const MAX_GLOBAL_SSE_CONNECTIONS = 500;
 const MAX_TRACKED_CONNECTIONS = MAX_GLOBAL_SSE_CONNECTIONS * 2;
@@ -32,15 +34,6 @@ const AUTH_RECHECK_INTERVAL_MS = 30_000;
 
 function generateConnectionId(userId: string): string {
   return `${userId}-${Date.now()}-${randomUUID().slice(0, 8)}`;
-}
-
-function countUserConnections(userId: string): number {
-  let count = 0;
-  for (const connId of activeConnectionSet) {
-    const info = connectionInfoMap.get(connId);
-    if (info && info.userId === userId) count++;
-  }
-  return count;
 }
 
 function addConnection(connId: string, userId: string): void {
@@ -52,11 +45,21 @@ function addConnection(connId: string, userId: string): void {
   }
   activeConnectionSet.add(connId);
   connectionInfoMap.set(connId, { userId, createdAt: Date.now() });
+  userConnectionCounts.set(userId, (userConnectionCounts.get(userId) ?? 0) + 1);
 }
 
 function removeConnection(connId: string): void {
+  const info = connectionInfoMap.get(connId);
   activeConnectionSet.delete(connId);
   connectionInfoMap.delete(connId);
+  if (info) {
+    const count = (userConnectionCounts.get(info.userId) ?? 1) - 1;
+    if (count <= 0) {
+      userConnectionCounts.delete(info.userId);
+    } else {
+      userConnectionCounts.set(info.userId, count);
+    }
+  }
 }
 
 // Periodic cleanup of stale connection tracking entries
@@ -209,7 +212,7 @@ export async function GET(
       if (activeConnectionSet.size >= MAX_GLOBAL_SSE_CONNECTIONS) {
         return apiError("serverBusy", 503);
       }
-      if (countUserConnections(userId) >= sseConfig.maxSseConnectionsPerUser) {
+      if ((userConnectionCounts.get(userId) ?? 0) >= sseConfig.maxSseConnectionsPerUser) {
         return apiError("tooManyConnections", 429);
       }
       addConnection(connId, userId);
