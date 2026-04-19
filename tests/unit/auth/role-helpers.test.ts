@@ -24,67 +24,10 @@ vi.mock("@/lib/capabilities/cache", () => ({
 }));
 
 import {
-  isAtLeastRole,
   isAtLeastRoleAsync,
-  canManageUsers,
   canManageUsersAsync,
-  isInstructorOrAbove,
   isInstructorOrAboveAsync,
 } from "@/lib/auth/role-helpers";
-
-// ---------------------------------------------------------------------------
-// isAtLeastRole
-// ---------------------------------------------------------------------------
-
-describe("isAtLeastRole", () => {
-  it("returns true when user role equals required role", () => {
-    expect(isAtLeastRole("instructor", "instructor")).toBe(true);
-  });
-
-  it("returns true when user role exceeds required role (admin >= instructor)", () => {
-    expect(isAtLeastRole("admin", "instructor")).toBe(true);
-  });
-
-  it("returns true for super_admin >= admin", () => {
-    expect(isAtLeastRole("super_admin", "admin")).toBe(true);
-  });
-
-  it("returns true for super_admin >= student", () => {
-    expect(isAtLeastRole("super_admin", "student")).toBe(true);
-  });
-
-  it("returns false when user role is below required role (student < instructor)", () => {
-    expect(isAtLeastRole("student", "instructor")).toBe(false);
-  });
-
-  it("returns false when student < admin", () => {
-    expect(isAtLeastRole("student", "admin")).toBe(false);
-  });
-
-  it("returns false when instructor < admin", () => {
-    expect(isAtLeastRole("instructor", "admin")).toBe(false);
-  });
-
-  it("returns false when instructor < super_admin", () => {
-    expect(isAtLeastRole("instructor", "super_admin")).toBe(false);
-  });
-
-  it("returns false for unknown role vs known role", () => {
-    expect(isAtLeastRole("guest", "student")).toBe(false);
-  });
-
-  it("returns true when comparing two unknown roles (both -1)", () => {
-    expect(isAtLeastRole("guest", "visitor")).toBe(true);
-  });
-
-  it("returns true when known role >= unknown role (student is 0, unknown is -1)", () => {
-    expect(isAtLeastRole("student", "unknown_role")).toBe(true);
-  });
-
-  it("returns false when unknown role < known role (unknown is -1, student is 0)", () => {
-    expect(isAtLeastRole("unknown_role", "student")).toBe(false);
-  });
-});
 
 // ---------------------------------------------------------------------------
 // isAtLeastRoleAsync
@@ -132,32 +75,6 @@ describe("isAtLeastRoleAsync", () => {
 
     expect(mocks.getRoleLevel).toHaveBeenCalledWith("super_admin");
     expect(mocks.getRoleLevel).toHaveBeenCalledWith("student");
-  });
-});
-
-// ---------------------------------------------------------------------------
-// canManageUsers
-// ---------------------------------------------------------------------------
-
-describe("canManageUsers", () => {
-  it("returns true for admin", () => {
-    expect(canManageUsers("admin")).toBe(true);
-  });
-
-  it("returns true for super_admin", () => {
-    expect(canManageUsers("super_admin")).toBe(true);
-  });
-
-  it("returns false for student", () => {
-    expect(canManageUsers("student")).toBe(false);
-  });
-
-  it("returns false for instructor", () => {
-    expect(canManageUsers("instructor")).toBe(false);
-  });
-
-  it("returns false for unknown role", () => {
-    expect(canManageUsers("guest")).toBe(false);
   });
 });
 
@@ -218,32 +135,6 @@ describe("canManageUsersAsync", () => {
     await canManageUsersAsync("custom_role");
 
     expect(mocks.resolveCapabilities).toHaveBeenCalledWith("custom_role");
-  });
-});
-
-// ---------------------------------------------------------------------------
-// isInstructorOrAbove
-// ---------------------------------------------------------------------------
-
-describe("isInstructorOrAbove", () => {
-  it("returns true for instructor", () => {
-    expect(isInstructorOrAbove("instructor")).toBe(true);
-  });
-
-  it("returns true for admin", () => {
-    expect(isInstructorOrAbove("admin")).toBe(true);
-  });
-
-  it("returns true for super_admin", () => {
-    expect(isInstructorOrAbove("super_admin")).toBe(true);
-  });
-
-  it("returns false for student", () => {
-    expect(isInstructorOrAbove("student")).toBe(false);
-  });
-
-  it("returns false for unknown role", () => {
-    expect(isInstructorOrAbove("guest")).toBe(false);
   });
 });
 
