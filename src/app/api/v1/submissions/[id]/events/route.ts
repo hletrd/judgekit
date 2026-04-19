@@ -323,6 +323,9 @@ export async function GET(
           if (now - lastAuthCheck >= AUTH_RECHECK_INTERVAL_MS) {
             lastAuthCheck = now;
             void (async () => {
+              // Early exit if the connection closed between the IIFE invocation
+              // and this async start — prevents a wasted DB query.
+              if (closed) return;
               try {
                 const reAuthUser = await getApiUser(request);
                 if (!reAuthUser) {
