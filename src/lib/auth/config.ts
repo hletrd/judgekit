@@ -50,10 +50,48 @@ const DUMMY_PASSWORD_HASH =
   "$argon2id$v=19$m=19456,t=2,p=1$Y2xhdWRlZHVtbXloYXNo$KQH6bMKH3t2fGK8qMJzrOGmG5bNRVZ0bQfO7aDVz0Zk";
 
 /**
+ * Auth-relevant preference field names on the DB `users` table.
+ * Used to derive the DB query column list and the token-clearing field set.
+ * When adding a new preference field, add it HERE, to `AuthUserRecord`,
+ * and to `mapUserToAuthFields` — the rest is derived automatically.
+ */
+const AUTH_PREFERENCE_FIELDS = [
+  "preferredLanguage",
+  "preferredTheme",
+  "shareAcceptedSolutions",
+  "acceptedSolutionsAnonymous",
+  "editorTheme",
+  "editorFontSize",
+  "editorFontFamily",
+  "lectureMode",
+  "lectureFontScale",
+  "lectureColorScheme",
+] as const;
+
+/** Core (non-preference) auth fields returned by every auth query. */
+const AUTH_CORE_FIELDS = [
+  "id",
+  "username",
+  "email",
+  "name",
+  "className",
+  "role",
+  "isActive",
+  "mustChangePassword",
+  "tokenInvalidatedAt",
+] as const;
+
+/** All columns to select when querying a user for auth purposes. */
+const AUTH_USER_COLUMNS: Record<string, true> = Object.fromEntries(
+  [...AUTH_CORE_FIELDS, ...AUTH_PREFERENCE_FIELDS].map((f) => [f, true as const]),
+);
+
+/**
  * Map an AuthUserRecord to a plain object with all auth-relevant fields
  * and their canonical defaults. Used by createSuccessfulLoginResponse,
  * syncTokenWithUser, and the jwt callback to avoid maintaining three
- * separate field lists. Add new preference fields HERE ONLY.
+ * separate field lists. Add new preference fields to AUTH_PREFERENCE_FIELDS
+ * and HERE — the DB query columns and clearAuthToken are derived automatically.
  */
 function mapUserToAuthFields(user: AuthUserRecord) {
   return {
@@ -287,6 +325,8 @@ export const authConfig: NextAuthConfig = {
             mustChangePassword: user.mustChangePassword ?? false,
             preferredLanguage: user.preferredLanguage,
             preferredTheme: user.preferredTheme,
+            shareAcceptedSolutions: user.shareAcceptedSolutions,
+            acceptedSolutionsAnonymous: user.acceptedSolutionsAnonymous,
             editorTheme: user.editorTheme,
             editorFontSize: user.editorFontSize,
             editorFontFamily: user.editorFontFamily,
@@ -365,25 +405,29 @@ export const authConfig: NextAuthConfig = {
       if (user) {
         const authenticatedAtSeconds = Math.trunc(Date.now() / 1000);
 
-        const updatedToken = syncTokenWithUser(token, {
-          id: user.id ?? token.sub ?? "",
-          username: user.username,
-          email: user.email ?? null,
-          name: user.name ?? "",
-          className: user.className ?? null,
-          role: user.role,
-          mustChangePassword: user.mustChangePassword ?? false,
-          preferredLanguage: user.preferredLanguage ?? null,
-          preferredTheme: user.preferredTheme ?? null,
-          shareAcceptedSolutions: user.shareAcceptedSolutions ?? true,
-          acceptedSolutionsAnonymous: user.acceptedSolutionsAnonymous ?? false,
-          editorTheme: user.editorTheme ?? null,
-          editorFontSize: user.editorFontSize ?? null,
-          editorFontFamily: user.editorFontFamily ?? null,
-          lectureMode: user.lectureMode ?? null,
-          lectureFontScale: user.lectureFontScale ?? null,
-          lectureColorScheme: user.lectureColorScheme ?? null,
-        }, authenticatedAtSeconds);
+        const updatedToken = syncTokenWithUser(
+          token,
+          {
+            id: user.id ?? token.sub ?? "",
+            username: user.username ?? "",
+            email: user.email ?? null,
+            name: user.name ?? "",
+            className: user.className ?? null,
+            role: user.role ?? "",
+            mustChangePassword: user.mustChangePassword ?? false,
+            preferredLanguage: user.preferredLanguage ?? null,
+            preferredTheme: user.preferredTheme ?? null,
+            shareAcceptedSolutions: user.shareAcceptedSolutions ?? true,
+            acceptedSolutionsAnonymous: user.acceptedSolutionsAnonymous ?? false,
+            editorTheme: user.editorTheme ?? null,
+            editorFontSize: user.editorFontSize ?? null,
+            editorFontFamily: user.editorFontFamily ?? null,
+            lectureMode: user.lectureMode ?? null,
+            lectureFontScale: user.lectureFontScale ?? null,
+            lectureColorScheme: user.lectureColorScheme ?? null,
+          },
+          authenticatedAtSeconds,
+        );
 
         const loginContext = getLoginEventContextFromUser(user);
         const ua = loginContext?.userAgent ?? "";
@@ -404,27 +448,7 @@ export const authConfig: NextAuthConfig = {
 
       const freshUser = await db.query.users.findFirst({
         where: eq(users.id, userId),
-        columns: {
-          id: true,
-          username: true,
-          email: true,
-          name: true,
-          className: true,
-          role: true,
-          isActive: true,
-          mustChangePassword: true,
-          tokenInvalidatedAt: true,
-          preferredLanguage: true,
-          preferredTheme: true,
-          shareAcceptedSolutions: true,
-          acceptedSolutionsAnonymous: true,
-          editorTheme: true,
-          editorFontSize: true,
-          editorFontFamily: true,
-          lectureMode: true,
-          lectureFontScale: true,
-          lectureColorScheme: true,
-        },
+        columns: AUTH_USER_COLUMNS,
       });
 
       if (

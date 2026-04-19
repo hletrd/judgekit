@@ -34,27 +34,47 @@ export function isTokenInvalidated(
   return authenticatedAtSeconds < invalidatedAtSeconds;
 }
 
+/**
+ * Token field names that carry auth-relevant user data.
+ * Must stay in sync with mapUserToAuthFields / syncTokenWithUser.
+ * When a new auth preference field is added, add it here too.
+ */
+const AUTH_TOKEN_FIELDS = [
+  "sub",
+  "id",
+  "role",
+  "username",
+  "email",
+  "name",
+  "className",
+  "mustChangePassword",
+  "preferredLanguage",
+  "preferredTheme",
+  "shareAcceptedSolutions",
+  "acceptedSolutionsAnonymous",
+  "editorTheme",
+  "editorFontSize",
+  "editorFontFamily",
+  "lectureMode",
+  "lectureFontScale",
+  "lectureColorScheme",
+  "authenticatedAt",
+  "uaHash",
+] as const;
+
 export function clearAuthToken(token: JWT) {
-  delete token.sub;
-  delete token.id;
-  delete token.role;
-  delete token.username;
-  delete token.email;
-  delete token.name;
-  delete token.className;
-  delete token.mustChangePassword;
-  delete token.preferredLanguage;
-  delete token.preferredTheme;
-  delete token.shareAcceptedSolutions;
-  delete token.acceptedSolutionsAnonymous;
-  delete token.editorTheme;
-  delete token.editorFontSize;
-  delete token.editorFontFamily;
-  delete token.lectureMode;
-  delete token.lectureFontScale;
-  delete token.lectureColorScheme;
-  delete token.authenticatedAt;
-  delete token.uaHash;
+  // Set authenticatedAt to 0 instead of deleting it so that
+  // getTokenAuthenticatedAtSeconds returns 0 (not falling back
+  // to token.iat). This ensures isTokenInvalidated always
+  // returns true for a cleared token, closing a revocation
+  // bypass window where iat > tokenInvalidatedAt.
+  token.authenticatedAt = 0;
+
+  for (const field of AUTH_TOKEN_FIELDS) {
+    if (field !== "authenticatedAt") {
+      delete token[field as keyof JWT];
+    }
+  }
 
   return token;
 }
