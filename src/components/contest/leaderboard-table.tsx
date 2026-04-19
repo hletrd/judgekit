@@ -377,7 +377,7 @@ export function LeaderboardTable({
                     {getRankIcon(entry.rank)}
                     {entry.rank}
                   </span>
-                  {data.frozen && entry.isCurrentUser && entry.liveRank != null ? (
+                  {data.frozen && (entry.isCurrentUser || (currentUserId && entry.userId === currentUserId)) && entry.liveRank != null ? (
                     <div className="mt-1">
                       <Badge variant="secondary" className="text-[10px]">
                         {t("liveRank", { rank: entry.liveRank })}
