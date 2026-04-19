@@ -7,10 +7,20 @@ import { signOut } from "next-auth/react";
  * Only these keys are cleared on sign-out instead of calling
  * localStorage.clear() which would destroy data from other
  * apps or browser extensions sharing the same origin.
+ *
+ * When adding a new prefix, update this list and reference the source file:
+ * - "oj:"                    — src/hooks/use-source-draft.ts (oj:submission-draft:*, oj:preferred-language:*)
+ * - "source-draft-"          — legacy prefix (superseded by "oj:" above, kept for backward compat)
+ * - "code-draft-"            — legacy prefix (superseded by "oj:" above, kept for backward compat)
+ * - "judgekit_anticheat_"    — src/components/exam/anti-cheat-monitor.tsx (judgekit_anticheat_pending_*)
+ * - "compiler:"              — src/app/(dashboard)/dashboard/compiler/compiler-client.tsx (compiler:language)
  */
 const APP_STORAGE_PREFIXES = [
+  "oj:",
   "source-draft-",
   "code-draft-",
+  "judgekit_anticheat_",
+  "compiler:",
 ];
 
 /**
