@@ -161,7 +161,21 @@ export async function getRecruitingInvitation(id: string) {
 
 export async function getRecruitingInvitationByToken(token: string) {
   const [invitation] = await db
-    .select()
+    .select({
+      id: recruitingInvitations.id,
+      assignmentId: recruitingInvitations.assignmentId,
+      candidateName: recruitingInvitations.candidateName,
+      candidateEmail: recruitingInvitations.candidateEmail,
+      status: recruitingInvitations.status,
+      metadata: recruitingInvitations.metadata,
+      userId: recruitingInvitations.userId,
+      expiresAt: recruitingInvitations.expiresAt,
+      redeemedAt: recruitingInvitations.redeemedAt,
+      ipAddress: recruitingInvitations.ipAddress,
+      createdBy: recruitingInvitations.createdBy,
+      createdAt: recruitingInvitations.createdAt,
+      updatedAt: recruitingInvitations.updatedAt,
+    })
     .from(recruitingInvitations)
     .where(eq(recruitingInvitations.tokenHash, hashToken(token)))
     .limit(1);
@@ -294,7 +308,21 @@ export async function redeemRecruitingToken(
     return await db.transaction(async (tx) => {
       // Read invitation inside transaction for consistent snapshot
       const [invitation] = await tx
-        .select()
+        .select({
+          id: recruitingInvitations.id,
+          assignmentId: recruitingInvitations.assignmentId,
+          candidateName: recruitingInvitations.candidateName,
+          candidateEmail: recruitingInvitations.candidateEmail,
+          status: recruitingInvitations.status,
+          metadata: recruitingInvitations.metadata,
+          userId: recruitingInvitations.userId,
+          expiresAt: recruitingInvitations.expiresAt,
+          redeemedAt: recruitingInvitations.redeemedAt,
+          ipAddress: recruitingInvitations.ipAddress,
+          createdBy: recruitingInvitations.createdBy,
+          createdAt: recruitingInvitations.createdAt,
+          updatedAt: recruitingInvitations.updatedAt,
+        })
         .from(recruitingInvitations)
         .where(eq(recruitingInvitations.tokenHash, hashToken(token)))
         .limit(1);
