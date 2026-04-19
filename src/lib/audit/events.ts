@@ -186,7 +186,7 @@ async function pruneOldAuditEvents() {
     let totalDeleted = 0;
     while (true) {
       const result = await db.execute(
-        sql`DELETE FROM ${auditEvents} WHERE ${auditEvents.createdAt} < ${cutoff} LIMIT ${PRUNE_BATCH_SIZE}`
+        sql`DELETE FROM ${auditEvents} WHERE ctid IN (SELECT ctid FROM ${auditEvents} WHERE ${auditEvents.createdAt} < ${cutoff} LIMIT ${PRUNE_BATCH_SIZE})`
       );
       const deleted = Number(result.rowCount ?? 0);
       totalDeleted += deleted;
