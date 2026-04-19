@@ -28,7 +28,12 @@ export async function getPluginState(
   if (!definition) return null;
 
   try {
-    const [row] = await db.select().from(plugins).where(eq(plugins.id, pluginId)).limit(1);
+    const [row] = await db.select({
+      id: plugins.id,
+      enabled: plugins.enabled,
+      config: plugins.config,
+      updatedAt: plugins.updatedAt,
+    }).from(plugins).where(eq(plugins.id, pluginId)).limit(1);
     const includeSecrets = options.includeSecrets === true;
     const rawConfig = (row?.config as Record<string, unknown>) ?? { ...definition.defaultConfig };
 
