@@ -1,6 +1,7 @@
 import { computeContestRanking } from "@/lib/assignments/contest-scoring";
 import { rawQueryAll } from "@/lib/db/queries";
 import type { ScoringModel } from "@/types";
+import pLimit from "p-limit";
 
 export type ContestReplaySnapshot = {
   cutoffSec: number;
@@ -55,24 +56,34 @@ export async function computeContestReplay(
     return null;
   }
 
-  const snapshots: ContestReplaySnapshot[] = [];
-  let scoringModel: ScoringModel = "ioi";
+  // Compute snapshots with bounded concurrency (4 parallel) instead of
+  // sequential queries — reduces wall-clock time for large contests.
+  const snapshotLimiter = pLimit(4);
+  const snapshotResults = await Promise.all(
+    sampledCutoffs.map((cutoffSec) =>
+      snapshotLimiter(async () => {
+        const ranking = await computeContestRanking(assignmentId, cutoffSec);
+        return {
+          cutoffSec,
+          cutoffMs: cutoffSec * 1000,
+          scoringModel: ranking.scoringModel,
+          entries: ranking.entries.slice(0, 10).map((entry) => ({
+            userId: entry.userId,
+            name: entry.name || entry.username,
+            rank: entry.rank,
+            totalScore: entry.totalScore,
+            totalPenalty: entry.totalPenalty,
+          })),
+        };
+      })
+    )
+  );
 
-  for (const cutoffSec of sampledCutoffs) {
-    const ranking = await computeContestRanking(assignmentId, cutoffSec);
-    scoringModel = ranking.scoringModel;
-    snapshots.push({
-      cutoffSec,
-      cutoffMs: cutoffSec * 1000,
-      entries: ranking.entries.slice(0, 10).map((entry) => ({
-        userId: entry.userId,
-        name: entry.name || entry.username,
-        rank: entry.rank,
-        totalScore: entry.totalScore,
-        totalPenalty: entry.totalPenalty,
-      })),
-    });
-  }
+  // All snapshots share the same scoring model for a given assignment
+  const scoringModel: ScoringModel = snapshotResults[0]?.scoringModel ?? "ioi";
+  const snapshots: ContestReplaySnapshot[] = snapshotResults.map(
+    ({ cutoffSec, cutoffMs, entries }) => ({ cutoffSec, cutoffMs, entries })
+  );
 
   return {
     scoringModel,
