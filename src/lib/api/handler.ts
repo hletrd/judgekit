@@ -7,7 +7,6 @@ import {
   forbidden,
   notFound,
   csrfForbidden,
-  isAdmin,
   isAdminAsync,
 } from "@/lib/api/auth";
 import { consumeApiRateLimit } from "@/lib/security/api-rate-limit";
@@ -188,4 +187,4 @@ export function createApiHandler<T = undefined>(config: HandlerConfig<T>) {
 }
 
 // Re-export helpers so routes that use the wrapper don't need two imports
-export { isAdmin, isAdminAsync, unauthorized, forbidden, notFound };
+export { isAdminAsync, unauthorized, forbidden, notFound };

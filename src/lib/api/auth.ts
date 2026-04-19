@@ -91,10 +91,11 @@ export function notFound(resource: string) {
 
 /**
  * Check whether a role is one of the built-in admin-level roles.
- * Custom-role-aware admin checks should use `isAdminAsync()` or direct
- * capability resolution instead.
+ * @internal Only for use as a fast-path inside isAdminAsync().
+ * Custom-role-aware admin checks should use `isAdminAsync()`
+ * or direct capability resolution instead.
  */
-export function isAdmin(role: string) {
+function isAdmin(role: string) {
   return (ROLE_LEVEL[role as UserRole] ?? -1) >= ROLE_LEVEL.admin;
 }
 
