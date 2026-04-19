@@ -69,13 +69,6 @@ if [[ -z "${AUTH_TOKEN:-}" ]]; then
 fi
 
 REMOTE="${SSH_USER}@${HOST}"
-LOCAL_ENV_FILE=""
-cleanup() {
-  if [[ -n "${LOCAL_ENV_FILE}" && -f "${LOCAL_ENV_FILE}" ]]; then
-    rm -f "${LOCAL_ENV_FILE}"
-  fi
-}
-trap cleanup EXIT
 
 echo "=== JudgeKit Worker Deployment ==="
 echo "  Target:      ${REMOTE}"
@@ -96,18 +89,32 @@ echo "[2/4] Setting up remote directory..."
 ssh "${SSH_OPTS[@]}" "${REMOTE}" "install -d -m 700 ${REMOTE_DIR} && mkdir -p /judge-workspaces"
 scp "${SSH_OPTS[@]}" docker-compose.worker.yml "${REMOTE}:${REMOTE_DIR}/docker-compose.yml"
 
-# Step 3: Create .env file on the remote
-echo "[3/4] Creating environment file..."
-LOCAL_ENV_FILE=$(mktemp)
-cat > "${LOCAL_ENV_FILE}" <<ENVEOF
-JUDGE_BASE_URL=${APP_URL}
-JUDGE_AUTH_TOKEN=${AUTH_TOKEN}
-JUDGE_CONCURRENCY=${CONCURRENCY}
-JUDGE_WORKER_HOSTNAME=${HOST}
-RUST_LOG=info
-ENVEOF
-scp "${SSH_OPTS[@]}" "${LOCAL_ENV_FILE}" "${REMOTE}:${REMOTE_DIR}/.env"
-ssh "${SSH_OPTS[@]}" "${REMOTE}" "chmod 600 ${REMOTE_DIR}/.env"
+# Step 3: Create or update .env file on the remote
+# Preserves any existing remote-only keys (e.g. DOCKER_HOST, custom RUST_LOG)
+# by updating variables individually rather than replacing the entire file.
+echo "[3/4] Updating environment file..."
+
+# Required variables — these are always set/updated
+ensure_env_var() {
+  local key="$1"
+  local value="$2"
+  ssh "${SSH_OPTS[@]}" "${REMOTE}" "bash -c '
+    if [ -f ${REMOTE_DIR}/.env ] && grep -q \"^${key}=\" ${REMOTE_DIR}/.env; then
+      sed -i \"s|^${key}=.*|${key}=${value}|\" ${REMOTE_DIR}/.env
+    else
+      echo \"${key}=${value}\" >> ${REMOTE_DIR}/.env
+    fi
+  '"
+}
+
+# Create .env if it doesn't exist
+ssh "${SSH_OPTS[@]}" "${REMOTE}" "touch ${REMOTE_DIR}/.env && chmod 600 ${REMOTE_DIR}/.env"
+
+ensure_env_var JUDGE_BASE_URL "${APP_URL}"
+ensure_env_var JUDGE_AUTH_TOKEN "${AUTH_TOKEN}"
+ensure_env_var JUDGE_CONCURRENCY "${CONCURRENCY}"
+ensure_env_var JUDGE_WORKER_HOSTNAME "${HOST}"
+ensure_env_var RUST_LOG "info"
 
 # Step 4: Start the worker
 echo "[4/4] Starting worker..."
