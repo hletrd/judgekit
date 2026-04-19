@@ -190,7 +190,7 @@ function IoiCell({
       style={
         {
           "--ioi-bg-dark": `hsl(${hue}, 40%, 18%)`,
-          "--ioi-text-dark": `hsl(${hue}, 60%, 65%)`,
+          "--ioi-text-dark": `hsl(${hue}, 60%, 70%)`,
           backgroundColor: `hsl(${hue}, 70%, ${90 - ratio * 10}%)`,
           color: `hsl(${hue}, 50%, 30%)`,
         } as React.CSSProperties
