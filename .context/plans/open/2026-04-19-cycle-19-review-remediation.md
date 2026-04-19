@@ -2,7 +2,7 @@
 
 **Date:** 2026-04-19
 **Source:** `.context/reviews/cycle-19-comprehensive-review.md` and `.context/reviews/_aggregate.md`
-**Status:** In Progress
+**Status:** Complete
 
 ---
 
@@ -60,7 +60,7 @@
      ```
      Then in JS: `if (!result?.hasSubmissions) return null; return result.rank;`
   2. Apply the same pattern to the IOI branch.
-- **Progress**: [ ] Not started
+- **Progress**: [x] Committed as `424a0db9`, pushed
 
 ### P2: Fix participant timeline `firstAccepted` to work with IOI scoring
 - **Findings**: L2 (F3)
@@ -74,7 +74,7 @@
   3. For ICPC scoring, keep `status === "accepted"` as-is.
   4. Fetch the assignment's scoring model and problem points as part of the initial data fetch (already partially available via `assignmentProblemRows`).
   5. Adjust `wrongBeforeAc` to also use the appropriate "AC" definition.
-- **Progress**: [ ] Not started
+- **Progress**: [x] Committed as `d6758c28`, pushed
 
 ### P3: Document that analytics student progression uses raw scores (no late penalty)
 - **Findings**: L1 (F2)
@@ -85,7 +85,7 @@
 - **Implementation**:
   1. Add a documentation comment above the student progression section explaining that the progression chart uses raw scores without late penalties, while the leaderboard uses adjusted scores. This is the lightest-weight fix; applying late penalties would require joining `exam_sessions` and `assignments.late_penalty` into the progression query, which is a more substantial change.
   2. The comment should note: "For IOI contests with late penalties, the progression total may exceed the leaderboard total. This is intentional — the progression chart shows raw score trajectory, while the leaderboard applies penalty adjustments."
-- **Progress**: [ ] Not started
+- **Progress**: [x] Committed as `e25ae622`, pushed
 
 ### P4: Optimize LeaderboardTable per-problem lookup from O(m) to O(1)
 - **Findings**: L3 (F4)
@@ -100,7 +100,7 @@
      ```
   2. Replace `entry.problems.find((pr) => pr.problemId === p.problemId)` with `problemMap.get(p.problemId)`.
   3. This is a simple, safe refactor that reduces the per-cell lookup from O(m) to O(1).
-- **Progress**: [ ] Not started
+- **Progress**: [x] Committed as `f4c76a39`, pushed
 
 ---
 
