@@ -42,7 +42,7 @@ export function resetIpAllowlistCache(): void {
  *   - Exact IP match (e.g. "192.168.1.10")
  *   - CIDR /24 and /16 shorthand (e.g. "192.168.1.0/24")
  */
-function ipMatchesAllowlistEntry(clientIp: string, entry: string): boolean {
+export function ipMatchesAllowlistEntry(clientIp: string, entry: string): boolean {
   // Exact match
   if (entry === clientIp) return true;
 

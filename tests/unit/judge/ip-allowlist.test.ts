@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
-import { isJudgeIpAllowed, resetIpAllowlistCache } from "@/lib/judge/ip-allowlist";
+import { isJudgeIpAllowed, ipMatchesAllowlistEntry, resetIpAllowlistCache } from "@/lib/judge/ip-allowlist";
 
 function requestWithIp(ip: string | null): NextRequest {
   const headers: Record<string, string> = {};
@@ -126,5 +126,50 @@ describe("isJudgeIpAllowed", () => {
 
       expect(isJudgeIpAllowed(request)).toBe(true);
     });
+  });
+});
+
+describe("ipMatchesAllowlistEntry (low-level CIDR matching)", () => {
+  it("matches exact IPv4 addresses", () => {
+    expect(ipMatchesAllowlistEntry("192.168.1.10", "192.168.1.10")).toBe(true);
+    expect(ipMatchesAllowlistEntry("192.168.1.10", "192.168.1.11")).toBe(false);
+  });
+
+  it("matches /16 CIDR ranges", () => {
+    expect(ipMatchesAllowlistEntry("192.168.100.50", "192.168.0.0/16")).toBe(true);
+    expect(ipMatchesAllowlistEntry("192.169.1.1", "192.168.0.0/16")).toBe(false);
+  });
+
+  it("matches /32 CIDR (single host)", () => {
+    expect(ipMatchesAllowlistEntry("10.0.0.1", "10.0.0.1/32")).toBe(true);
+    expect(ipMatchesAllowlistEntry("10.0.0.2", "10.0.0.1/32")).toBe(false);
+  });
+
+  it("matches /0 CIDR (match all)", () => {
+    expect(ipMatchesAllowlistEntry("1.2.3.4", "0.0.0.0/0")).toBe(true);
+    expect(ipMatchesAllowlistEntry("255.255.255.255", "0.0.0.0/0")).toBe(true);
+  });
+
+  it("rejects invalid CIDR prefixes", () => {
+    expect(ipMatchesAllowlistEntry("192.168.1.1", "192.168.1.0/33")).toBe(false);
+    expect(ipMatchesAllowlistEntry("192.168.1.1", "192.168.1.0/abc")).toBe(false);
+    expect(ipMatchesAllowlistEntry("192.168.1.1", "192.168.1.0/-1")).toBe(false);
+  });
+
+  it("rejects non-4-part IPs in CIDR matching", () => {
+    expect(ipMatchesAllowlistEntry("2001:db8::1", "192.168.1.0/24")).toBe(false);
+    expect(ipMatchesAllowlistEntry("192.168.1.1", "2001:db8::/64")).toBe(false);
+  });
+
+  it("matches IPv6 exact addresses but not IPv6 CIDR", () => {
+    expect(ipMatchesAllowlistEntry("::1", "::1")).toBe(true);
+    expect(ipMatchesAllowlistEntry("2001:db8::1", "2001:db8::1")).toBe(true);
+    // IPv6 CIDR is not supported — the entry contains "/" but the split produces
+    // non-4-part addresses, so the function returns false.
+    expect(ipMatchesAllowlistEntry("2001:db8::1", "2001:db8::/64")).toBe(false);
+  });
+
+  it("returns false for non-matching entry types", () => {
+    expect(ipMatchesAllowlistEntry("192.168.1.1", "10.0.0.1")).toBe(false);
   });
 });
