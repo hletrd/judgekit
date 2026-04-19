@@ -236,7 +236,12 @@ export function AppSidebar({
         // Storage may be inaccessible in some environments
       }
     }
-    await signOut({ callbackUrl: "/login" });
+    try {
+      await signOut({ callbackUrl: "/login" });
+    } catch {
+      // Reset loading state so the user can retry instead of being stuck
+      setIsSigningOut(false);
+    }
   }
 
   return (
