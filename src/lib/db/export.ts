@@ -38,7 +38,7 @@ async function waitForReadableStreamDemand(
     controller.desiredSize !== null &&
     controller.desiredSize <= 0
   ) {
-    await new Promise((resolve) => setTimeout(resolve, 10));
+    await new Promise((resolve) => setTimeout(resolve, 50));
   }
 }
 
