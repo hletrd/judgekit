@@ -12,6 +12,7 @@ const {
   canManageContestMock,
   computeLeaderboardMock,
   getLeaderboardProblemsMock,
+  computeSingleUserLiveRankMock,
   rawQueryOneMock,
   getRecruitingAccessContextMock,
   dbTransactionMock,
@@ -30,6 +31,7 @@ const {
   canManageContestMock: vi.fn(),
   computeLeaderboardMock: vi.fn(),
   getLeaderboardProblemsMock: vi.fn(),
+  computeSingleUserLiveRankMock: vi.fn(),
   rawQueryOneMock: vi.fn(),
   getRecruitingAccessContextMock: vi.fn(),
   dbTransactionMock: vi.fn(),
@@ -74,6 +76,7 @@ vi.mock("@/lib/assignments/contests", () => ({
 vi.mock("@/lib/assignments/leaderboard", () => ({
   computeLeaderboard: computeLeaderboardMock,
   getLeaderboardProblems: getLeaderboardProblemsMock,
+  computeSingleUserLiveRank: computeSingleUserLiveRankMock,
 }));
 
 vi.mock("@/lib/db/queries", () => ({
@@ -590,25 +593,20 @@ describe("GET /api/v1/contests/[assignmentId]/leaderboard", () => {
     rawQueryOneMock
       .mockResolvedValueOnce({ groupId: "g-1", instructorId: "inst-1", examMode: "scheduled", anonymousLeaderboard: 0 })
       .mockResolvedValueOnce({ one: 1 });
-    computeLeaderboardMock
-      .mockResolvedValueOnce({
-        ...LEADERBOARD_DATA,
-        frozen: true,
-        entries: [{ userId: "student-1", username: "alice", name: "Alice", className: null, rank: 5, totalScore: 2, totalPenalty: 120, problems: [] }],
-      })
-      .mockResolvedValueOnce({
-        ...LEADERBOARD_DATA,
-        frozen: false,
-        entries: [{ userId: "student-1", username: "alice", name: "Alice", className: null, rank: 3, totalScore: 3, totalPenalty: 90, problems: [] }],
-      });
+    computeLeaderboardMock.mockResolvedValueOnce({
+      ...LEADERBOARD_DATA,
+      frozen: true,
+      entries: [{ userId: "student-1", username: "alice", name: "Alice", className: null, rank: 5, totalScore: 2, totalPenalty: 120, problems: [] }],
+    });
+    computeSingleUserLiveRankMock.mockResolvedValueOnce(3);
 
     const res = await leaderboardGET(makeLeaderboardRequest(), { params: PARAMS() });
     const body = await res.json();
 
     expect(res.status).toBe(200);
     expect(body.data.entries[0].liveRank).toBe(3);
-    expect(computeLeaderboardMock).toHaveBeenNthCalledWith(1, "assign-1", false);
-    expect(computeLeaderboardMock).toHaveBeenNthCalledWith(2, "assign-1", true);
+    expect(computeLeaderboardMock).toHaveBeenCalledWith("assign-1", false);
+    expect(computeSingleUserLiveRankMock).toHaveBeenCalledWith("assign-1", "student-1");
   });
 
   it("returns problems list alongside leaderboard", async () => {

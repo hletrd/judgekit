@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   dbExecute: vi.fn(),
   sql: vi.fn((strings: TemplateStringsArray, ...values: unknown[]) => ({ strings, values })),
+  getRetentionCutoff: vi.fn((days: number) => new Date(Date.now() - days * 24 * 60 * 60 * 1000)),
 }));
 
 vi.mock("drizzle-orm", async () => {
@@ -24,12 +25,29 @@ vi.mock("@/lib/db/schema", () => ({
   loginEvents: { createdAt: "loginEvents.createdAt" },
 }));
 
+vi.mock("@/lib/data-retention", () => ({
+  DATA_RETENTION_DAYS: {
+    auditEvents: 90,
+    loginEvents: 180,
+  },
+  DATA_RETENTION_LEGAL_HOLD: false,
+  getRetentionCutoff: mocks.getRetentionCutoff,
+}));
+
+vi.mock("@/lib/logger", () => ({
+  logger: {
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    debug: vi.fn(),
+  },
+}));
+
 beforeEach(() => {
   vi.clearAllMocks();
 });
 
 afterEach(() => {
-  delete process.env.AUDIT_RETENTION_DAYS;
   vi.restoreAllMocks();
 });
 
@@ -45,28 +63,17 @@ describe("cleanupOldEvents", () => {
     expect(result).toEqual({ auditDeleted: 3, loginDeleted: 1 });
   });
 
-  it("issues two raw delete statements using the same cutoff date", async () => {
+  it("uses getRetentionCutoff with DATA_RETENTION_DAYS for each event type", async () => {
     mocks.dbExecute
       .mockResolvedValueOnce({ rowCount: 0 })
       .mockResolvedValueOnce({ rowCount: 0 });
 
-    const before = Date.now();
     const { cleanupOldEvents } = await import("@/lib/db/cleanup");
     await cleanupOldEvents();
-    const after = Date.now();
 
-    expect(mocks.dbExecute).toHaveBeenCalledTimes(2);
-    const firstQuery = mocks.dbExecute.mock.calls[0]?.[0] as { values: unknown[] };
-    const secondQuery = mocks.dbExecute.mock.calls[1]?.[0] as { values: unknown[] };
-    const firstCutoff = firstQuery.values.find((value) => value instanceof Date) as Date;
-    const secondCutoff = secondQuery.values.find((value) => value instanceof Date) as Date;
-
-    expect(firstCutoff).toBeInstanceOf(Date);
-    expect(secondCutoff).toBe(firstCutoff);
-
-    const expectedMs90Days = 90 * 24 * 60 * 60 * 1000;
-    const cutoffMs = firstCutoff.getTime();
-    expect(cutoffMs).toBeGreaterThanOrEqual(before - expectedMs90Days - 1000);
-    expect(cutoffMs).toBeLessThanOrEqual(after - expectedMs90Days + 1000);
+    // getRetentionCutoff should be called once for audit events (90 days)
+    // and once for login events (180 days)
+    expect(mocks.getRetentionCutoff).toHaveBeenCalledWith(90);
+    expect(mocks.getRetentionCutoff).toHaveBeenCalledWith(180);
   });
 });
