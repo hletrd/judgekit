@@ -5,7 +5,6 @@ import { execTransaction } from "@/lib/db";
 import { rateLimits } from "@/lib/db/schema";
 import { getConfiguredSettings } from "@/lib/system-settings-config";
 import { eq } from "drizzle-orm";
-import { nanoid } from "nanoid";
 
 function getApiRateLimitConfig() {
   const s = getConfiguredSettings();
@@ -74,7 +73,6 @@ async function atomicConsumeRateLimit(key: string): Promise<boolean> {
       // escalation is not needed.
       await tx.insert(rateLimits)
         .values({
-          id: nanoid(),
           key,
           attempts: 1,
           windowStartedAt: now,
@@ -256,7 +254,6 @@ export async function checkServerActionRateLimit(
     } else {
       await tx.insert(rateLimits)
         .values({
-          id: nanoid(),
           key,
           attempts: newAttempts,
           windowStartedAt,
