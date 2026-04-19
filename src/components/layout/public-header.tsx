@@ -4,7 +4,6 @@ import { useCallback, useEffect, useId, useRef, useState } from "react";
 import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
 import { usePathname } from "next/navigation";
-import { signOut } from "next-auth/react";
 import { LocaleSwitcher } from "@/components/layout/locale-switcher";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import {
@@ -15,6 +14,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
+import { handleSignOutWithCleanup } from "@/lib/auth/sign-out";
 import { buildLocalizedHref } from "@/lib/locale-paths";
 import { Menu, X, ChevronDown, LogOut, LayoutDashboard, FileText, Users, ClipboardList, Settings, Shield, Timer } from "lucide-react";
 
@@ -181,8 +181,7 @@ export function PublicHeader({ siteTitle, items, actions, loggedInUser, leadingS
   }, []);
 
   const handleSignOut = useCallback(async () => {
-    setIsSigningOut(true);
-    await signOut({ callbackUrl: "/login" });
+    await handleSignOutWithCleanup(setIsSigningOut);
   }, []);
 
   return (
