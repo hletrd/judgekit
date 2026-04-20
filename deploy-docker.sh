@@ -265,8 +265,26 @@ ensure_env_secret() {
   if [[ "$generator" == "base64" ]]; then
     value=$(openssl rand -base64 32)
   fi
-  info "Backfilling missing ${key} in ${REMOTE_ENV_FILE}"
+  info "Backfilling missing secret ${key} in ${REMOTE_ENV_FILE}"
   remote "printf '\n%s=%s\n' '${key}' '${value}' >> ${REMOTE_ENV_FILE} && chmod 600 ${REMOTE_ENV_FILE}" \
+    || warn "Failed to backfill ${key} — please add it manually before the app starts"
+}
+
+# Ensure a non-secret env var exists in the remote .env.production with a
+# specific literal value. Unlike ensure_env_secret (which generates random
+# secrets), this writes the exact value provided — essential for config keys
+# like AUTH_TRUST_HOST=true or COMPILER_RUNNER_URL=<url>.
+ensure_env_literal() {
+  local key="$1"
+  local literal_value="$2"
+  if remote "test -f ${REMOTE_ENV_FILE} && grep -q '^${key}=' ${REMOTE_ENV_FILE}"; then
+    return 0
+  fi
+  if ! remote "test -f ${REMOTE_ENV_FILE}"; then
+    return 0
+  fi
+  info "Backfilling missing ${key}=${literal_value} in ${REMOTE_ENV_FILE}"
+  remote "printf '\n%s=%s\n' '${key}' '${literal_value}' >> ${REMOTE_ENV_FILE} && chmod 600 ${REMOTE_ENV_FILE}" \
     || warn "Failed to backfill ${key} — please add it manually before the app starts"
 }
 ensure_env_secret PLUGIN_CONFIG_ENCRYPTION_KEY hex
@@ -274,7 +292,7 @@ ensure_env_secret PLUGIN_CONFIG_ENCRYPTION_KEY hex
 # Without it, validateTrustedAuthHost() rejects auth callbacks with UntrustedHost
 # because the Host header may be the internal container hostname (e.g., localhost:3000)
 # rather than the external domain.
-ensure_env_secret AUTH_TRUST_HOST true
+ensure_env_literal AUTH_TRUST_HOST true
 
 # When the local judge worker is disabled, the app container needs to reach the
 # external worker via COMPILER_RUNNER_URL. Auto-inject the default Docker host
@@ -282,7 +300,7 @@ ensure_env_secret AUTH_TRUST_HOST true
 # with a custom URL (e.g., pointing at a remote worker host).
 if [[ "${INCLUDE_WORKER}" != "true" ]]; then
     COMPILER_RUNNER_DEFAULT="http://host.docker.internal:3001"
-    ensure_env_secret COMPILER_RUNNER_URL "${COMPILER_RUNNER_DEFAULT}"
+    ensure_env_literal COMPILER_RUNNER_URL "${COMPILER_RUNNER_DEFAULT}"
 fi
 
 # ---------------------------------------------------------------------------
