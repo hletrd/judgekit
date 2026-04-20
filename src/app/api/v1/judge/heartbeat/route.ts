@@ -8,6 +8,7 @@ import { isJudgeIpAllowed } from "@/lib/judge/ip-allowlist";
 import { safeTokenCompare } from "@/lib/security/timing";
 import { logger } from "@/lib/logger";
 import { z } from "zod";
+import { getDbNowUncached } from "@/lib/db-time";
 
 const heartbeatSchema = z.object({
   workerId: z.string().min(1),
@@ -36,7 +37,7 @@ export async function POST(request: NextRequest) {
     // atomically in SQL and poll/route.ts decrements it. Overwriting it from
     // the worker's self-report would defeat that atomicity.
     const { workerId, workerSecret } = parsed.data;
-    const now = new Date();
+    const now = await getDbNowUncached();
 
     const workerAuth = await isJudgeAuthorizedForWorker(request, workerId);
     if (!workerAuth.authorized) {
@@ -70,7 +71,7 @@ export async function POST(request: NextRequest) {
     // Piggyback staleness sweep: mark workers stale if heartbeat is too old.
     // Awaiting prevents the sweep from racing with another worker's heartbeat.
     const staleThreshold = new Date(
-      Date.now() - HEARTBEAT_INTERVAL_MS * STALE_MULTIPLIER
+      now.getTime() - HEARTBEAT_INTERVAL_MS * STALE_MULTIPLIER
     );
     await db.update(judgeWorkers)
       .set({ status: "stale" })

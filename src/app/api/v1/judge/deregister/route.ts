@@ -8,6 +8,7 @@ import { isJudgeIpAllowed } from "@/lib/judge/ip-allowlist";
 import { safeTokenCompare } from "@/lib/security/timing";
 import { logger } from "@/lib/logger";
 import { z } from "zod";
+import { getDbNowUncached } from "@/lib/db-time";
 
 const deregisterSchema = z.object({
   workerId: z.string().min(1),
@@ -47,7 +48,7 @@ export async function POST(request: NextRequest) {
       .update(judgeWorkers)
       .set({
         status: "offline",
-        deregisteredAt: new Date(),
+        deregisteredAt: await getDbNowUncached(),
         activeTasks: 0,
       })
       .where(eq(judgeWorkers.id, workerId));
