@@ -4,6 +4,7 @@ const INDEXABLE_PUBLIC_ROUTE_PREFIXES = [
   "/community",
   "/playground",
   "/rankings",
+  "/languages",
 ] as const;
 
 const INDEXABLE_PUBLIC_ROUTE_EXACT = ["/"] as const;
@@ -62,6 +63,15 @@ export const SEO_ROUTE_MATRIX = [
     jsonLd: true,
     socialCards: true,
     notes: "Public rankings page",
+  },
+  {
+    route: "/languages",
+    indexable: true,
+    localized: true,
+    includedInSitemap: true,
+    jsonLd: false,
+    socialCards: false,
+    notes: "Supported programming languages and judge environment info",
   },
   {
     route: "/submissions",
