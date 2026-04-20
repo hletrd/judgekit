@@ -117,7 +117,8 @@ describe("AppSidebar", () => {
     expect(screen.queryByText("platformModes.recruiting")).not.toBeInTheDocument();
     expect(screen.queryByText("groups")).not.toBeInTheDocument();
     expect(screen.queryByText("problems")).not.toBeInTheDocument();
-    expect(screen.getByText("contests")).toBeInTheDocument();
+    // Contests and rankings are in the PublicHeader dropdown, not the sidebar
+    expect(screen.queryByText("contests")).not.toBeInTheDocument();
   });
 
   it("routes scoped reviewers to the filtered review queue from the submissions nav item", () => {
