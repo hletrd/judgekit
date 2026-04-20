@@ -309,14 +309,15 @@ export async function GET(
 
         let lastAuthCheck = Date.now();
 
+        // Capture viewer ID before closures so TypeScript can verify non-null.
+        // user is guaranteed non-null here — the SSE stream is only opened
+        // after the auth check at the top of GET().
+        const viewerId = user!.id;
+
         // Shared helper: fetch full submission, sanitize, and send the terminal
         // result event. Used from both the re-auth path and the fast path to
         // avoid duplicating the terminal-state logic.
         async function sendTerminalResult() {
-          // user is guaranteed non-null here — the SSE stream is only opened
-          // after the auth check at the top of GET(), but TypeScript cannot
-          // infer this across the closure boundary.
-          const viewerId = user!.id;
           try {
             const fullSubmission = await queryFullSubmission(id);
             if (closed) return;
