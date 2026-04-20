@@ -93,6 +93,7 @@ export function ContestJoinClient() {
             >
               <div className="space-y-2">
                 <Label htmlFor="access-code">{t("codeLabel")}</Label>
+                {/* tracking-[0.35em] is for alphanumeric access codes (font-mono) — safe for Korean locale */}
                 <Input
                   id="access-code"
                   value={code}

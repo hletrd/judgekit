@@ -119,6 +119,7 @@ export function AccessCodeManager({ assignmentId }: AccessCodeManagerProps) {
         {code ? (
           <div className="space-y-3">
             <div className="flex items-center gap-2 rounded-md border bg-muted/50 px-4 py-3">
+              {/* tracking-widest is for alphanumeric access codes (font-mono) — safe for Korean locale */}
               <code className="flex-1 text-center text-lg font-mono tracking-widest">
                 {code}
               </code>
