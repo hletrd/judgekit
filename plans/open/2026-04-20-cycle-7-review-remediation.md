@@ -44,7 +44,7 @@ No cycle-7 review finding is silently dropped. No new refactor-only work is adde
   6. For `src/lib/assignments/recruiting-invitations.ts`: The function is already async. Replace each `tokenInvalidatedAt: new Date()` with `tokenInvalidatedAt: await getDbNowUncached()`.
   7. Verify tsc --noEmit passes.
   8. Verify existing tests pass.
-- **Status:** TODO
+- **Status:** DONE
 
 ### H2: Fix public contest pages clock-skew — use `getDbNow()` for contest status (AGG-2)
 
@@ -58,9 +58,7 @@ No cycle-7 review finding is silently dropped. No new refactor-only work is adde
   3. In `getPublicContestById()`, replace `new Date()` (line 124) with `const now = await getDbNow()` and pass `now` to `getContestStatus()`.
   4. Both functions are already async server-side functions, so `await` is compatible.
   5. Verify tsc --noEmit passes.
-- **Status:** TODO
-
-### M1: Fix sidebar active-timed-assignments clock-skew — use `getDbNow()` for contest status (AGG-3)
+- **Status:** DONE active-timed-assignments clock-skew — use `getDbNow()` for contest status (AGG-3)
 
 - **Source:** AGG-3
 - **Severity / confidence:** MEDIUM / HIGH
@@ -72,9 +70,7 @@ No cycle-7 review finding is silently dropped. No new refactor-only work is adde
   3. Remove the default parameter from `selectActiveTimedAssignments` since the caller will always provide the DB time.
   4. Alternatively, keep the default parameter for testability but change the caller to pass DB time.
   5. Verify tsc --noEmit passes.
-- **Status:** TODO
-
-### M2: Fix anti-cheat event `createdAt` clock-skew — use already-fetched DB time (AGG-4)
+- **Status:** DONE event `createdAt` clock-skew — use already-fetched DB time (AGG-4)
 
 - **Source:** AGG-4
 - **Severity / confidence:** MEDIUM / HIGH
@@ -85,7 +81,7 @@ No cycle-7 review finding is silently dropped. No new refactor-only work is adde
   2. Replace `createdAt: new Date()` on line 110 with `createdAt: now`.
   3. Replace `createdAt: new Date()` on line 128 with `createdAt: now`.
   4. Verify tsc --noEmit passes.
-- **Status:** TODO
+- **Status:** DONE
 
 ### M3: Fix invite route timestamp clock-skew — use `getDbNowUncached()` for stored timestamps (AGG-5)
 
