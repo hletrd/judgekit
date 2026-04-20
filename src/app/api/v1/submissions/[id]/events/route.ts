@@ -193,6 +193,10 @@ export async function GET(
     const user = await getApiUser(request);
     if (!user) return unauthorized();
 
+    // Capture viewerId where TypeScript has narrowed user to non-null,
+    // so it can be safely used in closures below without a non-null assertion.
+    const viewerId = user.id;
+
     const realtimeGuard = getUnsupportedRealtimeGuard("/api/v1/submissions/[id]/events");
     if (realtimeGuard) {
       return apiError(realtimeGuard.error, 503);
@@ -309,10 +313,7 @@ export async function GET(
 
         let lastAuthCheck = Date.now();
 
-        // Capture viewer ID before closures so TypeScript can verify non-null.
-        // user is guaranteed non-null here — the SSE stream is only opened
-        // after the auth check at the top of GET().
-        const viewerId = user!.id;
+        // viewerId is captured at the top of GET() where TypeScript narrows user to non-null.
 
         // Shared helper: fetch full submission, sanitize, and send the terminal
         // result event. Used from both the re-auth path and the fast path to
