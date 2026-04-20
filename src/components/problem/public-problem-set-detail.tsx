@@ -22,6 +22,7 @@ type PublicProblemSetDetailProps = {
   noProblemsLabel: string;
   solveNextHref?: string | null;
   solveNextLabel: string;
+  solvedLabel: string;
   problems: ProblemSetProblem[];
 };
 
@@ -36,6 +37,7 @@ export function PublicProblemSetDetail({
   noProblemsLabel,
   solveNextHref = null,
   solveNextLabel,
+  solvedLabel,
   problems,
 }: PublicProblemSetDetailProps) {
   return (
@@ -78,7 +80,7 @@ export function PublicProblemSetDetail({
                     </Link>
                     <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
                       {problem.difficultyLabel ? <span>{problem.difficultyLabel}</span> : null}
-                      {problem.solvedByViewer ? <Badge variant="outline">Solved</Badge> : null}
+                      {problem.solvedByViewer ? <Badge variant="outline">{solvedLabel}</Badge> : null}
                     </div>
                   </div>
                   <Link href={problem.href}>

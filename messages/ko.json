@@ -2866,7 +2866,8 @@
         "open": "문제집 열기",
         "problemCount": "문제 {count}개",
         "problemsTitle": "이 문제집의 문제",
-        "solveNext": "다음 문제 풀기"
+        "solveNext": "다음 문제 풀기",
+        "solved": "해결됨"
       }
     },
     "playground": {

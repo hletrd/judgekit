@@ -2866,7 +2866,8 @@
         "open": "Open set",
         "problemCount": "{count} problems",
         "problemsTitle": "Problems in this set",
-        "solveNext": "Solve next"
+        "solveNext": "Solve next",
+        "solved": "Solved"
       }
     },
     "playground": {
