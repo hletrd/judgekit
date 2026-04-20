@@ -1,4 +1,5 @@
 import { AsyncLocalStorage } from "async_hooks";
+import { logger } from "@/lib/logger";
 
 /**
  * Per-request cache for recruiting access context.
@@ -52,6 +53,8 @@ export function setCachedRecruitingContext(
   if (store) {
     store.userId = userId;
     store.context = context;
+  } else if (process.env.NODE_ENV !== "production") {
+    logger.warn("[request-cache] Cannot cache recruiting context — no active ALS store. Ensure withRecruitingContextCache is called in the request pipeline.");
   }
 }
 
