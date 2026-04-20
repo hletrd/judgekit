@@ -11,7 +11,7 @@ import { computeContestReplay } from "@/lib/assignments/contest-replay";
 import { computeLeaderboard } from "@/lib/assignments/leaderboard";
 import { buildAbsoluteUrl, buildLocalePath, buildPublicMetadata, buildSocialImageUrl, NO_INDEX_METADATA, summarizeTextForMetadata } from "@/lib/seo";
 import { getResolvedSystemSettings } from "@/lib/system-settings";
-import { formatNumber } from "@/lib/formatting";
+import { formatNumber, formatDifficulty } from "@/lib/formatting";
 import Link from "next/link";
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
@@ -207,7 +207,7 @@ export default async function PublicContestDetailPage({ params }: { params: Prom
           title: problem.title,
           href: buildLocalePath(`/practice/problems/${problem.id}`, locale),
           difficultyLabel: problem.difficulty != null
-            ? formatNumber(problem.difficulty, { locale, maximumFractionDigits: 2 }).replace(/\.?0+$/, "")
+            ? formatDifficulty(problem.difficulty, locale)
             : null,
           solverCount: solveRateByProblem.get(problem.id)?.solved ?? null,
           successRateLabel: solveRateByProblem.has(problem.id)

@@ -52,6 +52,32 @@ export function formatBytes(
 }
 
 /**
+ * Format a difficulty score for display, stripping trailing zeros.
+ *
+ * Uses `formatNumber` internally so digit separators respect the user's
+ * locale, then removes insignificant trailing zeros and the decimal point
+ * if unnecessary.
+ *
+ * @example
+ * formatDifficulty(1234.5)     // "1,234.5"  (en-US)
+ * formatDifficulty(3)          // "3"
+ * formatDifficulty(3.1)        // "3.1"
+ * formatDifficulty(3.1, "ko-KR") // "3.1" (Korean grouping)
+ */
+export function formatDifficulty(
+  value: number,
+  locale: string | string[] = DEFAULT_LOCALE
+): string {
+  // Format with up to 2 decimal places, then strip trailing zeros after the
+  // decimal point.  The negative lookbehind (?<=\.) ensures we only strip
+  // digits after a decimal point, never the integer part itself (e.g. "0"
+  // must remain "0", not become an empty string).
+  return formatNumber(value, { locale, maximumFractionDigits: 2 })
+    .replace(/(?<=\.)0+$/, "")   // strip trailing zeros after decimal point
+    .replace(/\.$/, "");         // remove dangling decimal point
+}
+
+/**
  * Round a score value to two decimal places for display.
  * Returns "-" for null/undefined values.
  */

@@ -12,7 +12,7 @@ import { calculateTier } from "@/lib/ratings";
 import { TierBadge } from "@/components/tier-badge";
 import { buildLocalePath, NO_INDEX_METADATA } from "@/lib/seo";
 import { getProblemTierInfo } from "@/lib/problem-tiers";
-import { formatNumber } from "@/lib/formatting";
+import { formatNumber, formatDifficulty } from "@/lib/formatting";
 import { getLanguageDisplayLabel } from "@/lib/judge/languages";
 import { UserStatsDashboard } from "@/components/user/user-stats-dashboard";
 import Link from "next/link";
@@ -297,7 +297,7 @@ export default async function UserProfilePage({
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground">
                         {problem.difficulty != null
-                          ? formatNumber(problem.difficulty, { locale, maximumFractionDigits: 2 }).replace(/\.?0+$/, "")
+                          ? formatDifficulty(problem.difficulty, locale)
                           : "-"}
                       </TableCell>
                     </TableRow>

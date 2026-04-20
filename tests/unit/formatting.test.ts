@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatNumber, formatBytes, formatScore } from "@/lib/formatting";
+import { formatNumber, formatBytes, formatScore, formatDifficulty } from "@/lib/formatting";
 
 describe("formatNumber", () => {
   it("formats integers with locale grouping", () => {
@@ -96,5 +96,57 @@ describe("formatScore", () => {
 
   it("handles large scores", () => {
     expect(formatScore(9999.999)).toBe("10000");
+  });
+});
+
+describe("formatDifficulty", () => {
+  it("formats integer difficulty without trailing zeros", () => {
+    expect(formatDifficulty(3)).toBe("3");
+  });
+
+  it("formats difficulty with one decimal place", () => {
+    expect(formatDifficulty(3.1)).toBe("3.1");
+  });
+
+  it("formats difficulty with two decimal places", () => {
+    expect(formatDifficulty(3.14)).toBe("3.14");
+  });
+
+  it("strips trailing zero from one decimal place", () => {
+    expect(formatDifficulty(3.1)).toBe("3.1");
+  });
+
+  it("strips both trailing zeros from two decimal places", () => {
+    expect(formatDifficulty(3.0)).toBe("3");
+  });
+
+  it("strips one trailing zero from two decimal places", () => {
+    expect(formatDifficulty(3.1)).toBe("3.1");
+  });
+
+  it("formats zero difficulty", () => {
+    expect(formatDifficulty(0)).toBe("0");
+  });
+
+  it("formats large difficulty with locale grouping", () => {
+    expect(formatDifficulty(1234.5)).toBe("1,234.5");
+  });
+
+  it("formats negative difficulty", () => {
+    expect(formatDifficulty(-3.14)).toBe("-3.14");
+  });
+
+  it("respects locale parameter", () => {
+    // Korean locale still uses Western grouping for numbers
+    const result = formatDifficulty(1234.5, "ko-KR");
+    expect(result).toContain("234.5");
+  });
+
+  it("rounds more than two decimal places", () => {
+    expect(formatDifficulty(3.141)).toBe("3.14");
+  });
+
+  it("preserves one significant decimal when other is zero", () => {
+    expect(formatDifficulty(3.5)).toBe("3.5");
   });
 });

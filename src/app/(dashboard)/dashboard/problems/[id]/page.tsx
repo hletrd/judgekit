@@ -27,10 +27,7 @@ import { ArrowLeft, Trophy } from "lucide-react";
 import { getRecruitingAccessContext } from "@/lib/recruiting/access";
 import { resolveCapabilities } from "@/lib/capabilities/cache";
 import { getDbNow } from "@/lib/db-time";
-
-function formatDifficultyValue(value: number) {
-  return value.toFixed(2).replace(/\.?0+$/, "");
-}
+import { formatDifficulty } from "@/lib/formatting";
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -267,7 +264,7 @@ export default async function ProblemDetailPage({
           <Badge variant="outline">{t("badges.timeLimit", { value: problem.timeLimitMs ?? 2000 })}</Badge>
           <Badge variant="outline">{t("badges.memoryLimit", { value: problem.memoryLimitMb ?? 256 })}</Badge>
           {problem.difficulty != null && (
-            <Badge variant="outline">{t("badges.difficulty", { value: formatDifficultyValue(problem.difficulty) })}</Badge>
+            <Badge variant="outline">{t("badges.difficulty", { value: formatDifficulty(problem.difficulty) })}</Badge>
           )}
           <Badge variant="secondary">{t("badges.author", { name: problem.author?.name || tCommon("system") })}</Badge>
           {assignmentContext && <Badge>{assignmentContext.title}</Badge>}

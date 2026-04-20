@@ -10,7 +10,7 @@ import { PaginationControls } from "@/components/pagination-controls";
 import { buildAbsoluteUrl, buildLocalePath, buildPublicMetadata } from "@/lib/seo";
 import { getResolvedSystemSettings, getResolvedSystemTimeZone } from "@/lib/system-settings";
 import { formatDateInTimeZone } from "@/lib/datetime";
-import { formatNumber } from "@/lib/formatting";
+import { formatNumber, formatDifficulty } from "@/lib/formatting";
 import { auth } from "@/lib/auth";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -686,7 +686,7 @@ export default async function PracticePage({
             sequenceNumber: problem.sequenceNumber ?? null,
             title: problem.title,
             difficultyLabel: problem.difficulty != null
-              ? formatNumber(problem.difficulty, { locale, maximumFractionDigits: 2 }).replace(/\.?0+$/, "")
+              ? formatDifficulty(problem.difficulty, locale)
               : null,
             difficultyTier: getProblemTierInfo(problem.difficulty),
             searchMatchLabels: problem.searchMatchLabels,

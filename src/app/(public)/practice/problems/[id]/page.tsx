@@ -17,7 +17,7 @@ import { SubmissionStatusBadge } from "@/components/submission-status-badge";
 import { buildStatusLabels } from "@/lib/judge/status-labels";
 import { getLanguageDisplayLabel } from "@/lib/judge/languages";
 import { formatDateTimeInTimeZone, formatDateInTimeZone } from "@/lib/datetime";
-import { formatNumber } from "@/lib/formatting";
+import { formatNumber, formatDifficulty } from "@/lib/formatting";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -366,7 +366,7 @@ export default async function PublicProblemDetailPage({ params }: { params: Prom
                   difficultyTier={getProblemTierInfo(problem.difficulty)}
                   difficultyLabel={
                     problem.difficulty != null
-                      ? formatNumber(problem.difficulty, { locale, maximumFractionDigits: 2 }).replace(/\.?0+$/, "")
+                      ? formatDifficulty(problem.difficulty, locale)
                       : null
                   }
                   submitAction={session?.user ? (
@@ -445,7 +445,7 @@ export default async function PublicProblemDetailPage({ params }: { params: Prom
                                     <TierBadge tier={problemTier.tier} label={problemTier.label} />
                                   ) : null}
                                   <Badge variant="secondary" className="text-xs">
-                                    {formatNumber(sp.difficulty, { locale, maximumFractionDigits: 2 }).replace(/\.?0+$/, "")}
+                                    {formatDifficulty(sp.difficulty, locale)}
                                   </Badge>
                                 </div>
                               )}
