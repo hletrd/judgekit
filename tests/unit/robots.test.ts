@@ -19,7 +19,6 @@ describe("robots metadata route", () => {
       disallow: [
         "/api",
         "/dashboard",
-        "/workspace",
         "/login",
         "/signup",
         "/change-password",

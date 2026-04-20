@@ -104,7 +104,6 @@ export const SEO_ROUTE_MATRIX = [
 export const ROBOTS_DISALLOWED_PATHS = [
   "/api",
   "/dashboard",
-  "/workspace",
   "/login",
   "/signup",
   "/change-password",
