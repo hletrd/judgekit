@@ -6,11 +6,13 @@ const {
   consumeApiRateLimitMock,
   transactionMock,
   recordAuditEventMock,
+  getDbNowUncachedMock,
 } = vi.hoisted(() => ({
   getApiUserMock: vi.fn(),
   consumeApiRateLimitMock: vi.fn<() => NextResponse | null>(() => null),
   transactionMock: vi.fn(),
   recordAuditEventMock: vi.fn(),
+  getDbNowUncachedMock: vi.fn<() => Promise<Date>>(() => Promise.resolve(new Date("2026-04-08T12:00:00.000Z"))),
 }));
 
 vi.mock("@/lib/api/auth", () => ({
@@ -66,6 +68,10 @@ vi.mock("@/lib/audit/events", () => ({
   recordAuditEvent: recordAuditEventMock,
 }));
 
+vi.mock("@/lib/db-time", () => ({
+  getDbNowUncached: getDbNowUncachedMock,
+}));
+
 import { POST } from "@/app/api/v1/contests/quick-create/route";
 
 function makeRequest(body: unknown) {
@@ -82,6 +88,7 @@ function makeRequest(body: unknown) {
 describe("POST /api/v1/contests/quick-create", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    getDbNowUncachedMock.mockResolvedValue(new Date("2026-04-08T12:00:00.000Z"));
     getApiUserMock.mockResolvedValue({
       id: "admin-1",
       role: "admin",

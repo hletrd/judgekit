@@ -7,6 +7,7 @@ import { inArray } from "drizzle-orm";
 import { createApiHandler } from "@/lib/api/handler";
 import { apiSuccess, apiError } from "@/lib/api/responses";
 import { recordAuditEvent } from "@/lib/audit/events";
+import { getDbNowUncached } from "@/lib/db-time";
 
 const quickCreateSchema = z.object({
   title: z.string().min(1).max(255),
@@ -25,7 +26,8 @@ export const POST = createApiHandler({
   handler: async (req: NextRequest, { user, body }) => {
     const groupId = nanoid();
     const assignmentId = nanoid();
-    const now = new Date();
+    // Use DB server time for scheduling defaults to avoid clock skew
+    const now = await getDbNowUncached();
     const startsAt = body.startsAt ? new Date(body.startsAt) : now;
     const deadline = body.deadline
       ? new Date(body.deadline)

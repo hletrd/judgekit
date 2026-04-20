@@ -20,6 +20,7 @@ const {
   txValuesMock,
   recordAuditEventMock,
   resolveCapabilitiesMock,
+  getDbNowUncachedMock,
 } = vi.hoisted(() => ({
   getApiUserMock: vi.fn(),
   consumeApiRateLimitMock: vi.fn<() => NextResponse | null>(() => null),
@@ -39,6 +40,7 @@ const {
   txValuesMock: vi.fn(),
   recordAuditEventMock: vi.fn(),
   resolveCapabilitiesMock: vi.fn(),
+  getDbNowUncachedMock: vi.fn<() => Promise<Date>>(() => Promise.resolve(new Date("2026-04-08T12:00:00.000Z"))),
 }));
 
 vi.mock("@/lib/api/auth", () => ({
@@ -110,6 +112,10 @@ vi.mock("@/lib/security/constants", () => ({
 
 vi.mock("@/lib/capabilities/cache", () => ({
   resolveCapabilities: resolveCapabilitiesMock,
+}));
+
+vi.mock("@/lib/db-time", () => ({
+  getDbNowUncached: getDbNowUncachedMock,
 }));
 
 import { POST as joinPOST } from "@/app/api/v1/contests/join/route";
@@ -314,6 +320,7 @@ describe("POST /api/v1/contests/quick-create", () => {
     vi.clearAllMocks();
     getApiUserMock.mockResolvedValue(ADMIN_USER);
     resolveCapabilitiesMock.mockResolvedValue(new Set(["contests.create"]));
+    getDbNowUncachedMock.mockResolvedValue(new Date("2026-04-08T12:00:00.000Z"));
     txValuesMock.mockResolvedValue(undefined);
     txInsertMock.mockReturnValue({ values: txValuesMock });
     dbTransactionMock.mockImplementation(async (callback: any) => callback({
