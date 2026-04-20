@@ -13,6 +13,7 @@ import { consumeApiRateLimit } from "@/lib/security/api-rate-limit";
 import { isUserRole } from "@/lib/security/constants";
 import { resolveCapabilities } from "@/lib/capabilities/cache";
 import { logger } from "@/lib/logger";
+import { withRecruitingContextCache } from "@/lib/recruiting/request-cache";
 
 /** Shape returned by getApiUser */
 export type AuthUser = NonNullable<Awaited<ReturnType<typeof getApiUser>>>;
@@ -101,6 +102,11 @@ export function createApiHandler<T = undefined>(config: HandlerConfig<T>) {
     req: NextRequest,
     routeCtx?: { params: Promise<Record<string, string>> }
   ): Promise<NextResponse> {
+    // Initialize per-request AsyncLocalStorage cache for recruiting context.
+    // This ensures that getRecruitingAccessContext deduplicates DB queries
+    // within a single API request, even though React cache() does not work
+    // in API route handlers.
+    return withRecruitingContextCache(async () => {
     try {
       // --- Rate limiting ---
       if (rateLimit) {
@@ -190,6 +196,7 @@ export function createApiHandler<T = undefined>(config: HandlerConfig<T>) {
       logger.error({ err: error, method: req.method, path: req.nextUrl.pathname }, "Unhandled error");
       return NextResponse.json({ error: "internalServerError" }, { status: 500 });
     }
+    });
   };
 }
 
