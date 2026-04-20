@@ -123,12 +123,36 @@ export default async function PublicProblemDetailPage({ params }: { params: Prom
     notFound();
   }
 
-  const timeZone = await getResolvedSystemTimeZone();
-  const settings = await getResolvedSystemSettings({
-    siteTitle: tCommon("appName"),
-    siteDescription: tCommon("appDescription"),
-  });
-  const langs = await db.select({ id: languageConfigs.id, language: languageConfigs.language, displayName: languageConfigs.displayName, standard: languageConfigs.standard, isEnabled: languageConfigs.isEnabled }).from(languageConfigs).where(eq(languageConfigs.isEnabled, true));
+  // All queries after the problem lookup are independent — run in parallel
+  const [
+    timeZone,
+    settings,
+    langs,
+    threads,
+    solutionThreads,
+    editorials,
+    statsRow,
+  ] = await Promise.all([
+    getResolvedSystemTimeZone(),
+    getResolvedSystemSettings({
+      siteTitle: tCommon("appName"),
+      siteDescription: tCommon("appDescription"),
+    }),
+    db.select({ id: languageConfigs.id, language: languageConfigs.language, displayName: languageConfigs.displayName, standard: languageConfigs.standard, isEnabled: languageConfigs.isEnabled }).from(languageConfigs).where(eq(languageConfigs.isEnabled, true)),
+    listProblemDiscussionThreads(problem.id, session?.user?.id ?? null),
+    listProblemSolutionThreads(problem.id, session?.user?.id ?? null),
+    listProblemEditorials(problem.id, session?.user?.id ?? null),
+    db
+      .select({
+        totalSubmissions: count(),
+        acceptedCount: sql<number>`count(case when ${submissions.status} = 'accepted' then 1 end)`,
+        uniqueSolvers: sql<number>`count(distinct case when ${submissions.status} = 'accepted' then ${submissions.userId} end)`,
+      })
+      .from(submissions)
+      .where(eq(submissions.problemId, problem.id))
+      .then(rows => rows[0]),
+  ]);
+
   const enabledLanguages = langs.flatMap((language) => {
     const definition = getJudgeLanguageDefinition(language.language);
 
@@ -143,19 +167,6 @@ export default async function PublicProblemDetailPage({ params }: { params: Prom
       standard: definition.standard,
     }];
   });
-  const threads = await listProblemDiscussionThreads(problem.id, session?.user?.id ?? null);
-  const solutionThreads = await listProblemSolutionThreads(problem.id, session?.user?.id ?? null);
-  const editorials = await listProblemEditorials(problem.id, session?.user?.id ?? null);
-
-  // Problem statistics
-  const [statsRow] = await db
-    .select({
-      totalSubmissions: count(),
-      acceptedCount: sql<number>`count(case when ${submissions.status} = 'accepted' then 1 end)`,
-      uniqueSolvers: sql<number>`count(distinct case when ${submissions.status} = 'accepted' then ${submissions.userId} end)`,
-    })
-    .from(submissions)
-    .where(eq(submissions.problemId, problem.id));
 
   const totalSubmissions = Number(statsRow?.totalSubmissions ?? 0);
   const acceptedCount = Number(statsRow?.acceptedCount ?? 0);
@@ -164,91 +175,92 @@ export default async function PublicProblemDetailPage({ params }: { params: Prom
 
   // Similar problems (share at least one tag, exclude current)
   const tagIds = problem.problemTags.map((pt) => pt.tag.id);
-  let similarProblems: Array<{ id: string; title: string; sequenceNumber: number | null; difficulty: number | null }> = [];
-  if (tagIds.length > 0) {
-    similarProblems = await db
-      .selectDistinct({
-        id: problems.id,
-        title: problems.title,
-        sequenceNumber: problems.sequenceNumber,
-        difficulty: problems.difficulty,
-      })
-      .from(problemTags)
-      .innerJoin(problems, eq(problemTags.problemId, problems.id))
-      .where(
-        and(
-          inArray(problemTags.tagId, tagIds),
-          eq(problems.visibility, "public"),
-          sql`${problems.id} != ${problem.id}`
-        )
-      )
-      .limit(5);
-  }
+  // Run similar problems, prev/next navigation, and user submissions in parallel
+  const [similarProblemsResult, navResult, userSubmissionsResult] = await Promise.all([
+    // Similar problems query
+    tagIds.length > 0
+      ? db
+          .selectDistinct({
+            id: problems.id,
+            title: problems.title,
+            sequenceNumber: problems.sequenceNumber,
+            difficulty: problems.difficulty,
+          })
+          .from(problemTags)
+          .innerJoin(problems, eq(problemTags.problemId, problems.id))
+          .where(
+            and(
+              inArray(problemTags.tagId, tagIds),
+              eq(problems.visibility, "public"),
+              sql`${problems.id} != ${problem.id}`
+            )
+          )
+          .limit(5)
+      : Promise.resolve([] as Array<{ id: string; title: string; sequenceNumber: number | null; difficulty: number | null }>),
+    // Previous / next problem navigation (by sequenceNumber)
+    problem.sequenceNumber != null
+      ? Promise.all([
+          db.select({ id: problems.id })
+            .from(problems)
+            .where(and(
+              eq(problems.visibility, "public"),
+              sql`${problems.sequenceNumber} < ${problem.sequenceNumber}`,
+              sql`${problems.sequenceNumber} IS NOT NULL`
+            ))
+            .orderBy(sql`${problems.sequenceNumber} DESC`)
+            .limit(1)
+            .then(rows => rows[0] ?? null),
+          db.select({ id: problems.id })
+            .from(problems)
+            .where(and(
+              eq(problems.visibility, "public"),
+              sql`${problems.sequenceNumber} > ${problem.sequenceNumber}`,
+              sql`${problems.sequenceNumber} IS NOT NULL`
+            ))
+            .orderBy(sql`${problems.sequenceNumber} ASC`)
+            .limit(1)
+            .then(rows => rows[0] ?? null),
+        ])
+      : Promise.resolve([null, null] as [{ id: string } | null, { id: string } | null]),
+    // User's submissions for this problem (when logged in)
+    session?.user
+      ? db
+          .select({
+            id: submissions.id,
+            language: submissions.language,
+            status: submissions.status,
+            score: submissions.score,
+            executionTimeMs: submissions.executionTimeMs,
+            memoryUsedKb: submissions.memoryUsedKb,
+            submittedAt: submissions.submittedAt,
+            failedTestCaseIndex: submissions.failedTestCaseIndex,
+            runtimeErrorType: submissions.runtimeErrorType,
+          })
+          .from(submissions)
+          .where(
+            and(
+              eq(submissions.userId, session.user.id),
+              eq(submissions.problemId, problem.id)
+            )
+          )
+          .orderBy(sql`${submissions.submittedAt} DESC`)
+          .limit(20)
+      : Promise.resolve([] as Array<{
+          id: string;
+          language: string;
+          status: string | null;
+          score: number | null;
+          executionTimeMs: number | null;
+          memoryUsedKb: number | null;
+          submittedAt: Date | null;
+          failedTestCaseIndex: number | null;
+          runtimeErrorType: string | null;
+        }>),
+  ]);
 
-  // Previous / next problem navigation (by sequenceNumber)
-  let prevProblem: { id: string } | null = null;
-  let nextProblem: { id: string } | null = null;
-  if (problem.sequenceNumber != null) {
-    [prevProblem, nextProblem] = await Promise.all([
-      db.select({ id: problems.id })
-        .from(problems)
-        .where(and(
-          eq(problems.visibility, "public"),
-          sql`${problems.sequenceNumber} < ${problem.sequenceNumber}`,
-          sql`${problems.sequenceNumber} IS NOT NULL`
-        ))
-        .orderBy(sql`${problems.sequenceNumber} DESC`)
-        .limit(1)
-        .then(rows => rows[0] ?? null),
-      db.select({ id: problems.id })
-        .from(problems)
-        .where(and(
-          eq(problems.visibility, "public"),
-          sql`${problems.sequenceNumber} > ${problem.sequenceNumber}`,
-          sql`${problems.sequenceNumber} IS NOT NULL`
-        ))
-        .orderBy(sql`${problems.sequenceNumber} ASC`)
-        .limit(1)
-        .then(rows => rows[0] ?? null),
-    ]);
-  }
-
-  // User's submissions for this problem (when logged in)
-  let userSubmissions: Array<{
-    id: string;
-    language: string;
-    status: string | null;
-    score: number | null;
-    executionTimeMs: number | null;
-    memoryUsedKb: number | null;
-    submittedAt: Date | null;
-    failedTestCaseIndex: number | null;
-    runtimeErrorType: string | null;
-  }> = [];
-
-  if (session?.user) {
-    userSubmissions = await db
-      .select({
-        id: submissions.id,
-        language: submissions.language,
-        status: submissions.status,
-        score: submissions.score,
-        executionTimeMs: submissions.executionTimeMs,
-        memoryUsedKb: submissions.memoryUsedKb,
-        submittedAt: submissions.submittedAt,
-        failedTestCaseIndex: submissions.failedTestCaseIndex,
-        runtimeErrorType: submissions.runtimeErrorType,
-      })
-      .from(submissions)
-      .where(
-        and(
-          eq(submissions.userId, session.user.id),
-          eq(submissions.problemId, problem.id)
-        )
-      )
-      .orderBy(sql`${submissions.submittedAt} DESC`)
-      .limit(20);
-  }
+  const similarProblems = similarProblemsResult;
+  const [prevProblem, nextProblem] = navResult;
+  const userSubmissions = userSubmissionsResult;
 
   const statusLabels = buildStatusLabels(tSubmissions);
   const socialImageUrl = buildSocialImageUrl({
