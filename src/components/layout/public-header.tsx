@@ -318,7 +318,7 @@ export function PublicHeader({ siteTitle, items, actions, loggedInUser, leadingS
                 <button
                   onClick={() => { closeMobileMenu(); handleSignOut(); }}
                   disabled={isSigningOut}
-                  className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+                  className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                 >
                   <LogOut className="size-4" />
                   {isSigningOut ? tCommon("signingOut") : tAuth("signOut")}
