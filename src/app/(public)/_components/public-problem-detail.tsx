@@ -24,6 +24,7 @@ type PublicProblemDetailProps = {
   signInHref: string;
   signInLabel: string;
   submitAction?: ReactNode;
+  editAction?: ReactNode;
 };
 
 export function PublicProblemDetail({
@@ -42,6 +43,7 @@ export function PublicProblemDetail({
   signInHref,
   signInLabel,
   submitAction = null,
+  editAction = null,
 }: PublicProblemDetailProps) {
   return (
     <div className="space-y-6">
@@ -59,6 +61,7 @@ export function PublicProblemDetail({
               <h1 className="text-3xl font-bold">{title}</h1>
             </div>
             <div className="flex flex-wrap gap-2">
+              {editAction}
               <Link href={playgroundHref}>
                 <Button variant="outline">{playgroundLabel}</Button>
               </Link>

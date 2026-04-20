@@ -360,6 +360,11 @@ export default async function PublicProblemDetailPage({ params }: { params: Prom
                       <Button>{tProblems("submitSolution")}</Button>
                     </Link>
                   ) : null}
+                  editAction={caps.has("problems.create") ? (
+                    <Link href={buildLocalePath(`/dashboard/problems/${problem.id}/edit`, locale)}>
+                      <Button variant="outline">{tProblems("editProblem")}</Button>
+                    </Link>
+                  ) : null}
                   playgroundHref={contestlessPlaygroundHref}
                   playgroundLabel={t("practice.tryInPlayground")}
                   signInHref={signInHref}
