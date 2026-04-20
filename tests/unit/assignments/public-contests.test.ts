@@ -16,6 +16,10 @@ vi.mock("@/lib/db", () => ({
   },
 }));
 
+vi.mock("@/lib/db-time", () => ({
+  getDbNow: vi.fn().mockResolvedValue(new Date("2026-04-20T12:00:00Z")),
+}));
+
 describe("public contest helpers", () => {
   beforeEach(() => {
     vi.clearAllMocks();

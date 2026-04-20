@@ -11,6 +11,10 @@ vi.mock("@/lib/assignments/contests", () => ({
   getContestStatus: getContestStatusMock,
 }));
 
+vi.mock("@/lib/db-time", () => ({
+  getDbNow: vi.fn().mockResolvedValue(new Date("2026-04-20T12:00:00Z")),
+}));
+
 import {
   getActiveTimedAssignmentsForSidebar,
   selectActiveTimedAssignments,
