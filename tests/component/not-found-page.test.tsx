@@ -3,9 +3,10 @@ import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import NotFoundPage from "@/app/not-found";
 
-const { authMock, getResolvedSystemSettingsMock } = vi.hoisted(() => ({
+const { authMock, getResolvedSystemSettingsMock, publicHeaderPropsMock } = vi.hoisted(() => ({
   authMock: vi.fn(),
   getResolvedSystemSettingsMock: vi.fn(),
+  publicHeaderPropsMock: vi.fn(),
 }));
 
 vi.mock("next/link", () => ({
@@ -23,7 +24,10 @@ vi.mock("next-intl/server", () => ({
         "nav.playground": "Playground",
         "nav.contests": "Contests",
         "nav.community": "Community",
-        "nav.workspace": "Workspace",
+        "nav.rankings": "Rankings",
+        "nav.submissions": "Submissions",
+        "nav.languages": "Languages",
+        "nav.dashboard": "Dashboard",
       },
       dashboardState: {
         notFoundTitle: "Page not found",
@@ -42,7 +46,10 @@ vi.mock("@/lib/capabilities/cache", () => ({
   resolveCapabilities: vi.fn().mockResolvedValue(new Set()),
 }));
 vi.mock("@/components/layout/public-header", () => ({
-  PublicHeader: () => <div>public-header</div>,
+  PublicHeader: (props: { items: Array<{ label: string }>; actions: Array<{ label: string }>; loggedInUser?: { label: string } | null }) => {
+    publicHeaderPropsMock(props);
+    return <div>public-header</div>;
+  },
 }));
 vi.mock("@/components/layout/public-footer", () => ({
   PublicFooter: () => <div>public-footer</div>,
@@ -67,6 +74,9 @@ describe("NotFoundPage", () => {
     expect(screen.getByText("Page not found")).toBeInTheDocument();
     expect(screen.getByText("This page doesn't exist.")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Back" })).toHaveAttribute("href", "/");
+    const props = publicHeaderPropsMock.mock.calls.at(-1)?.[0];
+    expect(props?.actions[0]?.label).toBe("Dashboard");
+    expect(props?.items.map((item: { label: string }) => item.label)).toContain("Languages");
   });
 
   it("links logged-in users back to dashboard", async () => {
@@ -74,5 +84,7 @@ describe("NotFoundPage", () => {
     render(await NotFoundPage());
 
     expect(screen.getByRole("link", { name: "Back to Dashboard" })).toHaveAttribute("href", "/dashboard");
+    const props = publicHeaderPropsMock.mock.calls.at(-1)?.[0];
+    expect(props?.loggedInUser?.label).toBe("Dashboard");
   });
 });

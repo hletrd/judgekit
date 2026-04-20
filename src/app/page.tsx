@@ -11,6 +11,7 @@ import { SkipToContent } from "@/components/layout/skip-to-content";
 import { getHomepageInsights } from "@/lib/homepage-insights";
 import { getJudgeSystemSnapshot } from "@/lib/judge/dashboard-data";
 import { resolveCapabilities } from "@/lib/capabilities/cache";
+import { getPublicNavItems } from "@/lib/navigation/public-nav";
 
 function pick(defaultVal: string, override?: string): string {
   return override && override.trim() ? override : defaultVal;
@@ -87,20 +88,13 @@ export default async function HomePage() {
       <SkipToContent label={tCommon("skipToContent")} />
       <PublicHeader
         siteTitle={settings.siteTitle}
-        items={[
-          { href: "/practice", label: tShell("nav.practice") },
-          { href: "/playground", label: tShell("nav.playground") },
-          { href: "/contests", label: tShell("nav.contests") },
-          { href: "/rankings", label: tShell("nav.rankings") },
-          { href: "/submissions", label: tShell("nav.submissions") },
-          { href: "/community", label: tShell("nav.community") },
-        ]}
+        items={getPublicNavItems(tShell)}
         actions={[
-          { href: "/dashboard", label: tShell("nav.workspace") },
+          { href: "/dashboard", label: tShell("nav.dashboard") },
           { href: "/login", label: tAuth("signIn") },
           ...(settings.publicSignupEnabled ? [{ href: "/signup", label: tAuth("signUp") }] : []),
         ]}
-        loggedInUser={session?.user ? { name: session.user.name, href: "/dashboard", label: tShell("nav.workspace"), role: session.user.role, capabilities } : null}
+        loggedInUser={session?.user ? { name: session.user.name, href: "/dashboard", label: tShell("nav.dashboard"), role: session.user.role, capabilities } : null}
       />
       <main id="main-content" className="mx-auto w-full max-w-6xl px-4 py-10 sm:px-6 lg:px-8">
         <PublicHomePage

@@ -3,11 +3,12 @@ import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import HomePage from "@/app/page";
 
-const { authMock, getResolvedSystemSettingsMock, getHomepageInsightsMock, getJudgeSystemSnapshotMock } = vi.hoisted(() => ({
+const { authMock, getResolvedSystemSettingsMock, getHomepageInsightsMock, getJudgeSystemSnapshotMock, publicHeaderPropsMock } = vi.hoisted(() => ({
   authMock: vi.fn(),
   getResolvedSystemSettingsMock: vi.fn(),
   getHomepageInsightsMock: vi.fn(),
   getJudgeSystemSnapshotMock: vi.fn(),
+  publicHeaderPropsMock: vi.fn(),
 }));
 
 vi.mock("next-intl/server", () => ({
@@ -27,7 +28,10 @@ vi.mock("next-intl/server", () => ({
         "nav.playground": "Playground",
         "nav.contests": "Contests",
         "nav.community": "Community",
-        "nav.workspace": "Workspace",
+        "nav.rankings": "Rankings",
+        "nav.submissions": "Submissions",
+        "nav.languages": "Languages",
+        "nav.dashboard": "Dashboard",
         "home.eyebrow": "Online judge platform",
         "home.title": "Write code. Submit. Get judged.",
         "home.description": "Practice, contest, and coursework platform",
@@ -81,7 +85,10 @@ vi.mock("@/lib/judge/dashboard-data", () => ({
 }));
 
 vi.mock("@/components/layout/public-header", () => ({
-  PublicHeader: ({ children }: { children?: ReactNode }) => <div>{children ?? "public-header"}</div>,
+  PublicHeader: (props: { children?: ReactNode; items: Array<{ label: string }>; actions: Array<{ label: string }>; loggedInUser?: { label: string } | null }) => {
+    publicHeaderPropsMock(props);
+    return <div>{props.children ?? "public-header"}</div>;
+  },
 }));
 
 vi.mock("@/components/layout/public-footer", () => ({
@@ -143,6 +150,9 @@ describe("HomePage hero CTAs", () => {
     expect(screen.getByText("Public problems: 1,024")).toBeInTheDocument();
     expect(screen.getByText("Total submissions: 9,876")).toBeInTheDocument();
     expect(screen.getByText("Supported languages: 120")).toBeInTheDocument();
+    const props = publicHeaderPropsMock.mock.calls.at(-1)?.[0];
+    expect(props?.loggedInUser?.label).toBe("Dashboard");
+    expect(props?.items.map((item: { label: string }) => item.label)).toContain("Languages");
   });
 
   it("shows the sign-in hero CTA for guests", async () => {
@@ -152,5 +162,7 @@ describe("HomePage hero CTAs", () => {
 
     expect(screen.getByText("Open workspace")).toBeInTheDocument();
     expect(screen.getByText("Sign in")).toBeInTheDocument();
+    const props = publicHeaderPropsMock.mock.calls.at(-1)?.[0];
+    expect(props?.actions[0]?.label).toBe("Dashboard");
   });
 });

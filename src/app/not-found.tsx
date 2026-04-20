@@ -8,6 +8,7 @@ import { SkipToContent } from "@/components/layout/skip-to-content";
 import { buildLocalePath, NO_INDEX_METADATA } from "@/lib/seo";
 import { getResolvedSystemSettings } from "@/lib/system-settings";
 import { resolveCapabilities } from "@/lib/capabilities/cache";
+import { getPublicNavItems } from "@/lib/navigation/public-nav";
 
 export async function generateMetadata() {
   const tState = await getTranslations("dashboardState");
@@ -44,20 +45,13 @@ export default async function NotFoundPage() {
       <SkipToContent label={tCommon("skipToContent")} />
       <PublicHeader
         siteTitle={settings.siteTitle}
-        items={[
-          { href: "/practice", label: tShell("nav.practice") },
-          { href: "/playground", label: tShell("nav.playground") },
-          { href: "/contests", label: tShell("nav.contests") },
-          { href: "/rankings", label: tShell("nav.rankings") },
-          { href: "/submissions", label: tShell("nav.submissions") },
-          { href: "/community", label: tShell("nav.community") },
-        ]}
+        items={getPublicNavItems(tShell)}
         actions={[
-          { href: "/dashboard", label: tShell("nav.workspace") },
+          { href: "/dashboard", label: tShell("nav.dashboard") },
           { href: "/login", label: tAuth("signIn") },
           ...(settings.publicSignupEnabled ? [{ href: "/signup", label: tAuth("signUp") }] : []),
         ]}
-        loggedInUser={session?.user ? { name: session.user.name, href: "/dashboard", label: tShell("nav.workspace"), role: session.user.role, capabilities } : null}
+        loggedInUser={session?.user ? { name: session.user.name, href: "/dashboard", label: tShell("nav.dashboard"), role: session.user.role, capabilities } : null}
       />
       <main id="main-content" className="mx-auto flex min-h-[calc(100dvh-80px)] w-full max-w-6xl items-center justify-center px-4 py-10 sm:px-6 lg:px-8">
         <div className="w-full max-w-xl rounded-3xl border bg-background p-8 text-center shadow-sm sm:p-10">
