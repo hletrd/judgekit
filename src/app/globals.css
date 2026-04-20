@@ -126,7 +126,14 @@
   }
   html {
     @apply font-sans;
-    letter-spacing: -0.01em;
+    /* Per CLAUDE.md: Korean text must use default letter-spacing.
+       Use CSS custom properties so that html:lang(ko) can override to normal. */
+    --letter-spacing-body: -0.01em;
+    letter-spacing: var(--letter-spacing-body);
+  }
+  html:lang(ko) {
+    --letter-spacing-body: normal;
+    --letter-spacing-heading: normal;
   }
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after {
@@ -210,7 +217,10 @@
 
   .problem-description :is(h1, h2, h3, h4) {
     font-weight: 700;
-    letter-spacing: -0.02em;
+    /* Per CLAUDE.md: Korean text must use default letter-spacing.
+       Use CSS custom property so that html:lang(ko) can override to normal. */
+    --letter-spacing-heading: -0.02em;
+    letter-spacing: var(--letter-spacing-heading);
     line-height: 1.3;
     margin-bottom: 0.75rem;
     margin-top: 1.75rem;
