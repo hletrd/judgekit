@@ -6,6 +6,7 @@ import { authUserSelect } from "@/lib/db/selects";
 import { deriveEncryptionKey, legacyEncryptionKey } from "@/lib/security/derive-key";
 import { getRoleLevel } from "@/lib/capabilities/cache";
 import { logger } from "@/lib/logger";
+import { getDbNowUncached } from "@/lib/db-time";
 
 export const API_KEY_PREFIX = "jk_";
 const KEY_RANDOM_BYTES = 20; // 20 bytes = 40 hex chars → total key = "jk_" + 40 = 43 chars
@@ -82,8 +83,11 @@ export async function authenticateApiKey(authHeader: string | null) {
 
   if (!candidate) return null;
 
-  // Check expiry
-  if (candidate.expiresAt && candidate.expiresAt < new Date()) return null;
+  // Check expiry using DB server time to avoid clock skew
+  if (candidate.expiresAt) {
+    const now = await getDbNowUncached();
+    if (candidate.expiresAt < now) return null;
+  }
 
   // Fetch the creator user for context
   const user = await db
