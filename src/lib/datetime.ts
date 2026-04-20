@@ -52,6 +52,20 @@ export function formatDateInTimeZone(
   });
 }
 
+/**
+ * Format a number using the given locale's digit grouping conventions.
+ *
+ * Prefer this over `.toLocaleString("en-US")` or `.toFixed()` for any
+ * user-facing number display so that future locale additions (e.g., Arabic,
+ * Hindi) are handled correctly without per-component updates.
+ */
+export function formatNumber(
+  value: number,
+  locale: string | string[] = DEFAULT_LOCALE
+): string {
+  return value.toLocaleString(locale);
+}
+
 export function formatRelativeTimeFromNow(
   value: number | string | Date,
   locale: string | string[] = DEFAULT_LOCALE,

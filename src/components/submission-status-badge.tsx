@@ -13,6 +13,7 @@ import {
   getSubmissionStatusVariant,
   isActiveSubmissionStatus,
 } from "@/lib/submissions/status";
+import { formatNumber } from "@/lib/datetime";
 
 type SubmissionStatusBadgeProps = {
   status: string | null | undefined;
@@ -27,6 +28,8 @@ type SubmissionStatusBadgeProps = {
   runtimeErrorType?: string | null;
   timeLimitMs?: number | null;
   score?: number | null;
+  /** Locale for number formatting. Defaults to "en-US". */
+  locale?: string;
 };
 
 function SubmissionStatusIcon({ status }: { status: string | null | undefined }) {
@@ -41,8 +44,8 @@ function SubmissionStatusIcon({ status }: { status: string | null | undefined })
   return <AlertTriangle aria-hidden="true" className="size-3.5 shrink-0" />;
 }
 
-function formatNumber(n: number): string {
-  return n.toLocaleString("en-US");
+function formatBadgeNumber(n: number, locale?: string): string {
+  return formatNumber(n, locale);
 }
 
 const RUNTIME_ERROR_LABELS: Record<string, string> = {
@@ -63,7 +66,8 @@ function TooltipBody({
   runtimeErrorType,
   timeLimitMs,
   score,
-}: Pick<SubmissionStatusBadgeProps, "status" | "compileOutput" | "executionTimeMs" | "memoryUsedKb" | "failedTestCaseIndex" | "runtimeErrorType" | "timeLimitMs" | "score">) {
+  locale,
+}: Pick<SubmissionStatusBadgeProps, "status" | "compileOutput" | "executionTimeMs" | "memoryUsedKb" | "failedTestCaseIndex" | "runtimeErrorType" | "timeLimitMs" | "score" | "locale">) {
   if (status === "compile_error" && compileOutput) {
     const truncated = compileOutput.length > 200
       ? compileOutput.slice(0, 200) + "..."
@@ -86,7 +90,7 @@ function TooltipBody({
       )}
       {status === "time_limit" && executionTimeMs != null && (
         <div className="text-muted-foreground">
-          {formatNumber(executionTimeMs)} ms / {timeLimitMs != null ? `${formatNumber(timeLimitMs)} ms` : "—"}
+          {formatBadgeNumber(executionTimeMs, locale)} ms / {timeLimitMs != null ? `${formatBadgeNumber(timeLimitMs, locale)} ms` : "—"}
         </div>
       )}
       {status === "runtime_error" && (
@@ -100,13 +104,13 @@ function TooltipBody({
         {executionTimeMs !== null && executionTimeMs !== undefined && status !== "time_limit" && (
           <span className="inline-flex items-center gap-1 text-muted-foreground">
             <Timer aria-hidden="true" className="size-3 shrink-0" />
-            {formatNumber(executionTimeMs)} ms
+            {formatBadgeNumber(executionTimeMs, locale)} ms
           </span>
         )}
         {memoryUsedKb !== null && memoryUsedKb !== undefined && (
           <span className="inline-flex items-center gap-1 text-muted-foreground">
             <HardDrive aria-hidden="true" className="size-3 shrink-0" />
-            {formatNumber(memoryUsedKb)} KB
+            {formatBadgeNumber(memoryUsedKb, locale)} KB
           </span>
         )}
       </div>
@@ -127,6 +131,7 @@ export function SubmissionStatusBadge({
   runtimeErrorType,
   timeLimitMs,
   score,
+  locale,
 }: SubmissionStatusBadgeProps) {
   const badge = (
     <Badge
@@ -169,6 +174,7 @@ export function SubmissionStatusBadge({
             runtimeErrorType={runtimeErrorType}
             timeLimitMs={timeLimitMs}
             score={score}
+            locale={locale}
           />
         </TooltipContent>
       </Tooltip>
