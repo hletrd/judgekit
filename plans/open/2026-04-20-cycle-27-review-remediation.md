@@ -35,7 +35,7 @@ No cycle-27 review finding is silently dropped. No new refactor-only work is add
   4. The `generateMetadata` function and the page component both need the DB time. Use `React.cache()` to deduplicate the `getDbNow()` call within a single server render.
   5. Verify that the recruit page still works correctly.
   6. Verify the existing recruit-page-metadata test still passes.
-- **Status:** PENDING
+- **Status:** DONE
 
 ### M1: Replace `toLocaleString()` with locale-aware datetime formatter on recruit page (AGG-2)
 
@@ -48,7 +48,7 @@ No cycle-27 review finding is silently dropped. No new refactor-only work is add
   2. Get the current locale from `next-intl/server` (already imported via `getTranslations`).
   3. Replace `new Date(assignment.deadline).toLocaleString()` with `formatDateTimeInTimeZone(assignment.deadline, locale)`.
   4. Verify the page renders correctly in both Korean and English locales.
-- **Status:** PENDING
+- **Status:** DONE
 
 ### M2: Fix SSE events route non-null assertion (AGG-3)
 
@@ -60,7 +60,7 @@ No cycle-27 review finding is silently dropped. No new refactor-only work is add
   1. Capture `const viewerId = user.id;` before the `sendTerminalResult` closure definition (at the top of the `start(controller)` block, near line 280).
   2. Use `viewerId` instead of `user!.id` inside `sendTerminalResult()`.
   3. Verify tsc --noEmit still passes.
-- **Status:** PENDING
+- **Status:** DONE
 
 ### M3: Parallelize recruit page DB queries (AGG-6)
 
@@ -72,7 +72,7 @@ No cycle-27 review finding is silently dropped. No new refactor-only work is add
   1. Restructure the data fetching: after the invitation lookup and the `isRedeemed` / early-return branches, run the assignment query, problem count query, and enabled languages query in a single `Promise.all`.
   2. This only applies to the final rendering branch (after all early returns for invalid/expired/revoked invitations).
   3. Verify the page still works correctly.
-- **Status:** PENDING
+- **Status:** NOT APPLICABLE — Upon analysis, the assignment query cannot be parallelized with the later queries because the early-return branches (isRedeemed re-entry form, deadline check) depend on the assignment data. The current 2-round structure (assignment first, then problem count + languages in parallel) is the correct approach given the control flow.
 
 ### L1: Add test for recruit page DB-sourced time usage (AGG-7, partial)
 
@@ -83,7 +83,7 @@ No cycle-27 review finding is silently dropped. No new refactor-only work is add
 - **Plan:**
   1. Add a test case in `recruit-page-metadata.test.ts` that verifies the page module imports and uses `getDbNow` (or equivalent DB-time helper) instead of `new Date()` for temporal comparisons.
   2. This test documents the expected behavior and prevents regressions.
-- **Status:** PENDING
+- **Status:** DONE
 
 ---
 
@@ -122,3 +122,8 @@ No cycle-27 review finding is silently dropped. No new refactor-only work is add
 
 - 2026-04-20: Plan created from cycle-27 aggregate review.
 - 2026-04-20: Cycle-26 plan archived (all items DONE).
+- 2026-04-20: H1 DONE — added `getDbNow` in `src/lib/db-time.ts`, updated recruit page to use DB-sourced time for all temporal comparisons.
+- 2026-04-20: M1 DONE — replaced `toLocaleString()` with `formatDateTimeInTimeZone()` using user locale.
+- 2026-04-20: M2 DONE — moved `viewerId` capture before closure in SSE events route.
+- 2026-04-20: M3 NOT APPLICABLE — assignment query cannot be parallelized due to control flow dependencies (early-return branches depend on assignment data).
+- 2026-04-20: L1 DONE — added 2 test cases verifying getDbNow usage and expired invitation behavior.
