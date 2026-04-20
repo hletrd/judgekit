@@ -1,7 +1,7 @@
 # Workspace-to-Public Page Migration Plan
 
 **Date:** 2026-04-19
-**Status:** Phase 1 COMPLETE, Phase 2 COMPLETE, Phase 3 IN PROGRESS (cycle 20 — breadcrumb moved to sticky header DONE, remaining: slim down AppSidebar, consider hiding breadcrumb on mobile, evaluate control route merge), Phase 4 PENDING
+**Status:** Phase 1 COMPLETE, Phase 2 COMPLETE, Phase 3 IN PROGRESS (cycle 21 — breadcrumb on mobile already hidden, contests already in PublicHeader dropdown; remaining: slim down AppSidebar, evaluate control route merge), Phase 4 PENDING
 **Source:** User-injected TODO #2, AGG-13
 
 ## Goal
@@ -192,7 +192,7 @@ Same as instructor, with additional "Admin" dropdown entry that navigates to `/d
 
 ### Phase 3 — Dashboard layout refinement (Medium risk)
 
-**Status:** IN PROGRESS (cycle 20 — breadcrumb moved to sticky header DONE; remaining: slim down AppSidebar, hide breadcrumb on mobile, evaluate control route merge)
+**Status:** IN PROGRESS (cycle 21 — breadcrumb hidden on mobile DONE, contests in dropdown DONE; remaining: slim down AppSidebar, evaluate control route merge)
 
 **Goal:** Simplify the dashboard layout to complement the top navbar.
 
@@ -212,7 +212,7 @@ Same as instructor, with additional "Admin" dropdown entry that navigates to `/d
 - ~~Remove duplicate AppSidebar items already in PublicHeader dropdown~~ DONE (commit 9bba87d3 — dashboard, profile removed from sidebar)
 
 **Cycle 14 improvements:**
-- Add "contests" to PublicHeader dropdown (navigation gap — students need an extra click to reach contests from public pages)
+- ~~Add "contests" to PublicHeader dropdown~~ DONE (already present in `getDropdownItems`)
 
 **Cycle 15 improvements:**
 - Fix `tracking-wide` on PublicHeader mobile menu dashboard label — now conditional, skipped for Korean locale (commit 1416cbce)
@@ -220,7 +220,7 @@ Same as instructor, with additional "Admin" dropdown entry that navigates to `/d
 
 **Remaining Phase 3 work:**
 - Further slim down `AppSidebar` to icon-only mode or contextual sub-navigation
-- Consider hiding breadcrumb on mobile viewports (designer recommendation — breadcrumbs not useful on mobile)
+- ~~Consider hiding breadcrumb on mobile viewports~~ DONE (already hidden via `hidden md:block`)
 - Evaluate `(control)` route group merge into `(dashboard)/admin`
 
 **Estimated files changed:** ~15-20
