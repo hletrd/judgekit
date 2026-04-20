@@ -42,6 +42,10 @@ vi.mock("@/lib/capabilities/cache", () => ({
   getRoleLevel: mocks.getRoleLevel,
 }));
 
+vi.mock("@/lib/db-time", () => ({
+  getDbNowUncached: vi.fn(() => Promise.resolve(new Date("2026-04-20T12:00:00Z"))),
+}));
+
 vi.mock("@/lib/validators/profile", async () => {
   const actual = await vi.importActual<typeof import("@/lib/validators/profile")>(
     "@/lib/validators/profile"

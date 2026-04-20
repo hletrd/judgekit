@@ -1,37 +1,32 @@
-import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
+import { describe, expect, it } from "vitest";
 import { withUpdatedAt } from "@/lib/db/helpers";
 
 describe("withUpdatedAt", () => {
-  beforeEach(() => {
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date("2025-06-15T12:00:00Z"));
-  });
-
-  afterEach(() => {
-    vi.useRealTimers();
-  });
-
-  it("injects updatedAt with the current date", () => {
-    const result = withUpdatedAt({ name: "Alice" });
+  it("injects updatedAt with the provided date", () => {
+    const now = new Date("2025-06-15T12:00:00Z");
+    const result = withUpdatedAt({ name: "Alice" }, now);
     expect(result).toEqual({
       name: "Alice",
-      updatedAt: new Date("2025-06-15T12:00:00Z"),
+      updatedAt: now,
     });
   });
 
   it("preserves all original fields", () => {
-    const result = withUpdatedAt({ a: 1, b: "two", c: true });
+    const now = new Date("2025-06-15T12:00:00Z");
+    const result = withUpdatedAt({ a: 1, b: "two", c: true }, now);
     expect(result).toMatchObject({ a: 1, b: "two", c: true });
-    expect(result.updatedAt).toBeInstanceOf(Date);
+    expect(result.updatedAt).toBe(now);
   });
 
   it("overrides an existing updatedAt field", () => {
-    const result = withUpdatedAt({ updatedAt: new Date("2000-01-01") });
-    expect(result.updatedAt).toEqual(new Date("2025-06-15T12:00:00Z"));
+    const now = new Date("2025-06-15T12:00:00Z");
+    const result = withUpdatedAt({ updatedAt: new Date("2000-01-01") }, now);
+    expect(result.updatedAt).toBe(now);
   });
 
   it("works with an empty object", () => {
-    const result = withUpdatedAt({});
-    expect(result).toEqual({ updatedAt: new Date("2025-06-15T12:00:00Z") });
+    const now = new Date("2025-06-15T12:00:00Z");
+    const result = withUpdatedAt({}, now);
+    expect(result).toEqual({ updatedAt: now });
   });
 });

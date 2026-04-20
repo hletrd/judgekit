@@ -5,10 +5,10 @@ import { apiSuccess, apiError } from "@/lib/api/responses";
 import { db } from "@/lib/db";
 import { plugins } from "@/lib/db/schema";
 import { withUpdatedAt } from "@/lib/db/helpers";
+import { getDbNowUncached } from "@/lib/db-time";
 import { getPluginDefinition } from "@/lib/plugins/registry";
 import { getPluginState } from "@/lib/plugins/data";
 import { recordAuditEvent } from "@/lib/audit/events";
-import { getDbNowUncached } from "@/lib/db-time";
 import { preparePluginConfigForStorage, redactPluginConfigForAudit } from "@/lib/plugins/secrets";
 import { eq } from "drizzle-orm";
 
@@ -75,7 +75,7 @@ export const PATCH = createApiHandler({
           set: withUpdatedAt({
             config: storedConfig,
             ...(body.enabled !== undefined ? { enabled: body.enabled } : {}),
-          }),
+          }, await getDbNowUncached()),
         });
 
       recordAuditEvent({
@@ -103,7 +103,7 @@ export const PATCH = createApiHandler({
         })
         .onConflictDoUpdate({
           target: plugins.id,
-          set: withUpdatedAt({ enabled: body.enabled }),
+          set: withUpdatedAt({ enabled: body.enabled }, await getDbNowUncached()),
         });
 
       recordAuditEvent({

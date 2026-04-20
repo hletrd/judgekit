@@ -116,7 +116,7 @@ export async function toggleUserActive(userId: string, isActive: boolean): Promi
     }
 
     await db.update(users)
-      .set(withUpdatedAt(updates))
+      .set(withUpdatedAt(updates, await getDbNowUncached()))
       .where(eq(users.id, userId));
 
     const auditContext = await buildServerActionAuditContext("/dashboard/admin/users");
@@ -319,7 +319,7 @@ export async function editUser(userId: string, data: ManagedUserInput): Promise<
           throw new Error("emailInUse");
         }
 
-        await tx.update(users).set(withUpdatedAt(updates)).where(eq(users.id, userId));
+        await tx.update(users).set(withUpdatedAt(updates, await getDbNowUncached())).where(eq(users.id, userId));
       });
     } catch (error) {
       const pgErr = error as { code?: string; constraint?: string };

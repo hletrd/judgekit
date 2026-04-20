@@ -74,7 +74,7 @@ export async function changePassword(
         passwordHash: newHash,
         mustChangePassword: false,
         tokenInvalidatedAt: await getDbNowUncached(),
-      }))
+      }, await getDbNowUncached()))
       .where(eq(users.id, user.id));
   } catch (error) {
     logger.error({ err: error }, "Failed to change password");

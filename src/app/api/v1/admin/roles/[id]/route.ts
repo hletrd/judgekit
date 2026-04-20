@@ -8,6 +8,7 @@ import { resolveCapabilities, invalidateRoleCache, isSuperAdminRole, getRoleLeve
 import { recordAuditEvent } from "@/lib/audit/events";
 import { updateRoleSchema } from "@/lib/validators/roles";
 import { withUpdatedAt } from "@/lib/db/helpers";
+import { getDbNowUncached } from "@/lib/db-time";
 import { createApiHandler } from "@/lib/api/handler";
 
 const ROLE_COLUMNS = {
@@ -96,7 +97,7 @@ export const PATCH = createApiHandler({
 
     await db
       .update(roles)
-      .set(withUpdatedAt(updateData))
+      .set(withUpdatedAt(updateData, await getDbNowUncached()))
       .where(eq(roles.id, id));
 
     invalidateRoleCache();

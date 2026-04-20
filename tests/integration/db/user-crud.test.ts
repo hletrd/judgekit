@@ -131,7 +131,7 @@ describe.skipIf(!hasPostgresIntegrationSupport)("User CRUD (integration)", () =>
 
       await ctx.db
         .update(users)
-        .set(withUpdatedAt({ name: "Updated" }))
+        .set(withUpdatedAt({ name: "Updated" }, new Date()))
         .where(eq(users.id, seeded.id));
 
       const row = await ctx.db
@@ -149,7 +149,7 @@ describe.skipIf(!hasPostgresIntegrationSupport)("User CRUD (integration)", () =>
 
       await ctx.db
         .update(users)
-        .set(withUpdatedAt({ role: "instructor" }))
+        .set(withUpdatedAt({ role: "instructor" }, new Date()))
         .where(eq(users.id, seeded.id));
 
       const row = await ctx.db
@@ -166,7 +166,7 @@ describe.skipIf(!hasPostgresIntegrationSupport)("User CRUD (integration)", () =>
 
       await ctx.db
         .update(users)
-        .set(withUpdatedAt({ isActive: false }))
+        .set(withUpdatedAt({ isActive: false }, new Date()))
         .where(eq(users.id, seeded.id));
 
       const row = await ctx.db
@@ -183,7 +183,7 @@ describe.skipIf(!hasPostgresIntegrationSupport)("User CRUD (integration)", () =>
 
       await ctx.db
         .update(users)
-        .set(withUpdatedAt({ mustChangePassword: true }))
+        .set(withUpdatedAt({ mustChangePassword: true }, new Date()))
         .where(eq(users.id, seeded.id));
 
       const row = await ctx.db

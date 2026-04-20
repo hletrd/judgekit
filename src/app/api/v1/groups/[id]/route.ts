@@ -8,6 +8,7 @@ import { canManageGroupResourcesAsync } from "@/lib/assignments/management";
 import { recordAuditEvent } from "@/lib/audit/events";
 import { updateGroupSchema } from "@/lib/validators/groups";
 import { withUpdatedAt } from "@/lib/db/helpers";
+import { getDbNowUncached } from "@/lib/db-time";
 import { execTransaction } from "@/lib/db";
 import { createApiHandler, notFound, forbidden } from "@/lib/api/handler";
 import { resolveCapabilities, getRoleLevel } from "@/lib/capabilities/cache";
@@ -141,7 +142,7 @@ export const PATCH = createApiHandler({
       updates.instructorId = instructorId;
     }
 
-    await db.update(groups).set(withUpdatedAt(updates)).where(eq(groups.id, id));
+    await db.update(groups).set(withUpdatedAt(updates, await getDbNowUncached())).where(eq(groups.id, id));
 
     const updated = await db.query.groups.findFirst({ where: eq(groups.id, id) });
 

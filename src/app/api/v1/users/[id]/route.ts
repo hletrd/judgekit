@@ -359,7 +359,7 @@ export const PATCH = createApiHandler({
         );
         if (uniqueIdentityError) throw uniqueIdentityError;
 
-        await tx.update(users).set(withUpdatedAt(updates)).where(eq(users.id, id));
+        await tx.update(users).set(withUpdatedAt(updates, await getDbNowUncached())).where(eq(users.id, id));
       });
     } catch (err: unknown) {
       // Re-throw API error responses from ensureUniqueIdentityFields
@@ -475,7 +475,8 @@ export const DELETE = createApiHandler({
       return apiSuccess({ id, deleted: true });
     }
 
-    await db.update(users).set(withUpdatedAt({ isActive: false, tokenInvalidatedAt: await getDbNowUncached() })).where(eq(users.id, id));
+    const dbNow = await getDbNowUncached();
+    await db.update(users).set(withUpdatedAt({ isActive: false, tokenInvalidatedAt: dbNow }, dbNow)).where(eq(users.id, id));
 
     recordAuditEvent({
       actorId: user.id,

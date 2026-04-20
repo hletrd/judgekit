@@ -4,6 +4,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { withUpdatedAt } from "@/lib/db/helpers";
+import { getDbNowUncached } from "@/lib/db-time";
 import { auth, unstable_update } from "@/lib/auth";
 import { isTrustedServerActionOrigin } from "@/lib/security/server-actions";
 import { checkServerActionRateLimit } from "@/lib/security/api-rate-limit";
@@ -101,7 +102,7 @@ export async function updatePreferences(
 
   try {
     await db.update(users)
-      .set(withUpdatedAt(updates))
+      .set(withUpdatedAt(updates, await getDbNowUncached()))
       .where(eq(users.id, session.user.id));
   } catch (error) {
     logger.error({ err: error }, "Failed to update preferences");
