@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Check, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 
 export function CopyCodeButton({ value }: { value: string }) {
   const t = useTranslations("common");
@@ -25,14 +26,21 @@ export function CopyCodeButton({ value }: { value: string }) {
       document.body.appendChild(textarea);
       try {
         textarea.select();
-        document.execCommand("copy");
+        const ok = document.execCommand("copy");
+        if (!ok) {
+          toast.error(t("copyFailed"));
+          return;
+        }
+      } catch {
+        toast.error(t("copyFailed"));
+        return;
       } finally {
         document.body.removeChild(textarea);
       }
     }
     setCopied(true);
     copiedTimer.current = setTimeout(() => setCopied(false), 2000);
-  }, [value]);
+  }, [value, t]);
 
   return (
     <Button
