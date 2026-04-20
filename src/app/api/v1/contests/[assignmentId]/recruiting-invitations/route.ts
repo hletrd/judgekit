@@ -65,19 +65,23 @@ export const POST = createApiHandler({
         // Compute expiresAt server-side using DB time instead of accepting a
         // client-computed timestamp. This ensures the stored expiry is
         // consistent with the NOW()-based isExpired check.
+        const dbNow = await getDbNowUncached();
+        const MAX_EXPIRY_MS = 10 * 365.25 * 24 * 60 * 60 * 1000; // ~10 years
         let expiresAt: Date | null = null;
         if (body.expiryDays) {
-          const dbNow = await getDbNowUncached();
           expiresAt = new Date(dbNow.getTime() + body.expiryDays * 86400000);
         } else if (body.expiryDate) {
           // Custom date: compute end-of-day UTC to avoid timezone-dependent results.
           // The client sends a bare date (YYYY-MM-DD); we set 23:59:59 UTC.
           expiresAt = new Date(`${body.expiryDate}T23:59:59Z`);
           // Validate the date is in the future (relative to DB time)
-          const dbNow = await getDbNowUncached();
           if (expiresAt <= dbNow) {
             throw new Error("expiryDateInPast");
           }
+        }
+        // Reject unreasonably far-future expiry (consistent with expiryDays max 3650)
+        if (expiresAt && (expiresAt.getTime() - dbNow.getTime()) > MAX_EXPIRY_MS) {
+          throw new Error("expiryDateTooFar");
         }
 
         return createRecruitingInvitation({
@@ -106,6 +110,12 @@ export const POST = createApiHandler({
     } catch (error) {
       if (error instanceof Error && error.message === "emailAlreadyInvited") {
         return apiError("emailAlreadyInvited", 409);
+      }
+      if (error instanceof Error && error.message === "expiryDateInPast") {
+        return apiError("expiryDateInPast", 400);
+      }
+      if (error instanceof Error && error.message === "expiryDateTooFar") {
+        return apiError("expiryDateTooFar", 400);
       }
       throw error;
     }
