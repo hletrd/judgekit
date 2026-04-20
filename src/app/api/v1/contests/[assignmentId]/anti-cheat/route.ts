@@ -59,7 +59,12 @@ export const POST = createApiHandler({
       return apiError("forbidden", 403);
     }
 
-    const now = new Date();
+    // Use DB server time for contest boundary checks to avoid clock skew
+    const nowRow = await rawQueryOne<{ now: Date }>("SELECT NOW()::timestamptz AS now");
+    if (!nowRow?.now) {
+      return apiError("internalServerError", 500);
+    }
+    const now = nowRow.now;
     if (assignment.startsAt && now < assignment.startsAt) {
       return apiError("contestNotStarted", 403);
     }
