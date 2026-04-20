@@ -1,6 +1,7 @@
 import { and, eq, or, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { db } from "@/lib/db";
+import { getDbNowUncached } from "@/lib/db-time";
 
 import {
   assignmentProblems,
@@ -185,7 +186,7 @@ export async function createAssignmentWithProblems(
   input: AssignmentMutationInput
 ) {
   const id = nanoid();
-  const now = new Date();
+  const now = await getDbNowUncached();
 
   await db.transaction(async (tx) => {
     await tx.insert(assignments)
@@ -224,7 +225,7 @@ export async function updateAssignmentWithProblems(
     allowLockedProblemChanges?: boolean;
   } = {}
 ) {
-  const now = new Date();
+  const now = await getDbNowUncached();
   const { problemLinksChanged = false, allowLockedProblemChanges = false } = options;
 
   await db.transaction(async (tx) => {

@@ -5,6 +5,7 @@ import { problems, testCases, tags, problemTags, files } from "@/lib/db/schema";
 import { extractLinkedFileIds } from "@/lib/files/problem-links";
 import type { ProblemMutationInput } from "@/lib/validators/problem-management";
 import { sanitizeMarkdown } from "@/lib/security/sanitize-html";
+import { getDbNowUncached } from "@/lib/db-time";
 
 function mapTestCases(problemId: string, values: ProblemMutationInput["testCases"]) {
   return values.map((testCase, index) => ({
@@ -147,7 +148,7 @@ async function resolveTagIdsWithExecutor(
       const newId = nanoid();
       try {
         await executor.insert(tags)
-          .values({ id: newId, name: trimmed, createdBy, createdAt: new Date() });
+          .values({ id: newId, name: trimmed, createdBy, createdAt: await getDbNowUncached() });
         tagIds.push(newId);
       } catch (error) {
         const pgErr = error as { code?: string };
@@ -239,7 +240,7 @@ async function syncProblemFileLinks(
 
 export async function createProblemWithTestCases(input: ProblemMutationInput, authorId: string) {
   const id = nanoid();
-  const now = new Date();
+  const now = await getDbNowUncached();
 
   await execTransaction(async (tx) => {
     await tx.insert(problems)
@@ -284,7 +285,7 @@ export async function createProblemWithTestCases(input: ProblemMutationInput, au
 }
 
 export async function updateProblemWithTestCases(problemId: string, input: ProblemMutationInput, actorId?: string) {
-  const now = new Date();
+  const now = await getDbNowUncached();
 
   await execTransaction(async (tx) => {
     await tx.update(problems)
