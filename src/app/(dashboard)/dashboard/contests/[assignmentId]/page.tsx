@@ -57,6 +57,7 @@ import { RecruitingInvitationsPanel } from "@/components/contest/recruiting-invi
 import AssignmentFormDialog, { type AssignmentEditorValue } from "../../groups/[id]/assignment-form-dialog";
 import { AssignmentDeleteButton } from "../../groups/[id]/assignment-delete-button";
 import { getRecruitingAccessContext } from "@/lib/recruiting/access";
+import { getDbNow } from "@/lib/db-time";
 
 const STATUS_FILTER_VALUES = ["all", ...ASSIGNMENT_PARTICIPANT_STATUS_VALUES] as const;
 
@@ -185,7 +186,7 @@ export default async function ContestDetailPage({
     (left, right) => (left.sortOrder ?? 0) - (right.sortOrder ?? 0)
   );
   const totalPoints = sortedProblems.reduce((sum, p) => sum + (p.points ?? 100), 0);
-  const now = new Date();
+  const now = await getDbNow();
   const isUpcoming = assignment.startsAt != null && new Date(assignment.startsAt) > now;
   const isPast =
     (assignment.lateDeadline != null && new Date(assignment.lateDeadline) < now) ||
