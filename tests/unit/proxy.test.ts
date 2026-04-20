@@ -180,7 +180,6 @@ describe("proxy", () => {
       expect(config.matcher).toEqual(
         expect.arrayContaining([
           "/",
-          "/control/:path*",
           "/dashboard/:path*",
           "/practice/:path*",
           "/playground/:path*",
@@ -402,11 +401,15 @@ describe("proxy", () => {
   });
 
   describe("protected control routes", () => {
-    it("redirects unauthenticated users from /control to /login with callbackUrl", async () => {
+    it("no longer matches /control in proxy — handled by next.config.ts redirect instead", async () => {
+      // /control is no longer in the proxy matcher; Next.js redirects
+      // /control -> /dashboard via next.config.ts. The proxy does not
+      // intercept these requests anymore.
       const response = await proxy(makeRequest("/control"));
 
-      const redirectUrl = isRedirectTo(response, "/login");
-      expect(redirectUrl.searchParams.get("callbackUrl")).toBe("/control");
+      // Since /control is not in the matcher, the proxy returns a normal
+      // secured response (not a redirect to /login).
+      expect(response.status).not.toBe(307);
     });
   });
 

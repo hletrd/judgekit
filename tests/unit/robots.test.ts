@@ -20,7 +20,6 @@ describe("robots metadata route", () => {
         "/api",
         "/dashboard",
         "/workspace",
-        "/control",
         "/login",
         "/signup",
         "/change-password",
