@@ -8,6 +8,7 @@ import { db, execTransaction } from "@/lib/db";
 import { users, enrollments, contestAccessTokens } from "@/lib/db/schema";
 import { and, eq, inArray, or, sql } from "drizzle-orm";
 import { escapeLikePattern } from "@/lib/db/like";
+import { getDbNowUncached } from "@/lib/db-time";
 
 
 const inviteSchema = z.object({
@@ -92,6 +93,10 @@ export const POST = createApiHandler({
 
     if (!targetUser) return apiError("userNotFound", 404);
 
+    // Use DB server time for stored timestamps to avoid clock skew between
+    // app server and DB server, consistent with access code redemption.
+    const now = await getDbNowUncached();
+
     // Atomically upsert contest access token + enrollment inside a transaction.
     // onConflictDoNothing handles the race condition — no need for a preceding SELECT.
     await execTransaction(async (tx) => {
@@ -100,7 +105,7 @@ export const POST = createApiHandler({
           id: nanoid(),
           assignmentId,
           userId: targetUser.id,
-          redeemedAt: new Date(),
+          redeemedAt: now,
           ipAddress: null,
         })
         .onConflictDoNothing({
@@ -112,7 +117,7 @@ export const POST = createApiHandler({
           id: nanoid(),
           userId: targetUser.id,
           groupId: assignment.groupId,
-          enrolledAt: new Date(),
+          enrolledAt: now,
         })
         .onConflictDoNothing({
           target: [enrollments.userId, enrollments.groupId],

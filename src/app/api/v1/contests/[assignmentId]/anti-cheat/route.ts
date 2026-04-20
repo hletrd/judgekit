@@ -107,7 +107,7 @@ export const POST = createApiHandler({
             details: null,
             ipAddress: extractClientIp(req.headers),
             userAgent: null,
-            createdAt: new Date(),
+            createdAt: now,
           });
       }
       return apiSuccess({ logged: true });
@@ -125,7 +125,7 @@ export const POST = createApiHandler({
         details,
         ipAddress: ip,
         userAgent,
-        createdAt: new Date(),
+        createdAt: now,
       });
 
     return apiSuccess({ logged: true });
