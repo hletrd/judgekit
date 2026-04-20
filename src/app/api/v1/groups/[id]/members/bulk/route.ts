@@ -7,6 +7,7 @@ import { canManageGroupMembersAsync } from "@/lib/assignments/management";
 import { bulkEnrollmentSchema } from "@/lib/validators/groups";
 import { forbidden, notFound, createApiHandler } from "@/lib/api/handler";
 import { apiSuccess } from "@/lib/api/responses";
+import { getDbNowUncached } from "@/lib/db-time";
 
 export const POST = createApiHandler({
   rateLimit: "members:bulk-add",
@@ -65,7 +66,7 @@ export const POST = createApiHandler({
     let enrolled = 0;
 
     if (toEnroll.length > 0) {
-      const now = new Date();
+      const now = await getDbNowUncached();
       const rows = toEnroll.map((student) => ({
         id: nanoid(),
         groupId: id,

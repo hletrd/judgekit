@@ -9,6 +9,7 @@ import { nanoid } from "nanoid";
 import { createGroupSchema } from "@/lib/validators/groups";
 import { resolveCapabilities } from "@/lib/capabilities/cache";
 import { createApiHandler } from "@/lib/api/handler";
+import { getDbNowUncached } from "@/lib/db-time";
 
 export const GET = createApiHandler({
   handler: async (request: NextRequest, { user }) => {
@@ -79,13 +80,14 @@ export const POST = createApiHandler({
     const { name, description } = body;
 
     const id = nanoid();
+    const now = await getDbNowUncached();
     const [group] = await db.insert(groups).values({
       id,
       name,
       description: description || null,
       instructorId: user.id,
-      createdAt: new Date(),
-      updatedAt: new Date(),
+      createdAt: now,
+      updatedAt: now,
     }).returning();
 
     if (group) {

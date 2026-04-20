@@ -11,6 +11,7 @@ import { canAccessGroup } from "@/lib/auth/permissions";
 import { createApiHandler, forbidden, notFound } from "@/lib/api/handler";
 import { parsePagination } from "@/lib/api/pagination";
 import { getRoleLevel } from "@/lib/capabilities/cache";
+import { getDbNowUncached } from "@/lib/db-time";
 
 export const GET = createApiHandler({
   handler: async (req: NextRequest, { user, params }) => {
@@ -102,7 +103,7 @@ export const POST = createApiHandler({
       id: enrollmentId,
       groupId: id,
       userId: body.userId,
-      enrolledAt: new Date(),
+      enrolledAt: await getDbNowUncached(),
     }).onConflictDoNothing({
       target: [enrollments.userId, enrollments.groupId],
     }).returning({ id: enrollments.id });
