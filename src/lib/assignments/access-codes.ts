@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { assignments, contestAccessTokens, enrollments } from "@/lib/db/schema";
 import { and, eq } from "drizzle-orm";
 import { withUpdatedAt } from "@/lib/db/helpers";
+import { rawQueryOne } from "@/lib/db/queries";
 
 /**
  * Generate a random 8-character uppercase alphanumeric access code.
@@ -124,8 +125,13 @@ export async function redeemAccessCode(
         return { ok: false as const, error: "notAContest" };
       }
 
-      // Block join after contest deadline (using transaction-consistent time)
-      const now = new Date();
+      // Block join after contest deadline (using DB server time within the
+      // transaction to avoid clock skew between app server and DB server)
+      const nowRow = await rawQueryOne<{ now: Date }>("SELECT NOW()::timestamptz AS now");
+      if (!nowRow?.now) {
+        throw new Error("Failed to fetch DB server time for access code redemption");
+      }
+      const now = nowRow.now;
       const effectiveClose = assignment.lateDeadline ?? assignment.deadline ?? null;
       if (effectiveClose && effectiveClose < now) {
         return { ok: false as const, error: "contestClosed" };

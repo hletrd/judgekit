@@ -34,6 +34,10 @@ vi.mock("@/lib/db", () => ({
   },
 }));
 
+vi.mock("@/lib/db/queries", () => ({
+  rawQueryOne: vi.fn().mockResolvedValue({ now: new Date("2026-04-20T12:00:00Z") }),
+}));
+
 vi.mock("@/lib/db/helpers", () => ({
   withUpdatedAt: <T extends Record<string, unknown>>(value: T) => value,
 }));
