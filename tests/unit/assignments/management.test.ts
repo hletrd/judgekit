@@ -12,6 +12,10 @@ vi.mock("@/lib/db", () => ({
   db: dbMock,
 }));
 
+vi.mock("@/lib/db-time", () => ({
+  getDbNowUncached: vi.fn().mockResolvedValue(new Date("2026-04-20T12:00:00Z")),
+}));
+
 vi.mock("@/lib/capabilities/cache", () => ({
   resolveCapabilities: resolveCapabilitiesMock,
 }));
