@@ -10,6 +10,7 @@ import { users } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { logger } from "@/lib/logger";
 import { contentDispositionAttachment } from "@/lib/http/content-disposition";
+import { getDbNowUncached } from "@/lib/db-time";
 
 export const dynamic = "force-dynamic";
 
@@ -78,7 +79,9 @@ export async function POST(request: NextRequest) {
     const url = new URL(request.url);
     const wantFull = url.searchParams.get("full") === "true";
 
-    const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+    // Use DB server time for the export filename to match the backup route pattern
+    const dbNow = await getDbNowUncached();
+    const timestamp = dbNow.toISOString().replace(/[:.]/g, "-");
     const filename = `judgekit-export-${timestamp}.json`;
 
     recordAuditEvent({
