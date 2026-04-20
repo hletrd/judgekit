@@ -11,6 +11,16 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { toggleLanguage, updateLanguageConfig, resetLanguageToDefaults, resetAllLanguagesToDefaults, addLanguageConfig } from "@/lib/actions/language-configs";
@@ -64,6 +74,7 @@ export function LanguageConfigTable({ languages }: { languages: LanguageConfig[]
   });
   const [isPruning, setIsPruning] = useState(false);
   const [staleCount, setStaleCount] = useState(0);
+  const [confirmAction, setConfirmAction] = useState<{ type: string; payload?: unknown } | null>(null);
 
   const fetchImageStatus = useCallback(async () => {
     try {
@@ -112,7 +123,10 @@ export function LanguageConfigTable({ languages }: { languages: LanguageConfig[]
   }
 
   function handleRemoveImage(lang: LanguageConfig) {
-    if (!confirm(t("actions.removeConfirm"))) return;
+    setConfirmAction({ type: "removeImage", payload: lang });
+  }
+
+  function confirmRemoveImage(lang: LanguageConfig) {
     fetch("/api/v1/admin/docker/images", {
       method: "DELETE",
       headers: { "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest" },
@@ -131,7 +145,10 @@ export function LanguageConfigTable({ languages }: { languages: LanguageConfig[]
   }
 
   function handlePrune() {
-    if (!confirm(t("actions.pruneConfirm"))) return;
+    setConfirmAction({ type: "prune" });
+  }
+
+  function confirmPrune() {
     setIsPruning(true);
     fetch("/api/v1/admin/docker/images/prune", {
       method: "POST",
@@ -192,7 +209,10 @@ export function LanguageConfigTable({ languages }: { languages: LanguageConfig[]
   }
 
   function handleReset(language: string) {
-    if (!confirm(t("edit.resetConfirm"))) return;
+    setConfirmAction({ type: "reset", payload: language });
+  }
+
+  function confirmReset(language: string) {
     startTransition(async () => {
       const result = await resetLanguageToDefaults(language);
       if (result.success) {
@@ -206,7 +226,10 @@ export function LanguageConfigTable({ languages }: { languages: LanguageConfig[]
   }
 
   function handleResetAll() {
-    if (!confirm(t("actions.resetAllConfirm"))) return;
+    setConfirmAction({ type: "resetAll" });
+  }
+
+  function confirmResetAll() {
     startTransition(async () => {
       const result = await resetAllLanguagesToDefaults();
       if (result.success) {
@@ -599,6 +622,33 @@ export function LanguageConfigTable({ languages }: { languages: LanguageConfig[]
           </div>
         </SheetContent>
       </Sheet>
+
+      {/* Confirmation dialog for destructive actions */}
+      <AlertDialog open={confirmAction !== null} onOpenChange={(open) => { if (!open) setConfirmAction(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{tCommon("confirm")}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {confirmAction?.type === "removeImage" ? t("actions.removeConfirm")
+                : confirmAction?.type === "prune" ? t("actions.pruneConfirm")
+                : confirmAction?.type === "reset" ? t("edit.resetConfirm")
+                : t("actions.resetAllConfirm")}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{tCommon("cancel")}</AlertDialogCancel>
+            <AlertDialogAction onClick={() => {
+              if (confirmAction?.type === "removeImage") confirmRemoveImage(confirmAction.payload as LanguageConfig);
+              else if (confirmAction?.type === "prune") confirmPrune();
+              else if (confirmAction?.type === "reset") confirmReset(confirmAction.payload as string);
+              else if (confirmAction?.type === "resetAll") confirmResetAll();
+              setConfirmAction(null);
+            }}>
+              {tCommon("confirm")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
