@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { getLocale, getTranslations } from "next-intl/server";
+import { getDbNow } from "@/lib/db-time";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
@@ -62,9 +63,8 @@ type SubmissionRow = {
 };
 
 
-function getPeriodStart(period: PeriodFilter): Date | null {
+function getPeriodStart(period: PeriodFilter, now: Date): Date | null {
   if (period === "all") return null;
-  const now = new Date();
   switch (period) {
     case "today": {
       const start = new Date(now);
@@ -175,7 +175,7 @@ export default async function SubmissionsPage({
     ? eq(submissions.status, currentStatus)
     : undefined;
 
-  const periodStart = getPeriodStart(currentPeriod);
+  const periodStart = getPeriodStart(currentPeriod, await getDbNow());
   const periodFilter = periodStart
     ? gte(submissions.submittedAt, periodStart)
     : undefined;

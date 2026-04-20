@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
+import { getDbNow } from "@/lib/db-time";
 import { rawQueryAll, rawQueryOne } from "@/lib/db/queries";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -167,8 +168,9 @@ export default async function UserProfilePage({
   }
 
   const activityMap = new Map(activityRows.map((row) => [row.day, row.count]));
+  const dbNow = await getDbNow();
   const activityDays = Array.from({ length: 90 }, (_, index) => {
-    const day = new Date();
+    const day = new Date(dbNow);
     day.setDate(day.getDate() - (89 - index));
     const key = day.toISOString().slice(0, 10);
     return {
