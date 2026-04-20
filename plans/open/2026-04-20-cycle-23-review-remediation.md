@@ -40,9 +40,7 @@ No cycle-23 review finding is silently dropped. No new refactor-only work is add
   8. Remove `tests/component/control-nav.test.tsx`.
   9. Update `src/proxy.ts` matcher to remove `/control/:path*` and add redirect handling.
   10. Verify all quality gates pass (lint, tsc, build, unit, component).
-- **Status:** PENDING
-
-**controlShell i18n key migration mapping:**
+- **Status:** DONE (commits d3e890df, 03dc313d, 33aef447)
 
 | controlShell key | Destination | New key |
 |---|---|---|
@@ -94,7 +92,7 @@ No cycle-23 review finding is silently dropped. No new refactor-only work is add
   1. Remove `"workspace": "Workspace"` from `messages/en.json` under `publicShell.nav`.
   2. Remove `"workspace": "워크스페이스"` from `messages/ko.json` under `publicShell.nav`.
   3. Verify no source references exist.
-- **Status:** PENDING
+- **Status:** DONE (commit d3e890df)
 
 ### L1: Move dropdown item definitions into shared navigation module (AGG-5)
 
@@ -106,7 +104,7 @@ No cycle-23 review finding is silently dropped. No new refactor-only work is add
   1. Extract `getDropdownItems` from `PublicHeader` into `src/lib/navigation/public-nav.ts`.
   2. Align the dropdown item definitions with `AppSidebar`'s nav structure.
   3. Verify both the desktop dropdown and mobile menu render correctly after the move.
-- **Status:** PENDING
+- **Status:** DONE (commit 4bbc65aa)
 
 ### M2: Update migration plan to mark Phase 4 as active (AGG-4)
 
@@ -118,7 +116,7 @@ No cycle-23 review finding is silently dropped. No new refactor-only work is add
   1. Update Phase 4 status from "defer" to "IN PROGRESS (cycle 23)".
   2. Add the control-to-dashboard merge as a specific Phase 4 sub-task.
   3. Note that Phase 4 partially completed in cycle 22 (rankings/languages/compiler routes consolidated).
-- **Status:** PENDING
+- **Status:** DONE (commit d439ccb3)
 
 ---
 
@@ -131,3 +129,4 @@ None. Every cycle-23 finding above is planned for implementation in this cycle.
 ## Progress log
 
 - 2026-04-20: Plan created from cycle-23 aggregate review.
+- 2026-04-20: H1, M1, L1, M2 all DONE. All cycle-23 findings resolved. Quality gates pass (tsc, lint, build, unit, component).
