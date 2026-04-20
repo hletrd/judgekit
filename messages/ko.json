@@ -1447,6 +1447,7 @@
       "deleteSelected": "선택 삭제",
       "copyUrl": "URL 복사",
       "urlCopied": "URL이 클립보드에 복사되었습니다",
+      "copyFailed": "클립보드 복사에 실패했습니다",
       "delete": "삭제",
       "pagination": {
         "results": "{start}-{end} / 총 {total}개"
@@ -1632,6 +1633,7 @@
       "addWorkerScript": "방법 2: 배포 스크립트",
       "addWorkerNote": "<your-judge-auth-token>을 .env.production 파일의 JUDGE_AUTH_TOKEN으로 교체하세요. 워커가 시작되면 이 목록에 표시됩니다.",
       "copied": "클립보드에 복사됨",
+      "copyFailed": "클립보드 복사에 실패했습니다",
       "aliasPlaceholder": "별칭",
       "auditNotice": "워커 목록 및 통계 열람은 감사 로그에 기록됩니다."
     },

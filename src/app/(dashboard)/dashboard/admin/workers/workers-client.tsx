@@ -169,7 +169,7 @@ docker compose -f docker-compose.worker.yml up -d`;
     try {
       await navigator.clipboard.writeText(text);
     } catch {
-      toast.error(t("copyFailed", { defaultValue: "Failed to copy" }));
+      toast.error(t("copyFailed"));
       return;
     }
     toast.success(t("copied"));

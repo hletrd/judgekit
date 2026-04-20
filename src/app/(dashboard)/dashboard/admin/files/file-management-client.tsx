@@ -97,7 +97,7 @@ export function FileManagementClient({ files, rangeStart, rangeEnd, totalCount, 
     try {
       await navigator.clipboard.writeText(url);
     } catch {
-      toast.error(t("copyFailed", { defaultValue: "Failed to copy" }));
+      toast.error(t("copyFailed"));
       return;
     }
     if (copiedIdTimer.current) {

@@ -1447,6 +1447,7 @@
       "deleteSelected": "Delete Selected",
       "copyUrl": "Copy URL",
       "urlCopied": "URL copied to clipboard",
+      "copyFailed": "Failed to copy to clipboard",
       "delete": "Delete",
       "pagination": {
         "results": "Showing {start}-{end} of {total}"
@@ -1632,6 +1633,7 @@
       "addWorkerScript": "Option 2: Deploy Script",
       "addWorkerNote": "Replace <your-judge-auth-token> with the JUDGE_AUTH_TOKEN from your .env.production file. The worker will appear in this list once it starts.",
       "copied": "Copied to clipboard",
+      "copyFailed": "Failed to copy to clipboard",
       "aliasPlaceholder": "Alias...",
       "auditNotice": "Worker inventory and stats access is audit logged."
     },
