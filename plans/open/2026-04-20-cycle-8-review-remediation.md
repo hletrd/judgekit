@@ -35,7 +35,7 @@ No cycle-8 review finding is silently dropped. No new refactor-only work is adde
   2. Replace `submittedAt: new Date()` (line 317) with `submittedAt: await getDbNowUncached()`.
   3. Verify tsc --noEmit passes.
   4. Verify existing tests pass.
-- **Status:** TODO
+- **Status:** DONE
 
 ### H2: Fix judge poll `judgeClaimedAt` and `judgedAt` clock-skew — use `getDbNowUncached()` (AGG-2)
 
@@ -49,7 +49,7 @@ No cycle-8 review finding is silently dropped. No new refactor-only work is adde
   3. For the final verdict update (line 142): Replace `judgedAt: new Date()` with `judgedAt: await getDbNowUncached()`.
   4. Verify tsc --noEmit passes.
   5. Verify existing tests pass.
-- **Status:** TODO
+- **Status:** DONE
 
 ### M1: Fix judge heartbeat `lastHeartbeatAt` and staleness calculation — use `getDbNowUncached()` (AGG-3)
 
@@ -62,7 +62,7 @@ No cycle-8 review finding is silently dropped. No new refactor-only work is adde
   2. Replace `const now = new Date()` (line 39) with `const now = await getDbNowUncached()`.
   3. Replace `Date.now() - HEARTBEAT_INTERVAL_MS * STALE_MULTIPLIER` (line 73) with `now.getTime() - HEARTBEAT_INTERVAL_MS * STALE_MULTIPLIER` (using the same DB time instance).
   4. Verify tsc --noEmit passes.
-- **Status:** TODO
+- **Status:** DONE
 
 ### M2: Fix group enrollment `enrolledAt` inconsistent time source (AGG-4)
 
@@ -74,7 +74,7 @@ No cycle-8 review finding is silently dropped. No new refactor-only work is adde
   1. Import `getDbNowUncached` from `@/lib/db-time` in `src/app/api/v1/groups/[id]/members/route.ts`.
   2. Replace `enrolledAt: new Date()` (line 105) with `enrolledAt: await getDbNowUncached()`.
   3. Verify tsc --noEmit passes.
-- **Status:** TODO
+- **Status:** DONE
 
 ### M3: Fix judge deregister `deregisteredAt` clock source (AGG-5)
 
@@ -87,7 +87,7 @@ No cycle-8 review finding is silently dropped. No new refactor-only work is adde
   2. Add `const now = await getDbNowUncached()` at the start of the handler (after auth checks).
   3. Replace `deregisteredAt: new Date()` (line 50) with `deregisteredAt: now`.
   4. Verify tsc --noEmit passes.
-- **Status:** TODO
+- **Status:** DONE
 
 ### M4: Fix community thread moderation timestamps (AGG-6)
 
@@ -129,7 +129,7 @@ No cycle-8 review finding is silently dropped. No new refactor-only work is adde
   2. For files that use `const now = new Date()` multiple times (e.g., `createdAt: now, updatedAt: now`), use a single `const now = await getDbNowUncached()` call.
   3. For files where the `new Date()` is inside a transaction, the `getDbNowUncached()` call should be made before the transaction to avoid holding a DB connection while awaiting.
   4. Verify tsc --noEmit passes.
-- **Status:** TODO
+- **Status:** DONE
 
 ### L2: Add test for `submittedAt` DB-time usage in exam submission flow (AGG-1, partial)
 
@@ -141,7 +141,7 @@ No cycle-8 review finding is silently dropped. No new refactor-only work is adde
   1. Add a test that mocks `getDbNowUncached` and verifies it is called when creating a submission during an exam.
   2. Alternatively, add a test that verifies the submission route module imports `getDbNowUncached`.
   3. Verify the test passes.
-- **Status:** TODO
+- **Status:** DEFERRED (db-time mock is in place in the test file; dedicated assertion test deferred)
 
 ---
 
@@ -174,3 +174,13 @@ No cycle-8 review finding is silently dropped. No new refactor-only work is adde
 - 2026-04-20: Archived completed cycle 24 and 25 plans.
 - 2026-04-20: AGG-8 (stale plan statuses) resolved during plan creation.
 - 2026-04-20: AGG-9 (cycle 22 false positive) documented as INFO — no code change needed.
+- 2026-04-20: H1 DONE — `submittedAt: new Date()` replaced with `getDbNowUncached()` in submissions route.
+- 2026-04-20: H2 DONE — `judgeClaimedAt` and `judgedAt` replaced with `getDbNowUncached()` in judge poll route.
+- 2026-04-20: M1 DONE — Heartbeat `lastHeartbeatAt` and staleness calculation replaced with `getDbNowUncached()`.
+- 2026-04-20: M2 DONE — Group enrollment `enrolledAt` and bulk enrollment `enrolledAt` replaced with `getDbNowUncached()`. Group creation timestamps also fixed.
+- 2026-04-20: M3 DONE — Judge deregister `deregisteredAt` replaced with `getDbNowUncached()`.
+- 2026-04-20: M4 DONE — Community thread moderation (lockedAt, pinnedAt, updatedAt), posts (updatedAt), votes (updatedAt) all replaced with `getDbNowUncached()`.
+- 2026-04-20: L1 DONE — All remaining `createdAt`/`updatedAt` fields across 12+ files replaced with `getDbNowUncached()`. `withUpdatedAt()` helper updated to accept optional `now` parameter.
+- 2026-04-20: Test mocks added for `@/lib/db-time` in 10 test files. All 290 tests pass.
+- 2026-04-20: L2 DEFERRED — db-time mock is in place; dedicated assertion test deferred.
+- 2026-04-20: All commits pushed to remote. Deploy triggered.
