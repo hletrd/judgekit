@@ -283,7 +283,10 @@ export const POST = createApiHandler({
         }
       }
 
-      // For windowed exams, enforce deadline at insert time
+      // For windowed exams, enforce deadline at insert time using DB server time
+      // to avoid clock skew between the app server and DB server. Compare
+      // personalDeadline against NOW() directly in SQL so the DB engine uses
+      // its own clock — no round-trip timestamp parameter needed.
       if (normalizedAssignmentId) {
         const expiredSession = await tx
           .select({ one: sql<number>`1` })
@@ -292,7 +295,7 @@ export const POST = createApiHandler({
             and(
               eq(examSessions.assignmentId, normalizedAssignmentId),
               eq(examSessions.userId, user.id),
-              lt(examSessions.personalDeadline, new Date()),
+              sql`${examSessions.personalDeadline} < NOW()`,
             )
           )
           .limit(1);
