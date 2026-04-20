@@ -11,6 +11,7 @@ import { buildPublicMetadata } from "@/lib/seo";
 import { getResolvedSystemSettings } from "@/lib/system-settings";
 import { auth } from "@/lib/auth";
 import { resolveCapabilities } from "@/lib/capabilities/cache";
+import { formatNumber } from "@/lib/formatting";
 
 export async function generateMetadata(): Promise<Metadata> {
   const [tCommon, tShell, locale] = await Promise.all([
@@ -87,7 +88,7 @@ export default async function PublicLanguagesPage() {
             ) : null}
             <div>
               <p className={`text-xs font-medium uppercase${labelTracking} text-muted-foreground`}>{t("languages.defaultTimeLimit")}</p>
-              <p className="mt-1 text-sm font-medium">{(snapshot.defaultTimeLimitMs / 1000).toFixed(1)}s</p>
+              <p className="mt-1 text-sm font-medium">{formatNumber(snapshot.defaultTimeLimitMs / 1000, { locale, maximumFractionDigits: 1 })}s</p>
             </div>
             <div>
               <p className={`text-xs font-medium uppercase${labelTracking} text-muted-foreground`}>{t("languages.defaultMemoryLimit")}</p>
@@ -96,7 +97,7 @@ export default async function PublicLanguagesPage() {
             {showWorkerCount ? (
               <div>
                 <p className={`text-xs font-medium uppercase${labelTracking} text-muted-foreground`}>{t("languages.onlineWorkers")}</p>
-                <p className="mt-1 text-sm font-medium">{new Intl.NumberFormat(locale).format(snapshot.onlineWorkerCount)}</p>
+                <p className="mt-1 text-sm font-medium">{formatNumber(snapshot.onlineWorkerCount, { locale })}</p>
               </div>
             ) : null}
           </div>

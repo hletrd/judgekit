@@ -12,6 +12,7 @@ import { calculateTier } from "@/lib/ratings";
 import { TierBadge } from "@/components/tier-badge";
 import { buildLocalePath, NO_INDEX_METADATA } from "@/lib/seo";
 import { getProblemTierInfo } from "@/lib/problem-tiers";
+import { formatNumber } from "@/lib/formatting";
 import { getLanguageDisplayLabel } from "@/lib/judge/languages";
 import { UserStatsDashboard } from "@/components/user/user-stats-dashboard";
 import Link from "next/link";
@@ -79,7 +80,7 @@ export default async function UserProfilePage({
   const solvedCount = stats?.solvedCount ?? 0;
   const submissionCount = stats?.submissionCount ?? 0;
   const acceptedCount = stats?.acceptedCount ?? 0;
-  const accuracy = submissionCount > 0 ? ((acceptedCount / submissionCount) * 100).toFixed(1) : "0.0";
+  const accuracy = submissionCount > 0 ? formatNumber((acceptedCount / submissionCount) * 100, { locale, maximumFractionDigits: 1 }) : "0.0";
 
   const tier = calculateTier(solvedCount);
 
@@ -296,7 +297,7 @@ export default async function UserProfilePage({
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground">
                         {problem.difficulty != null
-                          ? problem.difficulty.toFixed(2).replace(/\.?0+$/, "")
+                          ? formatNumber(problem.difficulty, { locale, maximumFractionDigits: 2 }).replace(/\.?0+$/, "")
                           : "-"}
                       </TableCell>
                     </TableRow>

@@ -17,6 +17,7 @@ import { SubmissionStatusBadge } from "@/components/submission-status-badge";
 import { buildStatusLabels } from "@/lib/judge/status-labels";
 import { getLanguageDisplayLabel } from "@/lib/judge/languages";
 import { formatDateTimeInTimeZone, formatDateInTimeZone } from "@/lib/datetime";
+import { formatNumber } from "@/lib/formatting";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -87,7 +88,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
     section: tProblems("title"),
     socialBadge: problem.sequenceNumber != null ? `#${problem.sequenceNumber}` : undefined,
     socialMeta: [
-      problem.difficulty != null ? `${tProblems("table.difficulty")} ${problem.difficulty.toFixed(2)}` : null,
+      problem.difficulty != null ? `${tProblems("table.difficulty")} ${formatNumber(problem.difficulty, { locale, maximumFractionDigits: 2 })}` : null,
       problem.timeLimitMs != null ? `${problem.timeLimitMs} ms` : null,
       problem.memoryLimitMb != null ? `${problem.memoryLimitMb} MB` : null,
     ].filter(Boolean).join(" • ") || undefined,
@@ -171,7 +172,7 @@ export default async function PublicProblemDetailPage({ params }: { params: Prom
   const totalSubmissions = Number(statsRow?.totalSubmissions ?? 0);
   const acceptedCount = Number(statsRow?.acceptedCount ?? 0);
   const uniqueSolvers = Number(statsRow?.uniqueSolvers ?? 0);
-  const acceptanceRate = totalSubmissions > 0 ? ((acceptedCount / totalSubmissions) * 100).toFixed(1) : "0.0";
+  const acceptanceRate = totalSubmissions > 0 ? formatNumber((acceptedCount / totalSubmissions) * 100, { locale, maximumFractionDigits: 1 }) : "0.0";
 
   // Similar problems (share at least one tag, exclude current)
   const tagIds = problem.problemTags.map((pt) => pt.tag.id);
@@ -271,7 +272,7 @@ export default async function PublicProblemDetailPage({ params }: { params: Prom
     section: tProblems("title"),
     badge: problem.sequenceNumber != null ? `#${problem.sequenceNumber}` : undefined,
     meta: [
-      problem.difficulty != null ? `${tProblems("table.difficulty")} ${problem.difficulty.toFixed(2)}` : null,
+      problem.difficulty != null ? `${tProblems("table.difficulty")} ${formatNumber(problem.difficulty, { locale, maximumFractionDigits: 2 })}` : null,
       problem.timeLimitMs != null ? `${problem.timeLimitMs} ms` : null,
       problem.memoryLimitMb != null ? `${problem.memoryLimitMb} MB` : null,
     ].filter(Boolean).join(" • ") || undefined,
@@ -365,7 +366,7 @@ export default async function PublicProblemDetailPage({ params }: { params: Prom
                   difficultyTier={getProblemTierInfo(problem.difficulty)}
                   difficultyLabel={
                     problem.difficulty != null
-                      ? problem.difficulty.toFixed(2).replace(/\.?0+$/, "")
+                      ? formatNumber(problem.difficulty, { locale, maximumFractionDigits: 2 }).replace(/\.?0+$/, "")
                       : null
                   }
                   submitAction={session?.user ? (
@@ -444,7 +445,7 @@ export default async function PublicProblemDetailPage({ params }: { params: Prom
                                     <TierBadge tier={problemTier.tier} label={problemTier.label} />
                                   ) : null}
                                   <Badge variant="secondary" className="text-xs">
-                                    {sp.difficulty.toFixed(2).replace(/\.?0+$/, "")}
+                                    {formatNumber(sp.difficulty, { locale, maximumFractionDigits: 2 }).replace(/\.?0+$/, "")}
                                   </Badge>
                                 </div>
                               )}

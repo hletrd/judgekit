@@ -3,6 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { TierBadge } from "@/components/tier-badge";
 import type { ProblemTierInfo } from "@/lib/problem-tiers";
+import { formatNumber } from "@/lib/formatting";
 import {
   Table,
   TableBody,
@@ -161,7 +162,7 @@ export function PublicProblemList({
                                 ? <CircleAlert className="size-3.5" aria-hidden="true" />
                                 : <CircleX className="size-3.5" aria-hidden="true" />
                             }
-                            {problem.successRate.toFixed(1)}%
+                            {formatNumber(problem.successRate, { locale, maximumFractionDigits: 1 })}%
                           </span>
                         ) : (
                           <span className="text-muted-foreground">-</span>

@@ -6,6 +6,7 @@ import { PublicProblemSetDetail } from "@/components/problem/public-problem-set-
 import { buildLocalePath, buildPublicMetadata, NO_INDEX_METADATA } from "@/lib/seo";
 import { getResolvedSystemSettings } from "@/lib/system-settings";
 import { getProblemTierInfo } from "@/lib/problem-tiers";
+import { formatNumber } from "@/lib/formatting";
 import { getPublicProblemSetById } from "@/lib/problem-sets/public";
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
@@ -74,7 +75,7 @@ export default async function PracticeSetDetailPage({
         href: buildLocalePath(`/practice/problems/${problem.id}`, locale),
         title: problem.title,
         difficultyLabel: problem.difficulty != null
-          ? getProblemTierInfo(problem.difficulty)?.label ?? problem.difficulty.toFixed(2)
+          ? getProblemTierInfo(problem.difficulty)?.label ?? formatNumber(problem.difficulty, { locale, maximumFractionDigits: 2 })
           : null,
         solvedByViewer: problem.solvedByViewer,
       }))}
