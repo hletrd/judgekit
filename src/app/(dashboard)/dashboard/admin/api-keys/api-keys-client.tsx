@@ -198,7 +198,7 @@ export function ApiKeysClient({ roleOptions }: { roleOptions?: RoleOption[] }) {
     try {
       await navigator.clipboard.writeText(createdKey.key);
     } catch {
-      toast.error("Failed to copy — please select and copy manually");
+      toast.error(t("copyFailed"));
       return;
     }
     setCreatedKeyCopied(true);
