@@ -35,7 +35,7 @@ No rpf-13 review finding is silently dropped. No new refactor-only work is added
   5. In `src/app/(dashboard)/dashboard/admin/api-keys/api-keys-client.tsx`, update `getStatus()` to use `key.isExpired` instead of `new Date(key.expiresAt) < new Date()`
   6. Verify tsc --noEmit passes
   7. Verify existing tests pass
-- **Status:** TODO
+- **Status:** DONE
 
 ### M1: Make `dbNow` required in `createBackupIntegrityManifest` (AGG-2)
 
@@ -48,7 +48,7 @@ No rpf-13 review finding is silently dropped. No new refactor-only work is added
   2. Remove the `?? new Date()` fallback at line 47
   3. Verify tsc --noEmit passes
   4. Verify existing tests pass
-- **Status:** TODO
+- **Status:** DONE
 
 ### M2: Use server-provided filename for backup downloads instead of client-side timestamp (AGG-3)
 
@@ -142,3 +142,9 @@ All other deferred items from prior cycle remediation plans remain unchanged. Se
 ## Progress log
 
 - 2026-04-20: Plan created from rpf-13 aggregate review.
+- 2026-04-20: H1 DONE — added server-computed `isExpired` boolean to recruiting invitations and API keys API responses; updated client components to use server-provided field instead of browser clock comparison. Commit 808254ae.
+- 2026-04-20: M1 DONE — made `dbNow` a required parameter in `createBackupIntegrityManifest()`, removing `new Date()` fallback. Commit 636b7f57.
+- 2026-04-20: M2 DONE — backup download now uses server-provided filename from `Content-Disposition` header instead of client-side `new Date()` timestamp. Commit e762e77e.
+- 2026-04-20: M3 DONE — replaced hardcoded "Loading..." with `tCommon("loading")` in recruiting invitations panel and API keys client. Commit e9be9f69.
+- 2026-04-20: L1 DONE — added `dbNow` passthrough from backup route through `streamBackupWithFiles()` to `streamDatabaseExport()`, eliminating 2 redundant `SELECT NOW()` calls per backup. Commit d5f387b3.
+- 2026-04-20: All gates green (eslint, tsc --noEmit, vitest 292/2063, next build).
