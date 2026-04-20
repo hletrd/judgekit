@@ -121,18 +121,16 @@ function NavItems({
   pathname,
   t,
   platformMode,
-  resolveHref,
 }: {
   items: NavItem[];
   pathname: string;
   t: (key: string) => string;
   platformMode: PlatformMode;
-  resolveHref: (item: NavItem) => string;
 }) {
   return (
     <>
       {items.map((item) => {
-        const href = resolveHref(item);
+        const href = item.href;
         const isActive = pathname === href || (href !== "/dashboard" && pathname.startsWith(href + "/"));
         const titleKey = item.titleKeyByMode?.[platformMode] ?? item.titleKey;
         return (
@@ -182,16 +180,6 @@ export function AppSidebar({
     capsSet.has("groups.view_all")
     || capsSet.has("submissions.view_all")
     || capsSet.has("assignments.view_status");
-  const prefersScopedReviewQueue =
-    capsSet.has("submissions.view_all") || capsSet.has("assignments.view_status");
-
-  function resolveItemHref(item: NavItem) {
-    if (item.href === "/dashboard/submissions" && prefersScopedReviewQueue) {
-      return "/dashboard/admin/submissions";
-    }
-
-    return item.href;
-  }
 
   function filterItems(items: NavItem[]) {
     return items.filter((item) => {
@@ -249,7 +237,7 @@ export function AppSidebar({
               {group.labelKey && <SidebarGroupLabel>{t(group.labelKey)}</SidebarGroupLabel>}
               <SidebarGroupContent>
                 <SidebarMenu>
-                  <NavItems items={filtered} pathname={pathname} t={t} platformMode={platformMode} resolveHref={resolveItemHref} />
+                  <NavItems items={filtered} pathname={pathname} t={t} platformMode={platformMode} />
                 </SidebarMenu>
               </SidebarGroupContent>
             </SidebarGroup>
@@ -272,7 +260,7 @@ export function AppSidebar({
                   <SidebarGroupLabel>{t(group.labelKey)}</SidebarGroupLabel>
                   <SidebarGroupContent>
                     <SidebarMenu>
-                      <NavItems items={filtered} pathname={pathname} t={t} platformMode={platformMode} resolveHref={resolveItemHref} />
+                      <NavItems items={filtered} pathname={pathname} t={t} platformMode={platformMode} />
                     </SidebarMenu>
                   </SidebarGroupContent>
                 </SidebarGroup>
