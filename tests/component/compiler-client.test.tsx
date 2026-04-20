@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { CompilerClient } from "@/app/(dashboard)/dashboard/compiler/compiler-client";
+import { CompilerClient } from "@/components/code/compiler-client";
 
 const { apiFetchMock } = vi.hoisted(() => ({
   apiFetchMock: vi.fn(),

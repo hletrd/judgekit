@@ -26,6 +26,22 @@ const nextConfig: NextConfig = {
         destination: "/community?filter=mine",
         permanent: false,
       },
+      // Phase 4 route consolidation: redirect dashboard duplicates to public pages
+      {
+        source: "/dashboard/rankings",
+        destination: "/rankings",
+        permanent: false,
+      },
+      {
+        source: "/dashboard/languages",
+        destination: "/languages",
+        permanent: false,
+      },
+      {
+        source: "/dashboard/compiler",
+        destination: "/playground",
+        permanent: false,
+      },
     ];
   },
   webpack: disableMinify

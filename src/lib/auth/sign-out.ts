@@ -13,7 +13,7 @@ import { signOut } from "next-auth/react";
  * - "source-draft-"          — legacy prefix (superseded by "oj:" above, kept for backward compat)
  * - "code-draft-"            — legacy prefix (superseded by "oj:" above, kept for backward compat)
  * - "judgekit_anticheat_"    — src/components/exam/anti-cheat-monitor.tsx (judgekit_anticheat_pending_*)
- * - "compiler:"              — src/app/(dashboard)/dashboard/compiler/compiler-client.tsx (compiler:language)
+ * - "compiler:"              — src/components/code/compiler-client.tsx (compiler:language)
  */
 const APP_STORAGE_PREFIXES = [
   "oj:",

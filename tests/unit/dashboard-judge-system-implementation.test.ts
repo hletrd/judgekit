@@ -14,17 +14,25 @@ describe("dashboard judge system implementation", () => {
     expect(source).toContain('!isAdminView && !isCandidateView && (');
   });
 
-  it("exposes a dedicated full languages page while blocking recruiting candidates from infra details", () => {
-    const source = read("src/app/(dashboard)/dashboard/languages/page.tsx");
+  it("consolidates the languages page into the public route with auth-aware rendering", () => {
+    const source = read("src/app/(public)/languages/page.tsx");
 
-    expect(source).toContain("const session = await auth();");
-    expect(source).toContain("resolveCapabilities(session.user.role)");
-    expect(source).toContain("getRecruitingAccessContext(session.user.id)");
-    expect(source).toContain('accessContext.effectivePlatformMode === "recruiting"');
-    expect(source).toContain('accessContext.isRecruitingCandidate');
-    expect(source).toContain('redirect("/dashboard")');
-    expect(source).toContain('getJudgeSystemSnapshot()');
-    expect(source).toContain('tDashboard("allEnabledLanguages")');
-    expect(source).toContain('href="/dashboard"');
+    expect(source).toContain("getJudgeSystemSnapshot()");
+    expect(source).toContain("auth()");
+    expect(source).toContain("resolveCapabilities");
+    // Auth-aware: worker count visible to admins only
+    expect(source).toContain("showWorkerCount");
+    expect(source).toContain("onlineWorkerCount");
+  });
+
+  it("redirects legacy dashboard routes to public counterparts", () => {
+    const source = read("next.config.ts");
+
+    expect(source).toContain("source: \"/dashboard/rankings\"");
+    expect(source).toContain("destination: \"/rankings\"");
+    expect(source).toContain("source: \"/dashboard/languages\"");
+    expect(source).toContain("destination: \"/languages\"");
+    expect(source).toContain("source: \"/dashboard/compiler\"");
+    expect(source).toContain("destination: \"/playground\"");
   });
 });

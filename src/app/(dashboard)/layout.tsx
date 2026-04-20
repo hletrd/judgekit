@@ -31,7 +31,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
   const session = await auth();
   if (!session?.user) redirect("/login");
 
-  const [{ effectivePlatformMode }, tCommon, tShell, tAuth, capabilities, canUseLectureMode] = await Promise.all([
+  const [{ effectivePlatformMode }, tCommon, tShell, tAuth, capabilities, canUseLectureMode, settings] = await Promise.all([
     getRecruitingAccessContext(session.user.id),
     getTranslations("common"),
     getTranslations("publicShell"),
@@ -46,6 +46,10 @@ export default async function DashboardLayout({ children }: { children: React.Re
       return (!chatPluginOn || !aiOn) ? arr.filter(c => c !== "system.chat_logs") : arr;
     })(),
     isInstructorOrAboveAsync(session.user.role),
+    getResolvedSystemSettings({
+      siteTitle: (await getTranslations("common"))("appName"),
+      siteDescription: (await getTranslations("common"))("appDescription"),
+    }),
   ]);
   const capsSet = new Set(capabilities);
   const canBypassTimedAssignmentPanel =
@@ -53,11 +57,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
     || capsSet.has("submissions.view_all")
     || capsSet.has("assignments.view_status");
 
-  const [settings, activeTimedAssignments] = await Promise.all([
-    getResolvedSystemSettings({
-      siteTitle: tCommon("appName"),
-      siteDescription: tCommon("appDescription"),
-    }),
+  const [activeTimedAssignments] = await Promise.all([
     canBypassTimedAssignmentPanel
       ? Promise.resolve([])
       : getActiveTimedAssignmentsForSidebar(session.user.id, session.user.role),

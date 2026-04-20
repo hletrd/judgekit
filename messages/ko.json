@@ -2709,7 +2709,8 @@
       "gradingOs": "운영체제",
       "gradingArchitecture": "아키텍처",
       "defaultTimeLimit": "기본 시간 제한",
-      "defaultMemoryLimit": "기본 메모리 제한"
+      "defaultMemoryLimit": "기본 메모리 제한",
+      "onlineWorkers": "온라인 워커"
     },
     "practice": {
       "title": "연습 영역 미리보기",

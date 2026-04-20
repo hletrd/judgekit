@@ -1,6 +1,10 @@
 import type { Metadata } from "next";
 import { getLocale, getTranslations } from "next-intl/server";
+import { redirect } from "next/navigation";
+import { auth } from "@/lib/auth";
 import { rawQueryOne, rawQueryAll } from "@/lib/db/queries";
+import { resolveCapabilities } from "@/lib/capabilities/cache";
+import { getRecruitingAccessContext } from "@/lib/recruiting/access";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   Table,
@@ -109,6 +113,21 @@ export default async function RankingsPage({
 
   const t = await getTranslations("rankings");
   const locale = await getLocale();
+
+  // Auth-aware: in recruiting mode, redirect candidates and non-admins to dashboard
+  const session = await auth();
+  if (session?.user) {
+    const [caps, accessContext] = await Promise.all([
+      resolveCapabilities(session.user.role),
+      getRecruitingAccessContext(session.user.id),
+    ]);
+    if (
+      accessContext.effectivePlatformMode === "recruiting" &&
+      (accessContext.isRecruitingCandidate || (!caps.has("system.settings") && !caps.has("submissions.view_all")))
+    ) {
+      redirect("/dashboard");
+    }
+  }
 
   const periodClause = getPeriodClause(currentPeriod);
 

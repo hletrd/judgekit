@@ -46,7 +46,7 @@ describe("DashboardJudgeSystemTabs", () => {
         ]}
         additionalLanguagesMessage="5 more enabled languages are available on the full catalog page."
         noFeaturedLanguagesMessage="No enabled languages are currently available."
-        viewAllLanguagesHref="/dashboard/languages"
+        viewAllLanguagesHref="/languages"
         viewAllLanguagesLabel="View all languages"
       />
     );
@@ -58,7 +58,7 @@ describe("DashboardJudgeSystemTabs", () => {
     expect(screen.getByText("Featured language environments")).toBeInTheDocument();
     expect(screen.getByText("C")).toBeInTheDocument();
     expect(screen.getAllByText("Python").length).toBeGreaterThan(0);
-    expect(screen.getByRole("link", { name: "View all languages" })).toHaveAttribute("href", "/dashboard/languages");
+    expect(screen.getByRole("link", { name: "View all languages" })).toHaveAttribute("href", "/languages");
     expect(screen.getByText("5 more enabled languages are available on the full catalog page.")).toBeInTheDocument();
   });
 });

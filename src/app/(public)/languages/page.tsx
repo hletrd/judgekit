@@ -9,6 +9,8 @@ import { buildLocalePath } from "@/lib/seo";
 import type { Metadata } from "next";
 import { buildPublicMetadata } from "@/lib/seo";
 import { getResolvedSystemSettings } from "@/lib/system-settings";
+import { auth } from "@/lib/auth";
+import { resolveCapabilities } from "@/lib/capabilities/cache";
 
 export async function generateMetadata(): Promise<Metadata> {
   const [tCommon, tShell, locale] = await Promise.all([
@@ -31,11 +33,15 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function PublicLanguagesPage() {
-  const [snapshot, locale, t] = await Promise.all([
+  const [snapshot, locale, t, session] = await Promise.all([
     getJudgeSystemSnapshot(),
     getLocale(),
     getTranslations("publicShell"),
+    auth(),
   ]);
+
+  // Show worker count stat for authenticated users with admin access
+  const showWorkerCount = session?.user && (await resolveCapabilities(session.user.role)).has("system.settings");
 
   return (
     <div className="space-y-6">
@@ -84,6 +90,12 @@ export default async function PublicLanguagesPage() {
               <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{t("languages.defaultMemoryLimit")}</p>
               <p className="mt-1 text-sm font-medium">{snapshot.defaultMemoryLimitMb} MB</p>
             </div>
+            {showWorkerCount ? (
+              <div>
+                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{t("languages.onlineWorkers")}</p>
+                <p className="mt-1 text-sm font-medium">{new Intl.NumberFormat(locale).format(snapshot.onlineWorkerCount)}</p>
+              </div>
+            ) : null}
           </div>
         </CardContent>
       </Card>

@@ -13,9 +13,9 @@ import { DEFAULT_CREDENTIALS } from "./support/constants";
 
 const NEW_PASSWORD = process.env.E2E_NEW_PASSWORD || DEFAULT_CREDENTIALS.password;
 
-// Rankings may be under /dashboard/rankings or /dashboard/leaderboard — try both
+// Rankings may be under /rankings (public) or /dashboard/leaderboard — try both
 const RANKINGS_PATHS = [
-  "/dashboard/rankings",
+  "/rankings",
   "/dashboard/leaderboard",
   "/dashboard/scoreboard",
 ];

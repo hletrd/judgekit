@@ -2709,7 +2709,8 @@
       "gradingOs": "Operating System",
       "gradingArchitecture": "Architecture",
       "defaultTimeLimit": "Default Time Limit",
-      "defaultMemoryLimit": "Default Memory Limit"
+      "defaultMemoryLimit": "Default Memory Limit",
+      "onlineWorkers": "Workers online"
     },
     "practice": {
       "title": "Practice surface preview",

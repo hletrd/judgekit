@@ -1,10 +1,14 @@
 import type { Metadata } from "next";
 import { getLocale, getTranslations } from "next-intl/server";
+import { redirect } from "next/navigation";
+import { auth } from "@/lib/auth";
 import { getEnabledCompilerLanguages } from "@/lib/compiler/catalog";
-import { CompilerClient } from "@/app/(dashboard)/dashboard/compiler/compiler-client";
+import { CompilerClient } from "@/components/code/compiler-client";
 import { JsonLd } from "@/components/seo/json-ld";
 import { buildAbsoluteUrl, buildLocalePath, buildPublicMetadata } from "@/lib/seo";
 import { getResolvedSystemSettings } from "@/lib/system-settings";
+import { getEffectivePlatformMode } from "@/lib/platform-mode-context";
+import { getPlatformModePolicy } from "@/lib/platform-mode";
 
 export async function generateMetadata(): Promise<Metadata> {
   const [tCommon, tShell, locale] = await Promise.all([
@@ -33,11 +37,23 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function PlaygroundPage() {
-  const [tCompiler, tShell, locale] = await Promise.all([
+  const [tCompiler, tShell, locale, session] = await Promise.all([
     getTranslations("compiler"),
     getTranslations("publicShell"),
     getLocale(),
+    auth(),
   ]);
+
+  // Auth-aware: in recruiting mode, redirect to dashboard
+  if (session?.user) {
+    const effectivePlatformMode = await getEffectivePlatformMode({
+      userId: session.user.id,
+    });
+    if (getPlatformModePolicy(effectivePlatformMode).restrictStandaloneCompiler) {
+      redirect("/dashboard");
+    }
+  }
+
   const languages = await getEnabledCompilerLanguages();
   const playgroundJsonLd = {
     "@context": "https://schema.org",
@@ -82,7 +98,7 @@ export default async function PlaygroundPage() {
         languages={languages}
         title={tShell("playground.liveTitle")}
         description={tShell("playground.liveDescription")}
-        preferredLanguage={null}
+        preferredLanguage={session?.user?.preferredLanguage ?? null}
         runEndpoint="/api/v1/playground/run"
       />
     </>

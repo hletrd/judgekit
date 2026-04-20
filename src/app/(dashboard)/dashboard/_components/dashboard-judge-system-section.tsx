@@ -60,7 +60,7 @@ export async function DashboardJudgeSystemSection() {
           : null
       }
       noFeaturedLanguagesMessage={tDashboard("noEnabledLanguages")}
-      viewAllLanguagesHref="/dashboard/languages"
+      viewAllLanguagesHref="/languages"
       viewAllLanguagesLabel={tDashboard("viewAllLanguages")}
     />
   );

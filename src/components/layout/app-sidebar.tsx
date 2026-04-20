@@ -73,7 +73,7 @@ const navGroups: NavGroup[] = [
       // Contests and Rankings are available in the PublicHeader dropdown,
       // so they are omitted from the sidebar to reduce navigation overlap.
       // Students can still reach them from the top navbar.
-      { titleKey: "compiler", href: "/dashboard/compiler", icon: Play, hiddenInModes: ["recruiting"] },
+      { titleKey: "compiler", href: "/playground", icon: Play, hiddenInModes: ["recruiting"] },
     ],
   },
   {
@@ -204,7 +204,7 @@ export function AppSidebar({
       if (item.hiddenInModes?.includes(platformMode) && !canBypassModeRestrictions) {
         return false;
       }
-      if (hideStandaloneCompiler && item.href === "/dashboard/compiler" && !canBypassModeRestrictions) {
+      if (hideStandaloneCompiler && item.href === "/playground" && !canBypassModeRestrictions) {
         return false;
       }
       if (item.href === "/dashboard/problem-sets") {
