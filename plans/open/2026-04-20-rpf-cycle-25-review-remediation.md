@@ -31,7 +31,7 @@ No cycle-25 review finding is silently dropped. No new refactor-only work is add
   1. Add `else` branches for non-OK responses with `toast.error(t("fetchError"))`.
   2. Add a `catch` block with `toast.error(t("fetchError"))` for network errors.
   3. Verify all gates pass.
-- **Status:** Pending
+- **Status:** DONE
 
 ### M1: Move "Languages" nav item to footer or secondary position (AGG-4 / user-injected TODO)
 
@@ -44,7 +44,7 @@ No cycle-25 review finding is silently dropped. No new refactor-only work is add
   2. Keep the `/languages` route accessible and indexed.
   3. Verify the nav is less cluttered and the languages page is still reachable.
   4. Verify all gates pass.
-- **Status:** Pending
+- **Status:** DONE
 
 ---
 
@@ -99,3 +99,6 @@ This directly advances the user-injected TODO and addresses AGG-4. The "Language
 
 - 2026-04-20: Plan created from cycle-25 aggregate review.
 - 2026-04-20: Verified AGG-1, AGG-2, AGG-3 already fixed in prior cycles.
+- 2026-04-20: H1 (WorkersPageClient error feedback) DONE — added toast.error for non-OK responses and catch block, plus i18n keys.
+- 2026-04-20: M1 (Languages nav to footer) DONE — removed from top-level nav in public-nav.ts. Footer already has the Languages link.
+- 2026-04-20: All priority items implemented. Gates green (eslint 0 errors, tsc --noEmit clean, vitest 294/294 passed, next build success).
