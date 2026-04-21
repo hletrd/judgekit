@@ -276,6 +276,9 @@ No redundant page components remain under `(dashboard)`.
 **Cycle 26 progress:**
 - ~~Remove capability gates from "Problems" and "Groups" dropdown items so all authenticated users see them~~ DONE (commit cc334546)
 - ~~Hide AppSidebar entirely for non-admin users (no admin capabilities)~~ DONE (commit cc334546)
+- ~~Remove non-admin nav items from AppSidebar (navGroups constant) since sidebar is hidden for non-admin users~~ DONE (commit 69c5c62b)
+- ~~Remove dead code from AppSidebar: hideStandaloneCompiler, playground filter, problem-sets special-case~~ DONE (commit 69c5c62b)
+- ~~Remove unused imports (Users, FolderOpen) and getPlatformModePolicy~~ DONE (commit 69c5c62b)
 - Both changes align the PublicHeader dropdown with the AppSidebar's visibility behavior, ensuring no nav items are lost during the transition
 
 **Remaining Phase 5 work:**

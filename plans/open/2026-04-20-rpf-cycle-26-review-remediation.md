@@ -106,3 +106,5 @@ Per the user-injected TODO, this cycle makes incremental progress on the workspa
 - 2026-04-20: M1 (AppSidebar slim-down) DONE — removed capability gates from Problems/Groups dropdown items, hid sidebar for non-admin users.
 - 2026-04-20: Updated workspace-to-public migration plan with Phase 5 status.
 - 2026-04-20: All gates green (eslint 0 errors, tsc --noEmit clean, vitest 294/294 passed, next build success).
+- 2026-04-20: Additional cleanup — removed non-admin nav items from AppSidebar (navGroups constant), dead code in filterItems(), unused imports. Updated capability test to check PublicHeader dropdown instead.
+- 2026-04-20: All gates green after cleanup (eslint, tsc, vitest 294/294, next build).
