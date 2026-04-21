@@ -931,6 +931,7 @@
       "statsPerfect": "만점",
       "pointsAbbreviation": "점",
       "studentSubmissions": "{student}의 제출 내역",
+      "viewSubmissions": "제출 내역",
       "allAttempts": "모든 시도",
       "noAttempts": "아직 제출이 없습니다",
       "backToScoreboard": "성적표로 돌아가기",

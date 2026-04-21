@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { ChevronDown, PenLine } from "lucide-react";
+import { ChevronDown, FileText, PenLine } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { SubmissionStatusBadge } from "@/components/submission-status-badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -47,6 +48,7 @@ export interface StatusBoardLabels {
   examSessionNotStarted?: string;
   examSessionInProgress?: string;
   examSessionCompleted?: string;
+  viewSubmissions?: string;
   overrideLabels?: ScoreOverrideLabels;
 }
 
@@ -137,6 +139,18 @@ function MobileStudentCard({
                 {row.name}
               </Link>
               <span className="text-xs text-muted-foreground">@{row.username}</span>
+              {isContestView && labels.viewSubmissions && (
+                <Link
+                  href={`/dashboard/contests/${assignmentId}/participant/${row.userId}/submissions`}
+                  onClick={(e) => e.stopPropagation()}
+                  className="ml-auto inline-flex"
+                >
+                  <Button variant="outline" size="sm" className="h-7 gap-1 px-2 text-xs">
+                    <FileText className="size-3" />
+                    {labels.viewSubmissions}
+                  </Button>
+                </Link>
+              )}
             </div>
             <div className="mt-1 flex items-center gap-2 text-sm">
               <span>{formatBoardScore(row.bestTotalScore, locale)}/{formatBoardScore(totalPoints, locale)}</span>
@@ -353,6 +367,17 @@ export function StatusBoard({
                         {row.name}
                       </Link>
                       <div className="text-xs text-muted-foreground">@{row.username}</div>
+                      {isContestView && labels.viewSubmissions && (
+                        <Link
+                          href={`/dashboard/contests/${assignmentId}/participant/${row.userId}/submissions`}
+                          className="mt-1 inline-flex"
+                        >
+                          <Button variant="outline" size="sm" className="h-7 gap-1 px-2 text-xs">
+                            <FileText className="size-3" />
+                            {labels.viewSubmissions}
+                          </Button>
+                        </Link>
+                      )}
                     </TableCell>
                     <TableCell className="align-top">{row.className ?? labels.notSet}</TableCell>
                     <TableCell

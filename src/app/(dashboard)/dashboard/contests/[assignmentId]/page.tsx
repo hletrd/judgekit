@@ -747,6 +747,7 @@ export default async function ContestDetailPage({
               examSessionNotStarted: tAssignment("examSessionNotStarted"),
               examSessionInProgress: tAssignment("examSessionInProgress"),
               examSessionCompleted: tAssignment("examSessionCompleted"),
+              viewSubmissions: tAssignment("viewSubmissions"),
               overrideLabels: {
                 scoreOverride: tAssignment("scoreOverride"),
                 overrideScore: tAssignment("overrideScore"),

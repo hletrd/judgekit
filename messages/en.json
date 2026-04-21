@@ -931,6 +931,7 @@
       "statsPerfect": "Perfect scores",
       "pointsAbbreviation": "pt",
       "studentSubmissions": "Submissions by {user}",
+      "viewSubmissions": "Submissions",
       "allAttempts": "All attempts",
       "noAttempts": "No submissions yet",
       "backToScoreboard": "Back to scoreboard",
