@@ -1,9 +1,10 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { apiFetch } from "@/lib/api/client";
+import { formatContestTimestamp } from "@/lib/formatting";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -44,16 +45,6 @@ type ContestClarificationsProps = {
   refreshInterval?: number;
 };
 
-function formatTimestamp(value: ContestClarification["createdAt"], locale: string) {
-  if (!value) return null;
-  const date = value instanceof Date ? value : new Date(value);
-  if (Number.isNaN(date.getTime())) return null;
-  return new Intl.DateTimeFormat(locale, {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(date);
-}
-
 export function ContestClarifications({
   assignmentId,
   currentUserId,
@@ -69,6 +60,8 @@ export function ContestClarifications({
   const [question, setQuestion] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [answerDrafts, setAnswerDrafts] = useState<Record<string, string>>({});
+
+  const initialLoadDoneRef = useRef(false);
 
   const problemLabelMap = useMemo(
     () => Object.fromEntries(problems.map((problem) => [problem.id, problem.title])),
@@ -86,8 +79,13 @@ export function ContestClarifications({
       const payload = await response.json() as { data?: ContestClarification[] };
       setClarifications(Array.isArray(payload.data) ? payload.data : []);
     } catch {
-      toast.error(t("fetchError"));
+      // Only show toast on the initial load — polling refreshes should fail
+      // silently to avoid spamming the user with error toasts every 30 seconds.
+      if (!initialLoadDoneRef.current) {
+        toast.error(t("fetchError"));
+      }
     } finally {
+      initialLoadDoneRef.current = true;
       setLoading(false);
     }
   }, [assignmentId, t]);
@@ -239,7 +237,7 @@ export function ContestClarifications({
                     <p className="text-xs text-muted-foreground">
                       {clarification.userId === currentUserId ? t("askedByMe") : t("askedByOther")}
                       {" · "}
-                      {formatTimestamp(clarification.createdAt, locale) ?? "-"}
+                      {formatContestTimestamp(clarification.createdAt, locale) ?? "-"}
                     </p>
                   </div>
                   {canManage ? (
