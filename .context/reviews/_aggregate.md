@@ -1,142 +1,157 @@
-# RPF Cycle 1 — Aggregate Review
+# RPF Cycle 3 — Aggregate Review
 
 **Date:** 2026-04-22
-**Base commit:** 9683acb8
-**Review artifacts:** rpf-cycle-1-code-reviewer.md, rpf-cycle-1-security-reviewer.md, rpf-cycle-1-perf-reviewer.md, rpf-cycle-1-architect.md, rpf-cycle-1-critic.md, rpf-cycle-1-debugger.md, rpf-cycle-1-verifier.md, rpf-cycle-1-test-engineer.md, rpf-cycle-1-tracer.md, rpf-cycle-1-designer.md, rpf-cycle-1-document-specialist.md
+**Base commit:** 678f7d7d
+**Review artifacts:** rpf-cycle-3-code-reviewer.md, rpf-cycle-3-security-reviewer.md, rpf-cycle-3-perf-reviewer.md, rpf-cycle-3-architect.md, rpf-cycle-3-debugger.md, rpf-cycle-3-verifier.md, rpf-cycle-3-test-engineer.md, rpf-cycle-3-tracer.md, rpf-cycle-3-critic.md, rpf-cycle-3-designer.md, rpf-cycle-3-document-specialist.md
 
 ## Deduped Findings (sorted by severity then signal)
 
-### AGG-1: Clipboard copy logic duplicated in 7+ components — no shared utility, inconsistent fallback pattern [MEDIUM/HIGH]
+### AGG-1: `SubmissionListAutoRefresh` uses `router.refresh()` which never throws — backoff logic is entirely dead code [MEDIUM/HIGH]
 
-**Flagged by:** code-reviewer (CR-1), security-reviewer (SEC-1), architect (ARCH-1), critic (CRI-1), debugger (DBG-1), verifier (V-1), tracer (TR-1)
-**Files:**
-- `src/components/code/copy-code-button.tsx:18-40` — has full fallback
-- `src/app/(dashboard)/dashboard/admin/api-keys/api-keys-client.tsx:210-240` — has full fallback
-- `src/components/contest/access-code-manager.tsx:60-67` — no fallback
-- `src/app/(dashboard)/dashboard/admin/workers/workers-client.tsx:157-165` — no fallback
-- `src/app/(dashboard)/dashboard/admin/files/file-management-client.tsx:98` — no fallback
-- `src/components/contest/recruiting-invitations-panel.tsx:183` — has catch but no fallback
-- `src/components/contest/recruiting-invitations-panel.tsx:208,311` — NO catch, NO fallback (unhandled rejection)
-- `src/app/(dashboard)/dashboard/admin/api-keys/api-keys-client.tsx:197` — no fallback
+**Flagged by:** code-reviewer (CR-1), security-reviewer (SEC-1), perf-reviewer (PERF-1), architect (ARCH-1), debugger (DBG-1), verifier (V-1), critic (CRI-1), test-engineer (TE-1), document-specialist (DOC-1)
+**Signal strength:** 9 of 11 review perspectives
 
-**Description:** The clipboard copy pattern (navigator.clipboard -> execCommand fallback -> error toast) is implemented correctly in 2 places but partially in 5+ others. Two call sites in `recruiting-invitations-panel.tsx` (lines 208, 311) have no error handling at all, causing unhandled promise rejections on failure. This is the highest-signal issue this cycle -- flagged by 7 of 11 review perspectives.
+**Files:** `src/components/submission-list-auto-refresh.tsx:27-44`
 
-**Concrete failure scenario:** On a restricted browser (no clipboard API), clicking "Copy invitation link" causes an unhandled promise rejection. The user sees no feedback and assumes the link was copied.
+**Description:** The component implements exponential backoff with `errorCountRef` and `getBackoffInterval()`, but `router.refresh()` from `next/navigation` never throws on network errors. The try/catch on lines 38-44 is unreachable for network failures. The `errorCountRef` will always be 0, making `getBackoffInterval()` always return `baseInterval`. The JSDoc comment on lines 32-34 describes behavior that cannot occur.
 
-**Fix:** Create a shared `copyToClipboard(text)` utility in `src/lib/clipboard.ts` based on the `copy-code-button.tsx` pattern, and replace all ad-hoc clipboard calls.
+**Concrete failure scenario:** Server is overloaded. Three pages using this component (`submissions/page.tsx`, `admin/submissions/page.tsx`, `public/submissions/page.tsx`) keep polling at full rate (5s/10s) with no backoff, contributing to server load and wasting client battery.
+
+**Fix:** Replace `router.refresh()` with `fetch('/api/v1/time')` (or a similar lightweight endpoint) to detect errors, then call `router.refresh()` only on success. Update comments to match.
 
 ---
 
-### AGG-2: Contest layout forces full page reload for ALL internal links -- destroys SPA navigation [MEDIUM/HIGH]
+### AGG-2: `recruiting-invitations-panel.tsx` `fetchData` has `stats` in dependency array — potential unnecessary re-fetches [MEDIUM/MEDIUM]
 
-**Flagged by:** architect (ARCH-2), perf-reviewer (PERF-4), critic (CRI-2), designer (DES-1), tracer (TR-2), verifier (V-4)
-**Files:** `src/app/(dashboard)/dashboard/contests/layout.tsx:20-31`
+**Flagged by:** code-reviewer (CR-4), debugger (DBG-3), verifier (V-3)
+**Signal strength:** 3 of 11 review perspectives
 
-**Description:** The contest layout intercepts ALL `<a>` clicks within `#main-content` and `[data-slot='sidebar']` and forces `window.location.href = href`, causing full page reloads. This defeats Next.js App Router's prefetching, client-side navigation, and shared layout features. It impacts LCP, CLS, and INP metrics, and makes every in-contest navigation feel slow.
+**Files:** `src/components/contest/recruiting-invitations-panel.tsx:110-134`
 
-**Concrete failure scenario:** A contest participant clicks "Problems" from the sidebar -- instead of instant client-side navigation, the entire page reloads, losing all React state and prefetched data.
+**Description:** The `fetchData` useCallback has `stats` in its dependency array because it's used as a fallback on line 128 (`json.data ?? stats`). When `fetchData` updates `stats`, the callback reference changes, which triggers the `useEffect` on line 136 to call `fetchData` again. React's bailout prevents infinite loops when data is identical, but the dependency is semantically incorrect.
 
-**Fix:** Replace the blanket approach with selective `forceNavigate` calls. Add a `data-full-navigate` attribute to links that genuinely need hard navigation, and only intercept those.
+**Concrete failure scenario:** If the API returns data with different reference identity on each call (e.g., different timestamp), the component could enter a fetch loop.
 
----
-
-### AGG-3: `use-source-draft.ts` localStorage.removeItem calls not wrapped in try/catch -- data loss risk [MEDIUM/MEDIUM]
-
-**Flagged by:** debugger (DBG-2), tracer (TR-3)
-**Files:** `src/hooks/use-source-draft.ts:188,205,409`
-
-**Description:** In `readDraftPayload`, `window.localStorage.removeItem(storageKey)` is called on lines 188 and 205 without try/catch. The outer try/catch on line 213 WILL catch the throw, but it causes the function to return `createEmptyDraftState()` even when the draft data was valid -- just the cleanup of a stale key failed. Similarly, `clearAllDrafts` at line 409 calls `removeItem` without try/catch.
-
-**Concrete failure scenario:** In private browsing mode where `removeItem` throws, a user's valid draft data is lost because the outer catch discards the entire payload when only the cleanup operation failed.
-
-**Fix:** Wrap specific `removeItem` calls in their own try/catch, allowing the function to continue even if cleanup fails.
+**Fix:** Use functional state update: `setStats(prev => json.data ?? prev)` and remove `stats` from the dependency array.
 
 ---
 
-### AGG-4: `recruiting-invitations-panel.tsx` lines 208, 311 -- unhandled promise rejection on clipboard failure [MEDIUM/MEDIUM]
+### AGG-3: `contest-clarifications.tsx` polling can create duplicate intervals on rapid visibility toggles [MEDIUM/MEDIUM]
 
-**Flagged by:** debugger (DBG-1), security-reviewer (SEC-1), tracer (TR-1)
+**Flagged by:** code-reviewer (CR-2), debugger (DBG-2), tracer (TR-3)
+**Signal strength:** 3 of 11 review perspectives
 
-**Description:** Two `navigator.clipboard.writeText()` calls have no `catch` block. If the clipboard API throws, the promise rejection is unhandled, showing no feedback to the user. (This will be fixed by AGG-1's shared clipboard utility.)
+**Files:** `src/components/contest/contest-clarifications.tsx:94-118`
 
-**Fix:** Add `catch` blocks showing `toast.error(t("copyError"))` matching the pattern at line 183. Or better, use the shared clipboard utility from AGG-1.
+**Description:** The `syncVisibility` function uses a local `interval` variable. While the single-threaded JS event loop prevents true race conditions, the code is fragile. The pattern of checking `if (!interval)` before creating a new interval could miss edge cases if `syncVisibility` is called from multiple sources. Using a `useRef` would be more robust.
 
----
+**Concrete failure scenario:** Rapid tab switching causes `syncVisibility` to be called while the previous interval assignment is still in the microtask queue, potentially creating duplicate intervals.
 
-### AGG-5: `compiler-client.tsx` has 16 remaining `defaultValue` inline fallbacks -- i18n adoption incomplete [LOW/MEDIUM]
-
-**Flagged by:** code-reviewer (CR-2), verifier (V-3), document-specialist (DOC-1)
-**Files:** `src/components/code/compiler-client.tsx:377-536`
-
-**Description:** The recent diff correctly removed `defaultValue` from 6 `t()` calls, but 16 remain. This is inconsistent -- the file should either use all `defaultValue` or none. The `next-intl` documentation recommends removing `defaultValue` from production code once translations are confirmed.
-
-**Fix:** Remove all remaining `defaultValue` inline fallbacks after confirming all keys exist in locale JSON files.
+**Fix:** Use a `useRef` for the interval ID instead of a local variable. Always clear the existing interval before creating a new one.
 
 ---
 
-### AGG-6: `submission-detail-client.tsx` score display uses inline `Math.round` instead of `formatScore` [LOW/MEDIUM]
+### AGG-4: `recruiting-invitations-panel.tsx` uses dynamic `import()` for clipboard utility — unnecessary async overhead [LOW/MEDIUM]
 
-**Flagged by:** code-reviewer (CR-5)
-**Files:** `src/app/(dashboard)/dashboard/submissions/[id]/submission-detail-client.tsx:263`
+**Flagged by:** security-reviewer (SEC-2), perf-reviewer (PERF-3), architect (ARCH-4), critic (CRI-2)
+**Signal strength:** 4 of 11 review perspectives
 
-**Description:** The score is formatted as `Math.round(submission.score * 100) / 100` inline, while `formatScore` from `@/lib/formatting` does the same thing with locale-aware digit grouping.
+**Files:** `src/components/contest/recruiting-invitations-panel.tsx:183,208,310`
 
-**Fix:** Import and use `formatScore(submission.score, locale)` instead of the inline calculation.
+**Description:** Three locations use `const { copyToClipboard } = await import("@/lib/clipboard")` instead of a static import. The clipboard utility is a 37-line module that will be bundled with the page anyway. Dynamic imports add unnecessary async overhead and reduce readability.
 
----
-
-### AGG-7: `compiler-client.tsx` keyboard shortcut fires even when focus is in textarea/input [LOW/MEDIUM]
-
-**Flagged by:** debugger (DBG-3), test-engineer (TE-2)
-**Files:** `src/components/code/compiler-client.tsx:303-312`
-
-**Description:** The `Ctrl/Cmd+Enter` shortcut fires `handleRun` regardless of whether the user is typing in the test case name input or the stdin textarea. If a user types Ctrl+Enter in the stdin textarea, it prevents the default (no newline) AND triggers code execution.
-
-**Fix:** Check if the active element is a textarea or contenteditable, and only run the shortcut if focus is in the code editor or no specific input is focused.
+**Fix:** Replace with static import at the top of the file: `import { copyToClipboard } from "@/lib/clipboard"`.
 
 ---
 
-### AGG-8: Practice page Path B progress filter still fetches all matching IDs + submissions into memory [MEDIUM/MEDIUM] (carried forward)
+### AGG-5: SSE `queryFullSubmission` includes `sourceCode` in response — unnecessary data transfer [LOW/MEDIUM]
 
-**Flagged by:** perf-reviewer (PERF-1)
-**Files:** `src/app/(public)/practice/page.tsx:410-519`
+**Flagged by:** perf-reviewer (PERF-5), verifier (V-4), critic (CRI-4)
+**Signal strength:** 3 of 11 review perspectives
 
-**Description:** Carried forward from cycle 18 (AGG-3). When a progress filter is active, Path B fetches ALL matching problem IDs and ALL user submissions into memory, filters in JavaScript, and paginates. The code has a comment acknowledging this should be moved to SQL.
+**Files:** `src/app/api/v1/submissions/[id]/events/route.ts:463-488`
 
-**Fix:** Move the progress filter logic into a SQL CTE or subquery. Scale concern, not an immediate bug.
+**Description:** The `queryFullSubmission` function does not exclude `sourceCode` from its columns. The client (`use-submission-polling.ts`) always uses `normalized.sourceCode || prev.sourceCode`, discarding the SSE-provided source code in favor of the already-loaded version. For large submissions (100KB+), this adds unnecessary latency to every SSE completion event.
 
----
-
-### AGG-9: `SubmissionListAutoRefresh` lacks error-state backoff [LOW/LOW] (carried forward)
-
-**Flagged by:** perf-reviewer (PERF-2)
-**Files:** `src/components/submission-list-auto-refresh.tsx:24-28`
-
-**Description:** The auto-refresh component polls at fixed intervals without error handling or backoff. During server overload, this could worsen the load.
-
-**Fix:** Add error-state tracking and switch to longer intervals on consecutive failures.
+**Fix:** Add `sourceCode: false` to the columns selection in `queryFullSubmission`, or add a minimal columns projection.
 
 ---
 
-### AGG-10: Anti-cheat privacy notice uses raw `<button>` instead of `<Button>` component [LOW/LOW]
+### AGG-6: `compiler-client.tsx` stdin `<textarea>` uses raw HTML element instead of `<Textarea>` component [LOW/MEDIUM]
+
+**Flagged by:** code-reviewer (CR-3), designer (DES-1)
+**Signal strength:** 2 of 11 review perspectives
+
+**Files:** `src/components/code/compiler-client.tsx:466-483`
+
+**Description:** The stdin input uses a raw `<textarea>` with inline Tailwind styles instead of the shared `<Textarea>` component. This is inconsistent with the test case name input (`<Input>`) and other textarea fields in the app. It misses consistent focus ring, dark mode theme, and disabled state styling.
+
+**Fix:** Import and use `<Textarea>` from `@/components/ui/textarea`.
+
+---
+
+### AGG-7: `compiler-client.tsx` `TruncatedOutput` expand button uses raw `<button>` instead of `<Button>` [LOW/LOW]
+
+**Flagged by:** designer (DES-2)
+**Signal strength:** 1 of 11 review perspectives
+
+**Files:** `src/components/code/compiler-client.tsx:106-115`
+
+**Description:** The "Show full output" button uses a raw `<button>` instead of the shared `<Button>` component. This is the same pattern that was fixed for the anti-cheat privacy notice in cycle 2.
+
+**Fix:** Replace with `<Button variant="link" size="sm">`.
+
+---
+
+### AGG-8: `contest-clarifications.tsx` shows raw `userId` UUID for other users' clarifications [LOW/MEDIUM]
 
 **Flagged by:** designer (DES-3)
-**Files:** `src/components/exam/anti-cheat-monitor.tsx:244-248`
+**Signal strength:** 1 of 11 review perspectives
 
-**Description:** The privacy notice "Accept" button uses a raw `<button>` with inline Tailwind classes instead of the `Button` component, missing shared focus ring, disabled state, and animation styles.
+**Files:** `src/components/contest/contest-clarifications.tsx:263`
 
-**Fix:** Replace the raw `<button>` with `<Button variant="default" className="w-full">`.
+**Description:** When the current user is not the author of a clarification, the component displays the raw `userId` UUID. This is not meaningful to users. Should show a name or generic label.
+
+**Fix:** Either include the user's name in the API response and display it, or use a generic label like `t("askedByOther")`.
 
 ---
 
-### AGG-11: `access-code-manager.test.tsx` test name implies `execCommand` fallback exists but component doesn't have it [LOW/MEDIUM]
+### AGG-9: `anti-cheat-monitor.tsx` `loadPendingEvents` does not validate stored JSON structure [LOW/MEDIUM]
 
-**Flagged by:** test-engineer (TE-3)
-**Files:** `tests/component/access-code-manager.test.tsx:83`, `src/components/contest/access-code-manager.tsx:60-67`
+**Flagged by:** code-reviewer (CR-7)
+**Signal strength:** 1 of 11 review perspectives
 
-**Description:** The test name says "shows an explicit error when clipboard access fails instead of using execCommand fallback", but the component doesn't actually attempt an `execCommand` fallback -- it just shows an error toast. The test name is misleading.
+**Files:** `src/components/exam/anti-cheat-monitor.tsx:28-35`
 
-**Fix:** Either add the `execCommand` fallback to the component (per AGG-1) or update the test name to match the current behavior.
+**Description:** `JSON.parse(raw)` on line 31 can return any JSON value. The function returns the parsed result without validating that it's an array. If localStorage is corrupted, subsequent code that iterates over the array could fail.
+
+**Fix:** Add `const parsed = JSON.parse(raw); return Array.isArray(parsed) ? parsed : [];`.
+
+---
+
+### AGG-10: `SubmissionListAutoRefresh` uses `setInterval`/`clearInterval` where `setTimeout` would be simpler [LOW/LOW]
+
+**Flagged by:** perf-reviewer (PERF-1)
+**Signal strength:** 1 of 11 review perspectives
+
+**Files:** `src/components/submission-list-auto-refresh.tsx:51-59`
+
+**Description:** The `scheduleNext` function creates a `setInterval`, which fires once and is immediately cleared, then a new one is created. This is equivalent to `setTimeout` but with unnecessary `setInterval` overhead.
+
+**Fix:** Replace `setInterval`/`clearInterval` with `setTimeout`/`clearTimeout`.
+
+---
+
+### AGG-11: No tests for `SubmissionListAutoRefresh` — would have caught dead backoff code [MEDIUM/MEDIUM]
+
+**Flagged by:** test-engineer (TE-1)
+**Signal strength:** 1 of 11 review perspectives
+
+**Files:** `src/components/submission-list-auto-refresh.tsx`
+
+**Description:** No unit tests exist for this component. Tests would have revealed that the backoff logic is dead code. Other untested components include `contest-clarifications.tsx` and the compiler keyboard shortcut exclusion.
+
+**Fix:** Add unit tests for `SubmissionListAutoRefresh` backoff behavior.
 
 ---
 
@@ -149,25 +164,25 @@ From cycle-27 aggregate and prior cycles:
 
 From earlier cycles (still active):
 - D1: JWT authenticatedAt clock skew with DB tokenInvalidatedAt (MEDIUM)
-- D2: JWT callback DB query on every request -- add TTL cache (MEDIUM)
+- D2: JWT callback DB query on every request — add TTL cache (MEDIUM)
 - A19: `new Date()` clock skew risk in remaining routes (LOW)
 
-## Resolved Issues
+From cycle 1 (still active):
+- DEFER-AGG8: Practice page Path B progress filter SQL optimization
+- DEFER-AGG9: SubmissionListAutoRefresh error-state backoff (NOW ADDRESSED by AGG-1 — the backoff code exists but is non-functional)
 
-- `formatNumber` placement in `datetime.ts` -- CONFIRMED RESOLVED. The utility is now correctly in `src/lib/formatting.ts`.
+## Resolved Issues (From Prior Cycles)
 
-## Verified Safe / No Regression Found
-
-- All recent localStorage try/catch additions are correct
-- The `defaultValue` removals in compiler-client.tsx are safe
-- `copy-code-button.tsx` and `api-keys-client.tsx` clipboard patterns are robust
-- `formatting.ts` utilities are well-structured with locale support
-- `dangerouslySetInnerHTML` uses are protected with DOMPurify
-- No `as any`, `@ts-ignore`, `@ts-expect-error` in production code
-- Only 2 eslint-disable directives in production code, both justified
-- Auth flow uses Argon2id with timing-safe dummy hash and rate limiting
-- CSRF protection consistent across mutation routes
-- All `new Date()` in API routes migrated to `getDbNowUncached()`
+- AGG-1 (cycle 1): Clipboard copy logic duplication — RESOLVED by shared `clipboard.ts` utility
+- AGG-2 (cycle 1): Contest layout blanket hard-navigation — RESOLVED by `data-full-navigate` opt-in
+- AGG-3 (cycle 1): `use-source-draft.ts` localStorage try/catch — RESOLVED
+- AGG-4 (cycle 1): Unhandled promise rejections in clipboard — RESOLVED by shared utility
+- AGG-5 (cycle 1): `defaultValue` inline fallbacks in compiler-client — RESOLVED
+- AGG-6 (cycle 1): Inline Math.round instead of formatScore — RESOLVED
+- AGG-7 (cycle 1): Keyboard shortcut fires in textarea/input — RESOLVED
+- AGG-10 (cycle 1): Raw `<button>` in anti-cheat privacy notice — RESOLVED
+- AGG-11 (cycle 1): Misleading test name — RESOLVED
+- DEFER-AGG9 (cycle 1): SubmissionListAutoRefresh error-state backoff — PARTIALLY ADDRESSED (code exists but is dead)
 
 ## Agent Failures
 
