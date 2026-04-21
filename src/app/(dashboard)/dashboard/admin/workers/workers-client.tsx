@@ -229,11 +229,17 @@ export function WorkersPageClient() {
       if (workersRes.ok) {
         const wd = await workersRes.json();
         setWorkers(wd.data ?? []);
+      } else {
+        toast.error(t("fetchError"));
       }
       if (statsRes.ok) {
         const sd = await statsRes.json();
         setStats(sd.data ?? null);
+      } else {
+        toast.error(t("fetchError"));
       }
+    } catch {
+      toast.error(t("fetchError"));
     } finally {
       setLoading(false);
     }

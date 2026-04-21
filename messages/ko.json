@@ -1638,6 +1638,7 @@
       "copied": "클립보드에 복사됨",
       "copyFailed": "클립보드 복사에 실패했습니다",
       "aliasPlaceholder": "별칭",
+      "fetchError": "워커 데이터를 불러오지 못했습니다.",
       "auditNotice": "워커 목록 및 통계 열람은 감사 로그에 기록됩니다."
     },
     "apiKeys": {

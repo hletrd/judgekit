@@ -1638,6 +1638,7 @@
       "copied": "Copied to clipboard",
       "copyFailed": "Failed to copy to clipboard",
       "aliasPlaceholder": "Alias...",
+      "fetchError": "Failed to load worker data.",
       "auditNotice": "Worker inventory and stats access is audit logged."
     },
     "apiKeys": {
