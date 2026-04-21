@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useCallback } from "react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { apiFetch } from "@/lib/api/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Users, FileText, BarChart3, Trophy } from "lucide-react";
+import { useVisibilityPolling } from "@/hooks/use-visibility-polling";
 
 interface ContestQuickStatsProps {
   assignmentId: string;
@@ -56,15 +57,15 @@ export function ContestQuickStats({
 
       // Keep the server-side participantCount (all enrolled students) stable —
       // leaderboard entries only include users with submissions, which is fewer.
-      const submittedCount = data.entries.filter(
+      // TODO: Replace full leaderboard fetch with a dedicated /stats endpoint for efficiency.
+      const submittedEntries = data.entries.filter(
         (e) => e.problems.some((p) => p.score > 0 || p.solved)
-      ).length;
+      );
+      const submittedCount = submittedEntries.length;
       const avgScore =
         submittedCount > 0
           ? Math.round(
-              (data.entries
-                .filter((e) => e.problems.some((p) => p.score > 0 || p.solved))
-                .reduce((sum, e) => sum + e.totalScore, 0) /
+              (submittedEntries.reduce((sum, e) => sum + e.totalScore, 0) /
                 submittedCount) *
                 10
             ) / 10
@@ -79,38 +80,7 @@ export function ContestQuickStats({
     }
   }, [assignmentId, t]);
 
-  useEffect(() => {
-    let interval: ReturnType<typeof setInterval> | null = null;
-
-    const clearRefreshInterval = () => {
-      if (interval) {
-        clearInterval(interval);
-        interval = null;
-      }
-    };
-
-    const ensurePollingState = () => {
-      if (document.visibilityState === "visible") {
-        void fetchStats();
-        if (!interval) {
-          interval = setInterval(() => {
-            void fetchStats();
-          }, refreshInterval);
-        }
-        return;
-      }
-
-      clearRefreshInterval();
-    };
-
-    ensurePollingState();
-    document.addEventListener("visibilitychange", ensurePollingState);
-
-    return () => {
-      document.removeEventListener("visibilitychange", ensurePollingState);
-      clearRefreshInterval();
-    };
-  }, [fetchStats, refreshInterval]);
+  useVisibilityPolling(() => { void fetchStats(); }, refreshInterval);
 
   return (
     <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
