@@ -94,9 +94,8 @@ export function FileManagementClient({ files, rangeStart, rangeEnd, totalCount, 
 
   async function copyUrl(id: string) {
     const url = `${window.location.origin}/api/v1/files/${id}`;
-    try {
-      await navigator.clipboard.writeText(url);
-    } catch {
+    const { copyToClipboard } = await import("@/lib/clipboard");
+    if (!(await copyToClipboard(url))) {
       toast.error(t("copyFailed"));
       return;
     }

@@ -193,9 +193,8 @@ export function ApiKeysClient({ roleOptions }: { roleOptions?: RoleOption[] }) {
 
   async function copyCreatedKey() {
     if (!createdKey) return;
-    try {
-      await navigator.clipboard.writeText(createdKey.key);
-    } catch {
+    const { copyToClipboard } = await import("@/lib/clipboard");
+    if (!(await copyToClipboard(createdKey.key))) {
       toast.error(t("copyFailed"));
       return;
     }
@@ -209,27 +208,10 @@ export function ApiKeysClient({ roleOptions }: { roleOptions?: RoleOption[] }) {
 
   async function handleCopyKeyPrefix(key: ApiKey) {
     const maskedPreview = buildMaskedApiKeyPreview(key.keyPrefix);
-    try {
-      await navigator.clipboard.writeText(maskedPreview);
-    } catch {
-      const textarea = document.createElement("textarea");
-      textarea.value = maskedPreview;
-      textarea.style.position = "fixed";
-      textarea.style.opacity = "0";
-      document.body.appendChild(textarea);
-      try {
-        textarea.select();
-        const ok = document.execCommand("copy");
-        if (!ok) {
-          toast.error(t("copyFailed"));
-          return;
-        }
-      } catch {
-        toast.error(t("copyFailed"));
-        return;
-      } finally {
-        document.body.removeChild(textarea);
-      }
+    const { copyToClipboard } = await import("@/lib/clipboard");
+    if (!(await copyToClipboard(maskedPreview))) {
+      toast.error(t("copyFailed"));
+      return;
     }
     if (copiedKeyIdTimer.current) {
       clearTimeout(copiedKeyIdTimer.current);

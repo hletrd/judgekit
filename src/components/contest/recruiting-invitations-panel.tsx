@@ -180,7 +180,8 @@ export function RecruitingInvitationsPanel({ assignmentId }: { assignmentId: str
         if (token) {
           const link = `${baseUrl}/recruit/${token}`;
           setCreatedLink(link);
-          try { await navigator.clipboard.writeText(link); } catch { toast.error(t("copyError")); }
+          const { copyToClipboard } = await import("@/lib/clipboard");
+          if (!(await copyToClipboard(link))) toast.error(t("copyError"));
         }
         toast.success(t("createSuccess"));
         fetchData();
@@ -204,9 +205,8 @@ export function RecruitingInvitationsPanel({ assignmentId }: { assignmentId: str
 
   async function handleCopyLink(invitation: Invitation) {
     const url = `${baseUrl}/recruit/${invitation.token}`;
-    try {
-      await navigator.clipboard.writeText(url);
-    } catch {
+    const { copyToClipboard } = await import("@/lib/clipboard");
+    if (!(await copyToClipboard(url))) {
       toast.error(t("copyError"));
       return;
     }
@@ -307,9 +307,8 @@ export function RecruitingInvitationsPanel({ assignmentId }: { assignmentId: str
               size="sm"
               onClick={async () => {
                 if (createdLink) {
-                  try {
-                    await navigator.clipboard.writeText(createdLink);
-                  } catch {
+                  const { copyToClipboard } = await import("@/lib/clipboard");
+                  if (!(await copyToClipboard(createdLink))) {
                     toast.error(t("copyError"));
                     return;
                   }

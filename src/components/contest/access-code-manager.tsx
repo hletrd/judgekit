@@ -58,9 +58,9 @@ export function AccessCodeManager({ assignmentId }: AccessCodeManagerProps) {
   }, []);
 
   async function copyValue(value: string, { showToast = false }: { showToast?: boolean } = {}) {
-    try {
-      await navigator.clipboard.writeText(value);
-    } catch {
+    const { copyToClipboard } = await import("@/lib/clipboard");
+    const ok = await copyToClipboard(value);
+    if (!ok) {
       toast.error(t("copyFailed"));
       return;
     }

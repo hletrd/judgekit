@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { Check, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { copyToClipboard } from "@/lib/clipboard";
 
 export function CopyCodeButton({ value }: { value: string }) {
   const t = useTranslations("common");
@@ -16,27 +17,10 @@ export function CopyCodeButton({ value }: { value: string }) {
   }, []);
 
   const handleCopy = useCallback(async () => {
-    try {
-      await navigator.clipboard.writeText(value);
-    } catch {
-      const textarea = document.createElement("textarea");
-      textarea.value = value;
-      textarea.style.position = "fixed";
-      textarea.style.opacity = "0";
-      document.body.appendChild(textarea);
-      try {
-        textarea.select();
-        const ok = document.execCommand("copy");
-        if (!ok) {
-          toast.error(t("copyFailed"));
-          return;
-        }
-      } catch {
-        toast.error(t("copyFailed"));
-        return;
-      } finally {
-        document.body.removeChild(textarea);
-      }
+    const ok = await copyToClipboard(value);
+    if (!ok) {
+      toast.error(t("copyFailed"));
+      return;
     }
     setCopied(true);
     copiedTimer.current = setTimeout(() => setCopied(false), 2000);

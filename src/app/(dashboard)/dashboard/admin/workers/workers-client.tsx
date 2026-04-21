@@ -154,10 +154,9 @@ docker compose -f docker-compose.worker.yml up -d`;
   --concurrency=4 \\
   --sync-images`;
 
-  async function copyToClipboard(text: string) {
-    try {
-      await navigator.clipboard.writeText(text);
-    } catch {
+  async function copyText(text: string) {
+    const { copyToClipboard } = await import("@/lib/clipboard");
+    if (!(await copyToClipboard(text))) {
       toast.error(t("copyFailed"));
       return;
     }
@@ -186,7 +185,7 @@ docker compose -f docker-compose.worker.yml up -d`;
                 variant="ghost"
                 size="icon"
                 className="absolute top-1 right-1 h-6 w-6"
-                onClick={() => copyToClipboard(dockerCmd)}
+                onClick={() => copyText(dockerCmd)}
               >
                 <Copy className="h-3 w-3" />
               </Button>
@@ -200,7 +199,7 @@ docker compose -f docker-compose.worker.yml up -d`;
                 variant="ghost"
                 size="icon"
                 className="absolute top-1 right-1 h-6 w-6"
-                onClick={() => copyToClipboard(deployCmd)}
+                onClick={() => copyText(deployCmd)}
               >
                 <Copy className="h-3 w-3" />
               </Button>
