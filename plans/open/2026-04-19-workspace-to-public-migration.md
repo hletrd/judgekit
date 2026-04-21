@@ -192,7 +192,7 @@ Same as instructor, with additional "Admin" dropdown entry that navigates to `/d
 
 ### Phase 3 — Dashboard layout refinement (Medium risk)
 
-**Status:** IN PROGRESS (cycle 21 — breadcrumb hidden on mobile DONE, contests in dropdown DONE; remaining: slim down AppSidebar, evaluate control route merge)
+**Status:** IN PROGRESS (cycle 26 — AppSidebar hidden for non-admin users; remaining: evaluate control route merge, icon-rail mode for admin sidebar)
 
 **Goal:** Simplify the dashboard layout to complement the top navbar.
 
@@ -222,9 +222,9 @@ Same as instructor, with additional "Admin" dropdown entry that navigates to `/d
 - Fix `handleSignOut` in AppSidebar — added try/catch to reset `isSigningOut` on failure (commit 50f84172)
 
 **Remaining Phase 3 work:**
-- Further slim down `AppSidebar` to icon-only mode or contextual sub-navigation
+- ~~Further slim down `AppSidebar` to icon-only mode or contextual sub-navigation~~ DONE (cycle 26 — AppSidebar hidden entirely for non-admin users; admin sidebar remains full for admin sections)
 - ~~Consider hiding breadcrumb on mobile viewports~~ DONE (already hidden via `hidden md:block`)
-- Evaluate `(control)` route group merge into `(dashboard)/admin`
+- Evaluate `(control)` route group merge into `(dashboard)/admin` — DONE (merged in Phase 4)
 
 **Estimated files changed:** ~15-20
 
@@ -266,6 +266,25 @@ No redundant page components remain under `(dashboard)`.
 2. ~~Remove redundant page components under `(dashboard)` where public counterparts exist.~~ DONE — all dashboard routes with public counterparts (rankings, languages, compiler) have been redirected; remaining dashboard routes are auth-gated and must stay.
 
 **Estimated files changed:** ~20-30
+
+### Phase 5 — AppSidebar slim-down and non-admin sidebar removal
+
+**Status:** IN PROGRESS (cycle 26)
+
+**Goal:** Remove the AppSidebar for non-admin users since all their navigation items are now in the PublicHeader dropdown. The sidebar remains essential for admin users who need access to 14 admin-specific nav items.
+
+**Cycle 26 progress:**
+- ~~Remove capability gates from "Problems" and "Groups" dropdown items so all authenticated users see them~~ DONE (commit cc334546)
+- ~~Hide AppSidebar entirely for non-admin users (no admin capabilities)~~ DONE (commit cc334546)
+- Both changes align the PublicHeader dropdown with the AppSidebar's visibility behavior, ensuring no nav items are lost during the transition
+
+**Remaining Phase 5 work:**
+- Evaluate icon-rail mode for admin sidebar (collapsed by default, expand on hover/click)
+- Mobile UX audit: verify admin sidebar behavior on small screens
+- Consider moving remaining non-admin sidebar items (Problems, Groups, Problem Sets) out of sidebar code entirely since the sidebar is now hidden for non-admin users
+- Clean up the `navGroups` constant in AppSidebar — the non-admin group items are now unreachable for non-admin users and redundant with the dropdown for admin users
+
+**Estimated files changed:** ~5-10
 
 ---
 
