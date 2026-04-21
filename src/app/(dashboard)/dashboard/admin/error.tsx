@@ -14,7 +14,11 @@ export default function AdminError({
   const t = useTranslations("dashboardState");
 
   useEffect(() => {
-    console.error("[admin-error-boundary]", error);
+    // Log error details in development only — avoid leaking stack traces
+    // in production. Next.js tracks errors server-side via the digest field.
+    if (process.env.NODE_ENV === "development") {
+      console.error("[admin-error-boundary]", error);
+    }
   }, [error]);
 
   return (
