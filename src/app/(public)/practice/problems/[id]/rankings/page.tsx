@@ -97,6 +97,10 @@ export default async function PublicProblemRankingsPage({
     FROM ranked r
     INNER JOIN users u ON u.id = r.user_id
     WHERE r.rn = 1
+      AND NOT EXISTS (
+        SELECT 1 FROM recruiting_invitations ri
+        WHERE ri.user_id = u.id AND ri.status = 'redeemed'
+      )
     ORDER BY r.execution_time_ms ASC, r.memory_used_kb ASC, r.code_length ASC
     `,
     { id }

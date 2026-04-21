@@ -70,6 +70,10 @@ export async function generateMetadata({
       FROM first_accepts fa
       INNER JOIN users u ON u.id = fa.user_id
       WHERE u.is_active = true
+        AND NOT EXISTS (
+          SELECT 1 FROM recruiting_invitations ri
+          WHERE ri.user_id = u.id AND ri.status = 'redeemed'
+        )
     `),
   ]);
   const settings = await getResolvedSystemSettings({
@@ -134,7 +138,12 @@ export default async function RankingsPage({
   // Estimate total from an unfiltered count to clamp the page offset.
   // The actual per-period total is derived from the window function below.
   const estimatedCountRow = await rawQueryOne<{ total: number }>(`
-    SELECT COUNT(*)::int as total FROM users WHERE is_active = true
+    SELECT COUNT(*)::int as total FROM users u
+    WHERE u.is_active = true
+      AND NOT EXISTS (
+        SELECT 1 FROM recruiting_invitations ri
+        WHERE ri.user_id = u.id AND ri.status = 'redeemed'
+      )
   `);
   const estimatedTotal = estimatedCountRow?.total ?? 0;
   const estimatedPages = Math.max(1, Math.ceil(estimatedTotal / pageSize));
@@ -174,6 +183,10 @@ export default async function RankingsPage({
     FROM users u
     INNER JOIN first_accepts fa ON fa.user_id = u.id
     WHERE u.is_active = true
+      AND NOT EXISTS (
+        SELECT 1 FROM recruiting_invitations ri
+        WHERE ri.user_id = u.id AND ri.status = 'redeemed'
+      )
     GROUP BY u.id, u.username, u.name, u.class_name
     ORDER BY "solvedCount" DESC, "lastSolveTime" ASC
     LIMIT @limit OFFSET @offset
