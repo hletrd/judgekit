@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { apiFetch } from "@/lib/api/client";
 import { formatBytes } from "@/lib/formatting";
 import { Loader2, Play, AlertTriangle, Maximize2, Plus, X } from "lucide-react";
@@ -103,14 +104,16 @@ function TruncatedOutput({ content, className }: { content: string; className?: 
   return (
     <div>
       <pre className={className}>{truncated}\n... (output truncated)</pre>
-      <button
+      <Button
         type="button"
+        variant="link"
+        size="sm"
         onClick={() => setIsExpanded(true)}
-        className="mt-2 flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+        className="mt-2 flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground p-0 h-auto"
       >
         <Maximize2 className="size-3" />
         Show full output ({formatBytes(content.length)})
-      </button>
+      </Button>
     </div>
   );
 }
@@ -463,9 +466,9 @@ export function CompilerClient({ languages, title, description, preferredLanguag
 
               {testCases.map((testCase) => (
                 <TabsContent key={testCase.id} value={testCase.id} className="m-0">
-                  <textarea
+                  <Textarea
                     id={testCase.id === activeTestCase.id ? "stdin-input" : undefined}
-                    className="w-full rounded-lg border bg-transparent p-3 font-mono text-sm leading-relaxed focus:border-ring focus:ring-3 focus:ring-ring/15 focus:outline-none"
+                    className="font-mono text-sm leading-relaxed"
                     style={{ minHeight: LAYOUT_CONSTANTS.STDIN_MIN_HEIGHT, resize: "vertical", tabSize: 4 }}
                     value={testCase.stdin}
                     onChange={(event) =>
