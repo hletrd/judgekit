@@ -1,82 +1,100 @@
-# Cycle 27 Aggregate Review
+# Cycle 27 Aggregate Review (Updated)
 
 **Date:** 2026-04-20
-**Base commit:** ca3459dd
-**Review artifacts:** `cycle-27-code-reviewer.md`, `cycle-27-security-reviewer.md`, `cycle-27-perf-reviewer.md`, `cycle-27-architect.md`, `cycle-27-critic.md`, `cycle-27-debugger.md`, `cycle-27-verifier.md`, `cycle-27-test-engineer.md`, `cycle-27-tracer.md`, `cycle-27-designer.md`
+**Base commit:** 941d34f4
+**Review artifacts:** `cycle-27-code-reviewer.md` through `cycle-27-verifier.md` (prior pass), plus fresh deep review
 
-## Deduped Findings (sorted by severity then signal)
+## Status of Prior Cycle-27 Findings
 
-### AGG-1: Recruit page uses `new Date()` for expiry/deadline comparisons — clock-skew inconsistency with API [MEDIUM/HIGH]
+- **AGG-1** (Recruit page clock-skew): FIXED — page now uses `getDbNow()` (line 37, 75)
+- **AGG-2** (Recruit page `toLocaleString()`): FIXED — page now uses `formatDateTimeInTimeZone()`
+- **AGG-3** (SSE `user!` non-null assertion): FIXED — no `user!` pattern found in events route
+- **AGG-4** (Inconsistent `createApiHandler`): Still open, architectural concern
+- **AGG-5** (SSE O(n) eviction): Acceptable, no action needed
+- **AGG-6** (Recruit page 3 DB queries): Still open, low priority
+- **AGG-7** (No test coverage for recruit/SSE): Still open
 
-**Flagged by:** code-reviewer (CR-1), security-reviewer (SEC-1), architect (ARCH-1), critic (CRI-1), debugger (DBG-1), verifier (V-1), tracer (TR-1), test-engineer (TE-1)
-**Files:** `src/app/(auth)/recruit/[token]/page.tsx:33,89,167`
-**Description:** The recruit page compares `invitation.expiresAt < new Date()` and `assignment.deadline < new Date()` using the app server's local clock. The API route `src/app/api/v1/recruiting/validate/route.ts` correctly uses `SQL NOW()` for the same comparisons (line 36: `${recruitingInvitations.expiresAt} > NOW()`) to avoid clock skew between the app server and DB server. The API fix was implemented in commit b42a7fe4, but the server-rendered page was not updated.
-**Concrete failure scenario:** If the app server clock drifts ahead of the DB server clock, a recruit page could show "expired" while the API still considers the invitation valid (or vice versa). A candidate could see a "valid" invitation on the page but get "expired" when they try to start the exam.
-**Fix:** Fetch DB server time (e.g., `SELECT NOW()`) alongside the invitation data and use it for all temporal comparisons on the page instead of `new Date()`.
-**Cross-agent signal:** 8 of 10 agents flagged this independently — very high signal.
+## New Findings (Fresh Deep Review)
 
-### AGG-2: Recruit page `toLocaleString()` uses server default locale instead of user locale [LOW/MEDIUM]
+### AGG-8: Error boundary components use `console.error` in production [MEDIUM/MEDIUM]
 
-**Flagged by:** code-reviewer (CR-3), critic (CRI-2), verifier (V-2), tracer (TR-2), designer (DES-1)
-**Files:** `src/app/(auth)/recruit/[token]/page.tsx:218`
-**Description:** `new Date(assignment.deadline).toLocaleString()` formats the date using the server's default locale, not the user's preferred locale. The app is internationalized with next-intl and supports Korean and English locales.
-**Concrete failure scenario:** Korean users see deadline in English locale format (e.g., "4/20/2026, 11:00:00 PM" instead of "2026. 4. 20. 오후 11:00:00").
-**Fix:** Use `@/lib/datetime` formatting utilities or next-intl date formatter instead of raw `toLocaleString()`.
+**Flagged by:** fresh code-quality review, security review
+**Files:**
+- `src/app/(dashboard)/dashboard/admin/error.tsx:17`
+- `src/app/(dashboard)/dashboard/submissions/error.tsx:17`
+- `src/app/(dashboard)/dashboard/problems/error.tsx:17`
+- `src/app/(dashboard)/dashboard/groups/error.tsx:17`
 
-### AGG-3: SSE events route uses `user!` non-null assertion across closure boundary [LOW/LOW]
+**Description:** All four error boundary components use `console.error()` to log errors. In production, this writes unstructured error data to browser DevTools (and potentially to log aggregation services via client-side telemetry). The error object may contain sensitive stack traces or internal paths that should not be exposed in client-side logs.
+**Concrete failure scenario:** A production error leaks an internal file path or DB query in the stack trace, visible in browser DevTools to any user who opens the console.
+**Fix:** Use the structured logger (`@/lib/logger`) in development only, or gate the `console.error` behind `process.env.NODE_ENV === "development"`. Next.js error boundaries already receive a `digest` field for server-side error tracking.
 
-**Flagged by:** code-reviewer (CR-2), debugger (DBG-2)
-**Files:** `src/app/api/v1/submissions/[id]/events/route.ts:319`
-**Description:** `const viewerId = user!.id;` uses a non-null assertion because TypeScript cannot infer `user` is non-null across a closure boundary. While the comment explains the reasoning, a safer pattern would be to capture `user.id` in a local variable before entering the closure.
-**Concrete failure scenario:** If the SSE handler is refactored such that `user` could be null, the non-null assertion silently passes the null check and throws at runtime instead of producing a compile-time error.
-**Fix:** Capture `const viewerId = user?.id;` before the closure.
+### AGG-9: `console.warn("Tag suggestions fetch failed")` in production code [LOW/MEDIUM]
 
-### AGG-4: Inconsistent use of `createApiHandler` across 22 route handlers [LOW/MEDIUM]
+**Flagged by:** fresh code-quality review
+**Files:** `src/app/(dashboard)/dashboard/problems/create/create-problem-form.tsx:225`
 
-**Flagged by:** architect (ARCH-2)
-**Files:** 22 raw route handlers in `src/app/api/`
-**Description:** 22 route handlers manually implement auth/CSRF/rate-limit logic instead of using `createApiHandler`. While some have legitimate reasons (SSE streaming, judge token auth, multipart form data), others (backup, restore, migrate/import, files POST) duplicate the middleware pattern. This creates maintenance risk: if the auth pattern changes, 22 files must be updated instead of 1.
-**Concrete failure scenario:** A future security fix applied to `createApiHandler` is missed in one of the 22 manual routes.
-**Fix:** Migrate routes that can use `createApiHandler`. For those that cannot, document the reason.
+**Description:** A `console.warn()` call is used in a catch block for non-critical tag suggestions. While the comment correctly identifies the call as non-critical, it still writes to the console in production. The codebase's own convention (documented in `src/lib/api/client.ts:23`) says "Log errors in development only".
+**Concrete failure scenario:** Minor — produces noise in production console logs.
+**Fix:** Gate behind `process.env.NODE_ENV === "development"` or use the structured logger.
 
-### AGG-5: SSE connection tracking eviction uses O(n) linear scan [LOW/LOW]
+### AGG-10: `not-found.tsx` line 58 — `tracking-[0.2em]` on "404" text not locale-conditional [LOW/MEDIUM]
 
-**Flagged by:** perf-reviewer (PERF-1), security-reviewer (SEC-2)
-**Files:** `src/app/api/v1/submissions/[id]/events/route.ts:44-55`
-**Description:** When `connectionInfoMap.size >= MAX_TRACKED_CONNECTIONS` (1000), the eviction loop iterates all entries to find the oldest. This is O(n) but bounded by the cap of 1000 entries and the periodic cleanup timer.
-**Concrete failure scenario:** Under extreme connection churn, each new connection that triggers eviction requires scanning up to 1000 entries. Acceptable performance for the cap size.
-**Fix:** No immediate action required — the current design is adequate for the scale.
+**Flagged by:** fresh designer/code-quality review
+**Files:** `src/app/not-found.tsx:58`
 
-### AGG-6: Recruit page makes 3 DB queries in 2 sequential rounds instead of 1 [LOW/LOW]
+**Description:** `<p className="text-sm font-medium uppercase tracking-[0.2em] text-muted-foreground">404</p>` applies `tracking-[0.2em]` unconditionally. While "404" is a numeric code (not Korean text), the CLAUDE.md rule says Korean text must use default letter-spacing. The number itself is safe, but the pattern is inconsistent with the rest of the codebase where even numeric/alphanumeric tracking is either locale-conditional or explicitly documented.
+**Concrete failure scenario:** No real user impact — "404" is always a numeric code. Pattern inconsistency only.
+**Fix:** Add a comment `/* "404" is a numeric status code — tracking safe for Korean locale */` for consistency with the existing documentation convention used elsewhere.
 
-**Flagged by:** perf-reviewer (PERF-2)
-**Files:** `src/app/(auth)/recruit/[token]/page.tsx:112-185`
-**Description:** After the cached invitation lookup, the page makes: (1) assignment query (line 112), then (2) problem count + languages in parallel (line 178). Query 1 could be parallelized with queries 2 and 3.
-**Concrete failure scenario:** Minor latency increase on recruit page loads.
-**Fix:** Low priority — restructure to run all 3 queries in a single `Promise.all`.
+### AGG-11: Contest layout forces full page navigation — may conflict with Next.js App Router [LOW/MEDIUM]
 
-### AGG-7: No test coverage for recruit page clock-skew behavior or SSE connection cleanup [LOW/MEDIUM]
+**Flagged by:** fresh architect/debugger review
+**Files:** `src/app/(dashboard)/dashboard/contests/layout.tsx:16-45`
 
-**Flagged by:** test-engineer (TE-1, TE-2)
-**Files:** `tests/unit/recruit-page-metadata.test.ts`, `src/app/api/v1/submissions/[id]/events/route.ts`
-**Description:** No test verifies that the recruit page uses DB-sourced time for temporal comparisons. No test verifies SSE connection cleanup behavior.
-**Fix:** Add targeted tests for the temporal comparison logic and SSE connection tracking.
+**Description:** The `ContestsLayout` component intercepts all `<a>` clicks within `#main-content` and `[data-slot='sidebar']` and forces `window.location.href = href` instead of allowing Next.js client-side navigation. This is documented as a workaround for a Next.js 16 RSC streaming bug with nginx proxy headers. However:
+1. The event listener captures ALL clicks, including those on buttons styled as links or external links that should open in new tabs.
+2. The `href.startsWith("http")` check prevents navigation for same-origin absolute URLs.
+3. The `data:` and `javascript:` checks are defensive but unnecessary in practice.
+**Concrete failure scenario:** A link to `https://same-domain.com/path` would bypass the handler due to the `http` prefix check, falling through to RSC navigation (potentially triggering the bug). Also, this workaround will become dead code when the Next.js bug is fixed, and the TODO comment is the only marker.
+**Fix:** Low priority — the workaround is necessary. Consider adding a more targeted check (same-origin only) instead of the blanket `http` exclusion. Add a version check or GitHub issue link to track removal.
+
+### AGG-12: `use-source-draft.ts` JSON.parse without try/catch in one location [LOW/LOW]
+
+**Flagged by:** fresh code-quality review
+**Files:** `src/hooks/use-source-draft.ts:185`
+
+**Description:** `const parsedValue = JSON.parse(rawValue) as Partial<DraftPayload>;` is called inside a try/catch block (line 173-214), so it's safe. However, the `as Partial<DraftPayload>` cast bypasses runtime validation. If localStorage contains malformed or outdated data (e.g., from a previous version of the app), the parsed value could have unexpected properties that cause runtime errors downstream.
+**Concrete failure scenario:** A user upgrades from an older version where the draft schema was different. The parsed value has the wrong shape but TypeScript trusts the `as` cast.
+**Fix:** Low priority — add a runtime shape check after parsing, or use zod for validation.
 
 ## Verified Safe / No Regression Found
 
 - Auth flow is robust with Argon2id, timing-safe dummy hash, rate limiting, and proper token invalidation.
-- No `dangerouslySetInnerHTML` without sanitization.
-- No `console.log` in production code (only one instance in a code template string — safe).
-- No `as any` type casts.
+- No `dangerouslySetInnerHTML` without sanitization (json-ld uses `safeJsonForScript`, problem-description uses `sanitizeHtml`).
+- No `as any` type casts in production code.
 - No `@ts-ignore` or `@ts-expect-error`.
-- Only 2 eslint-disable directives, both with justification comments.
-- No silently swallowed catch blocks.
+- Only 2 eslint-disable directives in production code, both with justification comments.
+- No silently swallowed catch blocks (all have comments explaining the intent or surface errors to users).
 - Environment variables are properly validated in production.
-- CSRF protection is in place for server actions.
+- CSRF protection is in place for server actions (`apiFetch` adds `X-Requested-With`).
 - Rate limiting has two-tier strategy (sidecar + PostgreSQL with SELECT FOR UPDATE) preventing TOCTOU races.
 - Recruiting token flow uses atomic SQL transactions for claim validation.
 - Korean letter-spacing remediation is comprehensive — all headings and labels are properly locale-conditional.
 - Previous cycle-26 fixes are all confirmed working (recruit test, ESLint config, React.cache, tracking comments).
+- Cycle-27 AGG-1 (clock-skew) confirmed fixed with `getDbNow()`.
+- Cycle-27 AGG-2 (toLocaleString) confirmed fixed with `formatDateTimeInTimeZone()`.
+- Cycle-27 AGG-3 (user! non-null) confirmed fixed.
+- Recruit page `React.cache()` deduplication is in place and working.
+- ESLint `destructuredArrayIgnorePattern: "^_"` is in place.
+- All test files pass (294 test files, 2104 tests).
+
+## Gate Baseline
+
+- **ESLint**: 0 errors, 14 warnings (all in untracked scripts/tooling files, not in `src/`)
+- **tsc --noEmit**: Clean (exit code 0)
+- **vitest run**: 294/294 passed, 2104 tests (some tests exhibit flakiness under parallel load)
+- **next build**: Not yet run this cycle
 
 ## Agent Failures
 
