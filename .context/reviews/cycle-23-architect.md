@@ -1,66 +1,36 @@
 # Cycle 23 Architect Review
 
 **Date:** 2026-04-20
-**Reviewer:** architect
-**Base commit:** 86e7caf7
-
-## Inventory of Reviewed Files
-
-- `src/app/(control)/layout.tsx` (control route group layout)
-- `src/app/(control)/control/page.tsx` (control home)
-- `src/app/(control)/control/discussions/page.tsx` (control discussions)
-- `src/app/(dashboard)/layout.tsx` (dashboard layout)
-- `src/app/(public)/layout.tsx` (public layout)
-- `src/components/layout/control-nav.tsx` (control sidebar)
-- `src/components/layout/public-header.tsx` (shared top nav)
-- `src/lib/navigation/public-nav.ts` (nav config)
-- `src/lib/public-route-seo.ts` (SEO route matrix)
-- `src/proxy.ts` (middleware auth routing)
-- `messages/en.json`, `messages/ko.json` (i18n namespaces)
+**Base commit:** bb6f3fc2
 
 ## Findings
 
-### ARCH-1: Control route group is a redundant shell that should merge into dashboard [HIGH/HIGH]
+### ARCH-1: Inconsistent polling patterns across components -- no shared hook [MEDIUM/MEDIUM]
 
-**Files:** `src/app/(control)/layout.tsx`, `src/components/layout/control-nav.tsx`
-**Description:** The `(control)` route group duplicates the dashboard's pattern (auth gate, sidebar, header) but with a separate `ControlNav` component and `controlShell` i18n namespace. The control home page is just a card grid linking to dashboard routes (`/dashboard/groups`, `/dashboard/admin/users`, etc.). The only unique page is `/control/discussions`. This creates three problems:
-1. **Navigation fragmentation:** Users must know to go to `/control` instead of `/dashboard/admin` for the same functionality.
-2. **Code duplication:** `ControlNav` is a bespoke sidebar when `AppSidebar` already renders admin items filtered by capabilities.
-3. **i18n namespace sprawl:** `controlShell` has ~50 keys that duplicate concepts already in `nav` and `publicShell`.
-**Concrete failure scenario:** A new developer adds an admin feature and must decide whether it goes in `(control)` or `(dashboard)/admin`. The answer is ambiguous because both exist.
-**Confidence:** High
-**Fix:** Merge `(control)` into `(dashboard)`:
-1. Move `/control/discussions` to `/dashboard/admin/discussions` (or `/dashboard/community/moderation`).
-2. Move `/control` home card content into the existing dashboard home page or admin section.
-3. Migrate `controlShell` i18n keys into `publicShell` and `nav` namespaces.
-4. Remove `ControlNav` component.
-5. Add `/control` -> `/dashboard` redirect in middleware or `next.config.ts`.
-6. Remove the `(control)` route group directory entirely.
+**Files:** `src/components/contest/leaderboard-table.tsx:243-256`, `src/components/contest/contest-quick-stats.tsx:81-112`, `src/components/contest/contest-clarifications.tsx:87-111`, `src/components/contest/contest-announcements.tsx:71-95`, `src/app/(dashboard)/dashboard/admin/workers/workers-client.tsx:242-265`, `src/components/submission-list-auto-refresh.tsx`
+**Description:** There are at least 6 components implementing polling with visibility-aware pausing. Each one implements the pattern slightly differently:
+- `leaderboard-table.tsx`: fires interval regardless, checks visibility in callback (the "fire but skip" anti-pattern)
+- `contest-quick-stats.tsx`, `contest-clarifications.tsx`, `contest-announcements.tsx`: pause/resume the interval on visibility change
+- `workers-client.tsx`: same pause/resume pattern but slightly different structure
+- `submission-list-auto-refresh.tsx`: its own separate implementation
 
-### ARCH-2: Three i18n namespaces for navigation creates maintenance burden [MEDIUM/HIGH]
+This is a DRY violation at the architectural level. A shared `usePolling` or `useVisibilityAwareInterval` hook would ensure consistent behavior and make it trivial to add future enhancements (e.g., exponential backoff, stale-while-revalidate).
+**Concrete failure scenario:** A bug is discovered in the visibility-based pausing logic. It must be fixed in 6 separate places instead of one. During the fix, one component is missed.
+**Fix:** Extract a `useVisibilityAwarePolling(callback, intervalMs)` custom hook that encapsulates the pause/resume pattern. Migrate all 6 components to use it.
+**Confidence:** MEDIUM
 
-**Files:** `messages/en.json:129-155` (`nav`), `messages/en.json:2614-2629` (`publicShell.nav`), `messages/en.json:2968-3018` (`controlShell`)
-**Description:** Navigation labels are split across three namespaces:
-- `nav.*` -- used by `AppSidebar` and `ControlNav` labels
-- `publicShell.nav.*` -- used by `PublicHeader` top navbar
-- `controlShell.nav.*` -- used only by control layout
+### ARCH-2: AppSidebar "Learning" section has only one item ("Problems") -- stale group label [LOW/LOW]
 
-Many keys overlap semantically (e.g., `nav.groups` vs `publicShell.nav.groups`). The `controlShell.nav.*Description` keys are unique but could live under `nav` with a `.description` suffix.
-**Concrete failure scenario:** When "Groups" is renamed, it must be updated in 2-3 namespaces.
-**Confidence:** High
-**Fix:** Consolidate navigation i18n keys. As part of the control-to-dashboard merge, move `controlShell` keys into `nav` or `publicShell`, then delete the `controlShell` namespace.
-
-### ARCH-3: `PublicHeader.getDropdownItems` is not in the shared navigation module [LOW/MEDIUM]
-
-**File:** `src/components/layout/public-header.tsx:68-95`
-**Description:** The dropdown items for the authenticated user are defined inside `PublicHeader` rather than in the shared `public-nav.ts` module. This means the dashboard sidebar (`AppSidebar`) and the header dropdown define their navigation items independently, with capability filtering done in two different places with slightly different logic.
-**Concrete failure scenario:** A new navigation item is added to `AppSidebar` but not to `getDropdownItems`, or vice versa, causing navigation drift between the sidebar and dropdown.
-**Confidence:** Medium
-**Fix:** Move dropdown item definitions into `public-nav.ts` alongside `getPublicNavItems`, so both the header and sidebar share a single source of truth for navigation structure.
+**Files:** `src/components/layout/app-sidebar.tsx:56-70`
+**Description:** After the workspace-to-public migration removed Submissions, Contests, Rankings, and Compiler from the sidebar (they are in the PublicHeader dropdown or top nav), the "Learning" group in AppSidebar contains only "Problems". A single-item group with a group label ("Learning") adds visual noise without organizational benefit.
+**Concrete failure scenario:** A user sees the sidebar with "Learning" heading and only one item underneath it. The group label implies more items should be there, which is confusing.
+**Fix:** Either remove the "Learning" group label (render the single item without a group heading) or merge "Problems" into the "Manage" group.
+**Confidence:** LOW
 
 ## Verified Safe
 
-- Dashboard layout correctly uses `PublicHeader` with shared nav helpers.
-- Public layout correctly uses `PublicHeader` with shared nav helpers.
-- SEO route matrix correctly disallows `/control` from indexing.
-- Middleware correctly routes `/control` as a protected path.
+- Navigation is properly centralized via shared `public-nav.ts`.
+- The workspace-to-public migration has been executed correctly: no `/workspace` references remain, `(control)` group merged.
+- PublicHeader and AppSidebar use consistent capability-based filtering.
+- Route redirects for `/dashboard/rankings`, `/dashboard/languages`, `/dashboard/compiler` are in place.
+- Dashboard layout correctly includes PublicHeader via `leadingSlot` pattern.

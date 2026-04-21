@@ -1,31 +1,33 @@
 # Cycle 23 Critic Review
 
 **Date:** 2026-04-20
-**Reviewer:** critic
-**Base commit:** 86e7caf7
+**Base commit:** bb6f3fc2
 
 ## Findings
 
-### CRI-1: Control route group is an orphan with no clear entry point in the top navbar [HIGH/HIGH]
+### CRI-1: `countdown-timer.tsx` raw `fetch()` -- last holdout from apiFetch migration [MEDIUM/HIGH]
 
-**Files:** `src/app/(control)/layout.tsx`, `src/components/layout/public-header.tsx`
-**Description:** The `(control)` route group is not accessible from any public-facing navigation element. The `PublicHeader` dropdown includes "Admin" (pointing to `/dashboard/admin`) but there is no link to `/control` anywhere in the top navbar or sidebar. The only way to reach `/control` is by knowing the URL. This defeats the purpose of having a dedicated control panel -- if users cannot discover it, it may as well not exist, or its functionality should be folded into the dashboard where it is discoverable.
-**Concrete failure scenario:** An instructor who previously used `/control` for discussion moderation cannot find it from the dashboard. They must type the URL manually.
-**Confidence:** High
-**Fix:** Either add a "Control" link to the dropdown/sidebar, or merge the control routes into the dashboard where they are discoverable. The latter aligns with the migration plan (Phase 4).
+**Files:** `src/components/exam/countdown-timer.tsx:76`
+**Description:** This is the same finding as CR-1/SEC-1. The exam timer's raw `fetch()` call is the only remaining client-side fetch that bypasses the centralized `apiFetch` wrapper. The cycle-22 migration covered admin and plugin components, but exam components were out of scope. This should be treated as a continuation of the cycle-22 H1 fix rather than a new finding.
+**Fix:** Replace `fetch("/api/v1/time", ...)` with `apiFetch("/api/v1/time", ...)`.
+**Confidence:** HIGH
 
-### CRI-2: `publicShell.nav.workspace` key is stale dead code in both locale files [MEDIUM/HIGH]
+### CRI-2: `contest-quick-stats.tsx` silently swallows errors -- violates project convention [LOW/MEDIUM]
 
-**File:** `messages/en.json:2622`, `messages/ko.json:2622`
-**Description:** The i18n key `publicShell.nav.workspace` with value "Workspace" exists in both locale files but is no longer referenced by any source code. All usages were migrated to `nav.dashboard` in prior cycles, but the old key was never cleaned up.
-**Concrete failure scenario:** A developer seeing the key assumes "Workspace" is still an active nav label and may re-introduce it by mistake. Translators waste effort maintaining it.
-**Confidence:** High
-**Fix:** Remove `publicShell.nav.workspace` from both `en.json` and `ko.json`.
+**Files:** `src/components/contest/contest-quick-stats.tsx:76-78`
+**Description:** Same as CR-2. The `catch { // ignore }` pattern violates the documented convention in `src/lib/api/client.ts` that errors should never be silently swallowed. Other contest components in the same feature area (clarifications, announcements) properly show toast errors.
+**Fix:** Add toast error feedback.
+**Confidence:** MEDIUM
 
-### CRI-3: Control home page links to dashboard routes, making the control panel a redirect hub with no unique value [MEDIUM/MEDIUM]
+### CRI-3: Workspace-to-public migration Phase 4 remaining items lack concrete next steps [INFO/MEDIUM]
 
-**File:** `src/app/(control)/control/page.tsx:33-72`
-**Description:** The control home page is a card grid where every card links to a `/dashboard/...` route: `/dashboard/groups`, `/dashboard/admin/users`, `/dashboard/admin/languages`, `/dashboard/admin/settings`. The only unique content is the discussion moderation card (for users with `community.moderate`). Everything else is a link to pages that are already accessible from the `AppSidebar` admin section. The control panel adds a redundant navigation layer.
-**Concrete failure scenario:** User navigates to `/control`, clicks "User Management", and lands on `/dashboard/admin/users` -- which they could have reached directly from the sidebar. The extra hop adds cognitive load.
-**Confidence:** Medium
-**Fix:** Merge the control panel's unique functionality (discussion moderation) into the dashboard. The card-link pattern can be incorporated into the dashboard home page or the admin section.
+**Files:** `plans/open/2026-04-19-workspace-to-public-migration.md:251-254`
+**Description:** The migration plan's Phase 4 remaining work lists "Remove redundant page components under `(dashboard)` where public counterparts exist" but does not enumerate which specific page components remain to be removed. After the redirects for rankings, languages, and compiler, it is unclear what dashboard page components still have public counterparts that could be removed. The plan should explicitly list the remaining items or mark this as complete.
+**Fix:** Audit the dashboard routes against public routes and either enumerate remaining removals or mark Phase 4 as complete.
+**Confidence:** MEDIUM
+
+## Verified Safe
+
+- The codebase is in a healthy state overall with strong conventions for error handling, security, and i18n.
+- Korean letter-spacing compliance is thorough and consistent.
+- The workspace-to-public migration has made substantial progress across 23 cycles.

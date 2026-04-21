@@ -1,23 +1,25 @@
 # Cycle 23 Document Specialist Review
 
 **Date:** 2026-04-20
-**Reviewer:** document-specialist
-**Base commit:** 86e7caf7
+**Base commit:** bb6f3fc2
 
 ## Findings
 
-### DOC-1: Migration plan says Phase 4 is "Higher risk, defer" but user TODO explicitly requests it now [MEDIUM/HIGH]
+### DOC-1: `apiFetch` JSDoc convention contradicts `contest-quick-stats.tsx` implementation [LOW/MEDIUM]
 
-**File:** `plans/open/2026-04-19-workspace-to-public-migration.md:228`
-**Description:** The migration plan labels Phase 4 as "Higher risk, defer" but the user-injected TODO for this cycle explicitly says: "Continue Phase 4 of workspace-to-public migration: merge control route group into dashboard (requires i18n namespace migration from controlShell to publicShell/dashboard)." The plan document needs updating to reflect that Phase 4 is now in progress, not deferred.
-**Concrete failure scenario:** A developer reading the plan thinks Phase 4 is deferred and does not work on it, contradicting the explicit TODO.
-**Confidence:** High
-**Fix:** Update the migration plan to mark Phase 4 as IN PROGRESS and add the control-to-dashboard merge as a specific sub-task.
+**Files:** `src/lib/api/client.ts:21`, `src/components/contest/contest-quick-stats.tsx:76-78`
+**Description:** The `apiFetch` module's JSDoc comment explicitly states: "Never silently swallow errors -- always surface them to the user." The `contest-quick-stats.tsx` component violates this convention with `catch { // ignore }`. This creates a documentation-code mismatch where the stated convention is not enforced in practice.
+**Fix:** Either fix the code to match the documentation (add toast error) or update the documentation to allow exceptions for supplementary data. The former is preferred.
+**Confidence:** MEDIUM
 
-### DOC-2: `controlShell` i18n keys have no migration mapping documented [MEDIUM/MEDIUM]
+### DOC-2: Workspace-to-public migration plan Phase 4 remaining items are vague [INFO/MEDIUM]
 
-**File:** `messages/en.json:2968-3018`
-**Description:** The `controlShell` namespace has ~50 keys that need to be migrated to other namespaces when the control route group is removed. There is no documented mapping of which keys go where (e.g., `controlShell.nav.home` -> `nav.dashboard`, `controlShell.moderation.*` -> `publicShell.moderation.*` or `nav.moderation.*`).
-**Concrete failure scenario:** During migration, keys are accidentally dropped or mapped to wrong namespaces, causing raw key leaks in production.
-**Confidence:** Medium
-**Fix:** Create a key migration mapping table in the plan document before starting the merge.
+**Files:** `plans/open/2026-04-19-workspace-to-public-migration.md:251-254`
+**Description:** Same as CRI-3. The Phase 4 remaining work item "Remove redundant page components under `(dashboard)` where public counterparts exist" does not enumerate specific components. After the redirects for rankings, languages, and compiler, it is unclear what remains.
+**Fix:** Audit remaining dashboard routes against public routes and enumerate remaining removals, or mark Phase 4 as complete.
+**Confidence:** MEDIUM
+
+## Verified Safe
+
+- `apiFetch` JSDoc documentation is accurate for all other observed implementations.
+- CLAUDE.md rules (Korean letter-spacing, GPG signing, deployment architecture) are consistently followed.

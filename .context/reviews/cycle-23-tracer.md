@@ -1,40 +1,34 @@
 # Cycle 23 Tracer Review
 
 **Date:** 2026-04-20
-**Reviewer:** tracer
-**Base commit:** 86e7caf7
+**Base commit:** bb6f3fc2
 
 ## Findings
 
-### TR-1: User with only `community.moderate` capability cannot reach `/control/discussions` due to layout-level gate [HIGH/MEDIUM]
+### TR-1: `countdown-timer.tsx` raw `fetch()` -- trace of apiFetch migration gap [MEDIUM/HIGH]
 
-**Causal trace:**
-1. User navigates to `/control/discussions`
-2. Proxy (`src/proxy.ts`) treats `/control` as a protected route, checks auth token, passes through
-3. `(control)/layout.tsx` renders: `canAccessControl` = `users.view || system.settings || submissions.view_all || groups.view_all || assignments.view_status`
-4. User has ONLY `community.moderate` -- all five checks fail
-5. Layout redirects to `/dashboard` (line 29)
-6. `/control/discussions` page never renders; its `canModerateDiscussions()` check is never reached
+**Files:** `src/components/exam/countdown-timer.tsx:76`
+**Description:** Tracing the apiFetch migration history:
+1. Cycle 21 H1: Migrated 11 admin `fetch()` calls to `apiFetch`, scoped to `src/app/(dashboard)/dashboard/admin/`
+2. Cycle 22 H1: Migrated 2 chat widget `fetch()` calls to `apiFetch`, scoped to `src/lib/plugins/`
+3. The exam component at `src/components/exam/countdown-timer.tsx` was never in scope for either audit.
 
-**Competing hypotheses:**
-- H1: The gate is intentionally restrictive to prevent non-admin users from entering `/control` (by design).
-- H2: The gate was written before `community.moderate` was added as a control capability, and the gate was never updated.
+The root cause is that each migration was scoped to a specific directory rather than doing a global audit of all client-side `fetch()` calls. A global `grep -rn '\bfetch\s*\(' src/**/*.tsx` would have caught this.
+**Fix:** Replace `fetch("/api/v1/time", ...)` with `apiFetch("/api/v1/time", ...)`.
+**Confidence:** HIGH
 
-**Evidence for H2:** The control discussions page explicitly checks `canModerateDiscussions()` and renders the discussions nav item conditionally based on `canModerate`. The page was designed to be accessible to moderators. The layout gate simply does not account for this capability.
+### TR-2: `contest-quick-stats.tsx` empty catch -- trace of inconsistent error handling [LOW/MEDIUM]
 
-**Concrete failure scenario:** A moderator role with only `community.moderate` cannot access the discussion moderation tool at `/control/discussions`.
-**Confidence:** Medium
-**Fix:** Add `community.moderate` to the `canAccessControl` OR condition, or merge control routes into dashboard where per-route capability checks already work.
+**Files:** `src/components/contest/contest-quick-stats.tsx:76-78`
+**Description:** Tracing the error handling pattern across contest components:
+- `contest-clarifications.tsx:80`: `catch { toast.error(t("fetchError")); }` -- correct
+- `contest-announcements.tsx:64`: `catch { toast.error(t("fetchError")); }` -- correct
+- `contest-quick-stats.tsx:76`: `catch { // ignore }` -- inconsistent
 
-### TR-2: Control home page links all navigate away from `/control`, making the control panel a dead-end hub [MEDIUM/MEDIUM]
+The quick-stats component was likely written with the assumption that stats are supplementary and errors are non-critical. However, the project convention explicitly forbids silent error swallowing. The root cause is the lack of a linting rule or code review checklist for empty catch blocks.
+**Fix:** Add toast error feedback matching the pattern in sibling components.
+**Confidence:** MEDIUM
 
-**Causal trace:**
-1. User enters `/control`
-2. Sees card grid with links: `/dashboard/groups`, `/dashboard/admin/users`, `/dashboard/admin/languages`, `/dashboard/admin/settings`, `/control/discussions`
-3. Clicks "User Management" -> navigates to `/dashboard/admin/users`
-4. User is now in the dashboard layout, which has no link back to `/control`
-5. To return to the control panel, user must manually type `/control`
+## Verified Safe
 
-**Concrete failure scenario:** Users get "lost" in the dashboard after clicking a control panel link, with no way back except the URL bar.
-**Confidence:** Medium
-**Fix:** Merge control into dashboard, eliminating the dead-end navigation pattern entirely.
+- No competing hypotheses found for any existing behavior. All findings trace back to scope gaps in prior migrations.

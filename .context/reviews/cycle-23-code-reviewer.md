@@ -1,63 +1,48 @@
-# Cycle 23 Code Review
+# Cycle 23 Code Reviewer
 
 **Date:** 2026-04-20
-**Reviewer:** code-reviewer
-**Base commit:** 86e7caf7
-
-## Inventory of Reviewed Files
-
-- `src/app/(control)/layout.tsx`
-- `src/app/(control)/control/page.tsx`
-- `src/app/(control)/control/discussions/page.tsx`
-- `src/app/(dashboard)/layout.tsx`
-- `src/app/(public)/layout.tsx`
-- `src/components/layout/control-nav.tsx`
-- `src/components/layout/public-header.tsx`
-- `src/components/layout/app-sidebar.tsx`
-- `src/lib/navigation/public-nav.ts`
-- `src/lib/discussions/permissions.ts`
-- `src/lib/public-route-seo.ts`
-- `src/proxy.ts`
-- `messages/en.json`
-- `messages/ko.json`
+**Base commit:** bb6f3fc2
 
 ## Findings
 
-### CR-1: Control layout checks different capabilities than it renders nav items for [HIGH/MEDIUM]
+### CR-1: `countdown-timer.tsx` uses raw `fetch()` instead of `apiFetch` [MEDIUM/HIGH]
 
-**File:** `src/app/(control)/layout.tsx:20-26`
-**Description:** The layout's gate check uses `users.view || system.settings || submissions.view_all || groups.view_all || assignments.view_status` to decide whether the user can access `/control` at all. However, the nav items rendered include links to `/dashboard/groups`, `/dashboard/admin/users`, `/dashboard/admin/languages`, `/dashboard/admin/settings` -- none of which are guaranteed by the gate check alone. For example, a user with only `assignments.view_status` passes the gate but sees links to "User Management" and "System Settings" which they may not have access to.
-**Concrete failure scenario:** A custom role with only `assignments.view_status` enters `/control`, sees nav items for Users, Languages, and Settings, clicks them, and gets either a 403 or a confusing redirect. The nav items should be filtered by capability, just like `AppSidebar` does.
-**Confidence:** Medium (depends on whether all instructor+ roles always have all listed capabilities)
-**Fix:** Filter nav items in the ControlLayout using capability checks, similar to how `AppSidebar.filterItems()` works, or add capability checks per nav item.
+**Files:** `src/components/exam/countdown-timer.tsx:76`
+**Description:** The `CountdownTimer` component calls `fetch("/api/v1/time", ...)` directly instead of using the centralized `apiFetch` wrapper. The cycle-22 H1 fix migrated all client-side `fetch()` calls in admin and plugin components, but this exam component was missed because the audit only covered `src/lib/plugins/` and `src/app/(dashboard)/dashboard/admin/`. While the `/api/v1/time` endpoint is GET (safe method, not CSRF-gated), the principle of centralized CSRF protection still applies: if `apiFetch` gains additional security headers in the future (e.g., `X-CSRF-Token`), this call site will not benefit. More importantly, it is the only remaining client-side raw `fetch()` in a `.tsx` file, creating an inconsistency.
+**Concrete failure scenario:** A future enhancement adds a `X-CSRF-Token` header to `apiFetch` for double-submit CSRF. The `/api/v1/time` endpoint continues to work but deviates from the project's security convention, and a developer later adds a POST call to a similar timer endpoint using the same raw `fetch` pattern as a template.
+**Fix:** Replace `fetch("/api/v1/time", ...)` with `apiFetch("/api/v1/time", ...)`.
+**Confidence:** HIGH
 
-### CR-2: Stale `publicShell.nav.workspace` i18n key is dead code [MEDIUM/HIGH]
+### CR-2: `contest-quick-stats.tsx` silently swallows fetch errors [LOW/MEDIUM]
 
-**File:** `messages/en.json:2622`, `messages/ko.json` (same line)
-**Description:** The key `publicShell.nav.workspace` still exists in both locale files, but no source code references `nav.workspace` (confirmed by grep). It was replaced by `nav.dashboard` in prior cycles but the key was never removed.
-**Concrete failure scenario:** The stale key adds confusion for translators and developers. If someone mistakenly uses `t("nav.workspace")` they get an outdated label.
-**Confidence:** High
-**Fix:** Remove `publicShell.nav.workspace` from both `en.json` and `ko.json`.
+**Files:** `src/components/contest/contest-quick-stats.tsx:76-78`
+**Description:** The `fetchStats` callback has a `catch` block that contains only `// ignore`. While the stats are supplementary display data and a failure is non-critical, the `apiFetch` convention (documented in `src/lib/api/client.ts`) states "Never silently swallow errors -- always surface them to the user." Other contest components (clarifications, announcements) properly show toast errors on fetch failure. This is inconsistent.
+**Concrete failure scenario:** A contest admin's network has intermittent issues. The quick stats silently show stale/zero values with no indication that the data may be outdated. The admin thinks no one has submitted.
+**Fix:** Add `toast.error(t("fetchError"))` in the catch block (or a more specific i18n key), matching the pattern in contest-clarifications and contest-announcements.
+**Confidence:** MEDIUM
 
-### CR-3: Control layout duplicates nav item labels from the `nav` namespace but uses `controlShell` for descriptions [MEDIUM/MEDIUM]
+### CR-3: `leaderboard-table.tsx` interval fires even on hidden tabs [LOW/LOW]
 
-**File:** `src/app/(control)/layout.tsx:48-57`
-**Description:** The control layout's nav items mix two i18n namespaces: `tNav("groups")` and `tNav("userManagement")` from the `nav` namespace for labels, but `tShell("nav.groupsDescription")` from `controlShell` for descriptions. This creates a fragmented translation surface where the same concept (e.g., "groups") has its label in one namespace and description in another.
-**Concrete failure scenario:** When migrating control routes into the dashboard, these split-namespace references must be consolidated. Keeping them separate increases migration risk.
-**Confidence:** Medium
-**Fix:** When merging control into dashboard, consolidate the `controlShell.nav.*Description` keys into either the `nav` or `publicShell` namespace.
+**Files:** `src/components/contest/leaderboard-table.tsx:245-246`
+**Description:** The leaderboard's `useEffect` creates a `setInterval` that fires every `refreshInterval` ms (default 30s). Inside the callback, it checks `document.visibilityState === "visible"` before making the request. This is a half-measure: the interval still fires, consuming CPU for the timer tick and callback execution, even though the API call is skipped. The contest-clarifications, contest-announcements, contest-quick-stats, and workers-client components all properly pause/resume the interval itself based on visibility.
+**Concrete failure scenario:** A user has a contest leaderboard tab open in the background. Every 30 seconds, the interval fires, the visibility check evaluates to "hidden", and the fetch is skipped -- but the timer continues ticking unnecessarily.
+**Fix:** Refactor to pause/resume the interval on visibility change, matching the pattern used in `contest-clarifications.tsx`.
+**Confidence:** LOW
 
-### CR-4: `PublicHeader.getDropdownItems` uses hardcoded string labels instead of i18n keys [MEDIUM/MEDIUM]
+### CR-4: `anti-cheat-monitor.tsx` `savePendingEvents` silently swallows localStorage write failures [LOW/LOW]
 
-**File:** `src/components/layout/public-header.tsx:76-93`
-**Description:** The dropdown items use string labels like `"dashboard"`, `"problems"`, `"groups"`, `"mySubmissions"`, `"contests"`, `"profile"`, `"admin"`. These are then looked up at render time via `tShell(\`nav.${item.label}\`)`. While this works, the strings are not type-checked against the i18n namespace. Adding or renaming a key in `publicShell.nav` without updating the corresponding hardcoded string here would silently produce a raw key leak.
-**Concrete failure scenario:** If `publicShell.nav.mySubmissions` is renamed to `publicShell.nav.submissions`, the dropdown would render the raw key `nav.mySubmissions` to users.
-**Confidence:** Medium
-**Fix:** Either type the label strings against the `publicShell.nav` key set, or move the dropdown item definitions into the shared `public-nav.ts` module alongside the existing nav builders.
+**Files:** `src/components/exam/anti-cheat-monitor.tsx:43-45`
+**Description:** The `savePendingEvents` function has an empty `catch` block with the comment `// localStorage unavailable`. While this is a reasonable defense against private-browsing quota errors, the failure is completely invisible. If localStorage consistently fails, the anti-cheat system silently loses all pending events after retries are exhausted, with no indication to the user or monitoring system.
+**Concrete failure scenario:** A student is in an exam. Their browser has a corrupted localStorage that silently fails writes. The anti-cheat events are generated but never persisted. After a network interruption, all pending events are lost instead of being retried.
+**Fix:** Log the failure in development mode at minimum (`if (process.env.NODE_ENV === "development") console.warn(...)`). Consider also tracking a "localStorageFailed" flag to prevent repeated write attempts.
+**Confidence:** LOW
 
 ## Verified Safe
 
-- `PaginationControls` is now a synchronous client component (cycle 22 fix confirmed).
-- `PublicLayout` correctly uses shared `getPublicNavItems` / `getPublicNavActions` helpers.
-- `DashboardLayout` correctly renders `PublicHeader` with capability-based dropdown filtering.
-- All three route groups `(public)`, `(dashboard)`, `(control)` have proper `NO_INDEX_METADATA` for non-public pages.
+- All `tracking-*` classes are properly conditional on `locale !== "ko"`, fully compliant with CLAUDE.md.
+- No `as any` casts found in source code.
+- No `innerHTML` assignments; only `dangerouslySetInnerHTML` with proper sanitization (DOMPurify + `safeJsonForScript`).
+- `sanitizeHtml` uses strict tag/attribute allowlists and URI regexp blocking.
+- All client-side API calls in contest components use `apiFetch`.
+- The `formatNumber` deprecated re-export from `datetime.ts` has been successfully removed.
+- `apiFetch` now has unit tests covering header injection, preservation, and deduplication.
