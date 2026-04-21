@@ -19,6 +19,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { copyToClipboard } from "@/lib/clipboard";
 import {
   Dialog,
   DialogContent,
@@ -124,14 +125,14 @@ export function RecruitingInvitationsPanel({ assignmentId }: { assignmentId: str
       }
       if (statsRes.ok) {
         const json = await statsRes.json();
-        setStats(json.data ?? stats);
+        setStats((prev) => json.data ?? prev);
       }
     } catch {
       toast.error(t("fetchError"));
     } finally {
       setLoading(false);
     }
-  }, [assignmentId, statusFilter, search, t, stats]);
+  }, [assignmentId, statusFilter, search, t]);
 
   useEffect(() => {
     fetchData();
@@ -180,7 +181,6 @@ export function RecruitingInvitationsPanel({ assignmentId }: { assignmentId: str
         if (token) {
           const link = `${baseUrl}/recruit/${token}`;
           setCreatedLink(link);
-          const { copyToClipboard } = await import("@/lib/clipboard");
           if (!(await copyToClipboard(link))) toast.error(t("copyError"));
         }
         toast.success(t("createSuccess"));
@@ -205,7 +205,6 @@ export function RecruitingInvitationsPanel({ assignmentId }: { assignmentId: str
 
   async function handleCopyLink(invitation: Invitation) {
     const url = `${baseUrl}/recruit/${invitation.token}`;
-    const { copyToClipboard } = await import("@/lib/clipboard");
     if (!(await copyToClipboard(url))) {
       toast.error(t("copyError"));
       return;
@@ -307,7 +306,6 @@ export function RecruitingInvitationsPanel({ assignmentId }: { assignmentId: str
               size="sm"
               onClick={async () => {
                 if (createdLink) {
-                  const { copyToClipboard } = await import("@/lib/clipboard");
                   if (!(await copyToClipboard(createdLink))) {
                     toast.error(t("copyError"));
                     return;
