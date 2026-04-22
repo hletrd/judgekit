@@ -52,13 +52,13 @@ function normalizeSubmission(data: Record<string, unknown>): SubmissionDetailVie
           id: String(record.id),
           status: String(record.status),
           executionTimeMs:
-            typeof record.executionTimeMs === "number" ? record.executionTimeMs : null,
-          memoryUsedKb: typeof record.memoryUsedKb === "number" ? record.memoryUsedKb : null,
+            typeof record.executionTimeMs === "number" && Number.isFinite(record.executionTimeMs) ? record.executionTimeMs : null,
+          memoryUsedKb: typeof record.memoryUsedKb === "number" && Number.isFinite(record.memoryUsedKb) ? record.memoryUsedKb : null,
           actualOutput: typeof record.actualOutput === "string" ? record.actualOutput : null,
           testCase: testCase
             ? {
                 sortOrder:
-                  typeof testCase.sortOrder === "number" ? testCase.sortOrder : null,
+                  typeof testCase.sortOrder === "number" && Number.isFinite(testCase.sortOrder) ? testCase.sortOrder : null,
                 isVisible: typeof testCase.isVisible === "boolean" ? testCase.isVisible : undefined,
                 expectedOutput: typeof testCase.expectedOutput === "string" ? testCase.expectedOutput : null,
               }
@@ -71,7 +71,7 @@ function normalizeSubmission(data: Record<string, unknown>): SubmissionDetailVie
   const problem = data.problem as Record<string, unknown> | null;
   const submittedAtValue = data.submittedAt;
   const submittedAt =
-    typeof submittedAtValue === "number"
+    typeof submittedAtValue === "number" && Number.isFinite(submittedAtValue)
       ? submittedAtValue
       : typeof submittedAtValue === "string"
         ? Date.parse(submittedAtValue)
@@ -84,10 +84,10 @@ function normalizeSubmission(data: Record<string, unknown>): SubmissionDetailVie
     status: String(data.status),
     sourceCode: typeof data.sourceCode === "string" ? data.sourceCode : "",
     compileOutput: typeof data.compileOutput === "string" ? data.compileOutput : null,
-    executionTimeMs: typeof data.executionTimeMs === "number" ? data.executionTimeMs : null,
-    memoryUsedKb: typeof data.memoryUsedKb === "number" ? data.memoryUsedKb : null,
-    score: typeof data.score === "number" ? data.score : null,
-    failedTestCaseIndex: typeof data.failedTestCaseIndex === "number" ? data.failedTestCaseIndex : null,
+    executionTimeMs: typeof data.executionTimeMs === "number" && Number.isFinite(data.executionTimeMs) ? data.executionTimeMs : null,
+    memoryUsedKb: typeof data.memoryUsedKb === "number" && Number.isFinite(data.memoryUsedKb) ? data.memoryUsedKb : null,
+    score: typeof data.score === "number" && Number.isFinite(data.score) ? data.score : null,
+    failedTestCaseIndex: typeof data.failedTestCaseIndex === "number" && Number.isFinite(data.failedTestCaseIndex) ? data.failedTestCaseIndex : null,
     runtimeErrorType: typeof data.runtimeErrorType === "string" ? data.runtimeErrorType : null,
     submittedAt,
     user: user
