@@ -2,7 +2,7 @@
 
 **Date:** 2026-04-22
 **Source:** `.context/reviews/cycle-5-aggregate.md`
-**Status:** IN PROGRESS
+**Status:** COMPLETED
 
 ## Task List
 
@@ -11,10 +11,10 @@
 **File:** `src/components/discussions/discussion-post-delete-button.tsx:25-26`
 **Severity:** MEDIUM/HIGH (8-agent signal)
 
-- [ ] Check `response.ok` before calling `.json()` on line 25
-- [ ] Use `.json().catch(() => ({}))` on the error path to handle non-JSON error bodies
-- [ ] Ensure error toast shows meaningful localized message, not raw SyntaxError
-- [ ] Verify delete functionality still works for both success and error cases
+- [x] Check `response.ok` before calling `.json()` on line 25
+- [x] Use `.json().catch(() => ({}))` on the error path to handle non-JSON error bodies
+- [x] Ensure error toast shows meaningful localized message, not raw SyntaxError
+- [x] Verify delete functionality still works for both success and error cases
 
 ---
 
@@ -23,9 +23,9 @@
 **File:** `src/components/exam/start-exam-button.tsx:41`
 **Severity:** MEDIUM/MEDIUM (4-agent signal)
 
-- [ ] Replace `const payload = await response.json();` with `const payload = await response.json().catch(() => ({}));` on line 41
-- [ ] Verify error code discrimination (`assignmentClosed`, `assignmentNotStarted`) still works
-- [ ] Verify fallback for non-JSON error responses shows generic error
+- [x] Replace `const payload = await response.json();` with `const payload = await response.json().catch(() => ({}));` on line 41
+- [x] Verify error code discrimination (`assignmentClosed`, `assignmentNotStarted`) still works
+- [x] Verify fallback for non-JSON error responses shows generic error
 
 ---
 
@@ -34,10 +34,10 @@
 **File:** `src/components/contest/anti-cheat-dashboard.tsx:149-151`
 **Severity:** MEDIUM/MEDIUM (7-agent signal)
 
-- [ ] Import `useVisibilityPolling` from `@/hooks/use-visibility-polling`
-- [ ] Replace `useEffect(() => { fetchEvents(); }, [fetchEvents])` with `useVisibilityPolling(() => { void fetchEvents(); }, 30_000)`
-- [ ] Keep the initial `fetchEvents()` call behavior (useVisibilityPolling handles it)
-- [ ] Verify dashboard refreshes during live contests
+- [x] Import `useVisibilityPolling` from `@/hooks/use-visibility-polling`
+- [x] Replace `useEffect(() => { fetchEvents(); }, [fetchEvents])` with `useVisibilityPolling(() => { void fetchEvents(); }, 30_000)`
+- [x] Keep the initial `fetchEvents()` call behavior (useVisibilityPolling handles it)
+- [x] Verify dashboard refreshes during live contests
 
 ---
 
@@ -46,11 +46,11 @@
 **File:** `src/components/contest/code-timeline-panel.tsx:47-61`
 **Severity:** LOW/MEDIUM (5-agent signal)
 
-- [ ] Add `error` state variable
-- [ ] Add catch block to `fetchSnapshots` with `toast.error()` on failure
-- [ ] Set error state when `!res.ok`
-- [ ] Add error display with retry button (consistent with `leaderboard-table.tsx` pattern)
-- [ ] Verify empty state and error state are visually distinct
+- [x] Add `error` state variable
+- [x] Add catch block to `fetchSnapshots` with `toast.error()` on failure
+- [x] Set error state when `!res.ok`
+- [x] Add error display with retry button (consistent with `leaderboard-table.tsx` pattern)
+- [x] Verify empty state and error state are visually distinct
 
 ---
 
@@ -59,9 +59,9 @@
 **File:** `src/components/contest/recruiting-invitations-panel.tsx:229-281`
 **Severity:** LOW/MEDIUM (4-agent signal)
 
-- [ ] Wrap `handleRevoke` body in try/catch with `toast.error(t("revokeError"))` in catch
-- [ ] Wrap `handleDelete` body in try/catch with `toast.error(t("deleteError"))` in catch
-- [ ] Verify revoke and delete still work on success
+- [x] Wrap `handleRevoke` body in try/catch with `toast.error(t("revokeError"))` in catch
+- [x] Wrap `handleDelete` body in try/catch with `toast.error(t("deleteError"))` in catch
+- [x] Verify revoke and delete still work on success
 
 ---
 
@@ -70,8 +70,8 @@
 **File:** `src/app/(dashboard)/dashboard/problem-sets/_components/problem-set-form.tsx:129,158,180,214`
 **Severity:** MEDIUM/LOW (1-agent signal)
 
-- [ ] Add `.catch(() => ({}))` after each `.json()` call on error paths (4 instances)
-- [ ] Verify form submission still works for both success and error cases
+- [x] Add `.catch(() => ({}))` after each `.json()` call on error paths (4 instances)
+- [x] Verify form submission still works for both success and error cases
 
 ---
 
@@ -85,11 +85,11 @@
 
 **Severity:** LOW/LOW (5-agent signal)
 
-- [ ] `accepted-solutions.tsx`: Replace sort and language native selects with `Select` component
-- [ ] `anti-cheat-dashboard.tsx`: Replace student filter native select with `Select` component
-- [ ] `score-timeline-chart.tsx`: Replace native select with `Select` component
-- [ ] `filter-form.tsx`: Replace native select with `Select` component
-- [ ] Verify all replaced selects still function correctly
+- [x] `accepted-solutions.tsx`: Replace sort and language native selects with `Select` component
+- [x] `anti-cheat-dashboard.tsx`: Replace student filter native select with `Select` component
+- [x] `score-timeline-chart.tsx`: Replace native select with `Select` component
+- [x] `filter-form.tsx`: Replace native select with `Select` component
+- [x] Verify all replaced selects still function correctly
 
 ---
 
@@ -98,9 +98,9 @@
 **File:** `src/lib/api/client.ts:25-41`
 **Severity:** LOW/LOW (1-agent signal)
 
-- [ ] Add a second example showing the error-first antipattern
-- [ ] Document why `const body = await response.json(); if (!response.ok)` is unsafe
-- [ ] Link to the safe patterns already documented
+- [x] Add a second example showing the error-first antipattern
+- [x] Document why `const body = await response.json(); if (!response.ok)` is unsafe
+- [x] Link to the safe patterns already documented
 
 ---
 
