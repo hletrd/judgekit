@@ -92,7 +92,6 @@ export default function ChatWidgetAdminConfig({ config, onSave }: PluginAdminPro
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           provider,
-          apiKey: currentApiKey,
           model: currentModel,
         }),
       });

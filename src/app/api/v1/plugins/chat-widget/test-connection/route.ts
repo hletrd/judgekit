@@ -3,11 +3,15 @@ import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { resolveCapabilities } from "@/lib/capabilities/cache";
 import { createApiHandler } from "@/lib/api/handler";
+import { getPluginState } from "@/lib/plugins/data";
+import { SAFE_GEMINI_MODEL_PATTERN } from "@/lib/plugins/chat-widget/providers";
 import { logger } from "@/lib/logger";
+
+const OPENAI_MODEL_PATTERN = /^[a-zA-Z0-9][a-zA-Z0-9._-]*$/;
+const CLAUDE_MODEL_PATTERN = /^[a-zA-Z0-9][a-zA-Z0-9._-]*$/;
 
 const requestSchema = z.object({
   provider: z.enum(["openai", "claude", "gemini"]),
-  apiKey: z.string().min(1),
   model: z.string().min(1),
 });
 
@@ -36,7 +40,46 @@ export const POST = createApiHandler({
       return NextResponse.json({ error: "invalidRequest" }, { status: 400 });
     }
 
-    const { provider, apiKey, model } = parsed.data;
+    const { provider, model } = parsed.data;
+
+    // Validate model names against strict patterns to prevent injection
+    if (provider === "openai" && !OPENAI_MODEL_PATTERN.test(model)) {
+      return NextResponse.json({ error: "invalidModel" }, { status: 400 });
+    }
+    if (provider === "claude" && !CLAUDE_MODEL_PATTERN.test(model)) {
+      return NextResponse.json({ error: "invalidModel" }, { status: 400 });
+    }
+    if (provider === "gemini" && !SAFE_GEMINI_MODEL_PATTERN.test(model)) {
+      return NextResponse.json({ error: "invalidModel" }, { status: 400 });
+    }
+
+    // Retrieve the stored encrypted API key from the database instead of
+    // accepting it from the request body. This prevents SSRF via
+    // attacker-controlled API keys and ensures the test reflects the
+    // actual saved configuration.
+    const pluginState = await getPluginState("chat-widget", { includeSecrets: true });
+    if (!pluginState) {
+      return NextResponse.json({ error: "notConfigured" }, { status: 400 });
+    }
+
+    const config = pluginState.config as Record<string, unknown>;
+    let apiKey: string | undefined;
+
+    switch (provider) {
+      case "openai":
+        apiKey = config.openaiApiKey as string | undefined;
+        break;
+      case "claude":
+        apiKey = config.claudeApiKey as string | undefined;
+        break;
+      case "gemini":
+        apiKey = config.geminiApiKey as string | undefined;
+        break;
+    }
+
+    if (!apiKey) {
+      return NextResponse.json({ error: "apiKeyNotConfigured" }, { status: 400 });
+    }
 
     // Make a minimal API call to test the connection
     let response: Response;
@@ -76,10 +119,6 @@ export const POST = createApiHandler({
         break;
 
       case "gemini": {
-        const { SAFE_GEMINI_MODEL_PATTERN } = await import("@/lib/plugins/chat-widget/providers");
-        if (!SAFE_GEMINI_MODEL_PATTERN.test(model)) {
-          return NextResponse.json({ error: "invalidModel" }, { status: 400 });
-        }
         const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
         response = await fetch(url, {
           method: "POST",
