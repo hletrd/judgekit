@@ -25,6 +25,7 @@ export default async function CommunityNewPage() {
         contentLabel={t("community.form.contentLabel")}
         submitLabel={t("community.form.submitLabel")}
         successLabel={t("community.form.success")}
+        errorLabel={t("community.moderation.threadCreateError")}
         signInLabel={t("community.form.signIn")}
         canPost={Boolean(session?.user)}
         signInHref={buildLocalePath(`/login?callbackUrl=${encodeURIComponent(buildLocalePath("/community/new", locale))}`, locale)}

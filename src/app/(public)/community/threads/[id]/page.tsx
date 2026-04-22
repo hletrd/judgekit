@@ -179,6 +179,8 @@ export default async function CommunityThreadDetailPage({ params }: { params: Pr
             deleteLabel={tShell("community.moderation.deleteThread")}
             successLabel={tShell("community.moderation.success")}
             deleteSuccessLabel={tShell("community.moderation.deleteSuccess")}
+            errorLabel={tShell("community.moderation.moderationError")}
+            deleteErrorLabel={tShell("community.moderation.deleteThreadError")}
           />
         ) : null}
         <DiscussionThreadView
@@ -229,6 +231,7 @@ export default async function CommunityThreadDetailPage({ params }: { params: Pr
                     deleteLabel={tShell("community.moderation.deletePost")}
                     deleteDescription={tShell("community.moderation.deletePostDescription")}
                     successLabel={tShell("community.moderation.replyDeleteSuccess")}
+                    errorLabel={tShell("community.moderation.replyDeleteError")}
                   />
                 ) : null}
               </div>
@@ -240,6 +243,7 @@ export default async function CommunityThreadDetailPage({ params }: { params: Pr
           contentLabel={tShell("community.reply.contentLabel")}
           submitLabel={tShell("community.reply.submitLabel")}
           successLabel={tShell("community.reply.success")}
+          errorLabel={tShell("community.moderation.replyCreateError")}
           signInLabel={tShell("community.reply.signIn")}
           canPost={Boolean(session?.user)}
           signInHref={buildLocalePath(`/login?callbackUrl=${encodeURIComponent(callbackPath)}`, locale)}

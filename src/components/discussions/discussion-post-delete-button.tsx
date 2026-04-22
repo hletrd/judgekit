@@ -12,9 +12,10 @@ type DiscussionPostDeleteButtonProps = {
   deleteLabel: string;
   deleteDescription: string;
   successLabel: string;
+  errorLabel: string;
 };
 
-export function DiscussionPostDeleteButton({ postId, deleteLabel, deleteDescription, successLabel }: DiscussionPostDeleteButtonProps) {
+export function DiscussionPostDeleteButton({ postId, deleteLabel, deleteDescription, successLabel, errorLabel }: DiscussionPostDeleteButtonProps) {
   const router = useRouter();
   const tCommon = useTranslations("common");
 
@@ -25,13 +26,14 @@ export function DiscussionPostDeleteButton({ postId, deleteLabel, deleteDescript
       });
       if (!response.ok) {
         const errorBody = await response.json().catch(() => ({}));
-        throw new Error((errorBody as { error?: string }).error || "discussionReplyDeleteFailed");
+        console.error("Discussion post deletion failed:", (errorBody as { error?: string }).error);
+        throw new Error(errorLabel);
       }
       toast.success(successLabel);
       router.refresh();
       return true;
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "discussionReplyDeleteFailed");
+      toast.error(error instanceof Error ? error.message : errorLabel);
       return false;
     }
   }, [postId, successLabel, router]);

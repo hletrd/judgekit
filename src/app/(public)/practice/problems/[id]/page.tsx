@@ -628,6 +628,7 @@ export default async function PublicProblemDetailPage({ params }: { params: Prom
                 contentLabel={t("practice.editorial.createContent")}
                 submitLabel={t("practice.editorial.submitLabel")}
                 successLabel={t("practice.editorial.success")}
+                errorLabel={t("community.moderation.threadCreateError")}
                 signInLabel=""
                 canPost={true}
                 signInHref=""
@@ -658,6 +659,7 @@ export default async function PublicProblemDetailPage({ params }: { params: Prom
                   contentLabel={t("practice.discussion.form.contentLabel")}
                   submitLabel={t("practice.discussion.form.submitLabel")}
                   successLabel={t("practice.discussion.form.success")}
+                  errorLabel={t("community.moderation.threadCreateError")}
                   signInLabel={t("practice.discussion.form.signIn")}
                   canPost={Boolean(session?.user)}
                   signInHref={buildLocalePath(`/login?callbackUrl=${encodeURIComponent(problemPageHref)}`, locale)}
@@ -702,6 +704,7 @@ export default async function PublicProblemDetailPage({ params }: { params: Prom
                   contentLabel={t("practice.discussion.solutionForm.contentLabel")}
                   submitLabel={t("practice.discussion.solutionForm.submitLabel")}
                   successLabel={t("practice.discussion.solutionForm.success")}
+                  errorLabel={t("community.moderation.threadCreateError")}
                   signInLabel={t("practice.discussion.solutionForm.signIn")}
                   canPost={Boolean(session?.user)}
                   signInHref={buildLocalePath(`/login?callbackUrl=${encodeURIComponent(problemPageHref)}`, locale)}

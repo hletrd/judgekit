@@ -16,6 +16,7 @@ type DiscussionThreadFormProps = {
   contentLabel: string;
   submitLabel: string;
   successLabel: string;
+  errorLabel: string;
   signInLabel: string;
   canPost: boolean;
   signInHref: string;
@@ -28,6 +29,7 @@ export function DiscussionThreadForm({
   contentLabel,
   submitLabel,
   successLabel,
+  errorLabel,
   signInLabel,
   canPost,
   signInHref,
@@ -48,15 +50,15 @@ export function DiscussionThreadForm({
       });
       if (!response.ok) {
         const errorBody = await response.json().catch(() => ({}));
-        throw new Error((errorBody as { error?: string }).error || "discussionThreadCreateFailed");
+        console.error("Discussion thread creation failed:", (errorBody as { error?: string }).error);
+        throw new Error(errorLabel);
       }
       setTitle("");
       setContent("");
       toast.success(successLabel);
       router.refresh();
     } catch (error) {
-      const message = error instanceof Error ? error.message : "discussionThreadCreateFailed";
-      toast.error(message);
+      toast.error(error instanceof Error ? error.message : errorLabel);
     } finally {
       setIsSubmitting(false);
     }

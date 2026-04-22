@@ -2977,7 +2977,12 @@
         "success": "Discussion updated",
         "deleteSuccess": "Discussion removed",
         "replyDeleteSuccess": "Reply removed",
-        "deletePostDescription": "This action cannot be undone. The reply will be permanently removed."
+        "deletePostDescription": "This action cannot be undone. The reply will be permanently removed.",
+        "moderationError": "Failed to update discussion. Please try again.",
+        "deleteThreadError": "Failed to delete discussion. Please try again.",
+        "replyCreateError": "Failed to post reply. Please try again.",
+        "threadCreateError": "Failed to create discussion. Please try again.",
+        "replyDeleteError": "Failed to delete reply. Please try again."
       },
       "sortNewest": "Newest",
       "sortPopular": "Popular",

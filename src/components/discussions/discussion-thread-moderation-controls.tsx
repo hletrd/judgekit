@@ -17,6 +17,8 @@ type DiscussionThreadModerationControlsProps = {
   deleteLabel: string;
   successLabel: string;
   deleteSuccessLabel: string;
+  errorLabel: string;
+  deleteErrorLabel: string;
 };
 
 export function DiscussionThreadModerationControls({
@@ -30,6 +32,8 @@ export function DiscussionThreadModerationControls({
   deleteLabel,
   successLabel,
   deleteSuccessLabel,
+  errorLabel,
+  deleteErrorLabel,
 }: DiscussionThreadModerationControlsProps) {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -44,12 +48,13 @@ export function DiscussionThreadModerationControls({
       });
       if (!response.ok) {
         const errorBody = await response.json().catch(() => ({}));
-        throw new Error((errorBody as { error?: string }).error || "discussionModerationFailed");
+        console.error("Discussion moderation failed:", (errorBody as { error?: string }).error);
+        throw new Error(errorLabel);
       }
       toast.success(successLabel);
       router.refresh();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "discussionModerationFailed");
+      toast.error(error instanceof Error ? error.message : errorLabel);
     } finally {
       setIsSubmitting(false);
     }
@@ -63,13 +68,14 @@ export function DiscussionThreadModerationControls({
       });
       if (!response.ok) {
         const errorBody = await response.json().catch(() => ({}));
-        throw new Error((errorBody as { error?: string }).error || "discussionThreadDeleteFailed");
+        console.error("Discussion thread deletion failed:", (errorBody as { error?: string }).error);
+        throw new Error(deleteErrorLabel);
       }
       toast.success(deleteSuccessLabel);
       router.push("/community");
       router.refresh();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "discussionThreadDeleteFailed");
+      toast.error(error instanceof Error ? error.message : deleteErrorLabel);
     } finally {
       setIsSubmitting(false);
     }

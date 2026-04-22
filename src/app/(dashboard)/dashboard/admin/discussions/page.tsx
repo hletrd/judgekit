@@ -108,6 +108,8 @@ export default async function AdminDiscussionsPage({
             deleteLabel: tCommunity("moderation.deleteThread"),
             successLabel: tCommunity("moderation.success"),
             deleteSuccessLabel: tCommunity("moderation.deleteSuccess"),
+            errorLabel: tCommunity("moderation.moderationError"),
+            deleteErrorLabel: tCommunity("moderation.deleteThreadError"),
           },
         }))}
       />

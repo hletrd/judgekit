@@ -22,6 +22,8 @@ type ModerationItem = {
     deleteLabel: string;
     successLabel: string;
     deleteSuccessLabel: string;
+    errorLabel: string;
+    deleteErrorLabel: string;
   };
 };
 
@@ -78,6 +80,8 @@ export function DiscussionModerationList({ title, description, emptyLabel, local
                   deleteLabel={item.moderation.deleteLabel}
                   successLabel={item.moderation.successLabel}
                   deleteSuccessLabel={item.moderation.deleteSuccessLabel}
+                  errorLabel={item.moderation.errorLabel}
+                  deleteErrorLabel={item.moderation.deleteErrorLabel}
                 />
               </CardContent>
             </Card>

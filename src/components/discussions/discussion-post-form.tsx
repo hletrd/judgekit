@@ -13,6 +13,7 @@ type DiscussionPostFormProps = {
   contentLabel: string;
   submitLabel: string;
   successLabel: string;
+  errorLabel: string;
   signInLabel: string;
   canPost: boolean;
   signInHref: string;
@@ -23,6 +24,7 @@ export function DiscussionPostForm({
   contentLabel,
   submitLabel,
   successLabel,
+  errorLabel,
   signInLabel,
   canPost,
   signInHref,
@@ -42,14 +44,14 @@ export function DiscussionPostForm({
       });
       if (!response.ok) {
         const errorBody = await response.json().catch(() => ({}));
-        throw new Error((errorBody as { error?: string }).error || "discussionReplyCreateFailed");
+        console.error("Discussion post creation failed:", (errorBody as { error?: string }).error);
+        throw new Error(errorLabel);
       }
       setContent("");
       toast.success(successLabel);
       router.refresh();
     } catch (error) {
-      const message = error instanceof Error ? error.message : "discussionReplyCreateFailed";
-      toast.error(message);
+      toast.error(error instanceof Error ? error.message : errorLabel);
     } finally {
       setIsSubmitting(false);
     }
