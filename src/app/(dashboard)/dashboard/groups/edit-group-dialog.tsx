@@ -63,7 +63,10 @@ export default function EditGroupDialog({ group }: { group: EditableGroup }) {
       case "updateError":
         return t("updateError");
       default:
-        return error.message || tCommon("error");
+        if (error instanceof SyntaxError) {
+          return tCommon("error");
+        }
+        return tCommon("error");
     }
   }
 
