@@ -219,7 +219,7 @@ export function CompilerClient({ languages, title, description, preferredLanguag
     setTestCases((currentCases) => [...currentCases, nextTestCase]);
     setActiveTestCaseId(nextTestCase.id);
     setActiveTab("stdout");
-  }, []);
+  }, [t]);
 
   const handleRemoveActiveTestCase = useCallback(() => {
     if (testCases.length <= 1) return;

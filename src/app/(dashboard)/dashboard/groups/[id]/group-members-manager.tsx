@@ -222,7 +222,7 @@ export function GroupMembersManager({
         throw new Error((payload as { error?: string }).error || "memberRemoveFailed");
       }
 
-      const payload = await response.json().catch(() => ({}));
+      await response.json().catch(() => ({}));
 
       setCurrentMembers((current) => current.filter((entry) => entry.userId !== member.userId));
       setCurrentAvailableStudents((current) =>
