@@ -10,10 +10,11 @@ import { DestructiveActionDialog } from "@/components/destructive-action-dialog"
 type DiscussionPostDeleteButtonProps = {
   postId: string;
   deleteLabel: string;
+  deleteDescription: string;
   successLabel: string;
 };
 
-export function DiscussionPostDeleteButton({ postId, deleteLabel, successLabel }: DiscussionPostDeleteButtonProps) {
+export function DiscussionPostDeleteButton({ postId, deleteLabel, deleteDescription, successLabel }: DiscussionPostDeleteButtonProps) {
   const router = useRouter();
   const tCommon = useTranslations("common");
 
@@ -39,7 +40,7 @@ export function DiscussionPostDeleteButton({ postId, deleteLabel, successLabel }
     <DestructiveActionDialog
       triggerLabel={deleteLabel}
       title={deleteLabel}
-      description="This action cannot be undone. The reply will be permanently removed."
+      description={deleteDescription}
       confirmLabel={tCommon("delete")}
       cancelLabel={tCommon("cancel")}
       onConfirmAction={handleDelete}

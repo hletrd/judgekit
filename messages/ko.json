@@ -2976,7 +2976,8 @@
         "deletePost": "답글 삭제",
         "success": "토론 상태가 업데이트되었습니다",
         "deleteSuccess": "토론이 삭제되었습니다",
-        "replyDeleteSuccess": "답글이 삭제되었습니다"
+        "replyDeleteSuccess": "답글이 삭제되었습니다",
+        "deletePostDescription": "이 작업은 되돌릴 수 없습니다. 답글이 영구적으로 삭제됩니다."
       },
       "sortNewest": "최신순",
       "sortPopular": "인기순",

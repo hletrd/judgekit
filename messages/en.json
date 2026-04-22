@@ -2976,7 +2976,8 @@
         "deletePost": "Delete reply",
         "success": "Discussion updated",
         "deleteSuccess": "Discussion removed",
-        "replyDeleteSuccess": "Reply removed"
+        "replyDeleteSuccess": "Reply removed",
+        "deletePostDescription": "This action cannot be undone. The reply will be permanently removed."
       },
       "sortNewest": "Newest",
       "sortPopular": "Popular",

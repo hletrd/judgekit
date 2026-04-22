@@ -225,6 +225,7 @@ export default async function CommunityThreadDetailPage({ params }: { params: Pr
                   <DiscussionPostDeleteButton
                     postId={post.id}
                     deleteLabel={tShell("community.moderation.deletePost")}
+                    deleteDescription={tShell("community.moderation.deletePostDescription")}
                     successLabel={tShell("community.moderation.replyDeleteSuccess")}
                   />
                 ) : null}
