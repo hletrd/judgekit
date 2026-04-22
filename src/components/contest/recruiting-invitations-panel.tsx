@@ -108,24 +108,16 @@ export function RecruitingInvitationsPanel({ assignmentId }: { assignmentId: str
     }
   }, []);
 
-  const fetchData = useCallback(async () => {
+  const fetchInvitations = useCallback(async () => {
     try {
       const query = new URLSearchParams();
       if (statusFilter !== "all") query.set("status", statusFilter);
       if (search) query.set("search", search);
 
-      const [invRes, statsRes] = await Promise.all([
-        apiFetch(`/api/v1/contests/${assignmentId}/recruiting-invitations?${query}`),
-        apiFetch(`/api/v1/contests/${assignmentId}/recruiting-invitations/stats`),
-      ]);
-
+      const invRes = await apiFetch(`/api/v1/contests/${assignmentId}/recruiting-invitations?${query}`);
       if (invRes.ok) {
         const json = await invRes.json();
         setInvitations(json.data ?? []);
-      }
-      if (statsRes.ok) {
-        const json = await statsRes.json();
-        setStats((prev) => json.data ?? prev);
       }
     } catch {
       toast.error(t("fetchError"));
@@ -133,6 +125,22 @@ export function RecruitingInvitationsPanel({ assignmentId }: { assignmentId: str
       setLoading(false);
     }
   }, [assignmentId, statusFilter, search, t]);
+
+  const fetchStats = useCallback(async () => {
+    try {
+      const statsRes = await apiFetch(`/api/v1/contests/${assignmentId}/recruiting-invitations/stats`);
+      if (statsRes.ok) {
+        const json = await statsRes.json();
+        setStats((prev) => json.data ?? prev);
+      }
+    } catch {
+      // Stats fetch is best-effort; don't toast on failure
+    }
+  }, [assignmentId]);
+
+  const fetchData = useCallback(async () => {
+    await Promise.all([fetchInvitations(), fetchStats()]);
+  }, [fetchInvitations, fetchStats]);
 
   useEffect(() => {
     fetchData();
@@ -184,7 +192,7 @@ export function RecruitingInvitationsPanel({ assignmentId }: { assignmentId: str
           if (!(await copyToClipboard(link))) toast.error(t("copyError"));
         }
         toast.success(t("createSuccess"));
-        fetchData();
+        await Promise.all([fetchInvitations(), fetchStats()]);
       } else {
         try {
           const json = await res.json();
@@ -228,7 +236,7 @@ export function RecruitingInvitationsPanel({ assignmentId }: { assignmentId: str
     );
     if (res.ok) {
       toast.success(t("revokeSuccess"));
-      fetchData();
+      await Promise.all([fetchInvitations(), fetchStats()]);
     } else {
       toast.error(t("revokeError"));
     }
@@ -261,7 +269,7 @@ export function RecruitingInvitationsPanel({ assignmentId }: { assignmentId: str
     );
     if (res.ok) {
       toast.success(t("deleteSuccess"));
-      fetchData();
+      await Promise.all([fetchInvitations(), fetchStats()]);
     } else {
       toast.error(t("deleteError"));
     }
