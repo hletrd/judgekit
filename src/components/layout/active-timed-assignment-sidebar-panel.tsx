@@ -70,7 +70,17 @@ export function ActiveTimedAssignmentSidebarPanel({
     }
 
     const interval = window.setInterval(() => {
-      setNowMs(Date.now());
+      const now = Date.now();
+      setNowMs(now);
+
+      // Stop the timer when all assignments have expired, avoiding
+      // unnecessary 1-second ticks after the last deadline passes.
+      const allExpired = assignments.every(
+        (assignment) => new Date(assignment.deadline).getTime() <= now
+      );
+      if (allExpired) {
+        window.clearInterval(interval);
+      }
     }, 1000);
 
     return () => {
