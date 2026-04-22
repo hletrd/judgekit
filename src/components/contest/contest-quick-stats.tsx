@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useCallback } from "react";
-import { useTranslations } from "next-intl";
+import { useState, useCallback, useRef } from "react";
+import { useTranslations, useLocale } from "next-intl";
 import { toast } from "sonner";
 import { apiFetch } from "@/lib/api/client";
+import { formatNumber } from "@/lib/formatting";
 import { Card, CardContent } from "@/components/ui/card";
 import { Users, FileText, BarChart3, Trophy } from "lucide-react";
 import { useVisibilityPolling } from "@/hooks/use-visibility-polling";
@@ -20,17 +21,11 @@ interface ContestQuickStatsProps {
   };
 }
 
-type LeaderboardEntry = {
-  totalScore: number;
-  problems: Array<{
-    score: number;
-    solved: boolean;
-  }>;
-};
-
-type LeaderboardData = {
-  problems: Array<{ points: number }>;
-  entries: LeaderboardEntry[];
+type ContestStats = {
+  participantCount: number;
+  submittedCount: number;
+  avgScore: number;
+  problemsSolvedCount: number;
 };
 
 export function ContestQuickStats({
@@ -40,43 +35,37 @@ export function ContestQuickStats({
   initialStats,
 }: ContestQuickStatsProps) {
   const t = useTranslations("contests");
-  const [stats, setStats] = useState(initialStats ?? {
+  const locale = useLocale();
+  const [stats, setStats] = useState<ContestStats>(initialStats ?? {
     participantCount: 0,
     submittedCount: 0,
     avgScore: 0,
     problemsSolvedCount: 0,
   });
 
+  const initialLoadDoneRef = useRef(false);
+
   const fetchStats = useCallback(async () => {
     try {
-      const res = await apiFetch(`/api/v1/contests/${assignmentId}/leaderboard`);
+      const res = await apiFetch(`/api/v1/contests/${assignmentId}/stats`);
       if (!res.ok) return;
       const json = await res.json();
-      const data: LeaderboardData = json.data;
-      if (!data?.entries) return;
-
-      // Keep the server-side participantCount (all enrolled students) stable —
-      // leaderboard entries only include users with submissions, which is fewer.
-      // TODO: Replace full leaderboard fetch with a dedicated /stats endpoint for efficiency.
-      const submittedEntries = data.entries.filter(
-        (e) => e.problems.some((p) => p.score > 0 || p.solved)
-      );
-      const submittedCount = submittedEntries.length;
-      const avgScore =
-        submittedCount > 0
-          ? Math.round(
-              (submittedEntries.reduce((sum, e) => sum + e.totalScore, 0) /
-                submittedCount) *
-                10
-            ) / 10
-          : 0;
-      const problemsSolvedCount = data.problems.filter((_, pi) =>
-        data.entries.some((e) => e.problems[pi]?.solved || (e.problems[pi]?.score ?? 0) >= data.problems[pi].points)
-      ).length;
-
-      setStats((prev) => ({ ...prev, submittedCount, avgScore, problemsSolvedCount }));
+      if (json.data && typeof json.data === "object") {
+        setStats((prev) => ({
+          participantCount: typeof json.data.participantCount === "number" ? json.data.participantCount : prev.participantCount,
+          submittedCount: typeof json.data.submittedCount === "number" ? json.data.submittedCount : prev.submittedCount,
+          avgScore: typeof json.data.avgScore === "number" ? json.data.avgScore : prev.avgScore,
+          problemsSolvedCount: typeof json.data.problemsSolvedCount === "number" ? json.data.problemsSolvedCount : prev.problemsSolvedCount,
+        }));
+      }
     } catch {
-      toast.error(t("fetchError"));
+      // Only show toast on the initial load — polling refreshes should fail
+      // silently to avoid spamming the user with error toasts.
+      if (!initialLoadDoneRef.current) {
+        toast.error(t("fetchError"));
+      }
+    } finally {
+      initialLoadDoneRef.current = true;
     }
   }, [assignmentId, t]);
 
@@ -88,7 +77,7 @@ export function ContestQuickStats({
         <CardContent className="flex items-center gap-3 py-3 px-4">
           <Users className="size-5 text-muted-foreground shrink-0" />
           <div>
-            <p className="text-2xl font-bold">{stats.participantCount}</p>
+            <p className="text-2xl font-bold">{formatNumber(stats.participantCount, locale)}</p>
             <p className="text-xs text-muted-foreground">{t("quickStats.participants")}</p>
           </div>
         </CardContent>
@@ -97,7 +86,7 @@ export function ContestQuickStats({
         <CardContent className="flex items-center gap-3 py-3 px-4">
           <FileText className="size-5 text-muted-foreground shrink-0" />
           <div>
-            <p className="text-2xl font-bold">{stats.submittedCount}</p>
+            <p className="text-2xl font-bold">{formatNumber(stats.submittedCount, locale)}</p>
             <p className="text-xs text-muted-foreground">{t("quickStats.submissions")}</p>
           </div>
         </CardContent>
@@ -106,7 +95,7 @@ export function ContestQuickStats({
         <CardContent className="flex items-center gap-3 py-3 px-4">
           <BarChart3 className="size-5 text-muted-foreground shrink-0" />
           <div>
-            <p className="text-2xl font-bold">{stats.avgScore}</p>
+            <p className="text-2xl font-bold">{formatNumber(stats.avgScore, { locale, maximumFractionDigits: 1 })}</p>
             <p className="text-xs text-muted-foreground">{t("quickStats.avgScore")}</p>
           </div>
         </CardContent>
@@ -115,7 +104,7 @@ export function ContestQuickStats({
         <CardContent className="flex items-center gap-3 py-3 px-4">
           <Trophy className="size-5 text-muted-foreground shrink-0" />
           <div>
-            <p className="text-2xl font-bold">{stats.problemsSolvedCount}/{problemCount}</p>
+            <p className="text-2xl font-bold">{formatNumber(stats.problemsSolvedCount, locale)}/{formatNumber(problemCount, locale)}</p>
             <p className="text-xs text-muted-foreground">{t("quickStats.problemsSolved")}</p>
           </div>
         </CardContent>
