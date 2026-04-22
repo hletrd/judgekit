@@ -55,7 +55,11 @@ export function ChatLogsClient() {
     setLoading(true);
     try {
       const res = await apiFetch(`/api/v1/admin/chat-logs?page=${p}`);
-      const data = await res.json();
+      if (!res.ok) {
+        toast.error(t("fetchError"));
+        return;
+      }
+      const data = await res.json().catch(() => ({ sessions: [], total: 0 }));
       setSessions(data.sessions ?? []);
       setTotal(data.total ?? 0);
       setPage(p);
@@ -70,7 +74,11 @@ export function ChatLogsClient() {
     setLoading(true);
     try {
       const res = await apiFetch(`/api/v1/admin/chat-logs?sessionId=${sessionId}`);
-      const data = await res.json();
+      if (!res.ok) {
+        toast.error(t("fetchError"));
+        return;
+      }
+      const data = await res.json().catch(() => ({ messages: [] }));
       setMessages(data.messages ?? []);
       setSelectedSession(sessionId);
     } catch {
