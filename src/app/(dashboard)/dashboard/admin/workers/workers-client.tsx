@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { apiFetch } from "@/lib/api/client";
+import { useVisibilityPolling } from "@/hooks/use-visibility-polling";
 import {
   Card,
   CardContent,
@@ -248,28 +249,9 @@ export function WorkersPageClient() {
 
   useEffect(() => {
     fetchData();
-    let interval: ReturnType<typeof setInterval> | null = setInterval(fetchData, 10_000);
-
-    function handleVisibilityChange() {
-      if (document.visibilityState === "visible") {
-        if (!interval) {
-          fetchData();
-          interval = setInterval(fetchData, 10_000);
-        }
-      } else {
-        if (interval) {
-          clearInterval(interval);
-          interval = null;
-        }
-      }
-    }
-
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-    return () => {
-      if (interval) clearInterval(interval);
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
-    };
   }, [fetchData]);
+
+  useVisibilityPolling(() => { void fetchData(); }, 10_000);
 
   async function handleRemove(id: string) {
     const res = await apiFetch(`/api/v1/admin/workers/${id}`, { method: "DELETE" });
