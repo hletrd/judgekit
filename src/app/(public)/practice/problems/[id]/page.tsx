@@ -520,7 +520,7 @@ export default async function PublicProblemDetailPage({ params }: { params: Prom
                                       timeLimitMs={problem.timeLimitMs ?? null}
                                     />
                                   </TableCell>
-                                  <TableCell>{sub.score !== null ? Math.round(sub.score * 100) / 100 : "-"}</TableCell>
+                                  <TableCell>{sub.score !== null ? formatScore(sub.score, locale) : "-"}</TableCell>
                                   <TableCell>
                                     {sub.submittedAt
                                       ? formatDateTimeInTimeZone(sub.submittedAt, locale, timeZone)

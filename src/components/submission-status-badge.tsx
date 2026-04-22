@@ -13,7 +13,7 @@ import {
   getSubmissionStatusVariant,
   isActiveSubmissionStatus,
 } from "@/lib/submissions/status";
-import { formatNumber } from "@/lib/formatting";
+import { formatNumber, formatScore } from "@/lib/formatting";
 
 type SubmissionStatusBadgeProps = {
   status: string | null | undefined;
@@ -86,7 +86,7 @@ function TooltipBody({
         <div className="text-muted-foreground">WA on test #{failedTestCaseIndex + 1}</div>
       )}
       {status === "wrong_answer" && score !== null && score !== undefined && (
-        <span className="font-medium">Score: {Math.round(score * 100) / 100}</span>
+        <span className="font-medium">Score: {formatScore(score, locale)}</span>
       )}
       {status === "time_limit" && executionTimeMs != null && (
         <div className="text-muted-foreground">

@@ -226,7 +226,7 @@ export default async function PublicContestDetailPage({ params }: { params: Prom
           rank: entry.rank,
           totalScoreLabel: contest.scoringModel === "icpc"
             ? `${entry.totalScore}`
-            : `${Math.round(entry.totalScore * 100) / 100}`,
+            : `${formatScore(entry.totalScore, locale)}`,
           penaltyLabel: contest.scoringModel === "icpc" ? `${entry.totalPenalty}` : null,
         }))}
         signInHref={buildLocalePath(
@@ -263,7 +263,7 @@ export default async function PublicContestDetailPage({ params }: { params: Prom
               rank: entry.rank,
               totalScoreLabel: contest.scoringModel === "icpc"
                 ? `${entry.totalScore}`
-                : `${Math.round(entry.totalScore * 100) / 100}`,
+                : `${formatScore(entry.totalScore, locale)}`,
               penaltyLabel: contest.scoringModel === "icpc" ? `${entry.totalPenalty}` : null,
             })),
           }))}

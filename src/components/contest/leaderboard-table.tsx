@@ -2,8 +2,9 @@
 
 import { useState, useCallback } from "react";
 import Link from "next/link";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import { apiFetch } from "@/lib/api/client";
+import { formatScore } from "@/lib/formatting";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -197,7 +198,7 @@ function IoiCell({
         } as React.CSSProperties
       }
     >
-      {Math.round(score * 100) / 100}
+      {formatScore(score, locale)}
     </TableCell>
   );
 }
@@ -209,6 +210,7 @@ export function LeaderboardTable({
   canViewStudentDetails,
 }: LeaderboardTableProps) {
   const t = useTranslations("contests.leaderboard");
+  const locale = useLocale();
   const [data, setData] = useState<LeaderboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -425,7 +427,7 @@ export function LeaderboardTable({
                   </>
                 ) : (
                   <TableCell className="text-center font-bold transition-all duration-300">
-                    {Math.round(entry.totalScore * 100) / 100}
+                    {formatScore(entry.totalScore, locale)}
                   </TableCell>
                 )}
                 {data.problems.map((p) => {
