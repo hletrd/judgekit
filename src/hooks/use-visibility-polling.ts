@@ -38,7 +38,12 @@ export function useVisibilityPolling(
 
     function syncVisibility() {
       if (document.visibilityState === "visible") {
-        void tick();
+        // Add a small random jitter (0-500ms) to prevent all polling
+        // components from firing simultaneously on tab switch.
+        const jitter = Math.floor(Math.random() * 500);
+        setTimeout(() => {
+          void tick();
+        }, jitter);
         // Always clear before creating to prevent duplicate intervals
         clearPollingInterval();
         intervalId = setInterval(tick, intervalMs);
