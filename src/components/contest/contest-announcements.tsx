@@ -84,7 +84,6 @@ export function ContestAnnouncements({
       if (!response.ok) {
         throw new Error("contestAnnouncementSaveFailed");
       }
-      const payload = await response.json();
       toast.success(editingId ? t("updateSuccess") : t("createSuccess"));
       setTitle("");
       setContent("");
