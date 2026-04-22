@@ -50,7 +50,7 @@ export function ShortcutsHelp() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger>
-        <Button variant="ghost" size="icon-sm" title={t("shortcutsTitle") || "Keyboard shortcuts"}>
+        <Button variant="ghost" size="icon-sm" title={t("shortcutsTitle") || "Keyboard shortcuts"} aria-label={t("shortcutsTitle")}>
           <Keyboard className="size-3.5" />
         </Button>
       </DialogTrigger>
