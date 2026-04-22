@@ -1,48 +1,60 @@
-# Architectural Review — RPF Cycle 11
+# Architectural Review — RPF Cycle 13
 
 **Date:** 2026-04-22
 **Reviewer:** architect
-**Base commit:** 42ca4c9a
+**Base commit:** 38206415
+
+## Previously Fixed Items (Verified)
+
+- ARCH-1 (centralized error-to-i18n mapping utility): Acknowledged as a refactor suggestion
+- ARCH-2 (language-config-table.tsx decompose): Acknowledged as LOW/LOW
 
 ## Findings
 
-### ARCH-1: `problem-submission-form.tsx` has inconsistent error handling between "Run" and "Submit" paths — same component, different patterns [MEDIUM/HIGH]
-
-**File:** `src/components/problem/problem-submission-form.tsx:183-191` vs `246-257`
-
-**Description:** The compiler run error path (handleRun, line 185) displays raw API error strings to the user, while the submission error path (handleSubmit, line 248) uses `translateSubmissionError()` to map API errors to i18n keys. Within the same component, two similar API calls follow different error handling architectures. This violates the principle of consistent error handling within a single component. The `translateSubmissionError` function is already available in the component — it should be used for both paths.
-
-**Fix:** Replace `(errorBody as { error?: string }).error ?? tCommon("error")` on line 185 with `translateSubmissionError((errorBody as { error?: string }).error)`.
-
-**Confidence:** HIGH
-
----
-
-### ARCH-2: `group-members-manager.tsx:225` dead `await response.json().catch(() => ({}))` call on remove success path — leftover from partial fix [LOW/MEDIUM]
-
-**File:** `src/app/(dashboard)/dashboard/groups/[id]/group-members-manager.tsx:225`
-
-**Description:** After a successful DELETE, line 221-223 properly checks `response.ok` and throws on error (success-first pattern, fixed in a prior cycle). However, line 225 still has `await response.json().catch(() => ({}))` which is dead code — the response body is not used after a member removal. This was partially addressed in AGG-11 but the dead `.json()` call was not removed.
-
-**Fix:** Remove line 225.
-
-**Confidence:** HIGH
-
----
-
-### ARCH-3: No centralized error-to-i18n mapping utility — each component implements its own pattern [MEDIUM/LOW]
+### ARCH-1: No centralized `res.json()` safety pattern — inconsistent error handling across client components [MEDIUM/MEDIUM]
 
 **Files:** Multiple components across the codebase
 
-**Description:** The codebase has at least four distinct patterns for mapping API errors to user-facing i18n strings:
-1. `translateSubmissionError()` in problem-submission-form.tsx (custom mapping function)
-2. `getErrorMessage()` in edit-group-dialog.tsx (switch-case mapping)
-3. Direct `throw new Error(errorLabel)` pattern in discussion components (props-based i18n)
-4. Raw API error display in some components
+**Description:** The codebase has at least three distinct patterns for handling `res.json()` on API responses:
+1. **With `.catch()` on error paths only** (e.g., `group-instructors-manager.tsx:72`, `problem-import-button.tsx:32`, `invite-participants.tsx:78`) — the established pattern documented in `apiFetch` JSDoc
+2. **Without `.catch()` on success paths** (e.g., `submission-overview.tsx:87`, `recruiter-candidates-panel.tsx:54`, `quick-create-contest-form.tsx:80`, `code-timeline-panel.tsx:57`, `analytics-charts.tsx:542`, `leaderboard-table.tsx:231`, `anti-cheat-dashboard.tsx:124,161`, `contest-quick-stats.tsx:52`, `submission-detail-client.tsx:105`)
+3. **Without `res.ok` check at all** (e.g., `chat-logs-client.tsx:58,73`)
 
-This architectural inconsistency makes it harder to maintain and update error messages across the application. A centralized error code mapping utility would provide a single source of truth.
+This inconsistency is a code smell that suggests the pattern is not well-enforced. New developers following existing examples in the codebase may pick up the wrong pattern.
 
-**Fix:** Consider extracting a shared `mapApiError(errorCode: string, fallbackKey: string): string` utility that components can use consistently. This is a refactor suggestion, not a bug.
+**Fix:** Consider:
+1. Creating a typed `apiFetch` wrapper that returns parsed JSON with type safety: `const { data, error } = await apiFetchJson<T>(url, options)`.
+2. Adding an ESLint rule or convention that `.json()` should always be guarded with `.catch()`.
+3. Updating the `apiFetch` JSDoc to document the success-path pattern as well.
+
+**Confidence:** MEDIUM
+
+---
+
+### ARCH-2: Icon-only buttons missing `aria-label` — systemic pattern across admin pages [MEDIUM/LOW]
+
+**Files:**
+- `src/app/(dashboard)/dashboard/admin/workers/workers-client.tsx` (6 instances)
+- `src/app/(dashboard)/dashboard/groups/[id]/group-instructors-manager.tsx` (1 instance)
+
+**Description:** This is a recurring architectural issue. The codebase has been fixing icon-only buttons missing `aria-label` on a page-by-page basis (discussion components in cycle 9, compiler client in cycle 10, language config table in cycle 12). Each review cycle finds new instances in different pages. This suggests a systemic issue rather than isolated oversights.
+
+**Fix:** Consider:
+1. Creating a custom `IconButton` component that requires `aria-label` as a prop.
+2. Adding an ESLint rule that flags `Button` components with `size="icon"` or `size="icon-sm"` that lack `aria-label`.
+3. Running an accessibility audit tool (e.g., axe-core) in CI.
+
+**Confidence:** MEDIUM
+
+---
+
+### ARCH-3: `language-config-table.tsx` is 688 lines — should be decomposed [LOW/LOW]
+
+**File:** `src/app/(dashboard)/dashboard/admin/languages/language-config-table.tsx`
+
+**Description:** Carried from ARCH-2 (cycle 12). This component contains: the main table, edit sheet, add sheet, confirmation dialog, image status fetching, build/remove/prune handlers, search filtering, and disk usage display. At 688 lines it is difficult to maintain.
+
+**Fix:** Extract `LanguageEditSheet`, `LanguageAddSheet`, and `LanguageConfirmDialog` as separate components.
 
 **Confidence:** LOW
 
@@ -50,4 +62,4 @@ This architectural inconsistency makes it harder to maintain and update error me
 
 ## Final Sweep
 
-The cycle 9 fixes are properly implemented. The discussion components now use i18n keys consistently. The `normalizePage` function has proper bounds. The `DestructiveActionDialog` and `AlertDialog` patterns are consistently applied. The auth layer, CSRF protection, and permission system remain well-layered. The proxy middleware properly handles locale resolution, CSP headers, and auth state. The main architectural concern this cycle is the inconsistent error handling within `problem-submission-form.tsx` — a single component should not have two different error handling patterns.
+The cycle 12 fixes are properly implemented. The main architectural concerns this cycle are: (1) the lack of a centralized `res.json()` safety pattern, which leads to inconsistent error handling across client components, and (2) the systemic pattern of icon-only buttons missing `aria-label`, which keeps appearing on different pages in each review cycle. Both suggest a need for a more structural fix rather than continued page-by-page remediation.

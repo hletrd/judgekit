@@ -1,35 +1,49 @@
-# Document Specialist Review — RPF Cycle 11
+# Document Specialist Review — RPF Cycle 13
 
 **Date:** 2026-04-22
 **Reviewer:** document-specialist
-**Base commit:** 42ca4c9a
+**Base commit:** 38206415
+
+## Previously Fixed Items (Verified)
+
+- apiFetch JSDoc example: Updated to show i18n-first error pattern (cycle 11)
 
 ## Findings
 
-### DOC-1: `apiFetch` JSDoc example shows raw error display pattern — contradicts established i18n convention [LOW/MEDIUM]
+### DOC-1: `apiFetch` JSDoc does not document success-path `.json()` safety pattern [LOW/MEDIUM]
 
-**File:** `src/lib/api/client.ts:37`
+**File:** `src/lib/api/client.ts` (apiFetch JSDoc)
 
-**Description:** The `apiFetch` JSDoc example on line 37 shows: `toast.error((errorBody as { error?: string }).error ?? "Request failed")`. This displays the raw API error string to the user. The established convention in the codebase (after cycle 9 fixes) is to use i18n keys for user-facing error messages and log the raw API error to the console. The JSDoc example should reflect the recommended pattern.
+**Description:** The `apiFetch` JSDoc documents the error-path pattern (use `.json().catch(() => ({}))` on error paths) but does not provide guidance for the success path. The codebase has inconsistent success-path handling — some components use `.catch()` and others don't. The JSDoc should document the recommended pattern for both paths.
 
-**Fix:** Update the JSDoc example to show the i18n-first pattern: `toast.error(errorLabel)` with a `console.error` for the raw API error.
-
-**Confidence:** HIGH
-
----
-
-### DOC-2: `translateSubmissionError` function in `problem-submission-form.tsx` not documented — missed by reviewers in prior cycles [LOW/LOW]
-
-**File:** `src/components/problem/problem-submission-form.tsx` (function definition not visible in the read range)
-
-**Description:** The `translateSubmissionError` function is used in the submit path but not documented with JSDoc. Its existence and purpose should be documented so that future developers know to use it for the run path as well. The fact that it was not used on the run path suggests that its purpose was not clear to the developer who added the run feature.
-
-**Fix:** Add JSDoc to `translateSubmissionError` explaining that it should be used for ALL API error display in the component, including both the submit and run paths.
+**Fix:** Update the JSDoc to include a success-path example:
+```typescript
+// Success path — also use .catch() for resilience:
+const { data } = await res.json().catch(() => ({ data: null }));
+if (!data) { /* handle parse failure */ }
+```
 
 **Confidence:** MEDIUM
 
 ---
 
+### DOC-2: `encryption.ts` plaintext fallback is documented but lacks migration guidance [LOW/LOW]
+
+**File:** `src/lib/security/encryption.ts:73-76`
+
+**Description:** The JSDoc for `decrypt()` documents the plaintext fallback: "If the value does not start with `enc:`, it is returned as-is (plaintext fallback for data that was stored before encryption was enabled)." However, there is no documentation about:
+1. When the plaintext fallback can be deprecated
+2. How to migrate existing plaintext data
+3. What security implications the fallback has
+
+This is a documentation gap that makes it harder for future developers to understand the security trade-offs.
+
+**Fix:** Add migration guidance to the JSDoc or create a separate migration document.
+
+**Confidence:** LOW
+
+---
+
 ## Final Sweep
 
-The code documentation is generally good. The `apiFetch` JSDoc is well-maintained but the example now contradicts the established convention. The `useVisibilityPolling` JSDoc is comprehensive. The `normalizePage` function has clear documentation. The main gap is the JSDoc example showing a now-discouraged pattern.
+The documentation is generally good. The main gap is the lack of success-path `.json()` guidance in the `apiFetch` JSDoc, which contributes to the inconsistent patterns found by the code-reviewer and critic. The encryption module documentation could benefit from migration guidance.

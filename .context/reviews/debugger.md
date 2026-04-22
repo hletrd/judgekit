@@ -1,51 +1,65 @@
-# Debugger Review — RPF Cycle 11
+# Debugger Review — RPF Cycle 13
 
 **Date:** 2026-04-22
 **Reviewer:** debugger
-**Base commit:** 42ca4c9a
+**Base commit:** 38206415
+
+## Previously Fixed Items (Verified)
+
+All cycle 12 debugger findings are fixed.
 
 ## Findings
 
-### DBG-1: `problem-submission-form.tsx:185` raw API error on compiler run — same class as cycle 9 AGG-4 (discussion raw errors) [MEDIUM/HIGH]
+### DBG-1: `chat-logs-client.tsx` processes API responses without validating status — latent bug [MEDIUM/MEDIUM]
 
-**File:** `src/components/problem/problem-submission-form.tsx:185`
+**File:** `src/app/(dashboard)/dashboard/admin/plugins/chat-logs/chat-logs-client.tsx:58,73`
 
-**Description:** On the compiler run error path, line 185 displays the raw API error string to the user: `toast.error((errorBody as { error?: string }).error ?? tCommon("error"))`. If the API returns an internal error message like `"docker_container_start_failed"`, the user sees the raw string. The submit path on line 248 correctly uses `translateSubmissionError()` to map known error codes to i18n keys. The `translateSubmissionError` function is already available in this component but not used on the run path.
+**Description:** Both `fetchSessions` and `fetchMessages` call `await res.json()` without first checking `res.ok`. This is a latent bug: if the server returns an error status (e.g., 500), the response body is parsed as if it were successful data. The code then accesses `data.sessions` and `data.messages` which would be `undefined` on error responses. The `?? []` and `?? 0` fallbacks prevent a crash, but the user sees an empty list instead of an error message.
 
-**Concrete failure scenario:** A user runs their code. The API returns `{ error: "language_not_supported" }`. The user sees the literal string "language_not_supported" in a toast. If they submit the same code instead, they see a properly localized error message.
+**Concrete failure scenario:** The admin chat-logs API returns 403 Forbidden because the admin session expired. `res.json()` returns `{"error":"forbidden"}`. `setSessions(data.sessions ?? [])` sets sessions to `[]`. The user sees "no sessions" instead of being prompted to re-authenticate.
 
-**Fix:** Replace `(errorBody as { error?: string }).error ?? tCommon("error")` with `translateSubmissionError((errorBody as { error?: string }).error)` on line 185.
-
-**Confidence:** HIGH
-
----
-
-### DBG-2: `group-members-manager.tsx:225` dead `response.json()` call can mask real bugs — maintenance hazard [LOW/MEDIUM]
-
-**File:** `src/app/(dashboard)/dashboard/groups/[id]/group-members-manager.tsx:225`
-
-**Description:** After a successful DELETE, line 225 calls `await response.json().catch(() => ({}))` and discards the result. This is the same dead-code anti-pattern that was cleaned up in discussion components (cycle 9 AGG-1). While it doesn't cause a user-visible bug, it could mask a future bug: if a developer adds logic that depends on the response body after this line, they might assume the `.json()` call populated a variable. The `.catch(() => ({}))` also silently swallows any parse errors.
-
-**Fix:** Remove line 225.
+**Fix:** Add `if (!res.ok) { toast.error(...); return; }` before calling `.json()`.
 
 **Confidence:** HIGH
 
 ---
 
-### DBG-3: `chat-widget/admin-config.tsx:97` sends API key in request body to test-connection — if stored key differs, test is misleading [MEDIUM/MEDIUM]
+### DBG-2: `recruiter-candidates-panel.tsx:54` unguarded `res.json()` on success path — SyntaxError on malformed response [MEDIUM/MEDIUM]
 
-**File:** `src/lib/plugins/chat-widget/admin-config.tsx:97`
+**File:** `src/components/contest/recruiter-candidates-panel.tsx:54`
 
-**Description:** The test-connection feature sends the current (potentially unsaved) API key from the form to the test-connection endpoint. This means the test verifies the key the user just typed, NOT the key that is actually stored in the database. If the user modifies the key, clicks "Test Connection" (which succeeds with the new key), but then doesn't save, the stored key remains the old one. The user thinks the connection works, but the saved configuration is broken.
+**Description:** After checking `res.ok`, line 54 calls `const data = await res.json()` without `.catch()`. If the server returns a non-JSON 200 body, `res.json()` throws SyntaxError. The outer catch displays `t("fetchError")`. The exception is avoidable.
 
-**Concrete failure scenario:** An admin updates their OpenAI API key in the form. They click "Test Connection" which succeeds. They navigate away without clicking "Save". The stored key is still the old (expired) one. The chat widget fails in production.
+**Fix:** Use `await res.json().catch(() => [])`.
 
-**Fix:** Add a visual indicator that the test-connection result is for the unsaved key, or require saving before testing. Alternatively, the endpoint should test with the stored key.
+**Confidence:** HIGH
+
+---
+
+### DBG-3: `quick-create-contest-form.tsx:80` unguarded `res.json()` on success path — SyntaxError risk [LOW/MEDIUM]
+
+**File:** `src/components/contest/quick-create-contest-form.tsx:80`
+
+**Description:** After checking `res.ok`, line 80 calls `const json = await res.json()` without `.catch()`. If the server returns a non-JSON 200 body, `res.json()` throws SyntaxError. The `finally` block sets `setCreating(false)`, so the UI recovers, but the error path shows a generic error.
+
+**Fix:** Add `.catch(() => ({}))`.
 
 **Confidence:** MEDIUM
 
 ---
 
+### DBG-4: `workers-client.tsx` icon-only buttons missing `aria-label` [MEDIUM/MEDIUM]
+
+**File:** `src/app/(dashboard)/dashboard/admin/workers/workers-client.tsx:120,123,133-140,187-194,201-208,372`
+
+**Description:** Same finding as code-reviewer CR-1. Six icon-only buttons lack `aria-label`. This is a latent accessibility bug — the buttons are invisible to screen readers.
+
+**Fix:** Add `aria-label` to all six buttons.
+
+**Confidence:** HIGH
+
+---
+
 ## Final Sweep
 
-The cycle 9 and 10 fixes are properly implemented and verified. The discussion components now properly use i18n keys for error messages. The pagination upper bound prevents DoS. The dialog semantics are in place. The anti-cheat monitoring works correctly. The main new finding this cycle is the raw API error display in the compiler run path of `problem-submission-form.tsx` — the same class of bug that was fixed in discussion components but missed here. The chat-widget test-connection UX issue could mislead admins about their configuration state.
+The cycle 12 fixes are properly implemented and verified. The most concerning new finding is the chat-logs client that processes API responses without validating the HTTP status code — this can mask authentication errors and show the user an empty state instead of a proper error. The workers admin page continues the pattern of icon-only buttons missing `aria-label`.

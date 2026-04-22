@@ -1,44 +1,57 @@
-# Performance Review — RPF Cycle 11
+# Performance Review — RPF Cycle 13
 
 **Date:** 2026-04-22
 **Reviewer:** perf-reviewer
-**Base commit:** 42ca4c9a
+**Base commit:** 38206415
+
+## Previously Fixed Items (Verified)
+
+All cycle 12 performance findings are carried or addressed:
+- PERF-1 (language-config-table unguarded res.json() on success path): Fixed
 
 ## Findings
 
-### PERF-1: `accepted-solutions.tsx` useEffect re-runs on every render due to `pageSize` in dependency array — `pageSize` is state that never changes [LOW/LOW]
-
-**File:** `src/components/problem/accepted-solutions.tsx:102`
-
-**Description:** The `useEffect` on line 58-101 depends on `[problemId, sort, language, page, pageSize]`. However, `pageSize` is declared as `const [pageSize] = useState(10)` — it is never changed. Including it in the dependency array is harmless but unnecessary. More importantly, the effect has no `loading` state in its dependency array, which means `setLoading(true)` on line 62 could cause a re-render loop if `loading` were used in a selector. Currently this is benign.
-
-**Fix:** Remove `pageSize` from the dependency array or add an eslint-disable comment explaining it is intentionally constant.
-
-**Confidence:** LOW
-
----
-
-### PERF-2: `recruiting-invitations-panel.tsx` fetches stats and invitations separately — could be parallelized [LOW/LOW]
-
-**File:** `src/components/contest/recruiting-invitations-panel.tsx:160-162`
-
-**Description:** The `fetchData` callback on line 160 uses `Promise.all` which is correct. However, the individual fetch functions (`fetchInvitations` and `fetchStats`) each create their own `apiFetch` call independently. The invitations fetch includes an abort controller for cancellation, but the stats fetch does not. If the component unmounts during the stats fetch, the request continues unnecessarily. This is minor since the stats endpoint is lightweight.
-
-**Fix:** Add abort signal support to `fetchStats` as well, or use a shared abort controller.
-
-**Confidence:** LOW
-
----
-
-### PERF-3: `contest-clarifications.tsx:79` and `contest-announcements.tsx:56` call `response.json()` on success path after `response.ok` check — no `.catch()` guard [LOW/MEDIUM]
+### PERF-1: `anti-cheat-dashboard.tsx` and `participant-anti-cheat-timeline.tsx` polling fetches replace all data on every tick [MEDIUM/LOW]
 
 **Files:**
-- `src/components/contest/contest-clarifications.tsx:79`
-- `src/components/contest/contest-announcements.tsx:56`
+- `src/components/contest/anti-cheat-dashboard.tsx:118-152`
+- `src/components/contest/participant-anti-cheat-timeline.tsx:90-122`
 
-**Description:** After checking `response.ok`, these polling endpoints call `await response.json()` without a `.catch()` guard. On a 200 with a non-JSON body, `response.json()` throws SyntaxError. The outer catch block silently fails (only showing a toast on initial load), so the user experience impact is low. However, the thrown SyntaxError is an unnecessary exception that could be avoided.
+**Description:** Both anti-cheat components use `useVisibilityPolling` with a 30-second interval. On every tick, `fetchEvents()` replaces the entire events array with the first page from the API. While the merge logic preserves pages loaded via loadMore, the polling request always fetches `offset=0` and replaces the first page. This means:
+1. On every 30-second tick, the entire first page (100 events) is re-fetched and re-rendered.
+2. If the user has loaded multiple pages, only the first page is refreshed — later pages become stale.
+3. State updates trigger re-renders of the entire table even when data has not changed.
 
-**Fix:** Wrap in `.catch(() => ({ data: [] }))` to match the expected type structure.
+This is not a critical performance issue but could cause noticeable jank on large datasets with frequent re-renders.
+
+**Fix:** Consider:
+1. Using a conditional re-render (e.g., shallow-compare the events array before setting state).
+2. Adding an `If-Modified-Since` or `ETag` header to avoid re-fetching unchanged data.
+3. The polling interval of 30s is reasonable for anti-cheat monitoring.
+
+**Confidence:** LOW
+
+---
+
+### PERF-2: `submission-overview.tsx:87` unguarded `res.json()` on success path — potential unnecessary exception [LOW/MEDIUM]
+
+**File:** `src/components/lecture/submission-overview.tsx:87`
+
+**Description:** After checking `res.ok` is true (line 86 returns early on `!res.ok`), line 87 calls `const json = await res.json()` without `.catch()`. On the success path, if the server returns a non-JSON body, this throws SyntaxError. The catch block handles it, but the exception is avoidable.
+
+**Fix:** Add `.catch(() => ({ data: {} }))` or wrap in try-catch.
+
+**Confidence:** MEDIUM
+
+---
+
+### PERF-3: `problem-import-button.tsx` parses uploaded JSON without size limit — client-side memory pressure [LOW/MEDIUM]
+
+**File:** `src/app/(dashboard)/dashboard/problems/problem-import-button.tsx:22-23`
+
+**Description:** Carried from PERF-2 (cycle 12). Line 22-23 reads the entire file content and parses it with `JSON.parse()` without any size validation. A very large JSON file could cause client-side memory pressure and potentially freeze the UI.
+
+**Fix:** Add a client-side file size check (e.g., `if (file.size > 10 * 1024 * 1024) { toast.error(...); return; }`).
 
 **Confidence:** MEDIUM
 
@@ -46,4 +59,4 @@
 
 ## Final Sweep
 
-The cycle 9 fixes are all in place and working correctly. The anti-cheat timeline polling fix properly preserves loaded pages. The `useVisibilityPolling` hook is efficient with its shared polling approach. The `normalizePage` upper bound prevents DoS via extremely large offsets. The `setTimeout`-based countdown timer is correct. The SSE events route has proper shared polling. Performance of the codebase is generally good. The findings this cycle are low severity — no critical performance regressions.
+No critical performance findings this cycle. The main areas of concern are: (1) anti-cheat dashboard polling could be optimized to avoid full-data replacement on every tick, (2) several unguarded `res.json()` calls on success paths that could cause unnecessary exceptions, and (3) the problem import button still lacks a file size check.

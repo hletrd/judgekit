@@ -1,44 +1,69 @@
-# Verifier Review — RPF Cycle 11
+# Verifier Review — RPF Cycle 13
 
 **Date:** 2026-04-22
 **Reviewer:** verifier
-**Base commit:** 42ca4c9a
+**Base commit:** 38206415
+
+## Previously Fixed Items (Verified)
+
+All cycle 12 verifier findings are fixed:
+- V-1 through V-4: Verified fixed — aria-label added to language-config-table buttons and shortcuts-help
 
 ## Findings
 
-### V-1: Verified: Cycle 9 and 10 fixes are correctly implemented [N/A]
+### V-1: `workers-client.tsx` icon-only buttons missing `aria-label` — WCAG 4.1.2 violation (6 instances) [MEDIUM/HIGH]
 
-**Verification:**
-- AGG-1 from cycle 28 (normalizePage scientific notation): CONFIRMED fixed. `parseInt(value ?? "1", 10)` and `Math.min(Math.floor(parsed), MAX_PAGE)` where `MAX_PAGE = 10000`.
-- AGG-2 from cycle 28 (thread deletion confirmation): CONFIRMED fixed. `AlertDialog` with `deleteConfirmTitle`/`deleteConfirmDescription` props.
-- AGG-3 from cycle 28 (moderation controls stale props): CONFIRMED fixed. Local state with optimistic updates and revert on failure.
-- AGG-4 from cycle 28 (comment-section silent GET failure): CONFIRMED fixed. Lines 74-76 have `else { toast.error(...) }`.
-- AGG-5 from cycle 28 (aria-label on icon-only buttons): CONFIRMED fixed. `aria-label` added to icon-only buttons.
-- AGG-6 from cycle 28 (compiler client hardcoded English): CONFIRMED fixed. i18n keys used instead.
-- AGG-7 from cycle 28 (submission overview dialog semantics): CONFIRMED fixed. `role="dialog"`, `aria-modal="true"`, `aria-label`, Escape key handler.
-- AGG-8 from cycle 28 (edit-group raw error): CONFIRMED fixed. `getErrorMessage` function handles SyntaxError and unknown errors with generic message.
-- AGG-9 from cycle 28 (unguarded response.json()): PARTIALLY fixed. Discussion components no longer discard `.json()` results. However, unguarded `.json()` on success paths where the result IS used remain in `problem-submission-form.tsx:188,252`, `contest-clarifications.tsx:79`, `contest-announcements.tsx:56`, `accepted-solutions.tsx:78`, and chat-widget providers.
-- AGG-10 from cycle 28 (vote raw API error): CONFIRMED fixed. `voteFailedLabel` prop used consistently.
-- AGG-11 from cycle 28 (group-members success-first): CONFIRMED fixed. Remove handler checks `!response.ok` before processing. Dead `.json()` call on line 225 remains.
-- AGG-12 from cycle 28 (overlay dialog semantics): CONFIRMED fixed. Both `anti-cheat-monitor.tsx` and `submission-overview.tsx` have `role="dialog"` and `aria-modal="true"`.
+**File:** `src/app/(dashboard)/dashboard/admin/workers/workers-client.tsx`
 
----
+**Description:** Six icon-only buttons in the workers admin page lack `aria-label` attributes. Verified by checking the source:
+- Line 120: `<Button variant="ghost" size="icon" className="h-6 w-6" onClick={handleSave}>` — no aria-label
+- Line 123: `<Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setEditing(false)}>` — no aria-label
+- Lines 133-140: Pencil edit button — no aria-label
+- Lines 187-194: Copy docker command button — no aria-label
+- Lines 201-208: Copy deploy script button — no aria-label
+- Line 372: Trash2 delete worker button — no aria-label
 
-### V-2: `problem-submission-form.tsx:185` raw API error display on compiler run path — verified [MEDIUM/HIGH]
+This is the same class of issue fixed in cycle 12 for language-config-table (AGG-1) and shortcuts-help (AGG-3).
 
-**File:** `src/components/problem/problem-submission-form.tsx:185`
-
-**Description:** Evidence-based verification: the handleRun function on line 183-191 checks `!response.ok`, extracts the error body, and displays it with `toast.error((errorBody as { error?: string }).error ?? tCommon("error"))`. The handleSubmit function on line 246-257 does the same check but uses `toast.error(translateSubmissionError((errorBody as { error?: string }).error))`. These two paths in the same component use different error handling strategies. The `translateSubmissionError` function is available in the component scope but not used on the run path.
+**Fix:** Add `aria-label` to all six buttons.
 
 **Confidence:** HIGH
 
 ---
 
-### V-3: `group-members-manager.tsx:225` dead `response.json()` call — verified [LOW/MEDIUM]
+### V-2: `chat-logs-client.tsx` — API calls without `res.ok` check [MEDIUM/MEDIUM]
 
-**File:** `src/app/(dashboard)/dashboard/groups/[id]/group-members-manager.tsx:225`
+**File:** `src/app/(dashboard)/dashboard/admin/plugins/chat-logs/chat-logs-client.tsx:58,73`
 
-**Description:** Evidence-based verification: line 221-223 checks `!response.ok` and throws on error. Line 225 calls `await response.json().catch(() => ({}))` and discards the result. The next line (227) uses local state updates. The `.json()` call is dead code — it reads the response body unnecessarily.
+**Description:** Verified that both `fetchSessions` and `fetchMessages` call `await res.json()` without checking `res.ok` first. This means error responses (4xx/5xx) are parsed as if they were successful responses. The code then tries to use `data.sessions` or `data.messages` which may not exist on error responses.
+
+**Concrete failure scenario:** The admin chat-logs API returns 500 with `{"error":"internal"}`. `res.json()` parses it. `setSessions(data.sessions ?? [])` sets sessions to `[]`. The user sees an empty list with no error indication.
+
+**Fix:** Add `if (!res.ok) { toast.error(...); return; }` before calling `.json()`.
+
+**Confidence:** HIGH
+
+---
+
+### V-3: `recruiter-candidates-panel.tsx` unguarded `res.json()` on success path [LOW/MEDIUM]
+
+**File:** `src/components/contest/recruiter-candidates-panel.tsx:54`
+
+**Description:** Verified: after `res.ok` check, `const data = await res.json()` is called without `.catch()`. The code then does `setCandidates(Array.isArray(data) ? data : [])` which handles non-array data gracefully, but if `res.json()` throws SyntaxError on a non-JSON 200 response, the catch block displays a generic error.
+
+**Fix:** Add `.catch(() => [])` on the `.json()` call.
+
+**Confidence:** MEDIUM
+
+---
+
+### V-4: `group-instructors-manager.tsx` remove instructor button missing `aria-label` [LOW/MEDIUM]
+
+**File:** `src/app/(dashboard)/dashboard/groups/[id]/group-instructors-manager.tsx:191-196`
+
+**Description:** Verified: the remove instructor button at line 191-196 contains only a Trash2 icon with no text label. It uses `size="sm"` but is effectively icon-only. No `aria-label` is present.
+
+**Fix:** Add `aria-label={t("removeInstructor")}`.
 
 **Confidence:** HIGH
 
@@ -46,4 +71,4 @@
 
 ## Final Sweep
 
-All previously claimed-fixed items from cycles 1-10 were verified as correctly implemented with two exceptions: (1) unguarded `response.json()` on success paths where the result is used (partially addressed — discussion components fixed, but `problem-submission-form.tsx`, `contest-clarifications.tsx`, `contest-announcements.tsx`, `accepted-solutions.tsx`, and chat-widget providers still have unguarded calls); and (2) the dead `.json()` call in group-members-manager. The new findings this cycle are the raw API error display in the compiler run path and the dead code in group-members-manager.
+The cycle 12 fixes are properly verified. The workers admin page has a cluster of accessibility issues that were missed in prior cycles. The chat-logs client has a concerning pattern of not checking `res.ok` before parsing JSON. Several components still have unguarded `res.json()` calls on success paths.

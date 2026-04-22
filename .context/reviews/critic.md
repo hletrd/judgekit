@@ -1,63 +1,66 @@
-# Critic Review — RPF Cycle 11
+# Critic Review — RPF Cycle 13
 
 **Date:** 2026-04-22
 **Reviewer:** critic
-**Base commit:** 42ca4c9a
+**Base commit:** 38206415
+
+## Previously Fixed Items (Verified)
+
+All cycle 12 critic findings are fixed.
 
 ## Findings
 
-### CRI-1: `problem-submission-form.tsx` Run vs Submit error handling inconsistency — same component, two different UX patterns [MEDIUM/HIGH]
+### CRI-1: `workers-client.tsx` icon-only buttons missing `aria-label` — same pattern as cycle 12 language-config-table [MEDIUM/HIGH]
 
-**File:** `src/components/problem/problem-submission-form.tsx:185` vs `248`
+**File:** `src/app/(dashboard)/dashboard/admin/workers/workers-client.tsx:120,123,133-140,187-194,201-208,372`
 
-**Description:** The compiler run error path shows raw API error strings to users (`(errorBody as { error?: string }).error ?? tCommon("error")`), while the submit error path properly maps them through `translateSubmissionError()`. From a user's perspective, clicking "Run" and getting a cryptic error code like `"language_not_supported"` vs clicking "Submit" and getting a properly localized message is jarring and inconsistent. This is a user experience problem that was fixed across all discussion components in cycle 9 but was missed in this form.
+**Description:** Six icon-only buttons in the workers admin page lack `aria-label` attributes. This is the same class of WCAG 4.1.2 issue that was fixed in cycle 12 for the language-config-table. The pattern is inconsistent with other icon-only buttons in the codebase. The cycle 12 fix addressed the language table but missed the workers page.
 
-**Concrete failure scenario:** A user selects an unsupported language and clicks "Run". They see the raw error code "language_not_supported" in a toast. They then click "Submit" and see a proper localized message for the same underlying error. This creates confusion about the quality of the application.
+**Concrete failure scenario:** A screen reader user navigates the workers admin page. Icon-only buttons are announced as "button" with no description.
 
-**Fix:** Use `translateSubmissionError()` on the compiler run error path (line 185) just as it is used on the submit path (line 248).
-
-**Confidence:** HIGH
-
----
-
-### CRI-2: `chat-widget/admin-config.tsx` sends API key in plain text to test-connection endpoint — admin credentials in transit [MEDIUM/MEDIUM]
-
-**File:** `src/lib/plugins/chat-widget/admin-config.tsx:97`
-
-**Description:** The admin configuration form sends the API key in the request body to the test-connection endpoint. While the connection is over HTTPS, the key is sent from the client to the server where it could be logged or stored in request logs. The endpoint already has access to the encrypted keys in the database. Sending the key from the client creates an unnecessary exposure surface. This is the same finding as SEC-1 but from a UX/critic perspective — even if the endpoint is admin-only, the key should not be retransmitted when the server already has it stored.
-
-**Fix:** The test-connection endpoint should retrieve the key from the database rather than accepting it from the client. The client should only send the provider and model.
-
-**Confidence:** MEDIUM
-
----
-
-### CRI-3: `group-members-manager.tsx` remove handler still has dead `response.json()` call — code clarity issue [LOW/LOW]
-
-**File:** `src/app/(dashboard)/dashboard/groups/[id]/group-members-manager.tsx:225`
-
-**Description:** The remove handler has a dead `await response.json().catch(() => ({}))` call on line 225 after the success-first pattern was implemented. The result is discarded. This is leftover dead code that was partially cleaned up in a prior cycle but not fully.
-
-**Fix:** Remove line 225.
+**Fix:** Add `aria-label` to all six icon-only buttons.
 
 **Confidence:** HIGH
 
 ---
 
-### CRI-4: `contest-clarifications.tsx:77` throws raw error string on `!response.ok` — not mapped to i18n [MEDIUM/MEDIUM]
+### CRI-2: Inconsistent `res.json()` error handling — some components have `.catch()`, others don't [MEDIUM/MEDIUM]
 
-**File:** `src/components/contest/contest-clarifications.tsx:77`
+**Files:**
+- `src/app/(dashboard)/dashboard/admin/plugins/chat-logs/chat-logs-client.tsx:58,73` — no `res.ok` check, no `.catch()`
+- `src/components/contest/recruiter-candidates-panel.tsx:54` — success path, no `.catch()`
+- `src/components/contest/quick-create-contest-form.tsx:80` — success path, no `.catch()`
+- `src/components/contest/invite-participants.tsx:46` — success path, no `.catch()`
+- `src/components/contest/code-timeline-panel.tsx:57` — success path, no `.catch()`
+- `src/components/contest/analytics-charts.tsx:542` — success path, no `.catch()`
+- `src/components/contest/leaderboard-table.tsx:231` — success path, no `.catch()`
+- `src/components/contest/anti-cheat-dashboard.tsx:124,161` — success path, no `.catch()`
+- `src/components/contest/contest-quick-stats.tsx:52` — success path, no `.catch()`
+- `src/components/lecture/submission-overview.tsx:87` — success path, no `.catch()`
+- `src/app/(dashboard)/dashboard/submissions/[id]/submission-detail-client.tsx:105` — success path, no `.catch()`
 
-**Description:** When the clarifications fetch returns `!response.ok`, the code throws `new Error("contestClarificationsFetchFailed")` which is caught and displayed in the catch block as a toast. The catch block uses `toast.error(t("fetchError"))` which is correct. However, the `throw new Error("contestClarificationsFetchFailed")` is misleading — the string is used as an Error message but is never displayed to the user (the catch block uses its own i18n key). The throw is used purely for control flow, not for the message.
+**Description:** The codebase has an established pattern (documented in `apiFetch` JSDoc) of using `.json().catch(() => ({}))` on error paths. However, there is no consistent pattern for success paths. Some components use `.catch()` on success paths (e.g., `language-config-table.tsx:94`) while many others do not. This inconsistency makes it hard for developers to know which pattern to follow.
 
-This is an acceptable pattern but could be cleaner. The same pattern exists in `contest-announcements.tsx:54` and `accepted-solutions.tsx:76`.
+The `chat-logs-client.tsx` is particularly concerning because it lacks BOTH the `res.ok` check AND the `.catch()` guard.
 
-**Fix:** This is stylistic. Consider using a custom `ApiError` class or just `throw undefined` to make the control-flow intent clearer. Low priority.
+**Fix:** Establish a consistent pattern: always use `.catch()` on error paths, and consider adding `.catch()` on success paths as a defensive measure. The chat-logs client needs both a `res.ok` check and `.catch()`.
 
-**Confidence:** LOW
+**Confidence:** HIGH
+
+---
+
+### CRI-3: `group-instructors-manager.tsx` remove instructor button effectively icon-only but missing `aria-label` [LOW/MEDIUM]
+
+**File:** `src/app/(dashboard)/dashboard/groups/[id]/group-instructors-manager.tsx:191-196`
+
+**Description:** The remove instructor button contains only a `<Trash2>` icon with no visible text. While it uses `size="sm"` instead of `size="icon"`, it is effectively an icon-only button that needs `aria-label` for accessibility.
+
+**Fix:** Add `aria-label={t("removeInstructor")}`.
+
+**Confidence:** HIGH
 
 ---
 
 ## Final Sweep
 
-The codebase is in good shape overall. The cycle 9 fixes are properly implemented — discussion components use i18n keys consistently, the pagination upper bound prevents DoS, dialog semantics are in place. The main systemic issue this cycle is the raw API error display in the compiler run path of `problem-submission-form.tsx` — the same class of bug that was fixed in the discussion module but was missed here. The chat-widget API key transmission is a design concern that should be addressed. The dead code in group-members-manager is a minor cleanliness issue.
+The codebase is in good shape overall. The cycle 12 fixes are properly implemented. The main systemic issues this cycle are: (1) workers admin page has 6 icon-only buttons missing `aria-label`, continuing the pattern from prior cycles where different pages are fixed in each pass, and (2) the inconsistent `res.json()` handling across the codebase — particularly the chat-logs client that lacks both the `res.ok` check and the `.catch()` guard.

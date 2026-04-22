@@ -1,124 +1,104 @@
-# RPF Cycle 11 — Aggregate Review
+# RPF Cycle 13 — Aggregate Review
 
 **Date:** 2026-04-22
-**Base commit:** 42ca4c9a
+**Base commit:** 38206415
 **Review artifacts:** code-reviewer.md, perf-reviewer.md, security-reviewer.md, architect.md, critic.md, verifier.md, debugger.md, test-engineer.md, tracer.md, designer.md, document-specialist.md
 
 ## Previously Fixed Items (Verified in Current Code)
 
-All cycle 9/10 aggregate findings have been addressed:
-- AGG-1 from cycle 28 (normalizePage scientific notation): Fixed
-- AGG-2 from cycle 28 (thread deletion confirmation): Fixed
-- AGG-3 from cycle 28 (moderation controls stale props): Fixed
-- AGG-4 from cycle 28 (comment-section silent GET failure): Fixed
-- AGG-5 from cycle 28 (aria-label on icon-only buttons): Fixed
-- AGG-6 from cycle 28 (compiler client hardcoded English): Fixed
-- AGG-7 from cycle 28 (submission overview dialog semantics): Fixed
-- AGG-8 from cycle 28 (edit-group raw error): Fixed
-- AGG-9 from cycle 28 (unguarded response.json() on discarded-result paths): Fixed in discussion components
-- AGG-10 from cycle 28 (vote raw API error): Fixed
-- AGG-11 from cycle 28 (group-members success-first pattern): Fixed (but dead .json() call remains)
-- AGG-12 from cycle 28 (overlay dialog semantics): Fixed
+All cycle 12 aggregate findings have been addressed:
+- AGG-1 from cycle 12 (language-config-table icon-only buttons missing aria-label): Fixed — all three buttons now have `aria-label`
+- AGG-2 from cycle 12 (unguarded res.json() on error paths in group-instructors-manager and problem-import-button): Fixed — both use `.catch(() => ({}))` now
+- AGG-3 from cycle 12 (shortcuts-help icon-only button missing aria-label): Fixed — now has `aria-label={t("shortcutsTitle")}`
+- AGG-4 from cycle 12 (language-config-table unguarded res.json() on success path): Fixed — now uses `.catch(() => ({ data: {} }))`
 
 ## Deduped Findings (sorted by severity then signal)
 
-### AGG-1: `problem-submission-form.tsx` compiler run path displays raw API error string — inconsistent with submit path [MEDIUM/HIGH]
+### AGG-1: `workers-client.tsx` icon-only buttons missing `aria-label` — WCAG 4.1.2 violation (6 instances) [MEDIUM/HIGH]
 
-**Flagged by:** code-reviewer (CR-1), architect (ARCH-1), critic (CRI-1), verifier (V-2), debugger (DBG-1), tracer (TR-1), designer (DES-1)
+**Flagged by:** code-reviewer (CR-1), critic (CRI-1), verifier (V-1), debugger (DBG-4), tracer (TR-2), designer (DES-1), architect (ARCH-2)
 **Signal strength:** 7 of 11 review perspectives
 
-**File:** `src/components/problem/problem-submission-form.tsx:185`
+**File:** `src/app/(dashboard)/dashboard/admin/workers/workers-client.tsx:120,123,133-140,187-194,201-208,372`
 
-**Description:** On the compiler run error path, line 185 displays the raw API error string directly to the user: `toast.error((errorBody as { error?: string }).error ?? tCommon("error"))`. In contrast, the submit error path on line 248 properly uses `toast.error(translateSubmissionError((errorBody as { error?: string }).error))` to map API errors to i18n keys. This is the same class of bug that was fixed across all discussion components in cycle 9 (AGG-4), but was missed in this form.
+**Description:** Six icon-only buttons in the workers admin page lack `aria-label` attributes:
+1. Line 120: Save (Check icon) button — no `aria-label`
+2. Line 123: Cancel (X icon) button — no `aria-label`
+3. Lines 133-140: Edit (Pencil icon) button — no `aria-label`
+4. Lines 187-194: Copy docker command button — no `aria-label`
+5. Lines 201-208: Copy deploy script button — no `aria-label`
+6. Line 372: Delete worker (Trash2 icon) button — no `aria-label`
 
-**Fix:** Replace `(errorBody as { error?: string }).error ?? tCommon("error")` with `translateSubmissionError((errorBody as { error?: string }).error)` on line 185.
+This is the same class of WCAG 4.1.2 issue fixed in cycle 12 for the language-config-table (AGG-1). The pattern is inconsistent with other icon-only buttons in the codebase (e.g., lecture toolbar, api-keys copy button, language config table).
+
+**Fix:** Add `aria-label` to all six icon-only buttons.
 
 ---
 
-### AGG-2: Chat widget test-connection endpoint accepts `apiKey` from request body — SSRF risk and misleading UX [HIGH/MEDIUM]
+### AGG-2: `chat-logs-client.tsx` — API calls without `res.ok` check, processes error responses as data [MEDIUM/MEDIUM]
 
-**Flagged by:** code-reviewer (CR-4), security-reviewer (SEC-1), critic (CRI-2), debugger (DBG-3), tracer (TR-2), designer (DES-2)
+**Flagged by:** code-reviewer (CR-2), security-reviewer (SEC-2), critic (CRI-2), verifier (V-2), debugger (DBG-1), tracer (TR-1)
 **Signal strength:** 6 of 11 review perspectives
 
-**Files:**
-- `src/lib/plugins/chat-widget/admin-config.tsx:97` (client sends apiKey)
-- `src/app/api/v1/plugins/chat-widget/test-connection/route.ts:39` (server uses apiKey from request body)
+**File:** `src/app/(dashboard)/dashboard/admin/plugins/chat-logs/chat-logs-client.tsx:58,73`
 
-**Description:** The test-connection endpoint accepts `apiKey` and `model` from the request body and uses them to make outbound API calls to OpenAI, Anthropic, or Google. This has two problems:
-1. **Security:** An attacker with admin access (or via CSRF) can make the server issue HTTP requests with attacker-controlled parameters. While CSRF protection and admin capability checks mitigate this, the `model` field for OpenAI/Claude is not validated against a strict pattern, and the `apiKey` should be retrieved from the database.
-2. **UX:** The test verifies the key the user just typed, NOT the stored key. If the user changes the key, tests successfully, but doesn't save, the stored key remains the old one.
+**Description:** Both `fetchSessions` and `fetchMessages` call `await res.json()` without first checking `res.ok`. If the server returns an error status (e.g., 403 session expired), the error response body is parsed and the code tries to access `data.sessions` or `data.messages` which would be undefined. The `?? []` and `?? 0` fallbacks prevent a crash, but the user sees an empty state instead of an error message. This masks authentication failures.
 
-**Fix:** Remove `apiKey` from the request schema. Retrieve the stored encrypted API key from the database using the `provider` field. Validate `model` against a strict pattern per provider. Add a visual indicator that the test uses the unsaved key (or auto-save before testing).
+**Concrete failure scenario:** Admin's session expires. Chat-logs API returns 403 with `{"error":"forbidden"}`. `res.json()` parses it. `setSessions(data.sessions ?? [])` sets sessions to `[]`. User sees empty list with no error indication.
+
+**Fix:** Add `if (!res.ok) { toast.error(...); return; }` before calling `.json()`.
 
 ---
 
-### AGG-3: `group-members-manager.tsx` dead `response.json()` call on remove success path [LOW/MEDIUM]
+### AGG-3: `group-instructors-manager.tsx` remove instructor button missing `aria-label` [LOW/MEDIUM]
 
-**Flagged by:** code-reviewer (CR-3), architect (ARCH-2), critic (CRI-3), verifier (V-3), tracer (TR-3)
+**Flagged by:** code-reviewer (CR-5), critic (CRI-3), verifier (V-4), designer (DES-2)
+**Signal strength:** 4 of 11 review perspectives
+
+**File:** `src/app/(dashboard)/dashboard/groups/[id]/group-instructors-manager.tsx:191-196`
+
+**Description:** The remove instructor button contains only a Trash2 icon with no text content. It uses `size="sm"` but is effectively icon-only. No `aria-label` is present.
+
+**Fix:** Add `aria-label={t("removeInstructor")}` to the Button.
+
+---
+
+### AGG-4: Multiple components have unguarded `res.json()` on success paths [LOW/MEDIUM]
+
+**Flagged by:** code-reviewer (CR-3, CR-4, CR-6, CR-7), critic (CRI-2), debugger (DBG-2, DBG-3), tracer (TR-3), perf-reviewer (PERF-2)
 **Signal strength:** 5 of 11 review perspectives
 
-**File:** `src/app/(dashboard)/dashboard/groups/[id]/group-members-manager.tsx:225`
-
-**Description:** After a successful DELETE, line 225 calls `await response.json().catch(() => ({}))` and discards the result. This is dead code that was partially cleaned up in cycle 9 (AGG-11 fixed the success-first pattern) but the dead `.json()` call was not removed.
-
-**Fix:** Remove line 225.
-
----
-
-### AGG-4: `apiFetch` JSDoc example shows raw error display pattern — contradicts i18n convention [LOW/LOW]
-
-**Flagged by:** document-specialist (DOC-1)
-**Signal strength:** 1 of 11 review perspectives
-
-**File:** `src/lib/api/client.ts:37`
-
-**Description:** The `apiFetch` JSDoc example shows `toast.error((errorBody as { error?: string }).error ?? "Request failed")` which displays the raw API error string. After cycle 9 fixes established i18n-first error handling, this example contradicts the recommended pattern.
-
-**Fix:** Update the JSDoc example to show the i18n-first pattern: `toast.error(errorLabel)` with a `console.error` for the raw API error.
-
----
-
-### AGG-5: Unguarded `response.json()` on success paths where result IS used — recurring pattern [MEDIUM/MEDIUM]
-
-**Flagged by:** code-reviewer (CR-2), perf-reviewer (PERF-3)
-**Signal strength:** 2 of 11 review perspectives
-
 **Files:**
-- `src/components/problem/problem-submission-form.tsx:188, 252`
-- `src/components/contest/contest-clarifications.tsx:79`
-- `src/components/contest/contest-announcements.tsx:56`
-- `src/components/problem/accepted-solutions.tsx:78`
-- `src/components/contest/invite-participants.tsx:46`
-- `src/lib/plugins/chat-widget/admin-config.tsx:104`
-- `src/lib/plugins/chat-widget/providers.ts:138, 258, 398`
+- `src/components/contest/recruiter-candidates-panel.tsx:54` — success path, no `.catch()`
+- `src/components/contest/quick-create-contest-form.tsx:80` — success path, no `.catch()`
+- `src/components/contest/invite-participants.tsx:46` — success path, no `.catch()`
+- `src/components/contest/code-timeline-panel.tsx:57` — success path, no `.catch()`
+- `src/components/contest/analytics-charts.tsx:542` — success path, no `.catch()`
+- `src/components/contest/leaderboard-table.tsx:231` — success path, no `.catch()`
+- `src/components/contest/anti-cheat-dashboard.tsx:124,161` — success path, no `.catch()`
+- `src/components/contest/contest-quick-stats.tsx:52` — success path, no `.catch()`
+- `src/components/lecture/submission-overview.tsx:87` — success path, no `.catch()`
+- `src/app/(dashboard)/dashboard/submissions/[id]/submission-detail-client.tsx:105` — success path, no `.catch()`
 
-**Description:** After checking `response.ok`, these files call `await response.json()` without a `.catch()` guard. Unlike the previously fixed AGG-9 instances (where the result was discarded), these calls DO use the result. However, if the server returns a non-JSON body on a 200 response (e.g., due to proxy truncation), `response.json()` throws SyntaxError. The outer catch blocks show a generic error toast even though the request may have succeeded. This is a variant of AGG-9.
+**Description:** These components call `await res.json()` on the success path (`res.ok`) without a `.catch()` guard. If the server returns a non-JSON 200 body, `res.json()` throws SyntaxError. The outer catch blocks handle it, but the SyntaxError is an unnecessary exception path. This is a continuation of the same pattern identified in cycle 11 (AGG-5) and cycle 12 (AGG-4).
 
-**Fix:** Consider wrapping the `.json()` call in a try-catch within the success path, or use a helper function like `tryParseJson(response)` that returns `null` on parse failure.
+**Fix:** Add `.catch()` guards on success-path `.json()` calls. Consider a centralized `apiFetchJson` helper.
 
 ---
 
 ## Security Findings (from security-reviewer)
 
-### SEC-1: Chat widget test-connection SSRF — covered by AGG-2 above
-
-### SEC-2: Plaintext fallback in encryption module — carried from cycle 28 SEC-2 [MEDIUM/HIGH]
+### SEC-1: Plaintext fallback in encryption module — carried from SEC-2 (cycle 11) [MEDIUM/HIGH]
 
 **File:** `src/lib/security/encryption.ts:78-81`
 
 **Fix:** Add integrity check or HMAC. Monitor plaintext fallback hits in production.
 
-### SEC-3: `window.location.origin` for URL construction — carried from DEFER-24 [MEDIUM/MEDIUM]
+### SEC-2: `chat-logs-client.tsx` missing `res.ok` check — covered by AGG-2 above
 
-**Files:**
-- `src/components/contest/recruiting-invitations-panel.tsx:99`
-- `src/components/contest/access-code-manager.tsx:134`
-- `src/app/(dashboard)/dashboard/admin/files/file-management-client.tsx:96`
-- `src/app/(dashboard)/dashboard/admin/workers/workers-client.tsx:147`
+### SEC-3: `problem-import-button.tsx` parses uploaded JSON without size limit — carried from PERF-2 (cycle 12) [LOW/MEDIUM]
 
-**Fix:** Use a server-provided `appUrl` config value.
-
-### SEC-4: Raw API error in compiler run path — covered by AGG-1 above
+### SEC-4: `window.location.origin` for URL construction — carried from DEFER-24 [MEDIUM/MEDIUM]
 
 ---
 
@@ -126,15 +106,41 @@ All cycle 9/10 aggregate findings have been addressed:
 
 No critical performance findings this cycle.
 
+### PERF-1: Anti-cheat dashboard polling replaces all data on every tick [MEDIUM/LOW]
+
+### PERF-2: `submission-overview.tsx:87` unguarded `res.json()` — covered by AGG-4 above
+
+### PERF-3: `problem-import-button.tsx` parses uploaded JSON without size limit — carried [LOW/MEDIUM]
+
+---
+
+## Architectural Findings (from architect)
+
+### ARCH-1: No centralized `res.json()` safety pattern — inconsistent error handling [MEDIUM/MEDIUM]
+
+### ARCH-2: Icon-only buttons missing `aria-label` — systemic pattern — covered by AGG-1 above
+
+### ARCH-3: `language-config-table.tsx` is 688 lines — should be decomposed [LOW/LOW]
+
 ---
 
 ## Test Coverage Gaps (from test-engineer)
 
-### TE-1: No unit tests for `problem-submission-form.tsx` [MEDIUM/MEDIUM]
+### TE-1: No unit tests for `workers-client.tsx` [LOW/MEDIUM]
 
-### TE-2: No unit tests for chat-widget admin-config [LOW/MEDIUM]
+### TE-2: No unit tests for `chat-logs-client.tsx` [LOW/MEDIUM]
 
-### TE-3: Encryption module still untested — carried from cycle 28 [MEDIUM/HIGH]
+### TE-3: Encryption module still untested — carried from TE-3 (cycle 11) [MEDIUM/HIGH]
+
+### TE-4: No unit tests for `recruiter-candidates-panel.tsx` [LOW/LOW]
+
+---
+
+## Documentation Findings (from document-specialist)
+
+### DOC-1: `apiFetch` JSDoc does not document success-path `.json()` safety pattern [LOW/MEDIUM]
+
+### DOC-2: `encryption.ts` plaintext fallback lacks migration guidance [LOW/LOW]
 
 ---
 
@@ -159,6 +165,7 @@ No critical performance findings this cycle.
 - DEFER-28: Unit tests for participant-anti-cheat-timeline.tsx polling behavior
 - DEFER-29: Add dedicated candidates summary endpoint for recruiter-candidates-panel
 - DEFER-30: Remove unnecessary `router.refresh()` from discussion-vote-buttons
+- ARCH-1: Centralized error-to-i18n mapping utility (refactor suggestion)
 
 ## Agent Failures
 
