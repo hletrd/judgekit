@@ -22,10 +22,11 @@ export function DiscussionPostDeleteButton({ postId, deleteLabel, successLabel }
       const response = await apiFetch(`/api/v1/community/posts/${postId}`, {
         method: "DELETE",
       });
-      const body = await response.json();
       if (!response.ok) {
-        throw new Error(body.error || "discussionReplyDeleteFailed");
+        const errorBody = await response.json().catch(() => ({}));
+        throw new Error((errorBody as { error?: string }).error || "discussionReplyDeleteFailed");
       }
+      await response.json();
       toast.success(successLabel);
       router.refresh();
       return true;
