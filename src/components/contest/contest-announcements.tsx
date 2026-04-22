@@ -81,10 +81,10 @@ export function ContestAnnouncements({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ title, content, isPinned }),
       });
-      const payload = await response.json();
       if (!response.ok) {
-        throw new Error(payload.error ?? "contestAnnouncementSaveFailed");
+        throw new Error("contestAnnouncementSaveFailed");
       }
+      const payload = await response.json();
       toast.success(editingId ? t("updateSuccess") : t("createSuccess"));
       setTitle("");
       setContent("");
