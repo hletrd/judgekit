@@ -42,9 +42,9 @@ export function DiscussionThreadModerationControls({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-      const body = await response.json();
       if (!response.ok) {
-        throw new Error(body.error || "discussionModerationFailed");
+        const errorBody = await response.json().catch(() => ({}));
+        throw new Error((errorBody as { error?: string }).error || "discussionModerationFailed");
       }
       toast.success(successLabel);
       router.refresh();
@@ -61,9 +61,9 @@ export function DiscussionThreadModerationControls({
       const response = await apiFetch(`/api/v1/community/threads/${threadId}`, {
         method: "DELETE",
       });
-      const body = await response.json();
       if (!response.ok) {
-        throw new Error(body.error || "discussionThreadDeleteFailed");
+        const errorBody = await response.json().catch(() => ({}));
+        throw new Error((errorBody as { error?: string }).error || "discussionThreadDeleteFailed");
       }
       toast.success(deleteSuccessLabel);
       router.push("/community");

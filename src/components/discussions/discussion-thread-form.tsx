@@ -46,10 +46,11 @@ export function DiscussionThreadForm({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ scopeType, problemId: problemId ?? null, title, content }),
       });
-      const payload = await response.json();
       if (!response.ok) {
-        throw new Error(payload.error || "discussionThreadCreateFailed");
+        const errorBody = await response.json().catch(() => ({}));
+        throw new Error((errorBody as { error?: string }).error || "discussionThreadCreateFailed");
       }
+      await response.json();
       setTitle("");
       setContent("");
       toast.success(successLabel);
