@@ -1,31 +1,35 @@
-# Critic
+# Critic Review — RPF Cycle 3
 
-**Date:** 2026-04-20
-**Base commit:** 52d81f9d
-**Angle:** Multi-perspective critique of the whole change surface
+**Date:** 2026-04-22
+**Reviewer:** critic
+**Base commit:** 7b07995f
 
-## Inventory
-- Public entry points: `src/app/page.tsx`, `src/app/not-found.tsx`, `src/app/(public)/**`
-- Shared UI primitives used by the broken routes: `src/components/pagination-controls.tsx`, `src/components/layout/public-header.tsx`
-- Supporting tests: `tests/component/pagination-controls.test.tsx`, `tests/e2e/public-shell.spec.ts`
+## Findings
 
-## F1: A shared primitive shipped an invalid client/server boundary and took down multiple public routes at once
-- **File:** `src/components/pagination-controls.tsx:1-60`
-- **Severity:** HIGH
-- **Confidence:** HIGH
-- **Status:** confirmed issue
-- **Description:** A single shared component mixes `"use client"` with an async server translation call. Because `/practice`, `/rankings`, and many other pages all depend on that primitive, one boundary mistake breaks an entire cross-section of the app.
-- **Concrete failure scenario:** `/practice` and `/rankings` both render the public server-error shell on the live site even though the underlying page modules are otherwise unrelated.
-- **Suggested fix:** Remove the invalid boundary in the shared primitive and add regression coverage at the component and route level.
+### CRI-1: The `response.json()` before `response.ok` pattern keeps re-appearing — reactive patching is insufficient [MEDIUM/HIGH]
 
-## F2: Public-header configuration is duplicated in the highest-traffic entry points, so fixes are landing inconsistently
-- **File:** `src/app/page.tsx:88-103`, `src/app/not-found.tsx:45-60`, `src/app/(public)/layout.tsx:22-31`, `src/lib/navigation/public-nav.ts:18-36`
-- **Severity:** MEDIUM
-- **Confidence:** HIGH
-- **Status:** confirmed issue
-- **Description:** The public layout already has a shared navigation path, but the home page and 404 page still inline their own header items/actions. That is exactly why the header label fix did not land uniformly.
-- **Concrete failure scenario:** Live home still shows `publicShell.nav.workspace` while the regular public layout does not.
-- **Suggested fix:** Collapse the duplicated header config onto shared helpers / one source of truth.
+**Description:** This is the third cycle where this pattern is flagged. Cycles 1 and 2 each fixed 1-2 instances. The current review found 8+ remaining instances. The root cause is that there is no shared utility that enforces the correct pattern. Each new component written from scratch will reintroduce the bug until a centralized solution exists.
 
-## Final sweep
-- The two confirmed issues reinforce each other: one shared primitive caused a crash, while duplicated entry-point wiring let an earlier translation cleanup remain half-applied.
+**Concrete failure scenario:** A developer adds a new API-consuming component. Without a shared helper, they naturally write `const data = await response.json()` then `if (!response.ok) ...` — the same pattern. The cycle of finding and fixing one file at a time never ends.
+
+**Fix:** Add a typed `apiJson<T>(response)` helper to `src/lib/api/client.ts` that checks `response.ok` first and returns a discriminated union.
+
+**Confidence:** HIGH
+
+---
+
+### CRI-2: `discussion-vote-buttons.tsx` silently fails — user expectation violated [MEDIUM/MEDIUM]
+
+**File:** `src/components/discussions/discussion-vote-buttons.tsx:47-49`
+
+**Description:** When a vote fails, the function returns on line 48 with no user feedback whatsoever. The user's click is silently discarded. This violates the basic UX principle of acknowledging user actions. Every other write operation in the codebase shows at least a toast on failure.
+
+**Fix:** Add error feedback (toast) for failed votes.
+
+**Confidence:** HIGH
+
+---
+
+## Final Sweep
+
+The codebase is in good shape overall. The fixes from cycles 1 and 2 were properly implemented. The remaining issues are primarily about systematic consistency rather than individual bugs.

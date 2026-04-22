@@ -1,31 +1,35 @@
-# Document Specialist
+# Document Specialist Review — RPF Cycle 3
 
-**Date:** 2026-04-20
-**Base commit:** 52d81f9d
-**Angle:** Documentation-code mismatches against authoritative sources
+**Date:** 2026-04-22
+**Reviewer:** document-specialist
+**Base commit:** 7b07995f
 
-## Inventory
-- Repo rules: `AGENTS.md`, `CLAUDE.md`
-- User-facing tests/specs: `tests/component/pagination-controls.test.tsx`, `tests/e2e/public-shell.spec.ts`
-- Current public-shell implementation and live behavior
+## Findings
 
-## F1: The component test suite documents the wrong rendering contract for `PaginationControls`
-- **File:** `tests/component/pagination-controls.test.tsx:34-68`
-- **Severity:** MEDIUM
-- **Confidence:** HIGH
-- **Status:** confirmed issue
-- **Description:** The test suite treats `PaginationControls` as an awaitable async function with server-side translations. That is not the valid contract for a client component in the real app.
-- **Concrete mismatch scenario:** Contributors reading the test file are taught to preserve the broken API shape that currently crashes live routes.
-- **Suggested fix:** Update the test to match the real client-component contract after the component is fixed.
+### DOC-1: `src/lib/api/client.ts` error handling convention table is incomplete — does not mention the `response.ok` before `.json()` pattern [LOW/LOW]
 
-## F2: Repo intent says public nav is centralized, but the home / 404 pages still maintain their own divergent header wiring
-- **File:** `src/lib/navigation/public-nav.ts:1-17`, `src/app/page.tsx:88-103`, `src/app/not-found.tsx:45-60`
-- **Severity:** MEDIUM
-- **Confidence:** HIGH
-- **Status:** confirmed issue
-- **Description:** The comment in `public-nav.ts` says the nav definitions are centralized so they stay in sync automatically, but the home and 404 pages still bypass that centralization.
-- **Concrete mismatch scenario:** The comment promises one source of truth while the actual implementation has at least three.
-- **Suggested fix:** Either fully centralize those entry points or narrow the comment so it matches reality.
+**File:** `src/lib/api/client.ts:9-24`
 
-## Final sweep
-- The strongest doc/code mismatches this cycle are in executable documentation (tests/comments), not in README prose.
+**Description:** The JSDoc comment in `apiFetch` documents error handling conventions but does not mention the critical pattern of checking `response.ok` before calling `response.json()`. Since this is the most common bug pattern in the codebase (8+ instances), it should be documented as a required pattern.
+
+**Fix:** Add a row to the convention table: "Non-JSON error response | Check `response.ok` before calling `.json()`; use `.json().catch(() => ({}))` on error responses".
+
+**Confidence:** MEDIUM
+
+---
+
+### DOC-2: `useVisibilityPolling` JSDoc does not mention that callback should handle errors internally [LOW/LOW]
+
+**File:** `src/hooks/use-visibility-polling.ts:6-13`
+
+**Description:** The JSDoc for `useVisibilityPolling` does not document the expectation that the callback function should handle its own errors (try/catch with toast). Without this documentation, developers may assume the hook handles errors, leading to unhandled rejections.
+
+**Fix:** Add a note: "The callback must handle its own errors. The hook does not catch errors thrown by the callback."
+
+**Confidence:** LOW
+
+---
+
+## Final Sweep
+
+The codebase documentation is generally good. API routes have proper JSDoc. The auth config is well-documented with inline comments explaining security decisions. The main gap is the missing pattern documentation in `apiFetch` that could prevent the recurring `response.json()` anti-pattern.

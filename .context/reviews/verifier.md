@@ -1,35 +1,42 @@
-# Verifier
+# Verifier Review — RPF Cycle 3
 
-**Date:** 2026-04-20
-**Base commit:** 52d81f9d
-**Angle:** Evidence-based correctness check against stated behavior
+**Date:** 2026-04-22
+**Reviewer:** verifier
+**Base commit:** 7b07995f
 
-## Inventory
-- Live browser audit on `https://algo.xylolabs.com/`, `/practice`, `/rankings`, `/login`, `/playground`, `/contests`, `/community`, `/submissions`, `/languages`
-- Repo-side inspection of `src/components/pagination-controls.tsx`, `src/app/page.tsx`, `src/app/not-found.tsx`
-- Test coverage review in `tests/component/pagination-controls.test.tsx` and `tests/e2e/public-shell.spec.ts`
+## Findings
 
-## F1: The live `/practice` and `/rankings` failures map directly to a confirmed repo-side bug in `PaginationControls`
-- **File:** `src/components/pagination-controls.tsx:1-60`
-- **Severity:** HIGH
-- **Confidence:** HIGH
-- **Status:** confirmed issue
-- **Evidence:** Live browser audit showed `https://algo.xylolabs.com/practice` and `https://algo.xylolabs.com/rankings` rendering the public server-error shell (`heading "This page couldn’t load"`, reload button, error IDs `199745080` and `3036685368`). Both routes render `PaginationControls`. The component is a client component that is declared `async` and awaits `getTranslations` from `next-intl/server`.
-- **Concrete failure scenario:** Practice and rankings crash during render even though the rest of the public shell is healthy.
-- **Suggested fix:** Convert `PaginationControls` to a synchronous client component that uses `useTranslations`.
+### V-1: Verified: Cycle 2 fixes (AGG-1 through AGG-5) are correctly implemented [N/A]
 
-## F2: The home page still uses the stale workspace label path that the rest of the public shell already replaced
-- **File:** `src/app/page.tsx:98-103`, `src/app/not-found.tsx:55-60`
-- **Severity:** MEDIUM
-- **Confidence:** HIGH
-- **Status:** confirmed issue
-- **Evidence:** Live home snapshot exposed a header link with label text `publicShell.nav.workspace`. In the repo, the public layout has already switched to `tShell("nav.dashboard")`, but the home and 404 pages still use `tShell("nav.workspace")`.
-- **Concrete failure scenario:** The most visible page in the product shows a raw i18n key instead of a user-facing label.
-- **Suggested fix:** Align the home / 404 pages with the shared public-layout label strategy.
+**Verification:**
+- AGG-1 (submission-overview migrated to useVisibilityPolling): CONFIRMED — component uses `useVisibilityPolling` on line 72
+- AGG-2 (NaN prevention in normalizeSubmission): CONFIRMED — all numeric checks use `Number.isFinite`
+- AGG-3 (announcements response.ok check): CONFIRMED — `response.ok` checked on line 53 before JSON parse on line 56
+- AGG-5 (sidebar timer): CONFIRMED — timer only runs when active assignments exist
+- AGG-6 (acceptedPct formatNumber): CONFIRMED — uses `formatNumber` on line 150
 
-## Verified safe this cycle
-- Invalid login flow now produces the in-form `Invalid username or password` alert instead of `UntrustedHost`; no regression was found there.
-- Public routes `/playground`, `/contests`, `/community`, `/submissions`, and `/languages` loaded successfully during the same-host browser audit.
+---
 
-## Final sweep
-- The observed live failures are explained by repo-side causes; no contradictory evidence surfaced in the inspected code.
+### V-2: `problem-submission-form.tsx` — `handleRun` and `handleSubmit` still parse JSON before checking `response.ok` [MEDIUM/HIGH]
+
+**File:** `src/components/problem/problem-submission-form.tsx:183,245`
+
+**Description:** Evidence-based verification: line 183 `const payload = await response.json()` is called unconditionally in `handleRun`. Line 245 same in `handleSubmit`. In both cases, `response.ok` is checked AFTER the JSON parse. This is the same class of bug that was verified as fixed in `contest-announcements.tsx` and `contest-clarifications.tsx`, but was NOT fixed in this file.
+
+**Confidence:** HIGH
+
+---
+
+### V-3: `discussion-vote-buttons.tsx` — vote failure silently returns, verified no error feedback [MEDIUM/MEDIUM]
+
+**File:** `src/components/discussions/discussion-vote-buttons.tsx:47-49`
+
+**Description:** Verified by reading the code: when `!response.ok`, line 48 `return` is executed with no toast.error() call. No error feedback of any kind is shown to the user.
+
+**Confidence:** HIGH
+
+---
+
+## Final Sweep
+
+All cycle 2 fixes were verified as correctly implemented. The remaining issues are all new findings in files that were not addressed in prior cycles.

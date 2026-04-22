@@ -1,31 +1,47 @@
-# Test Engineer
+# Test Engineer Review — RPF Cycle 3
 
-**Date:** 2026-04-20
-**Base commit:** 52d81f9d
-**Angle:** Test coverage gaps, flaky tests, TDD opportunities
+**Date:** 2026-04-22
+**Reviewer:** test-engineer
+**Base commit:** 7b07995f
 
-## Inventory
-- Component coverage: `tests/component/pagination-controls.test.tsx`, `tests/component/home-page.test.tsx`, `tests/component/not-found-page.test.tsx`
-- E2E coverage: `tests/e2e/public-shell.spec.ts`, `tests/e2e/rankings.spec.ts`
-- Production-failing code: `src/components/pagination-controls.tsx`, `src/app/page.tsx`, `src/app/not-found.tsx`
+## Findings
 
-## F1: The pagination component test suite encoded the broken async API instead of guarding against it
-- **File:** `tests/component/pagination-controls.test.tsx:34-68`
-- **Severity:** MEDIUM
-- **Confidence:** HIGH
-- **Status:** confirmed issue
-- **Description:** The test mocks `next-intl/server` and calls `await PaginationControls(...)` directly. That means the test suite normalized the invalid async client-component shape instead of flagging it.
-- **Concrete failure scenario:** Production rejects the component boundary while the component test suite keeps passing because it never renders the component the way Next.js does.
-- **Suggested fix:** Refactor the component to a normal client component and update the test to render `<PaginationControls ... />` with a client-side translation mock.
+### TE-1: No unit tests for `discussion-vote-buttons.tsx` — silent failure mode untested [MEDIUM/MEDIUM]
 
-## F2: Public-shell E2E coverage does not guard the live regression on `/rankings`, and it does not assert absence of the public error shell
-- **File:** `tests/e2e/public-shell.spec.ts:24-45`
-- **Severity:** MEDIUM
-- **Confidence:** HIGH
-- **Status:** confirmed issue
-- **Description:** The suite checks `/practice` but not `/rankings`, and even the `/practice` test only asserts the expected heading instead of also asserting that the global server-error shell is absent.
-- **Concrete failure scenario:** `/practice` and `/rankings` can regress into the public error shell while the suite still misses half the blast radius.
-- **Suggested fix:** Add coverage for `/rankings` and explicitly fail on the server-error shell for both routes.
+**File:** `src/components/discussions/discussion-vote-buttons.tsx`
 
-## Final sweep
-- The current failure escaped because both component and E2E coverage validated happy paths without validating the actual Next.js rendering contract.
+**Description:** The vote buttons component has no unit tests. The silent failure on `!response.ok` (line 47-49) and the lack of try/catch around the API call are exactly the kind of bugs that tests catch. There are also no tests for the optimistic UI update behavior (score state).
+
+**Fix:** Add unit tests covering: successful vote, failed vote (error toast expected), network error, disabled state, concurrent vote prevention.
+
+**Confidence:** HIGH
+
+---
+
+### TE-2: No unit tests for `problem-submission-form.tsx` response handling — SyntaxError on non-JSON error untested [MEDIUM/MEDIUM]
+
+**File:** `src/components/problem/problem-submission-form.tsx`
+
+**Description:** The submission form has no tests for the API response handling in `handleRun` and `handleSubmit`. The SyntaxError path when the server returns non-JSON is completely untested.
+
+**Fix:** Add integration tests for the submission flow with mocked API responses, including non-JSON error responses.
+
+**Confidence:** HIGH
+
+---
+
+### TE-3: `participant-anti-cheat-timeline.tsx` has no polling — test would catch stale data [LOW/LOW]
+
+**File:** `src/components/contest/participant-anti-cheat-timeline.tsx`
+
+**Description:** The lack of polling in this component would be caught by a test that verifies the component re-fetches data when the page becomes visible again. The `useVisibilityPolling` hook is tested, but the component's integration with it is not.
+
+**Fix:** Add tests after migrating to `useVisibilityPolling`.
+
+**Confidence:** LOW
+
+---
+
+## Final Sweep
+
+Test coverage for the core hooks (use-submission-polling, useVisibilityPolling) was flagged as a gap in cycle 2 and deferred. The most impactful new test gaps are in the discussion components and the problem submission form, which are user-facing features with zero test coverage for error handling paths.

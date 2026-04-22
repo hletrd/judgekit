@@ -1,31 +1,39 @@
-# Debugger
+# Debugger Review — RPF Cycle 3
 
-**Date:** 2026-04-20
-**Base commit:** 52d81f9d
-**Angle:** Latent bug surface, failure modes, regressions
+**Date:** 2026-04-22
+**Reviewer:** debugger
+**Base commit:** 7b07995f
 
-## Inventory
-- Live failing pages: `/practice`, `/rankings`
-- Shared code used by both pages: `src/components/pagination-controls.tsx`
-- Header label regression surface: `src/app/page.tsx`, `src/app/not-found.tsx`, `src/app/(public)/layout.tsx`
+## Findings
 
-## F1: Most plausible root cause for both public-page crashes is the invalid async client pagination component
-- **File:** `src/components/pagination-controls.tsx:1-60`
-- **Severity:** HIGH
-- **Confidence:** HIGH
-- **Status:** confirmed issue
-- **Description:** `/practice` and `/rankings` are otherwise very different pages, but they both render `PaginationControls`. The shared component is the clean common denominator and contains a known-invalid pattern (`"use client"` + `export async function` + `next-intl/server`).
-- **Concrete failure scenario:** Both pages enter the same React/Next boundary failure path and render the public server-error shell.
-- **Suggested fix:** Remove the async server import pattern from the client component.
+### DBG-1: `problem-submission-form.tsx` handleSubmit: SyntaxError on non-JSON error response causes unhelpful error message [MEDIUM/HIGH]
 
-## F2: The home-page label regression is caused by config drift, not by the login flow or missing translation keys at HEAD
-- **File:** `src/app/page.tsx:98-103`, `src/app/not-found.tsx:55-60`, `messages/en.json:2616-2624`, `messages/ko.json:2616-2624`
-- **Severity:** MEDIUM
-- **Confidence:** HIGH
-- **Status:** confirmed issue
-- **Description:** The translation keys exist in the repo, but the home / 404 pages still wire the older workspace path instead of the shared dashboard path used elsewhere.
-- **Concrete failure scenario:** The deployed home page keeps showing `publicShell.nav.workspace` even though the repo has already moved the regular public layout to `nav.dashboard`.
-- **Suggested fix:** Remove the duplicated header config and align the entry points with the shared nav helper.
+**File:** `src/components/problem/problem-submission-form.tsx:245-247`
 
-## Final sweep
-- No evidence pointed to the improved invalid-login path as a reopened regression.
+**Description:** When the submit endpoint returns a non-JSON error (e.g., 502 from proxy, or 413 Payload Too Large with plain text), `await response.json()` on line 245 throws a SyntaxError. This is caught by the generic catch on line 268, which shows `tCommon("error")` — a completely generic message. The user has no idea their code was not submitted.
+
+This is the most user-impactful instance of the pattern because code submission is the core action of the application. A failed submission with a generic error is deeply confusing during a timed contest.
+
+**Concrete failure scenario:** During a live contest, the judge worker is overloaded. The submission API returns 503 with a plain text "Service Unavailable" body. The student sees a generic "Error" toast. They may resubmit, thinking it was a network glitch, but the same error occurs. They have no feedback about whether they should wait or try something different.
+
+**Fix:** Check `response.ok` before parsing JSON. On error, try to extract a meaningful error message from the response.
+
+**Confidence:** HIGH
+
+---
+
+### DBG-2: `discussion-vote-buttons.tsx` has no try/catch around API call — unhandled rejection possible [MEDIUM/MEDIUM]
+
+**File:** `src/components/discussions/discussion-vote-buttons.tsx:36-55`
+
+**Description:** The `handleVote` function has no try/catch. If `apiFetch` throws a network error (not just returns a non-ok response), the resulting unhandled promise rejection will be caught by the `finally` block, but the error itself is silently swallowed. The user sees the button re-enable with no feedback.
+
+**Fix:** Wrap the API call in try/catch and show a toast on network errors.
+
+**Confidence:** HIGH
+
+---
+
+## Final Sweep
+
+The `handleRun` function in `problem-submission-form.tsx` also has the same issue as DBG-1 but is slightly less critical since "Run" is not the primary submission path. The anti-cheat monitor's localStorage fallback is well-implemented with retry logic. The countdown timer properly validates time-sync responses with `Number.isFinite`.

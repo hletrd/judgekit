@@ -1,37 +1,35 @@
-# Tracer
+# Tracer Review — RPF Cycle 3
 
-**Date:** 2026-04-20
-**Base commit:** 52d81f9d
-**Angle:** Causal tracing of suspicious flows and competing hypotheses
+**Date:** 2026-04-22
+**Reviewer:** tracer
+**Base commit:** 7b07995f
 
-## Inventory
-- Traced the live failures from browser symptoms back through the shared public route tree
-- Compared competing hypotheses across `/practice`, `/rankings`, and the home-page header
+## Findings
 
-## F1: Best-fit causal chain for `/practice` + `/rankings` outages points to `PaginationControls`
-- **File:** `src/components/pagination-controls.tsx:1-60`
-- **Severity:** HIGH
-- **Confidence:** HIGH
-- **Status:** confirmed issue
-- **Causal chain:**
-  1. Live browser audit shows `/practice` and `/rankings` both fail with the same public server-error shell.
-  2. The two pages otherwise use different data sources and rendering logic.
-  3. Both pages share `PaginationControls`.
-  4. `PaginationControls` is a client component that is declared async and awaits a server-only translation helper.
-  5. That invalid boundary explains a shared render-time crash without needing a database-specific hypothesis.
-- **Suggested fix:** Refactor `PaginationControls` to a synchronous client component using client-safe translations.
+### TR-1: Causal trace of `response.json()` before `response.ok` — SyntaxError propagates to generic catch, hides real error [MEDIUM/HIGH]
 
-## F2: The workspace-label regression traces to entry-point drift, not missing translation keys at HEAD
-- **File:** `src/app/page.tsx:98-103`, `src/app/not-found.tsx:55-60`, `src/app/(public)/layout.tsx:22-31`
-- **Severity:** MEDIUM
-- **Confidence:** HIGH
-- **Status:** confirmed issue
-- **Causal chain:**
-  1. Live home shows `publicShell.nav.workspace`.
-  2. The repo still hard-codes `nav.workspace` on the home and 404 pages.
-  3. The normal public layout already uses `nav.dashboard`.
-  4. Therefore the remaining regression is explained by duplicated, unsynchronized entry-point config.
-- **Suggested fix:** Reuse the shared public-layout/nav path for those entry points.
+**Trace path:** `problem-submission-form.tsx:handleSubmit` -> `apiFetch` -> server returns 502 with HTML -> `response.json()` throws SyntaxError -> catch block on line 268 -> `toast.error(tCommon("error"))` -> user sees "Error"
 
-## Final sweep
-- Competing hypotheses involving the login flow or a missing translation key at HEAD were weaker than the confirmed shared-component and duplicated-config explanations.
+**Description:** The SyntaxError from `response.json()` on a non-JSON body bypasses the intended error handling path (lines 247-249 which extract `payload.error`). The user gets a generic error instead of the server's actual error message. In a timed contest, this is the difference between "the submission was rejected because the code is too long" and a meaningless "Error".
+
+**Fix:** Check `response.ok` before calling `.json()`. On error, use `.text()` or `.json().catch()` to extract the error message.
+
+**Confidence:** HIGH
+
+---
+
+### TR-2: `discussion-vote-buttons.tsx` — vote failure silently returns, no error path traced [MEDIUM/MEDIUM]
+
+**Trace path:** `handleVote` -> `apiFetch` -> server returns 403 -> `!response.ok` on line 47 -> `return` on line 48 -> button re-enables, score unchanged, no toast
+
+**Description:** Tracing the failure path shows that when the server rejects a vote, the function returns on line 48 with zero user feedback. The user's click is effectively discarded. There is no toast, no state change, no aria-live announcement.
+
+**Fix:** Add error toast and aria-live announcement for vote failures.
+
+**Confidence:** HIGH
+
+---
+
+## Final Sweep
+
+The `useSubmissionPolling` hook's SSE-to-fetch-polling fallback is well-traced with proper cleanup. The anti-cheat monitor's localStorage persistence and retry logic is correctly traced. The countdown timer's time-sync validation properly prevents NaN propagation. The main tracing concern is the number of code paths where `response.json()` can throw SyntaxError and the error is either silently swallowed or surfaced as a generic message.

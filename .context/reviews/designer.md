@@ -1,48 +1,47 @@
-# Designer
+# UI/UX Review — RPF Cycle 3
 
-**Date:** 2026-04-20
-**Base commit:** 52d81f9d
-**Angle:** UI/UX, accessibility, browser audit
+**Date:** 2026-04-22
+**Reviewer:** designer
+**Base commit:** 7b07995f
 
-## Browser audit inventory (same-host only)
-Audited with `agent-browser` on:
-- `https://algo.xylolabs.com/`
-- `https://algo.xylolabs.com/practice`
-- `https://algo.xylolabs.com/rankings`
-- `https://algo.xylolabs.com/login`
-- `https://algo.xylolabs.com/playground`
-- `https://algo.xylolabs.com/contests`
-- `https://algo.xylolabs.com/community`
-- `https://algo.xylolabs.com/submissions`
-- `https://algo.xylolabs.com/languages`
+## Findings
 
-Authenticated audit attempt:
-- Tried the `.env` `E2E_TEST_USERNAME` / `E2E_TEST_PASSWORD` credentials on `https://algo.xylolabs.com/login`
-- Result: inline alert `Invalid username or password`; authenticated pages could not be audited without guessing secrets
+### DES-1: `discussion-vote-buttons.tsx` provides no feedback on failed votes — user confused [MEDIUM/MEDIUM]
 
-## F1: `/practice` and `/rankings` regress to the public server-error shell instead of their intended content
-- **URL / evidence:**
-  - `https://algo.xylolabs.com/practice` → accessibility snapshot shows heading `"This page couldn’t load"`, paragraph `"A server error occurred. Reload to try again."`, reload button ref `e2`, error ID `199745080`
-  - `https://algo.xylolabs.com/rankings` → same shell with error ID `3036685368`
-- **Code region:** `src/components/pagination-controls.tsx:1-60`
-- **Severity:** HIGH
-- **Confidence:** HIGH
-- **Status:** confirmed issue
-- **User impact:** Two top-level public navigation routes are unusable even though adjacent routes (`/playground`, `/contests`, `/community`, `/submissions`, `/languages`) load normally.
-- **Suggested fix:** Repair the shared pagination component's client/server boundary so these routes can render their real content.
+**File:** `src/components/discussions/discussion-vote-buttons.tsx:47-49`
 
-## F2: The home-page header still exposes a raw i18n key instead of a user-facing label
-- **URL / evidence:** `https://algo.xylolabs.com/` accessibility snapshot shows header link text `"publicShell.nav.workspace"` (ref `e6`) between the locale/theme controls and the auth links
-- **Code region:** `src/app/page.tsx:98-103`, `src/app/not-found.tsx:55-60`
-- **Severity:** MEDIUM
-- **Confidence:** HIGH
-- **Status:** confirmed issue
-- **User impact:** The highest-traffic page leaks an internal translation key into the visible navigation, which looks broken and undermines trust.
-- **Suggested fix:** Align the home / 404 pages with the shared public-layout dashboard label path.
+**Description:** When a vote request fails (network error, 403, 500), the function silently returns. The vote button re-enables with the original score unchanged. The user has no indication that their vote was not counted. This violates WCAG 2.2 SC 4.1.3 (Status Messages) — status messages must be presented to the user through role or attributes.
 
-## Verified safe this cycle
-- `/login` invalid credentials now produce the in-form alert `Invalid username or password`; the earlier `UntrustedHost` symptom was not reproduced.
-- `/playground`, `/contests`, `/community`, `/submissions`, and `/languages` loaded successfully on the same host.
+**Fix:** Show a toast notification on vote failure.
 
-## Final sweep
-- The live public UX failures are concentrated in the pagination routes and the home-page header label; no additional same-host public page failed during this audit.
+**Confidence:** HIGH
+
+---
+
+### DES-2: `contest-replay.tsx` speed selector uses native `<select>` — inconsistent styling [LOW/LOW]
+
+**File:** `src/components/contest/contest-replay.tsx:177-188`
+
+**Description:** The playback speed selector uses a native `<select>` with `className="h-9 rounded-md border bg-background px-3"` instead of the project's `Select` component. This creates visual inconsistency with every other dropdown in the application, which uses the Radix-based `Select` component. The native `<select>` does not support dark mode theming consistently.
+
+**Fix:** Replace with the project's `Select` component family.
+
+**Confidence:** MEDIUM
+
+---
+
+### DES-3: `participant-anti-cheat-timeline.tsx` does not auto-refresh — stale data during live monitoring [LOW/LOW]
+
+**File:** `src/components/contest/participant-anti-cheat-timeline.tsx:128-130`
+
+**Description:** During a live contest, instructors monitor anti-cheat events. New events arrive but are not shown until the page is manually reloaded. This is inconsistent with all other contest monitoring components (leaderboard, announcements, clarifications) which auto-refresh via `useVisibilityPolling`.
+
+**Fix:** Add `useVisibilityPolling` with a 30-second interval.
+
+**Confidence:** MEDIUM
+
+---
+
+## Final Sweep
+
+The leaderboard table has proper skeleton loading states and responsive design. The anti-cheat dashboard uses appropriate color coding for event types. The replay component has smooth FLIP animations for rank changes. The main gaps are consistency issues (native select, missing polling) rather than fundamental UX problems.
