@@ -308,7 +308,7 @@ export async function proxy(request: NextRequest) {
 
   if (isProtectedRoute && activeUser?.mustChangePassword) {
     if (isApiRoute) {
-      return NextResponse.json({ error: "Password change required" }, { status: 403 });
+      return NextResponse.json({ error: "mustChangePassword" }, { status: 403 });
     }
 
     return NextResponse.redirect(new URL("/change-password", request.url));

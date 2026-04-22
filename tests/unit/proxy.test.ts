@@ -448,7 +448,7 @@ describe("proxy", () => {
 
       expect(response.status).toBe(403);
       const body = await response.json();
-      expect(body).toEqual({ error: "Password change required" });
+      expect(body).toEqual({ error: "mustChangePassword" });
     });
 
     it("allows authenticated active API requests through", async () => {
