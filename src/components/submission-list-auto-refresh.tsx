@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { apiFetch } from "@/lib/api/client";
 
 const ACTIVE_INTERVAL_MS = 5000;
 const IDLE_INTERVAL_MS = 10000;
@@ -20,6 +21,7 @@ export function SubmissionListAutoRefresh({
   const router = useRouter();
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const errorCountRef = useRef(0);
+  const isRunningRef = useRef(false);
 
   useEffect(() => {
     const baseInterval = hasActiveSubmissions ? activeIntervalMs : idleIntervalMs;
@@ -30,23 +32,34 @@ export function SubmissionListAutoRefresh({
     }
 
     async function tick() {
-      if (document.visibilityState === "hidden") return;
+      // Guard against concurrent ticks
+      if (isRunningRef.current) return;
+      isRunningRef.current = true;
 
       try {
-        // Use a lightweight fetch to detect network/server errors.
+        if (document.visibilityState === "hidden") return;
+
+        // Use apiFetch for consistent CSRF header handling.
         // router.refresh() never throws on errors, so we cannot rely on it
         // for backoff. We fetch /api/v1/time (a tiny endpoint) first; only
         // on success do we trigger the actual page revalidation.
         // Note: /api/v1/time is unauthenticated, so this backoff only
         // activates for network/server errors, not session expiry. Session
         // expiry is correctly handled by the middleware redirect.
-        const res = await fetch("/api/v1/time", { cache: "no-store" });
+        const res = await apiFetch("/api/v1/time", { cache: "no-store" });
         if (!res.ok) throw new Error(`time endpoint returned ${res.status}`);
         router.refresh();
         errorCountRef.current = 0;
       } catch {
         errorCountRef.current += 1;
+      } finally {
+        isRunningRef.current = false;
       }
+    }
+
+    async function start() {
+      await tick();
+      scheduleNext();
     }
 
     function scheduleNext() {
@@ -57,9 +70,8 @@ export function SubmissionListAutoRefresh({
       }, getBackoffInterval());
     }
 
-    // Initial tick
-    void tick();
-    scheduleNext();
+    // Await the initial tick before scheduling the next one
+    void start();
 
     return () => {
       if (timerRef.current) {
