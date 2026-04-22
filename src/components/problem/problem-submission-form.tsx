@@ -182,7 +182,7 @@ export function ProblemSubmissionForm({
       });
       if (!response.ok) {
         const errorBody = await response.json().catch(() => ({}));
-        toast.error((errorBody as { error?: string }).error ?? tCommon("error"));
+        toast.error(translateSubmissionError((errorBody as { error?: string }).error));
         return;
       }
       const payload = await response.json();
