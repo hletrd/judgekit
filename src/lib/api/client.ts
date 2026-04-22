@@ -29,7 +29,7 @@
  * when parsing error responses, or `.json()` for success responses inside
  * an `if (response.ok)` block.
  *
- * Example:
+ * Example (success-first — recommended):
  * ```ts
  * const response = await apiFetch("/api/v1/resource");
  * if (!response.ok) {
@@ -39,6 +39,17 @@
  * }
  * const payload = await response.json();
  * ```
+ *
+ * **Anti-pattern (error-first) — DO NOT USE:**
+ * ```ts
+ * // BAD: .json() is called before response.ok is checked.
+ * // If the server returns non-JSON (e.g., 502 HTML), .json() throws SyntaxError.
+ * const body = await response.json();  // <-- throws on non-JSON error bodies
+ * if (!response.ok) {
+ *   throw new Error(body.error);  // <-- never reached
+ * }
+ * ```
+ * Always check `response.ok` BEFORE calling `.json()`.
  */
 export function apiFetch(
   input: RequestInfo | URL,
