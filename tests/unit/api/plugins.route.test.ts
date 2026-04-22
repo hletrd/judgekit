@@ -544,7 +544,7 @@ describe("POST /api/v1/plugins/chat-widget/test-connection", () => {
     authMock.mockResolvedValue(null);
 
     const res = await testConnectionPOST(
-      makeTestConnectionRequest({ provider: "openai", apiKey: "key", model: "gpt-4o" })
+      makeTestConnectionRequest({ provider: "openai", model: "gpt-4o" })
     );
     expect(res.status).toBe(401);
     const body = await res.json();
@@ -555,7 +555,7 @@ describe("POST /api/v1/plugins/chat-widget/test-connection", () => {
     authMock.mockResolvedValue(STUDENT_SESSION);
 
     const res = await testConnectionPOST(
-      makeTestConnectionRequest({ provider: "openai", apiKey: "key", model: "gpt-4o" })
+      makeTestConnectionRequest({ provider: "openai", model: "gpt-4o" })
     );
     expect(res.status).toBe(401);
     const body = await res.json();
@@ -566,30 +566,46 @@ describe("POST /api/v1/plugins/chat-widget/test-connection", () => {
     authMock.mockResolvedValue(ADMIN_SESSION);
 
     const res = await testConnectionPOST(
-      makeTestConnectionRequest({ provider: "unknown", apiKey: "", model: "" })
+      makeTestConnectionRequest({ provider: "unknown", model: "" })
     );
     expect(res.status).toBe(400);
     const body = await res.json();
     expect(body.error).toBe("invalidRequest");
   });
 
-  it("returns 400 when apiKey is empty", async () => {
+  it("returns 400 when plugin is not configured", async () => {
     authMock.mockResolvedValue(ADMIN_SESSION);
+    getPluginStateMock.mockResolvedValue(null);
 
     const res = await testConnectionPOST(
-      makeTestConnectionRequest({ provider: "openai", apiKey: "", model: "gpt-4o" })
+      makeTestConnectionRequest({ provider: "openai", model: "gpt-4o" })
     );
     expect(res.status).toBe(400);
     const body = await res.json();
-    expect(body.error).toBe("invalidRequest");
+    expect(body.error).toBe("notConfigured");
+  });
+
+  it("returns 400 when API key is not configured for provider", async () => {
+    authMock.mockResolvedValue(ADMIN_SESSION);
+    getPluginStateMock.mockResolvedValue({
+      config: { ...PLUGIN_CONFIG, openaiApiKey: "" },
+    });
+
+    const res = await testConnectionPOST(
+      makeTestConnectionRequest({ provider: "openai", model: "gpt-4o" })
+    );
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.error).toBe("apiKeyNotConfigured");
   });
 
   it("returns success:true when OpenAI API call succeeds", async () => {
     authMock.mockResolvedValue(ADMIN_SESSION);
+    getPluginStateMock.mockResolvedValue({ config: PLUGIN_CONFIG });
     fetchMock.mockResolvedValue({ ok: true, text: vi.fn().mockResolvedValue("") });
 
     const res = await testConnectionPOST(
-      makeTestConnectionRequest({ provider: "openai", apiKey: "sk-test", model: "gpt-4o" })
+      makeTestConnectionRequest({ provider: "openai", model: "gpt-4o" })
     );
     expect(res.status).toBe(200);
     const body = await res.json();
@@ -605,12 +621,13 @@ describe("POST /api/v1/plugins/chat-widget/test-connection", () => {
 
   it("returns success:true when Claude API call succeeds", async () => {
     authMock.mockResolvedValue(ADMIN_SESSION);
+    const claudeConfig = { ...PLUGIN_CONFIG, provider: "claude", claudeApiKey: "claude-key", claudeModel: "claude-3-opus" };
+    getPluginStateMock.mockResolvedValue({ config: claudeConfig });
     fetchMock.mockResolvedValue({ ok: true, text: vi.fn().mockResolvedValue("") });
 
     const res = await testConnectionPOST(
       makeTestConnectionRequest({
         provider: "claude",
-        apiKey: "claude-key",
         model: "claude-3-opus",
       })
     );
@@ -628,12 +645,13 @@ describe("POST /api/v1/plugins/chat-widget/test-connection", () => {
 
   it("returns success:true when Gemini API call succeeds", async () => {
     authMock.mockResolvedValue(ADMIN_SESSION);
+    const geminiConfig = { ...PLUGIN_CONFIG, provider: "gemini", geminiApiKey: "gemini-key", geminiModel: "gemini-pro" };
+    getPluginStateMock.mockResolvedValue({ config: geminiConfig });
     fetchMock.mockResolvedValue({ ok: true, text: vi.fn().mockResolvedValue("") });
 
     const res = await testConnectionPOST(
       makeTestConnectionRequest({
         provider: "gemini",
-        apiKey: "gemini-key",
         model: "gemini-pro",
       })
     );
@@ -648,6 +666,7 @@ describe("POST /api/v1/plugins/chat-widget/test-connection", () => {
 
   it("returns success:false with error message when API call fails", async () => {
     authMock.mockResolvedValue(ADMIN_SESSION);
+    getPluginStateMock.mockResolvedValue({ config: PLUGIN_CONFIG });
     fetchMock.mockResolvedValue({
       ok: false,
       status: 401,
@@ -655,7 +674,7 @@ describe("POST /api/v1/plugins/chat-widget/test-connection", () => {
     });
 
     const res = await testConnectionPOST(
-      makeTestConnectionRequest({ provider: "openai", apiKey: "bad-key", model: "gpt-4o" })
+      makeTestConnectionRequest({ provider: "openai", model: "gpt-4o" })
     );
     expect(res.status).toBe(200);
     const body = await res.json();
@@ -665,10 +684,11 @@ describe("POST /api/v1/plugins/chat-widget/test-connection", () => {
 
   it("returns success:false when fetch throws a network error", async () => {
     authMock.mockResolvedValue(ADMIN_SESSION);
+    getPluginStateMock.mockResolvedValue({ config: PLUGIN_CONFIG });
     fetchMock.mockRejectedValue(new Error("Network error"));
 
     const res = await testConnectionPOST(
-      makeTestConnectionRequest({ provider: "openai", apiKey: "sk-test", model: "gpt-4o" })
+      makeTestConnectionRequest({ provider: "openai", model: "gpt-4o" })
     );
     expect(res.status).toBe(500);
     const body = await res.json();
@@ -680,10 +700,11 @@ describe("POST /api/v1/plugins/chat-widget/test-connection", () => {
     authMock.mockResolvedValue({
       user: { id: "super-1", role: "super_admin", username: "superadmin" },
     });
+    getPluginStateMock.mockResolvedValue({ config: PLUGIN_CONFIG });
     fetchMock.mockResolvedValue({ ok: true, text: vi.fn().mockResolvedValue("") });
 
     const res = await testConnectionPOST(
-      makeTestConnectionRequest({ provider: "openai", apiKey: "sk-test", model: "gpt-4o" })
+      makeTestConnectionRequest({ provider: "openai", model: "gpt-4o" })
     );
     expect(res.status).toBe(200);
     const body = await res.json();
