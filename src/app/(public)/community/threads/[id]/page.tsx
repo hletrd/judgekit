@@ -177,6 +177,9 @@ export default async function CommunityThreadDetailPage({ params }: { params: Pr
             lockLabel={tShell("community.moderation.lock")}
             unlockLabel={tShell("community.moderation.unlock")}
             deleteLabel={tShell("community.moderation.deleteThread")}
+            deleteConfirmTitle={tShell("community.moderation.deleteThreadConfirmTitle")}
+            deleteConfirmDescription={tShell("community.moderation.deleteThreadConfirmDescription")}
+            cancelLabel={tShell("common.cancel")}
             successLabel={tShell("community.moderation.success")}
             deleteSuccessLabel={tShell("community.moderation.deleteSuccess")}
             errorLabel={tShell("community.moderation.moderationError")}

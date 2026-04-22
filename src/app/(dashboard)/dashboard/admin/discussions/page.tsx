@@ -44,9 +44,10 @@ export default async function AdminDiscussionsPage({
   const scope = normalizeScope(resolvedSearchParams?.scope);
   const state = normalizeState(resolvedSearchParams?.state);
 
-  const [tModeration, tCommunity, locale] = await Promise.all([
+  const [tModeration, tCommunity, tCommon, locale] = await Promise.all([
     getTranslations("publicShell.moderation"),
     getTranslations("publicShell.community"),
+    getTranslations("common"),
     getLocale(),
   ]);
   const threads = await listModerationDiscussionThreads({ scope, state });
@@ -106,6 +107,9 @@ export default async function AdminDiscussionsPage({
             pinLabel: tCommunity("moderation.pin"),
             unpinLabel: tCommunity("moderation.unpin"),
             deleteLabel: tCommunity("moderation.deleteThread"),
+            deleteConfirmTitle: tCommunity("moderation.deleteThreadConfirmTitle"),
+            deleteConfirmDescription: tCommunity("moderation.deleteThreadConfirmDescription"),
+            cancelLabel: tCommon("cancel"),
             successLabel: tCommunity("moderation.success"),
             deleteSuccessLabel: tCommunity("moderation.deleteSuccess"),
             errorLabel: tCommunity("moderation.moderationError"),

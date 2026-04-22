@@ -5,6 +5,17 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { apiFetch } from "@/lib/api/client";
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 type DiscussionThreadModerationControlsProps = {
   threadId: string;
@@ -15,6 +26,9 @@ type DiscussionThreadModerationControlsProps = {
   pinLabel: string;
   unpinLabel: string;
   deleteLabel: string;
+  deleteConfirmTitle: string;
+  deleteConfirmDescription: string;
+  cancelLabel: string;
   successLabel: string;
   deleteSuccessLabel: string;
   errorLabel: string;
@@ -30,6 +44,9 @@ export function DiscussionThreadModerationControls({
   pinLabel,
   unpinLabel,
   deleteLabel,
+  deleteConfirmTitle,
+  deleteConfirmDescription,
+  cancelLabel,
   successLabel,
   deleteSuccessLabel,
   errorLabel,
@@ -89,9 +106,25 @@ export function DiscussionThreadModerationControls({
       <Button type="button" variant="outline" size="sm" onClick={() => void updateModeration({ locked: !isLocked })} disabled={isSubmitting}>
         {isLocked ? unlockLabel : lockLabel}
       </Button>
-      <Button type="button" variant="destructive" size="sm" onClick={() => void deleteThread()} disabled={isSubmitting}>
-        {deleteLabel}
-      </Button>
+      <AlertDialog>
+        <AlertDialogTrigger render={
+          <Button type="button" variant="destructive" size="sm" disabled={isSubmitting}>
+            {deleteLabel}
+          </Button>
+        } />
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{deleteConfirmTitle}</AlertDialogTitle>
+            <AlertDialogDescription>{deleteConfirmDescription}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{cancelLabel}</AlertDialogCancel>
+            <AlertDialogAction onClick={() => void deleteThread()}>
+              {deleteLabel}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

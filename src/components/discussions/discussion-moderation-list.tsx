@@ -20,6 +20,9 @@ type ModerationItem = {
     pinLabel: string;
     unpinLabel: string;
     deleteLabel: string;
+    deleteConfirmTitle: string;
+    deleteConfirmDescription: string;
+    cancelLabel: string;
     successLabel: string;
     deleteSuccessLabel: string;
     errorLabel: string;
@@ -78,6 +81,9 @@ export function DiscussionModerationList({ title, description, emptyLabel, local
                   pinLabel={item.moderation.pinLabel}
                   unpinLabel={item.moderation.unpinLabel}
                   deleteLabel={item.moderation.deleteLabel}
+                  deleteConfirmTitle={item.moderation.deleteConfirmTitle}
+                  deleteConfirmDescription={item.moderation.deleteConfirmDescription}
+                  cancelLabel={item.moderation.cancelLabel}
                   successLabel={item.moderation.successLabel}
                   deleteSuccessLabel={item.moderation.deleteSuccessLabel}
                   errorLabel={item.moderation.errorLabel}

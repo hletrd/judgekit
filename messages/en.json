@@ -2973,6 +2973,8 @@
         "lock": "Lock thread",
         "unlock": "Unlock thread",
         "deleteThread": "Delete thread",
+        "deleteThreadConfirmTitle": "Delete this thread?",
+        "deleteThreadConfirmDescription": "This action cannot be undone. The thread and all its replies will be permanently removed.",
         "deletePost": "Delete reply",
         "success": "Discussion updated",
         "deleteSuccess": "Discussion removed",
