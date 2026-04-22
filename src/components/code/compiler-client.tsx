@@ -132,6 +132,8 @@ export function CompilerClient({ languages, title, description, preferredLanguag
 
   const [language, setLanguage] = useState(initialLanguage);
   const [sourceCode, setSourceCode] = useState(() => getDefaultCode(initialLanguage));
+  const sourceCodeRef = useRef(sourceCode);
+  useEffect(() => { sourceCodeRef.current = sourceCode; }, [sourceCode]);
   const [testCases, setTestCases] = useState<CompilerTestCase[]>([initialTestCaseRef.current]);
   const [activeTestCaseId, setActiveTestCaseId] = useState(initialTestCaseRef.current.id);
   const [activeTab, setActiveTab] = useState("stdout");
@@ -190,7 +192,7 @@ export function CompilerClient({ languages, title, description, preferredLanguag
   const handleLanguageChange = useCallback(
     (newLang: string) => {
       const oldDefault = getDefaultCode(language);
-      if (sourceCode === "" || sourceCode === oldDefault) {
+      if (sourceCodeRef.current === "" || sourceCodeRef.current === oldDefault) {
         setSourceCode(getDefaultCode(newLang));
       }
       setLanguage(newLang);
@@ -202,7 +204,7 @@ export function CompilerClient({ languages, title, description, preferredLanguag
         }))
       );
     },
-    [language, sourceCode]
+    [language]
   );
 
   const handleAddTestCase = useCallback(() => {
@@ -475,6 +477,7 @@ export function CompilerClient({ languages, title, description, preferredLanguag
                 <TabsContent key={testCase.id} value={testCase.id} className="m-0">
                   <Textarea
                     id={testCase.id === activeTestCase.id ? "stdin-input" : undefined}
+                    maxLength={1_000_000}
                     className="font-mono text-sm leading-relaxed"
                     style={{ minHeight: LAYOUT_CONSTANTS.STDIN_MIN_HEIGHT, resize: "vertical", tabSize: 4 }}
                     value={testCase.stdin}
