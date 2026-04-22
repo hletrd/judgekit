@@ -36,7 +36,7 @@ export function DiscussionPostDeleteButton({ postId, deleteLabel, deleteDescript
       toast.error(error instanceof Error ? error.message : errorLabel);
       return false;
     }
-  }, [postId, successLabel, router]);
+  }, [postId, successLabel, errorLabel, router]);
 
   return (
     <DestructiveActionDialog
