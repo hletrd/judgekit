@@ -9,7 +9,9 @@ type JsonLdProps = {
  * to prevent breaking out of the script tag.
  */
 function safeJsonForScript(data: unknown): string {
-  return JSON.stringify(data).replace(/<\/script/gi, "<\\/script");
+  return JSON.stringify(data)
+    .replace(/<\/script/gi, "<\\/script")
+    .replace(/<!--/g, "<\\!--");
 }
 
 export function JsonLd({ data }: JsonLdProps) {
