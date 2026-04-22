@@ -204,6 +204,7 @@ export default async function CommunityThreadDetailPage({ params }: { params: Pr
               canVote={Boolean(session?.user) && thread.authorId !== session?.user?.id}
               upvoteLabel={tShell("community.upvote")}
               downvoteLabel={tShell("community.downvote")}
+              voteFailedLabel={tShell("community.voteFailed")}
             />
           )}
           posts={thread.posts.map((post) => ({
@@ -220,6 +221,7 @@ export default async function CommunityThreadDetailPage({ params }: { params: Pr
                   canVote={Boolean(session?.user) && post.author?.id !== session?.user?.id}
                   upvoteLabel={tShell("community.upvote")}
                   downvoteLabel={tShell("community.downvote")}
+                  voteFailedLabel={tShell("community.voteFailed")}
                 />
                 {canModerate ? (
                   <DiscussionPostDeleteButton

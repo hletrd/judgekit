@@ -169,6 +169,7 @@ export default async function CommunityPage({
                 canVote={Boolean(session?.user) && thread.authorId !== session?.user?.id}
                 upvoteLabel={t("community.upvote")}
                 downvoteLabel={t("community.downvote")}
+                voteFailedLabel={t("community.voteFailed")}
               />
             ),
           }))}

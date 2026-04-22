@@ -2983,6 +2983,7 @@
       "sortPopular": "인기순",
       "upvote": "추천",
       "downvote": "비추천",
+      "voteFailed": "투표에 실패했습니다. 다시 시도해 주세요.",
       "scopeSolution": "풀이 공유",
       "myDiscussions": {
         "title": "내 토론",

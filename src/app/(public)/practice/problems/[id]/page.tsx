@@ -577,6 +577,7 @@ export default async function PublicProblemDetailPage({ params }: { params: Prom
                         canVote={Boolean(session?.user) && editorial.authorId !== session?.user?.id}
                         upvoteLabel={t("community.upvote")}
                         downvoteLabel={t("community.downvote")}
+                        voteFailedLabel={t("community.voteFailed")}
                       />
                     </div>
                   </CardHeader>
@@ -602,6 +603,7 @@ export default async function PublicProblemDetailPage({ params }: { params: Prom
                                   canVote={Boolean(session?.user) && post.author?.id !== session?.user?.id}
                                   upvoteLabel={t("community.upvote")}
                                   downvoteLabel={t("community.downvote")}
+                                  voteFailedLabel={t("community.voteFailed")}
                                 />
                               </div>
                               <div className="prose prose-sm dark:prose-invert max-w-none text-sm">
@@ -686,6 +688,7 @@ export default async function PublicProblemDetailPage({ params }: { params: Prom
                         canVote={Boolean(session?.user) && thread.authorId !== session?.user?.id}
                         upvoteLabel={t("community.upvote")}
                         downvoteLabel={t("community.downvote")}
+                        voteFailedLabel={t("community.voteFailed")}
                       />
                     ),
                   }))}
@@ -729,6 +732,7 @@ export default async function PublicProblemDetailPage({ params }: { params: Prom
                         canVote={Boolean(session?.user) && thread.authorId !== session?.user?.id}
                         upvoteLabel={t("community.upvote")}
                         downvoteLabel={t("community.downvote")}
+                        voteFailedLabel={t("community.voteFailed")}
                       />
                     ),
                   }))}

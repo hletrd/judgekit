@@ -2983,6 +2983,7 @@
       "sortPopular": "Popular",
       "upvote": "Upvote",
       "downvote": "Downvote",
+      "voteFailed": "Vote failed. Please try again.",
       "scopeSolution": "Solution sharing",
       "myDiscussions": {
         "title": "My discussions",

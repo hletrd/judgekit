@@ -14,6 +14,7 @@ type DiscussionVoteButtonsProps = {
   canVote: boolean;
   upvoteLabel: string;
   downvoteLabel: string;
+  voteFailedLabel: string;
 };
 
 export function DiscussionVoteButtons({
@@ -24,6 +25,7 @@ export function DiscussionVoteButtons({
   canVote,
   upvoteLabel,
   downvoteLabel,
+  voteFailedLabel,
 }: DiscussionVoteButtonsProps) {
   const router = useRouter();
   const [score, setScore] = useState(initialScore);
@@ -41,7 +43,7 @@ export function DiscussionVoteButtons({
       });
       if (!response.ok) {
         const errorBody = await response.json().catch(() => ({}));
-        toast.error((errorBody as { error?: string }).error ?? "voteFailed");
+        toast.error((errorBody as { error?: string }).error ?? voteFailedLabel);
         return;
       }
       const payload = await response.json() as {
@@ -54,7 +56,7 @@ export function DiscussionVoteButtons({
       setCurrentUserVote(payload.data?.currentUserVote ?? null);
       router.refresh();
     } catch {
-      toast.error("voteFailed");
+      toast.error(voteFailedLabel);
     } finally {
       setIsSubmitting(false);
     }
