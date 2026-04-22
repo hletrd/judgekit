@@ -1,159 +1,158 @@
-# RPF Cycle 2 Review Remediation Plan
+# RPF Cycle 2 — Review Remediation Plan
 
 **Date:** 2026-04-22
-**Source:** `.context/reviews/rpf-cycle-2-aggregate.md`
-**Status:** In progress
+**Source:** `.context/reviews/_aggregate.md`
+**Status:** COMPLETED
 
-## Scope
+## Task List
 
-This cycle addresses cycle-2 findings from the multi-agent review:
-- AGG-1: `recruiting-invitations-panel.tsx` custom expiry date `min` uses UTC instead of local time (timezone bug)
-- AGG-2: `SubmissionListAutoRefresh` lacks error-state backoff
-- AGG-3: `workers-client.tsx` `AliasCell` does not show error feedback on save failure
-- AGG-4: `contest-clarifications.tsx` shows raw `userId` instead of username (deferred)
-- AGG-5: `contest-clarifications.tsx` uses native `<select>` instead of project's `Select` component
-- AGG-6: `recruiting-invitations-panel.tsx` date input has no `aria-label`
-- AGG-7: Visibility-aware polling pattern duplicated across 6+ components (deferred)
-- AGG-8: `copyToClipboard` dynamic import inconsistency (deferred)
-- AGG-9: Practice page Path B progress filter (carried forward, deferred)
-- AGG-10: Invitation URL uses `window.location.origin` (deferred)
-- AGG-11: Duplicate `formatTimestamp` utility (deferred)
+### TASK-1: Migrate `submission-overview.tsx` to `useVisibilityPolling` [AGG-1] — Priority: HIGH
 
-No cycle-2 review finding is silently dropped. No new refactor-only work is added under deferred.
+**Files:** `src/components/lecture/submission-overview.tsx`
+**Severity:** MEDIUM/HIGH (7-agent signal)
+
+- [x] Remove the custom `visibilitychange` listener and `setInterval` polling logic (lines 115-146)
+- [x] Import `useVisibilityPolling` from `@/hooks/use-visibility-polling`
+- [x] Add `useVisibilityPolling(() => { void fetchStats(); }, POLL_INTERVAL_MS)` outside the dialog visibility check
+- [x] Ensure polling only runs when `open` is true (wrap in conditional or add guard in callback)
+- [x] Remove the now-unused `useEffect` for polling
+
+**Note:** This also fixes AGG-8 (fetchStats fires after unmount) since `useVisibilityPolling` uses a ref-stable pattern.
 
 ---
 
-## Implementation lanes
+### TASK-2: Fix `use-submission-polling.ts` NaN propagation — replace `typeof === "number"` with `Number.isFinite` [AGG-2] — Priority: HIGH
 
-### H1: Fix timezone bug in `recruiting-invitations-panel.tsx` expiry date `min` attribute (AGG-1)
+**Files:** `src/hooks/use-submission-polling.ts`
+**Severity:** MEDIUM/HIGH (7-agent signal)
 
-- **Source:** AGG-1
-- **Severity / confidence:** MEDIUM / HIGH
-- **Citations:** `src/components/contest/recruiting-invitations-panel.tsx:407`
-- **Problem:** The `min` attribute on the custom expiry date input uses `new Date().toISOString().split("T")[0]` which produces UTC time. The native `<input type="date">` renders in the user's local timezone. This blocks Korean users (UTC+9) from selecting the current local date between midnight and 9 AM.
-- **Plan:**
-  1. Replace `new Date().toISOString().split("T")[0]` with a local-date-aware computation: `new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().split("T")[0]`
-  2. Verify all gates pass.
-- **Status:** DONE (commit b82a2c49)
-
-### H2: Add error-state backoff to `SubmissionListAutoRefresh` (AGG-2)
-
-- **Source:** AGG-2
-- **Severity / confidence:** MEDIUM / MEDIUM
-- **Citations:** `src/components/submission-list-auto-refresh.tsx:24-28`
-- **Problem:** The auto-refresh component calls `router.refresh()` on a fixed interval with no error handling or exponential backoff. During server overload, this creates compounding load.
-- **Plan:**
-  1. Add error-state tracking (`errorCount` ref).
-  2. On each `router.refresh()` call, detect errors (using `startTransition` return or a wrapper).
-  3. Implement exponential backoff: `delayMs = Math.min(baseDelay * 2^errorCount, maxDelay)`.
-  4. Reset `errorCount` on successful refresh.
-  5. Verify all gates pass.
-- **Status:** DONE (commit d1fb4799)
-
-### M1: Add error toast to `workers-client.tsx` `AliasCell` save failure (AGG-3)
-
-- **Source:** AGG-3
-- **Severity / confidence:** LOW / MEDIUM
-- **Citations:** `src/app/(dashboard)/dashboard/admin/workers/workers-client.tsx:91-101`
-- **Problem:** The `handleSave` function only handles success — failed saves silently close the editing UI with no feedback.
-- **Plan:**
-  1. Add an `else` branch after `if (res.ok)` with `toast.error(t("saveFailed"))` or similar.
-  2. Verify all gates pass.
-- **Status:** DONE (commit 3fc04106, fix bec0bc52)
-
-### M2: Replace native `<select>` with project's `Select` component in `contest-clarifications.tsx` (AGG-5)
-
-- **Source:** AGG-5
-- **Severity / confidence:** LOW / LOW
-- **Citations:** `src/components/contest/contest-clarifications.tsx:204-217`
-- **Problem:** The problem selector uses a native `<select>` element instead of the project's Radix-based `Select` component, creating visual inconsistency.
-- **Plan:**
-  1. Replace the native `<select>` and `<option>` elements with `Select`, `SelectTrigger`, `SelectValue`, `SelectContent`, and `SelectItem` components.
-  2. Import the components from `@/components/ui/select`.
-  3. Verify all gates pass.
-- **Status:** DONE (commit 4ab470e0)
-
-### M3: Add `aria-label` to `recruiting-invitations-panel.tsx` date input (AGG-6)
-
-- **Source:** AGG-6
-- **Severity / confidence:** LOW / LOW
-- **Citations:** `src/components/contest/recruiting-invitations-panel.tsx:403-408`
-- **Problem:** The custom expiry date `<Input type="date">` has no `aria-label` or associated `<Label htmlFor>` attribute.
-- **Plan:**
-  1. Add `aria-label={t("expiryDate")}` to the date input.
-  2. Verify all gates pass.
-- **Status:** DONE (commit b82a2c49, fix 0693a566)
+- [x] Line 55: Replace `typeof record.executionTimeMs === "number"` with `typeof record.executionTimeMs === "number" && Number.isFinite(record.executionTimeMs)`
+- [x] Line 56: Replace `typeof record.memoryUsedKb === "number"` with `typeof record.memoryUsedKb === "number" && Number.isFinite(record.memoryUsedKb)`
+- [x] Line 61: Replace `typeof testCase.sortOrder === "number"` with `typeof testCase.sortOrder === "number" && Number.isFinite(testCase.sortOrder)`
+- [x] Line 87: Replace `typeof data.executionTimeMs === "number"` with `typeof data.executionTimeMs === "number" && Number.isFinite(data.executionTimeMs)`
+- [x] Line 88: Replace `typeof data.memoryUsedKb === "number"` with `typeof data.memoryUsedKb === "number" && Number.isFinite(data.memoryUsedKb)`
+- [x] Line 89: Replace `typeof data.score === "number"` with `typeof data.score === "number" && Number.isFinite(data.score)`
+- [x] Line 90: Replace `typeof data.failedTestCaseIndex === "number"` with `typeof data.failedTestCaseIndex === "number" && Number.isFinite(data.failedTestCaseIndex)`
 
 ---
 
-## Deferred items
+### TASK-3: Fix `contest-announcements.tsx` `handleSubmit` — check `response.ok` before parsing JSON [AGG-3] — Priority: MEDIUM
 
-### DEFER-1 through DEFER-19: Carried from cycle 27
+**Files:** `src/components/contest/contest-announcements.tsx`
+**Severity:** LOW/MEDIUM (6-agent signal)
 
-See `plans/open/2026-04-20-rpf-cycle-27-review-remediation.md` for the full deferred list. All carry forward unchanged.
-
-### DEFER-20: Contest clarifications show raw userId instead of username (AGG-4)
-
-- **Source:** AGG-4 (designer DES-1, code-reviewer CR-3)
-- **Severity / confidence:** LOW / MEDIUM
-- **Original severity preserved:** LOW / MEDIUM
-- **Citations:** `src/components/contest/contest-clarifications.tsx:257`
-- **Reason for deferral:** Fixing this requires a backend API change to include `userName` in the clarifications response. The frontend currently only has `userId` available. This is a larger-scope change that involves both the API route handler and the database query. The current behavior (showing userId) is functional but not ideal UX.
-- **Exit criterion:** When a cycle has capacity for a focused API enhancement pass, or when the clarifications API is being modified for another reason.
-
-### DEFER-21: Duplicated visibility-aware polling pattern (AGG-7)
-
-- **Source:** AGG-7 (architect ARCH-1)
-- **Severity / confidence:** LOW / MEDIUM
-- **Original severity preserved:** LOW / MEDIUM
-- **Citations:** 6+ components (see aggregate)
-- **Reason for deferral:** The existing polling code works correctly. Extracting a shared hook is a maintainability improvement with no functional impact. Previously noted as DEFER-11/DEFER-21 in earlier cycles.
-- **Exit criterion:** When a cycle has capacity for a focused DRY refactor pass, or when a bug is found in the polling pattern that needs fixing in all consumers.
-
-### DEFER-22: `copyToClipboard` dynamic import inconsistency (AGG-8)
-
-- **Source:** AGG-8 (architect ARCH-2)
-- **Severity / confidence:** LOW / LOW
-- **Original severity preserved:** LOW / LOW
-- **Citations:** 5 components use dynamic import, 2 use static import (see aggregate)
-- **Reason for deferral:** The inconsistency has no functional impact. Switching from dynamic to static imports is a minor cleanup. The clipboard utility is tiny and the dynamic import overhead is negligible.
-- **Exit criterion:** When a cycle has capacity for a focused import cleanup pass.
-
-### DEFER-23: Practice page Path B progress filter (AGG-9)
-
-- **Source:** AGG-9 (perf-reviewer PERF-2), carried forward from cycle 18
-- **Severity / confidence:** MEDIUM / MEDIUM
-- **Original severity preserved:** MEDIUM / MEDIUM
-- **Citations:** `src/app/(public)/practice/page.tsx:410-519`
-- **Reason for deferral:** The code has a comment acknowledging this should be moved to SQL. The JavaScript-side filtering works correctly for current data volumes. Scale concern, not an immediate bug.
-- **Exit criterion:** When practice page performance becomes a measurable problem, or when a cycle has capacity for SQL optimization work.
-
-### DEFER-24: Invitation URL uses `window.location.origin` (AGG-10)
-
-- **Source:** AGG-10 (security-reviewer SEC-1, tracer TR-1)
-- **Severity / confidence:** LOW / MEDIUM
-- **Original severity preserved:** LOW / MEDIUM
-- **Citations:** `src/components/contest/recruiting-invitations-panel.tsx:95,181,207`
-- **Reason for deferral:** In current deployments, `window.location.origin` is trustworthy. The risk only materializes behind a misconfigured reverse proxy. The existing proxy-header workarounds in `contests/layout.tsx` show this has been problematic before, but the current deployment configuration is correct.
-- **Exit criterion:** When proxy configuration changes, or when a cycle has capacity to add a server-provided `appUrl` config.
-
-### DEFER-25: Duplicate `formatTimestamp` utility (AGG-11)
-
-- **Source:** AGG-11 (code-reviewer CR-5)
-- **Severity / confidence:** LOW / LOW
-- **Original severity preserved:** LOW / LOW
-- **Citations:** `src/components/contest/contest-clarifications.tsx:39-47`, `src/components/contest/contest-announcements.tsx:29-37`
-- **Reason for deferral:** The duplicated functions work correctly. Extracting to a shared utility is a DRY improvement with no functional impact.
-- **Exit criterion:** When a cycle has capacity for a focused DRY refactor pass, or when the timestamp formatting logic needs to change (ensuring all copies are updated).
+- [x] Move `const payload = await response.json()` after the `!response.ok` check
+- [x] When `!response.ok`, throw a generic error without parsing the body
+- [x] Parse JSON only when `response.ok` is true (for success case)
 
 ---
+
+### TASK-4: Fix `active-timed-assignment-sidebar-panel.tsx` timer running with no active assignments [AGG-5] — Priority: LOW
+
+**Files:** `src/components/layout/active-timed-assignment-sidebar-panel.tsx`
+**Severity:** LOW/LOW (3-agent signal)
+
+- [x] Change the effect dependency from `assignments.length` to a computed `hasActiveAssignments` boolean
+- [x] Compute `hasActiveAssignments` based on whether any assignment deadline is in the future
+- [x] Only start the `setInterval` when `hasActiveAssignments` is true
+
+---
+
+### TASK-5: Fix `submission-overview.tsx` acceptedPct display — use `formatNumber` [AGG-6] — Priority: LOW
+
+**Files:** `src/components/lecture/submission-overview.tsx`
+**Severity:** LOW/LOW (1-agent signal)
+
+- [x] Import `formatNumber` from `@/lib/formatting`
+- [x] Replace `{acceptedPct}%` on line 168 with `{formatNumber(acceptedPct, { locale, maximumFractionDigits: 0 })}%`
+- [x] Add `useLocale` import if not already present
+
+---
+
+## Remaining Items from Cycle 1 Plan
+
+The following tasks from the cycle 1 plan were not yet completed and should be addressed:
+
+### TASK-4 (cycle 1): Replace inline Math.round with formatScore in remaining locations [AGG-4] — Priority: LOW
+
+**Files:** `src/components/submission-status-badge.tsx`, `src/app/(public)/practice/problems/[id]/page.tsx`, `src/app/(public)/contests/[id]/page.tsx`
+**Severity:** LOW/MEDIUM (7-agent signal in cycle 1 review)
+
+- [ ] Replace `Math.round(score * 100) / 100` in `submission-status-badge.tsx:89` with `formatScore(score, locale)`
+- [ ] Replace `Math.round(sub.score * 100) / 100` in `practice/problems/[id]/page.tsx:523` with `formatScore(sub.score, locale)`
+- [ ] Replace `Math.round(entry.totalScore * 100) / 100` in `contests/[id]/page.tsx:229,266` with `formatScore(entry.totalScore, locale)`
+
+### TASK-6 (cycle 1): Add jitter to useVisibilityPolling on visibility change — DONE in cycle 1
+
+Already fixed (commit 53360a02).
+
+### TASK-7 (cycle 1): Fix AntiCheatMonitor setInterval with async callback — DONE in cycle 1
+
+Already fixed (commit afcd9b93).
+
+### TASK-8 (cycle 1): Fix json-ld.tsx safeJsonForScript — handle `<!--` escape — DONE in cycle 1
+
+Already fixed (commit 8654e5a2).
+
+### TASK-9 (cycle 1): Split recruiting-invitations fetchData into separate functions — DONE in cycle 1
+
+Already fixed (commit c3c4fd8e).
+
+## Deferred Items
+
+### DEFER-1: Add unit tests for useVisibilityPolling, use-submission-polling normalizeSubmission, and stats endpoint [AGG-4, AGG-9]
+
+**Severity:** MEDIUM/MEDIUM (1-agent signal — test-engineer)
+**Reason:** Test infrastructure is in place but writing meaningful async hook tests and API route tests is time-consuming. The behaviors being tested are covered by the code fixes in TASK-1, TASK-2, and the cycle 1 fixes. Will add tests in a future cycle.
+**Exit criterion:** After TASK-1, TASK-2 are stabilized and deployed.
+
+### DEFER-2: Standardize error handling pattern in useVisibilityPolling [ARCH-2 / CRI-3]
+
+**Severity:** MEDIUM/MEDIUM (4-agent signal)
+**Reason:** This is an architectural refactor that touches all polling components. The individual fixes (TASK-3 toast suppression) address the immediate symptoms. The full refactor should be done holistically.
+**Exit criterion:** When adding a new polling component or after the next major UI iteration.
+
+### DEFER-3: JWT authenticatedAt clock skew with DB tokenInvalidatedAt (D1 from prior cycles)
+
+**Severity:** MEDIUM
+**Reason:** Requires careful design of clock-skew tolerance. Security-sensitive change that needs review beyond this cycle.
+**Exit criterion:** Dedicated security audit cycle.
+
+### DEFER-4: JWT callback DB query on every request — add TTL cache (D2 from prior cycles)
+
+**Severity:** MEDIUM
+**Reason:** Requires cache invalidation strategy. Performance-sensitive change that needs load testing.
+**Exit criterion:** Performance audit cycle.
+
+### DEFER-5: Migrate raw route handlers to createApiHandler (22 routes)
+
+**Severity:** MEDIUM
+**Reason:** Large scope, low risk of current behavior. Each migration is mechanical but must be verified individually.
+**Exit criterion:** Gradual migration with each cycle touching nearby routes.
+
+### DEFER-6: Documentation gaps in use-submission-polling.ts and useVisibilityPolling [AGG-7]
+
+**Severity:** LOW/LOW (1-agent signal — document-specialist)
+**Reason:** Documentation updates have no functional impact. Will be addressed when the code is modified for TASK-2.
+**Exit criterion:** After TASK-2 is implemented (documentation can be added in the same commit).
+
+## Previously Deferred Items (Maintained)
+
+- DEFER-2 (prior): SSE connection tracking eviction optimization
+- DEFER-3 (prior): SSE connection cleanup test coverage
+- A19 (prior): `new Date()` clock skew risk in remaining routes (LOW)
+- DEFER-1 (cycle 1 plan): Add unit tests for useVisibilityPolling, SubmissionListAutoRefresh, and stats endpoint
+- DEFER-2 (cycle 1 plan): Standardize error handling pattern in useVisibilityPolling
+- DEFER-3 (cycle 1 plan): JWT authenticatedAt clock skew
+- DEFER-4 (cycle 1 plan): JWT callback DB query TTL cache
+- DEFER-5 (cycle 1 plan): Migrate raw route handlers to createApiHandler
+- DEFER-20 (cycle 2 prior): Contest clarifications show raw userId instead of username
+- DEFER-21 (cycle 2 prior): Duplicated visibility-aware polling pattern (now partially addressed by TASK-1)
+- DEFER-22 (cycle 2 prior): copyToClipboard dynamic import inconsistency
+- DEFER-23 (cycle 2 prior): Practice page Path B progress filter
+- DEFER-24 (cycle 2 prior): Invitation URL uses window.location.origin
+- DEFER-25 (cycle 2 prior): Duplicate formatTimestamp utility
 
 ## Progress log
 
-- 2026-04-22: Plan created from cycle-2 aggregate review. 11 findings total. 5 scheduled for implementation (H1, H2, M1, M2, M3). 6 deferred (AGG-4 as DEFER-20, AGG-7 as DEFER-21, AGG-8 as DEFER-22, AGG-9 as DEFER-23, AGG-10 as DEFER-24, AGG-11 as DEFER-25).
-- 2026-04-22: H1 DONE — fixed timezone bug in recruiting-invitations-panel.tsx expiry date min attribute, also added aria-label (M3) in same commit (b82a2c49). Fix: used local-date-aware computation instead of UTC.
-- 2026-04-22: M3 DONE — added aria-label to date input using existing t("expiresAt") key. Fix for i18n key mismatch (0693a566).
-- 2026-04-22: M1 DONE — added error toast to workers-client.tsx AliasCell save failure, using existing t("fetchError") key (3fc04106, bec0bc52).
-- 2026-04-22: H2 DONE — added exponential backoff to SubmissionListAutoRefresh component (d1fb4799).
-- 2026-04-22: M2 DONE — replaced native select with Radix Select in contest-clarifications.tsx (4ab470e0).
-- 2026-04-22: All gates green (eslint 0 errors, tsc --noEmit 0 errors, next build success, vitest 294/294 passed, 2104/2104 tests).
+- 2026-04-22: Plan created from cycle 2 aggregate review. 5 new tasks (TASK-1 through TASK-5). 1 carried forward from cycle 1 (TASK-4). 6 deferred items. All findings from the aggregate review are either scheduled for implementation or explicitly deferred.
