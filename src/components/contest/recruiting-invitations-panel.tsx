@@ -79,9 +79,11 @@ export function RecruitingInvitationsPanel({ assignmentId }: { assignmentId: str
   const [stats, setStats] = useState<Stats>({ total: 0, pending: 0, redeemed: 0, revoked: 0, expired: 0 });
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const copiedIdTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
   const [revealedTemporaryPassword, setRevealedTemporaryPassword] = useState<{ candidateName: string; password: string } | null>(null);
 
   // Create dialog state
@@ -109,23 +111,39 @@ export function RecruitingInvitationsPanel({ assignmentId }: { assignmentId: str
     }
   }, []);
 
+  // Debounce search input to prevent race conditions
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(search), 300);
+    return () => clearTimeout(timer);
+  }, [search]);
+
   const fetchInvitations = useCallback(async () => {
+    // Cancel any in-flight request
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     try {
       const query = new URLSearchParams();
       if (statusFilter !== "all") query.set("status", statusFilter);
-      if (search) query.set("search", search);
+      if (debouncedSearch) query.set("search", debouncedSearch);
 
-      const invRes = await apiFetch(`/api/v1/contests/${assignmentId}/recruiting-invitations?${query}`);
+      const invRes = await apiFetch(`/api/v1/contests/${assignmentId}/recruiting-invitations?${query}`, {
+        signal: controller.signal,
+      });
       if (invRes.ok) {
         const json = await invRes.json();
         setInvitations(json.data ?? []);
       }
-    } catch {
+    } catch (err) {
+      if (err instanceof DOMException && err.name === "AbortError") return;
       toast.error(t("fetchError"));
     } finally {
       setLoading(false);
     }
-  }, [assignmentId, statusFilter, search, t]);
+  }, [assignmentId, statusFilter, debouncedSearch, t]);
 
   const fetchStats = useCallback(async () => {
     try {
