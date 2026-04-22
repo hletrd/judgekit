@@ -1,3 +1,21 @@
+/**
+ * Contest Stats Endpoint
+ *
+ * GET /api/v1/contests/:assignmentId/stats
+ *
+ * Returns aggregate statistics for a contest assignment:
+ * - participantCount: total enrolled students
+ * - submittedCount: students with at least one terminal submission
+ * - avgScore: average total score among submitters (1 decimal)
+ * - problemsSolvedCount: problems with at least one full-score submission
+ *
+ * Access control: same as the leaderboard endpoint.
+ * - Instructors and admins: always allowed
+ * - Recruiting candidates: only with instructor access
+ * - Other users: must be enrolled or have a valid contest access token
+ *
+ * Rate limit: "leaderboard" tier
+ */
 import { NextRequest } from "next/server";
 import { createApiHandler } from "@/lib/api/handler";
 import { apiSuccess, apiError } from "@/lib/api/responses";
