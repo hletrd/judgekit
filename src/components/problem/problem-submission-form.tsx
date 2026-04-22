@@ -180,11 +180,12 @@ export function ProblemSubmissionForm({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ language, sourceCode, stdin, assignmentId }),
       });
-      const payload = await response.json();
       if (!response.ok) {
-        toast.error(payload.error ?? tCommon("error"));
+        const errorBody = await response.json().catch(() => ({}));
+        toast.error((errorBody as { error?: string }).error ?? tCommon("error"));
         return;
       }
+      const payload = await response.json();
       setRunResult(payload.data);
     } catch {
       toast.error(tCommon("error"));
@@ -242,12 +243,13 @@ export function ProblemSubmissionForm({
         }),
       });
 
-      const payload = await response.json();
-
       if (!response.ok) {
-        toast.error(translateSubmissionError(payload.error));
+        const errorBody = await response.json().catch(() => ({}));
+        toast.error(translateSubmissionError((errorBody as { error?: string }).error));
         return;
       }
+
+      const payload = await response.json();
 
       const submissionId = payload.data?.id;
 
