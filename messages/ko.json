@@ -2418,7 +2418,10 @@
     "testCaseLabel": "테스트 케이스 {number}",
     "loadingLanguages": "언어 목록을 불러오는 중",
     "noLanguagesTitle": "사용 가능한 언어 없음",
-    "noLanguagesDescription": "활성화된 프로그래밍 언어가 없습니다. 관리자에게 문의하세요."
+    "noLanguagesDescription": "활성화된 프로그래밍 언어가 없습니다. 관리자에게 문의하세요.",
+    "showFullOutput": "전체 출력 보기",
+    "outputEmpty": "(비어 있음)",
+    "outputTruncated": "... (출력 생략)"
   },
   "capabilities": {
     "groups": {

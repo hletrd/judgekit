@@ -87,23 +87,23 @@ function resolveInitialCompilerLanguage(
   );
 }
 
-function buildDefaultTestCaseName(index: number) {
-  return `TC ${index}`;
+function buildDefaultTestCaseName(index: number, label: string) {
+  return label.replace("{number}", String(index));
 }
 
 // Component for truncated output display
-function TruncatedOutput({ content, className }: { content: string; className?: string }) {
+function TruncatedOutput({ content, className, showFullOutputLabel, outputEmptyLabel, outputTruncatedLabel }: { content: string; className?: string; showFullOutputLabel: string; outputEmptyLabel: string; outputTruncatedLabel: string }) {
   const [isExpanded, setIsExpanded] = useState(false);
   const isTruncated = content.length > LAYOUT_CONSTANTS.OUTPUT_TRUNCATE_THRESHOLD;
 
   if (!isTruncated || isExpanded) {
-    return <pre className={className}>{content || "(empty)"}</pre>;
+    return <pre className={className}>{content || outputEmptyLabel}</pre>;
   }
 
   const truncated = content.slice(0, LAYOUT_CONSTANTS.OUTPUT_TRUNCATE_THRESHOLD);
   return (
     <div>
-      <pre className={className}>{truncated}\n... (output truncated)</pre>
+      <pre className={className}>{truncated}\n{outputTruncatedLabel}</pre>
       <Button
         type="button"
         variant="link"
@@ -112,7 +112,7 @@ function TruncatedOutput({ content, className }: { content: string; className?: 
         className="mt-2 flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground p-0 h-auto"
       >
         <Maximize2 className="size-3" />
-        Show full output ({formatBytes(content.length)})
+        {showFullOutputLabel} ({formatBytes(content.length)})
       </Button>
     </div>
   );
@@ -123,7 +123,7 @@ export function CompilerClient({ languages, title, description, preferredLanguag
   const initialLanguage = resolveInitialCompilerLanguage(languages, preferredLanguage);
   const initialTestCaseRef = useRef<CompilerTestCase>({
     id: "tc-1",
-    name: buildDefaultTestCaseName(1),
+    name: buildDefaultTestCaseName(1, t("testCaseLabel")),
     stdin: "",
     result: null,
     error: null,
@@ -211,7 +211,7 @@ export function CompilerClient({ languages, title, description, preferredLanguag
     const nextIndex = nextTestCaseIndexRef.current++;
     const nextTestCase: CompilerTestCase = {
       id: `tc-${nextIndex}`,
-      name: buildDefaultTestCaseName(nextIndex),
+      name: buildDefaultTestCaseName(nextIndex, t("testCaseLabel")),
       stdin: "",
       result: null,
       error: null,
@@ -467,7 +467,7 @@ export function CompilerClient({ languages, title, description, preferredLanguag
                     if (activeTestCase.name.trim()) return;
                     updateTestCase(activeTestCase.id, (testCase) => ({
                       ...testCase,
-                      name: buildDefaultTestCaseName(activeTestCaseNumber),
+                      name: buildDefaultTestCaseName(activeTestCaseNumber, t("testCaseLabel")),
                     }));
                   }}
                 />
@@ -554,6 +554,9 @@ export function CompilerClient({ languages, title, description, preferredLanguag
                     <TruncatedOutput
                       content={result.stdout}
                       className="rounded-lg border bg-muted/50 p-3 font-mono text-sm whitespace-pre-wrap"
+                      showFullOutputLabel={t("showFullOutput")}
+                      outputEmptyLabel={t("outputEmpty")}
+                      outputTruncatedLabel={t("outputTruncated")}
                     />
                   </div>
                 </TabsContent>
@@ -561,6 +564,9 @@ export function CompilerClient({ languages, title, description, preferredLanguag
                   <TruncatedOutput
                     content={result.stderr}
                     className="rounded-lg border bg-muted/50 p-3 font-mono text-sm whitespace-pre-wrap text-red-600"
+                    showFullOutputLabel={t("showFullOutput")}
+                    outputEmptyLabel={t("outputEmpty")}
+                    outputTruncatedLabel={t("outputTruncated")}
                   />
                 </TabsContent>
                 {result.compileOutput && (
@@ -568,6 +574,9 @@ export function CompilerClient({ languages, title, description, preferredLanguag
                     <TruncatedOutput
                       content={result.compileOutput}
                       className="rounded-lg border bg-muted/50 p-3 font-mono text-sm whitespace-pre-wrap text-red-600"
+                      showFullOutputLabel={t("showFullOutput")}
+                      outputEmptyLabel={t("outputEmpty")}
+                      outputTruncatedLabel={t("outputTruncated")}
                     />
                   </TabsContent>
                 )}
