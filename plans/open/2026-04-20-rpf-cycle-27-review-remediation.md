@@ -49,9 +49,7 @@ No cycle-27 review finding is silently dropped. No new refactor-only work is add
   3. For `getErrorMessage` default branches (edit-group-dialog, create-group-dialog, create-problem-form, problem-set-form), move the `console.error` inside the `if` block.
   4. For catch blocks (discussion components, role editor, role delete, bulk-create, compiler-client, comment-section), wrap the `console.error` with the guard.
   5. Verify all gates pass.
-- **Status:** PENDING
-
-### M1: Fix double `.json()` anti-pattern in `admin-config.tsx` (AGG-2)
+- **Status:** DONE (commit 301963e0)
 
 - **Source:** AGG-2
 - **Severity / confidence:** LOW / MEDIUM
@@ -63,9 +61,7 @@ No cycle-27 review finding is silently dropped. No new refactor-only work is add
   3. If not OK, use `data.error` for the error display.
   4. If OK, use `data` for the success display.
   5. Verify all gates pass.
-- **Status:** PENDING
-
-### M2: Sanitize `err.message` in `bulk-create-dialog.tsx` (AGG-3)
+- **Status:** DONE (commit c469792c, type fix ff66124d)
 
 - **Source:** AGG-3
 - **Severity / confidence:** LOW / LOW
@@ -74,7 +70,7 @@ No cycle-27 review finding is silently dropped. No new refactor-only work is add
 - **Plan:**
   1. Replace `err.message` with a truncated/sanitized version, or use a generic fallback like `tCommon("error")`.
   2. Verify all gates pass.
-- **Status:** PENDING
+- **Status:** DONE (commit 5928729c)
 
 ---
 
@@ -167,3 +163,7 @@ See `plans/open/2026-04-20-rpf-cycle-23-review-remediation.md` for the full defe
 - 2026-04-20: M3 (migration Phase 5) DONE — evaluated admin sidebar mobile behavior (commit edca1d5e).
 - 2026-04-20: All gates green. Deploy attempted but failed (expected -- local dev machine).
 - 2026-04-22: Plan updated with fresh findings from cycle 27 re-review. New AGG-1 (ungated console.error x14), AGG-2 (admin-config double .json()), AGG-3 (bulk-create err.message). Prior H1/M1/M2/M3 all DONE.
+- 2026-04-22: H1 DONE — gated 14 ungated console.error calls behind dev-only check (commit 301963e0). Fixed 5 test files missing required props (commit e8cfd718).
+- 2026-04-22: M1 DONE — eliminated double .json() anti-pattern in admin-config.tsx (commits c469792c, ff66124d).
+- 2026-04-22: M2 DONE — truncated raw err.message in bulk-create-dialog.tsx (commit 5928729c).
+- 2026-04-22: All gates green (eslint 0 errors, tsc --noEmit clean, vitest 294/294 2114 tests, next build success).
