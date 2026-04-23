@@ -16,7 +16,7 @@ interface ContestQuickStatsProps {
   initialStats?: {
     participantCount: number;
     submittedCount: number;
-    avgScore: number;
+    avgScore: number | null;
     problemsSolvedCount: number;
   };
 }
@@ -24,7 +24,7 @@ interface ContestQuickStatsProps {
 type ContestStats = {
   participantCount: number;
   submittedCount: number;
-  avgScore: number;
+  avgScore: number | null;
   problemsSolvedCount: number;
 };
 
@@ -39,7 +39,7 @@ export function ContestQuickStats({
   const [stats, setStats] = useState<ContestStats>(initialStats ?? {
     participantCount: 0,
     submittedCount: 0,
-    avgScore: 0,
+    avgScore: null,
     problemsSolvedCount: 0,
   });
 
@@ -64,7 +64,7 @@ export function ContestQuickStats({
         setStats((prev) => ({
           participantCount: Number.isFinite(Number(data.data!.participantCount)) ? Number(data.data!.participantCount) : prev.participantCount,
           submittedCount: Number.isFinite(Number(data.data!.submittedCount)) ? Number(data.data!.submittedCount) : prev.submittedCount,
-          avgScore: data.data!.avgScore !== null && data.data!.avgScore !== undefined && Number.isFinite(Number(data.data!.avgScore)) ? Number(data.data!.avgScore) : prev.avgScore,
+          avgScore: data.data!.avgScore !== null && data.data!.avgScore !== undefined && Number.isFinite(Number(data.data!.avgScore)) ? Number(data.data!.avgScore) : null,
           problemsSolvedCount: Number.isFinite(Number(data.data!.problemsSolvedCount)) ? Number(data.data!.problemsSolvedCount) : prev.problemsSolvedCount,
         }));
       }
@@ -107,7 +107,7 @@ export function ContestQuickStats({
         <CardContent className="flex items-center gap-3 py-3 px-4">
           <BarChart3 className="size-5 text-muted-foreground shrink-0" />
           <div>
-            <p className="text-2xl font-bold">{formatNumber(stats.avgScore, { locale, maximumFractionDigits: 1 })}</p>
+            <p className="text-2xl font-bold">{stats.avgScore !== null ? formatNumber(stats.avgScore, { locale, maximumFractionDigits: 1 }) : "---"}</p>
             <p className="text-xs text-muted-foreground">{t("quickStats.avgScore")}</p>
           </div>
         </CardContent>
