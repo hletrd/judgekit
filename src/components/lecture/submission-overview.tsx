@@ -88,7 +88,10 @@ export function SubmissionOverview({
         params.set("assignmentId", assignmentId);
       }
       const res = await apiFetch(`/api/v1/submissions?${params.toString()}`);
-      if (!res.ok) return;
+      if (!res.ok) {
+        if (!initialLoadDoneRef.current) toast.error(t("fetchError"));
+        return;
+      }
       const json = await res.json().catch(() => ({ data: {} }));
       const submissions: Array<{ id: string; status: string; language: string; submittedAt: string; userId: string }> =
         json.data?.submissions ?? json.data ?? [];
