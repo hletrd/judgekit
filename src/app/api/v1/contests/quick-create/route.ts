@@ -18,7 +18,10 @@ const quickCreateSchema = z.object({
   enableAntiCheat: z.boolean().default(true),
   startsAt: z.string().datetime().optional(),
   deadline: z.string().datetime().optional(),
-});
+}).refine(
+  (data) => !data.problemPoints || data.problemPoints.length === data.problemIds.length,
+  { message: "problemPoints length must match problemIds length", path: ["problemPoints"] }
+);
 
 export const POST = createApiHandler({
   auth: { capabilities: ["contests.create"] },
