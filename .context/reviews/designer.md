@@ -1,29 +1,43 @@
-# UI/UX Review — RPF Cycle 47
+# UI/UX Review — RPF Cycle 48
 
 **Date:** 2026-04-23
 **Reviewer:** designer
-**Base commit:** f8ba7334
+**Base commit:** 6831c05e
 
-## Inventory of UI Files Reviewed
+## UI/UX Presence Detection
 
-- `src/app/(dashboard)/dashboard/contests/page.tsx` — Verified cycle 46 fixes
-- `src/app/(dashboard)/dashboard/_components/candidate-dashboard.tsx` — Verified cycle 46 fixes
-- `src/components/exam/anti-cheat-monitor.tsx` — Anti-cheat monitoring
-- `src/components/exam/countdown-timer.tsx` — Exam countdown timer
-- `src/app/(public)/practice/page.tsx` — Practice page
+The repository contains a full web frontend with Next.js, React components, Tailwind CSS, and i18n. UI/UX review is applicable.
 
-## Previously Fixed Items (Verified)
+## Findings
 
-- Chat widget entry animation + prefers-reduced-motion: PASS
-- Chat textarea aria-label: PASS
-- Chat widget button aria-label with message count: PASS
-- API key auto-dismiss countdown: PASS
+### DES-1: Chat widget button badge lacks ARIA announcement [LOW/LOW] (carry-over)
 
-## New Findings
+**Description:** The chat widget's unread badge does not announce the count to screen readers. Users relying on assistive technology will not be informed of new messages.
 
-No new UI/UX findings. All cycle 46 fixes are verified and working.
+---
 
-### Carry-Over Items
+### DES-2: Contests page badge hardcoded colors [LOW/LOW] (carry-over from cycle 46)
 
-- **DES-1 (from cycle 37):** Chat widget button badges use absolute positioning without proper ARIA announcement (LOW/LOW, deferred)
-- **DES-1 (from cycle 46):** Contests page badge colors use hardcoded Tailwind classes (LOW/LOW, deferred)
+**Description:** Badge components in the contests page use hardcoded color values instead of design tokens, making them inconsistent with dark mode theme changes.
+
+---
+
+### DES-3: Anti-cheat privacy notice accessibility [LOW/LOW]
+
+**File:** `src/components/exam/anti-cheat-monitor.tsx:261`
+
+**Description:** The privacy notice dialog has `onOpenChange={() => {}}` and `showCloseButton={false}` to prevent dismissal. The `DialogDescription` provides context, but the close prevention could trap keyboard focus. The dialog should ensure:
+- The "Accept" button receives initial focus (Tab order)
+- Escape key is properly handled (it should NOT close the dialog, consistent with the intent)
+- Focus trap remains within the dialog
+
+**Verification needed:** Manual testing with keyboard navigation to confirm the "Accept" button is reachable and the dialog doesn't trap focus indefinitely.
+
+---
+
+### Positive Observations
+
+1. The i18n implementation is thorough with Korean language support
+2. The anti-cheat privacy notice is a good UX pattern — explicit consent before monitoring
+3. No custom `letter-spacing` applied to Korean text (per project rules)
+4. Error boundaries are properly implemented in dashboard sections

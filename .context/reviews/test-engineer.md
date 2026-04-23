@@ -1,39 +1,37 @@
-# Test Engineer Review — RPF Cycle 47
+# Test Engineer Review — RPF Cycle 48
 
 **Date:** 2026-04-23
 **Reviewer:** test-engineer
-**Base commit:** f8ba7334
+**Base commit:** 6831c05e
 
-## Inventory of Files Reviewed
+## Test Coverage Analysis
 
-- `src/lib/security/api-rate-limit.ts` — Rate limiting (testability)
-- `src/lib/realtime/realtime-coordination.ts` — Verified cycle 46 fix
-- `src/app/(dashboard)/dashboard/problems/create/create-problem-form.tsx` — Zip import
+### TE-1: Judge claim route lacks clock-skew test [MEDIUM/MEDIUM]
 
-## Previously Fixed Items (Verified)
+**File:** `src/app/api/v1/judge/claim/route.ts:122`
 
-- `getDbNowUncached` mocked in submissions unit tests: PASS
+**Description:** The judge claim route uses `Date.now()` for `claimCreatedAt`, but there is no test verifying behavior under clock skew. The codebase has established a pattern of mocking `getDbNowUncached` for clock-skew testing (e.g., `tests/unit/security/api-rate-limit.test.ts`), but the claim route's clock dependency is not tested.
 
-## New Findings
-
-### TE-1: `checkServerActionRateLimit` uses `Date.now()` making it untestable under simulated clock skew [MEDIUM/MEDIUM]
-
-**File:** `src/lib/security/api-rate-limit.ts:215`
-
-**Description:** `checkServerActionRateLimit` uses `Date.now()` directly inside a transaction, making it impossible to write deterministic tests for clock-skew scenarios. If this function used `getDbNowUncached()`, tests could mock the DB time function to verify behavior under various clock-skew conditions, consistent with the pattern applied to `realtime-coordination.ts` in cycle 46.
-
-**Fix:** Use `getDbNowUncached()` at the start of the transaction.
-
-**Confidence:** Medium
+**Fix:** Add a test that mocks the DB time to be offset from `Date.now()` and verifies that stale claim detection uses the DB-consistent timestamp.
 
 ---
 
-### TE-2: Zip import `fileMap.get(key)!` not tested for null guard [LOW/LOW]
+### TE-2: `rateLimitedResponse` header accuracy not tested [LOW/LOW]
 
-**File:** `src/app/(dashboard)/dashboard/problems/create/create-problem-form.tsx:196`
+**File:** `src/lib/security/api-rate-limit.ts:125`
 
-**Description:** The only remaining `Map.get()!` in the codebase. While technically safe (key comes from the map's own keys iterator), no test covers what happens if the map lookup returns undefined.
+**Description:** The `X-RateLimit-Reset` header value is computed from `Date.now()` but there is no test verifying the header matches the actual DB reset time.
 
-**Fix:** Replace with null guard.
+---
 
-**Confidence:** Low
+### TE-3: Anti-cheat heartbeat gap query integration test coverage [LOW/LOW] (carry-over)
+
+**File:** `src/app/api/v1/contests/[assignmentId]/anti-cheat/route.ts:195-204`
+
+**Description:** The heartbeat gap detection logic (5000-row DESC fetch + reverse + gap threshold scan) has limited integration test coverage. Edge cases like exactly-at-threshold gaps, boundary timestamps, and empty heartbeat sets should be tested.
+
+## Test Infrastructure Observations
+
+1. The `getDbNowUncached` mock pattern is well-established and reusable
+2. Unit tests for rate limiting are comprehensive
+3. SSE route testing is limited due to streaming response complexity

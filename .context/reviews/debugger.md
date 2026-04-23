@@ -1,29 +1,42 @@
-# Debugger Review — RPF Cycle 47
+# Debugger Review — RPF Cycle 48
 
 **Date:** 2026-04-23
 **Reviewer:** debugger
-**Base commit:** f8ba7334
+**Base commit:** 6831c05e
 
-## Inventory of Files Reviewed
+## Latent Bug Surface Analysis
 
-- `src/lib/security/api-rate-limit.ts` — Rate limiting (failure mode analysis)
-- `src/lib/realtime/realtime-coordination.ts` — Verified cycle 46 fix
-- `src/lib/assignments/submissions.ts` — Submission validation
+### DBG-1: Judge claim `Date.now()` — premature stale detection under clock skew [MEDIUM/MEDIUM]
 
-## Previously Fixed Items (Verified)
+**File:** `src/app/api/v1/judge/claim/route.ts:122`
 
-- All prior fixes intact and working
+**Description:** The judge claim route uses `Date.now()` for `claimCreatedAt`, which gets stored as `judge_claimed_at` in the DB. The stale claim detection uses `NOW() - interval`. Under clock skew, this creates a timing mismatch.
 
-## New Findings
+**Failure mode:** App clock behind DB clock by N seconds. A claim is made at app time T, stored as `judge_claimed_at = T`. DB time is T + N. After `staleClaimTimeoutMs - N` milliseconds, the claim appears stale (T < T + N + (staleClaimTimeoutMs - N) - staleClaimTimeoutMs = T). The submission is re-claimable by another worker, potentially causing:
+- Duplicate container starts
+- Wasted compute resources
+- Conflicting result writes (mitigated by SKIP LOCKED)
 
-### DBG-1: `checkServerActionRateLimit` — rate-limit window reset under clock skew [MEDIUM/MEDIUM]
+**Trigger condition:** NTP step correction or persistent clock drift between app and DB servers.
 
-**File:** `src/lib/security/api-rate-limit.ts:215-234`
+**Fix:** Use `getDbNowUncached()` inside the transaction.
 
-**Description:** In `checkServerActionRateLimit`, `const now = Date.now()` is used inside an `execTransaction` to compare against DB-stored `windowStartedAt`. If the app clock is ahead of the DB clock, the window may be expired prematurely, allowing more server action invocations than configured. If the app clock is behind, the window persists longer than intended.
+---
 
-**Failure mode (app clock ahead):** A user's rate-limit window started at DB time 10:00:00. At DB time 10:00:55, the app thinks it's 10:01:00. The check `windowStartedAt + 60000 <= now` evaluates `60000 <= 65000` — true — resetting the counter 5 seconds early. The user gets a fresh window and can perform more actions than configured.
+### DBG-2: `rateLimitedResponse` header timing [LOW/LOW]
 
-**Fix:** Use `getDbNowUncached()` at the start of the transaction.
+**File:** `src/lib/security/api-rate-limit.ts:125`
 
-**Confidence:** Medium
+**Description:** The `X-RateLimit-Reset` header uses `Date.now()`. Under clock skew, the header may show an incorrect reset time. Not a functional bug since the DB check is authoritative, but could confuse API clients.
+
+---
+
+### DBG-3: SSE connection tracking — stale entries after process restart [LOW/LOW]
+
+**File:** `src/app/api/v1/submissions/[id]/events/route.ts`
+
+**Description:** If the process crashes and restarts, the in-memory `connectionInfoMap` is empty, but the DB may still have rate-limit entries from the previous process. The 30-minute expiry on DB entries means they will eventually be cleaned up, but during that window, new SSE connections may be rejected if the DB count is at the limit. This is a known trade-off documented in the code.
+
+## Prior Fix Verification
+
+All prior fixes remain intact and functional. No regressions detected.

@@ -1,48 +1,74 @@
-# Security Review — RPF Cycle 47
+# Security Review — RPF Cycle 48
 
 **Date:** 2026-04-23
 **Reviewer:** security-reviewer
-**Base commit:** f8ba7334
+**Base commit:** 6831c05e
 
-## Inventory of Files Reviewed
+## Inventory of Reviewed Files
 
-- `src/lib/realtime/realtime-coordination.ts` — Verified cycle 46 clock-skew fix
-- `src/lib/security/api-rate-limit.ts` — Rate limiting (Date.now analysis)
-- `src/app/api/v1/contests/[assignmentId]/anti-cheat/route.ts` — Anti-cheat event logging
-- `src/lib/assignments/recruiting-invitations.ts` — Recruiting token flow
-- `src/proxy.ts` — Auth proxy (cache, FIFO eviction, session security)
-- `src/lib/assignments/submissions.ts` — Submission validation
-- `src/lib/security/password-hash.ts` — Password hashing
-- `src/lib/security/encryption.ts` — Encryption utilities
+- `src/lib/security/api-rate-limit.ts`
+- `src/lib/security/rate-limit.ts`
+- `src/lib/security/rate-limiter-client.ts`
+- `src/lib/security/in-memory-rate-limit.ts`
+- `src/lib/security/ip.ts`
+- `src/proxy.ts`
+- `src/lib/assignments/recruiting-invitations.ts`
+- `src/app/api/v1/contests/[assignmentId]/anti-cheat/route.ts`
+- `src/app/api/v1/judge/claim/route.ts` (partial)
+- `src/lib/realtime/realtime-coordination.ts`
+- `src/lib/auth/config.ts` (partial)
+- `src/components/exam/anti-cheat-monitor.tsx`
+- `src/lib/data-retention.ts`
 
-## Previously Fixed Items (Verified)
+## Findings
 
-- `realtime-coordination.ts` uses `getDbNowUncached()` for SSE slot/heartbeat: PASS
-- Submission validation uses `getDbNowUncached()`: PASS
-- Contest join route has explicit `auth: true`: PASS
-- Access-code capability auth: PASS
-- LIKE pattern escaping: PASS
+### SEC-1: Judge claim route `Date.now()` for `claimCreatedAt` — stale claim manipulation risk [MEDIUM/MEDIUM]
 
-## New Findings
+**File:** `src/app/api/v1/judge/claim/route.ts:122`
 
-### SEC-1: `checkServerActionRateLimit` uses `Date.now()` inside DB transaction — clock-skew in rate-limit enforcement [MEDIUM/MEDIUM]
+**Description:** The judge claim route uses `Date.now()` to set `judge_claimed_at` in the database. The stale claim detection compares this against `NOW()`. If an attacker can influence the app server's clock (via NTP spoofing on a shared network) or if there's natural clock drift, submissions could be prematurely re-claimed, leading to:
+1. Duplicate judging of the same submission (wasting resources)
+2. Potential race condition if the first worker's result arrives after the second worker starts
 
-**File:** `src/lib/security/api-rate-limit.ts:215`
+While `FOR UPDATE SKIP LOCKED` prevents actual data corruption, the security concern is that a clock-skew attack could amplify resource consumption by causing repeated claim/judge cycles for the same submissions.
 
-**Description:** `checkServerActionRateLimit` captures `const now = Date.now()` and uses it inside `execTransaction` to compare against DB-stored `windowStartedAt` at line 234 (`existing.windowStartedAt + windowMs <= now`). This is the same clock-skew class fixed in `realtime-coordination.ts` (cycle 46) and `validateAssignmentSubmission` (cycle 45).
-
-Unlike `atomicConsumeRateLimit` (deferred due to hot-path concerns), server actions are called infrequently (role edits, group management) and can tolerate the <1ms DB round-trip.
-
-**Concrete failure scenario:** App clock 5 seconds ahead of DB. A user's rate-limit window was set at DB time 10:00:00 with a 60s window. At DB time 10:00:55, the app thinks it's 10:01:00. The check `10:00:00 + 60000 <= 10:01:00*1000` evaluates true, resetting the counter 5 seconds early. The user can perform more actions than the configured rate limit allows.
-
-**Fix:** Use `getDbNowUncached()` at the start of the transaction.
-
-**Confidence:** Medium
+**Fix:** Use `getDbNowUncached()` inside the transaction for `claimCreatedAt`.
 
 ---
 
-### Carry-Over Items
+### SEC-2: Anti-cheat heartbeat dedup uses `Date.now()` for LRU cache in single-instance mode [LOW/LOW] (carry-over)
 
-- **SEC-2 (from cycle 43):** Anti-cheat heartbeat dedup uses `Date.now()` for LRU cache (LOW/LOW, deferred — approximate by design)
-- **Prior SEC-3:** Anti-cheat copies text content (LOW/LOW, deferred)
-- **Prior SEC-4:** Docker build error leaks paths (LOW/LOW, deferred)
+**File:** `src/app/api/v1/contests/[assignmentId]/anti-cheat/route.ts:92`
+
+**Description:** When `usesSharedRealtimeCoordination()` is false, the heartbeat dedup uses `Date.now()` for the LRU cache timestamp. Under clock skew (e.g., NTP step correction), the dedup window could be shortened or extended. The impact is limited: a shortened window means extra DB inserts (more heartbeat rows); an extended window means fewer inserts (missed heartbeat records).
+
+**Fix:** When shared coordination is available, this path is not used. For single-instance mode, the impact is minimal. Defer.
+
+---
+
+### SEC-3: Anti-cheat client copies user text content [LOW/LOW] (carry-over)
+
+**File:** `src/components/exam/anti-cheat-monitor.tsx:206-209`
+
+**Description:** The `describeElement` function captures up to 80 characters of `el.textContent` and sends it to the server in the anti-cheat event details. This could inadvertently capture sensitive data (passwords, personal information) from text content near copy/paste events.
+
+**Fix suggestion:** Strip or truncate the text content, or only send the element tag/class without the text.
+
+---
+
+### SEC-4: Docker build error leaks paths [LOW/LOW] (carry-over)
+
+**Description:** Docker build errors in the judge worker may leak internal filesystem paths in error messages returned to the API.
+
+## Security Positive Observations
+
+1. `checkServerActionRateLimit` now uses `getDbNowUncached()` (fixed in cycle 47)
+2. `realtime-coordination.ts` uses `getDbNowUncached()` consistently (fixed in cycle 46)
+3. All SQL queries use parameterized inputs via Drizzle ORM or `rawQueryOne`/`rawQueryAll`
+4. `escapeLikePattern` is used consistently for LIKE queries
+5. CSP headers are properly set with nonce-based script-src
+6. HSTS is properly configured
+7. Recruiting tokens are stored as SHA-256 hashes, not plaintext
+8. API key bearer auth bypasses session-level checks correctly
+9. Rate limiting has both sidecar and DB-backed fallback paths
+10. Proxy correctly clears session cookies on auth failure

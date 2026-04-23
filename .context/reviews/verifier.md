@@ -1,29 +1,43 @@
-# Verifier Review — RPF Cycle 47
+# Verifier Review — RPF Cycle 48
 
 **Date:** 2026-04-23
 **Reviewer:** verifier
-**Base commit:** f8ba7334
+**Base commit:** 6831c05e
 
-## Evidence-Based Correctness Check
+## Verification Method
 
-### Verified Fixes (All Pass)
+Evidence-based correctness check against stated behavior. Each finding is verified against the actual code path, not just the comments.
 
-1. **`realtime-coordination.ts` uses `getDbNowUncached()`** — Line 94: `const nowMs = (await getDbNowUncached()).getTime();` Line 157: `const nowMs = (await getDbNowUncached()).getTime();`. Both `acquireSharedSseConnectionSlot` and `shouldRecordSharedHeartbeat` now use DB time. Comments at lines 91-93 and 155-156 explain the rationale. PASS.
+## Findings
 
-2. **Contests page uses null guards** — Line 109: `statusMatchesFilter(statusMap.get(c.id) ?? "closed", filter)` Line 178: `const status = statusMap.get(contest.id) ?? "closed";`. PASS — no non-null assertions remain.
+### V-1: Judge claim route `Date.now()` for `claimCreatedAt` — verified clock-skew impact [MEDIUM/MEDIUM]
 
-3. **IOI leaderboard deterministic tie-breaking** — Line 359: `entries.sort((a, b) => b.totalScore - a.totalScore || a.userId.localeCompare(b.userId));`. PASS.
+**File:** `src/app/api/v1/judge/claim/route.ts:122`
 
-4. **Candidate dashboard null guards** — Line 594: `(assignmentProblemProgressMap.get(assignment.assignmentId) ?? [])`. PASS.
+**Verification:** I traced the full data flow:
+1. `claimCreatedAt = Date.now()` — captures app-server time
+2. SQL: `to_timestamp(@claimCreatedAt::double precision / 1000)` — converts to DB timestamp
+3. Stale check: `s.judge_claimed_at < NOW() - (@staleClaimTimeoutMs || ' milliseconds')::interval`
+4. The comparison is between an app-time-originated value and DB `NOW()`
 
-## New Findings
+**Verified failure scenario:** If the app server clock is 30 seconds behind the DB server, a claim made "just now" will appear 30 seconds old from the DB's perspective. With a 5-minute stale timeout, the claim would be detected as stale 30 seconds early. This is confirmed by tracing the SQL logic.
 
-### V-1: `checkServerActionRateLimit` uses `Date.now()` in DB transaction — verified present [MEDIUM/MEDIUM]
+**Evidence:** The same pattern was fixed and verified in `realtime-coordination.ts` (cycle 46), `checkServerActionRateLimit` (cycle 47), and `validateAssignmentSubmission` (cycle 45). The fix pattern is established.
 
-**File:** `src/lib/security/api-rate-limit.ts:215`
+---
 
-**Description:** Line 215: `const now = Date.now();` used at lines 232, 234, 252 for window comparison and DB writes. This is the same pattern class that was fixed in `realtime-coordination.ts` and `validateAssignmentSubmission`.
+### V-2: Prior fixes remain intact
 
-**Fix:** Use `getDbNowUncached()` at the start of the transaction.
+All fixes from cycles 37-47 were verified to still be present:
+1. `checkServerActionRateLimit` uses `getDbNowUncached()` — confirmed in api-rate-limit.ts:219
+2. `realtime-coordination.ts` uses `getDbNowUncached()` — confirmed in lines 94 and 157
+3. No `Map.get()!` patterns remain in the codebase — confirmed via grep
+4. No `as any` patterns remain in the codebase — confirmed via grep
 
-**Confidence:** Medium
+---
+
+### V-3: `rateLimitedResponse` X-RateLimit-Reset header accuracy [LOW/LOW]
+
+**File:** `src/lib/security/api-rate-limit.ts:125`
+
+**Verification:** The header value `Math.ceil((Date.now() + windowMs) / 1000)` gives an approximate reset time. The actual reset in the DB depends on `windowStartedAt + windowMs`. Under normal conditions (clocks synchronized to within milliseconds), the difference is negligible. Under extreme clock skew (seconds+), clients could retry slightly early or late. Not a correctness issue since the DB check is authoritative.

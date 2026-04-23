@@ -1,65 +1,64 @@
-# RPF Cycle 47 — Aggregate Review
+# RPF Cycle 48 — Aggregate Review
 
 **Date:** 2026-04-23
-**Base commit:** f8ba7334
+**Base commit:** 6831c05e
 **Review artifacts:** code-reviewer.md, perf-reviewer.md, security-reviewer.md, architect.md, critic.md, verifier.md, debugger.md, test-engineer.md, tracer.md, designer.md, document-specialist.md
 
 ## Deduped Findings (sorted by severity then signal)
 
-### AGG-1: `checkServerActionRateLimit` uses `Date.now()` inside DB transaction — clock-skew in server action rate limiting [MEDIUM/MEDIUM]
+### AGG-1: Judge claim route uses `Date.now()` for `claimCreatedAt` — clock-skew in stale claim detection [MEDIUM/MEDIUM]
 
-**Flagged by:** code-reviewer (CR-1), security-reviewer (SEC-1), architect (ARCH-1), critic (CRI-1), verifier (V-1), debugger (DBG-1), test-engineer (TE-1), tracer (TR-1), document-specialist (DOC-1)
-**Signal strength:** 9 of 11 review perspectives
+**Flagged by:** code-reviewer (CR-1), perf-reviewer (PERF-1), security-reviewer (SEC-1), architect (ARCH-1), critic (CRI-1), verifier (V-1), debugger (DBG-1), test-engineer (TE-1), tracer (TR-1), document-specialist (DOC-1)
+**Signal strength:** 10 of 11 review perspectives
 
-**File:** `src/lib/security/api-rate-limit.ts:215`
+**File:** `src/app/api/v1/judge/claim/route.ts:122`
 
-**Description:** `checkServerActionRateLimit` captures `const now = Date.now()` and uses it inside `execTransaction` to compare against DB-stored `windowStartedAt` and to write timestamps. This is the same clock-skew class fixed in `realtime-coordination.ts` (cycle 46), `validateAssignmentSubmission` (cycle 45), and the assignment PATCH route (cycle 40). Unlike `atomicConsumeRateLimit` (deferred due to hot-path concerns on every API request), server actions are called infrequently (role edits, group management) and can tolerate the <1ms DB round-trip cost of `getDbNowUncached()`.
+**Description:** The judge claim route captures `const claimCreatedAt = Date.now()` and uses it in the SQL query `to_timestamp(@claimCreatedAt::double precision / 1000)` to set `judge_claimed_at`. The stale claim detection then uses `s.judge_claimed_at < NOW() - interval`, comparing the app-time-originated timestamp against DB `NOW()`. This is the same clock-skew class fixed in `realtime-coordination.ts` (cycle 46), `checkServerActionRateLimit` (cycle 47), `validateAssignmentSubmission` (cycle 45), and the assignment PATCH route (cycle 40).
 
-**Concrete failure scenario (premature window reset):** App clock 5 seconds ahead of DB. A user's rate-limit window was set at DB time 10:00:00 with a 60s window. At DB time 10:00:55, the app thinks it's 10:01:00. The check `windowStartedAt + 60000 <= now` evaluates true, resetting the counter 5 seconds early. The user gets a fresh window and can perform more actions than configured.
+**Concrete failure scenario (premature stale detection):** App clock 30 seconds behind DB. A worker claims a submission at app time 10:00:00 (DB time 10:00:30). `judge_claimed_at` is stored as 10:00:00. After 4m30s of DB time, `NOW()` = 10:05:00, and `10:00:00 < 10:05:00 - 5min` = `10:00:00 < 10:00:00` = false (barely not stale). After 4m31s, the claim is marked stale — 30 seconds earlier than intended. With larger clock drift, the window shrinks further. In extreme cases (e.g., NTP step correction), a freshly claimed submission could be immediately eligible for re-claim, causing duplicate judging (wasted container starts, compilation, execution).
 
-**Fix:** Use `getDbNowUncached()` at the start of the transaction:
+**Fix:** Use `getDbNowUncached()` inside the transaction:
 ```typescript
 const now = (await getDbNowUncached()).getTime();
+const claimCreatedAt = now;
 ```
 
 ---
 
-### AGG-2: Zip import uses `fileMap.get(key)!` non-null assertion — last remaining `Map.get()!` [LOW/LOW]
+### AGG-2: `rateLimitedResponse` uses `Date.now()` for `X-RateLimit-Reset` header [LOW/LOW]
 
-**Flagged by:** code-reviewer (CR-2), test-engineer (TE-2)
-**Signal strength:** 2 of 11 review perspectives
+**Flagged by:** code-reviewer (CR-2), critic (CRI-2), verifier (V-3), debugger (DBG-2)
+**Signal strength:** 4 of 11 review perspectives
 
-**File:** `src/app/(dashboard)/dashboard/problems/create/create-problem-form.tsx:196`
+**File:** `src/lib/security/api-rate-limit.ts:125`
 
-**Description:** `const pair = fileMap.get(key)!;` — the key comes from iterating `fileMap.keys()`, so the assertion is technically safe. However, this is the only remaining `Map.get()!` in the codebase after cycles 43-46 systematically replaced them with null-safe alternatives.
+**Description:** The `rateLimitedResponse` function computes the `X-RateLimit-Reset` header as `Math.ceil((Date.now() + windowMs) / 1000)`. Under clock skew, this gives clients an incorrect reset timestamp. The actual DB-stored `windowStartedAt + windowMs` may differ from `Date.now() + windowMs`. Not a functional bug since the DB check is authoritative, but undermines the API contract.
 
-**Fix:** Use null guard: `const pair = fileMap.get(key); if (!pair) continue;`
+**Fix:** Use `getDbNowUncached()` or pass the DB-consistent timestamp from the caller.
 
 ---
 
-### AGG-3: Practice page `resolvedSearchParams?.sort as SortOption` — unsafe type assertion [LOW/LOW]
+### AGG-3: Practice page `resolvedSearchParams?.sort as SortOption` — unsafe type assertion (carry-over from cycle 47) [LOW/LOW]
 
-**Flagged by:** code-reviewer (CR-3)
-**Signal strength:** 1 of 11 review perspectives
+**Flagged by:** code-reviewer (CR-3), critic (CRI-3)
+**Signal strength:** 2 of 11 review perspectives
 
 **File:** `src/app/(public)/practice/page.tsx:128-129`
 
-**Description:** The code casts `resolvedSearchParams?.sort` (which is `string | undefined`) as `SortOption` before the `includes` check validates it. The `includes` check does validate the runtime value, so this is safe in practice, but the type assertion is misleading.
+**Description:** The code casts `resolvedSearchParams?.sort` as `SortOption` before the `includes` check validates it. The `includes` check does validate the runtime value, so this is safe in practice, but the type assertion is misleading.
 
 **Fix:** Cosmetic — use a more type-safe approach.
 
 ---
 
-### AGG-4: `checkServerActionRateLimit` uses `Date.now()` without clock-skew comment [LOW/LOW]
+### AGG-4: Anti-cheat privacy notice accessibility — keyboard focus verification needed [LOW/LOW]
 
-**Flagged by:** document-specialist (DOC-1)
+**Flagged by:** designer (DES-3)
 **Signal strength:** 1 of 11 review perspectives
 
-**File:** `src/lib/security/api-rate-limit.ts:215`
+**File:** `src/components/exam/anti-cheat-monitor.tsx:261`
 
-**Description:** The function uses `Date.now()` without a comment explaining the inconsistency with the codebase convention. If the clock-skew issue is fixed (AGG-1), this finding is moot. If deferred, a `// TODO(clock-skew)` comment should be added.
-
-**Fix:** Superseded by AGG-1 fix. If AGG-1 is deferred, add a TODO comment.
+**Description:** The privacy notice dialog prevents dismissal. The "Accept" button should receive initial focus and the focus trap should be confirmed via manual testing.
 
 ---
 
@@ -81,9 +80,9 @@ const now = (await getDbNowUncached()).getTime();
 - **Prior SEC-2 (from cycle 43):** Anti-cheat heartbeat dedup uses Date.now() for LRU cache (deferred, LOW/LOW)
 - **Prior AGG-2 (from cycle 45):** `atomicConsumeRateLimit` uses Date.now() in hot path (deferred, MEDIUM/MEDIUM)
 
-## Verified Fixes This Cycle (From Prior Cycles)
+## Verified Fixes From Prior Cycles (All Still Intact)
 
-All fixes from cycles 37-46 remain intact:
+All fixes from cycles 37-47 remain intact:
 1. `"redeemed"` removed from PATCH route state machine
 2. `Date.now()` replaced with `getDbNowUnc()` in assignment PATCH
 3. Non-null assertions removed from anti-cheat heartbeat gap detection
@@ -98,35 +97,9 @@ All fixes from cycles 37-46 remain intact:
 12. problemPoints/refine validation in quick-create
 13. Capability-based auth on access-code routes
 14. Redundant non-null assertion removed from userId
-15. Submission rate-limit uses `getDbNowUncached()` for clock-skew consistency
-16. Contest join route has explicit `auth: true`
-17. `validateAssignmentSubmission` uses `getDbNowUncached()` for deadline enforcement
-18. Map.get() non-null assertions replaced in contest-scoring, submissions, contest-analytics
-19. Non-null assertions replaced with null guards in client components (submission-detail, problem-set-form, role-editor)
-20. `realtime-coordination.ts` uses `getDbNowUncached()` for SSE slot and heartbeat
-21. Contests page uses null guards for `statusMap.get()`
-22. IOI leaderboard has deterministic tie-breaking via userId
-23. Candidate dashboard uses null guards for `assignmentProblemProgressMap.get()`
-
-## Deferred Items
-
-| Finding | File+Line | Severity/Confidence | Reason for Deferral | Exit Criterion |
-|---------|-----------|-------------------|--------------------|---------------|
-| AGG-3: Practice page unsafe type assertion | practice/page.tsx:128-129 | LOW/LOW | Type-safe by runtime validation; cosmetic | Module refactoring cycle |
-| AGG-4: Missing clock-skew comment | api-rate-limit.ts:215 | LOW/LOW | Superseded by AGG-1 fix | AGG-1 resolved or deferred |
-| Prior AGG-2: Rate-limiting Date.now() for DB timestamps | api-rate-limit.ts:54 | MEDIUM/MEDIUM | Adding DB query to hot path increases latency; rate-limit windows are minutes-level | Clock skew observed in production affecting rate limiting |
-| Prior AGG-3: Analytics progression unbounded query | contest-analytics.ts:242 | MEDIUM/LOW | Bounded by 5-min cache; typical contest sizes are manageable | Contest with >500 students causes slow analytics response |
-| Prior AGG-2: Leaderboard freeze uses Date.now() | leaderboard.ts:52 | LOW/LOW | Display-only inaccuracy; seconds-level | Leaderboard freeze timing becomes a user-facing issue |
-| Prior AGG-5: Console.error in client components | discussions/*.tsx, groups/*.tsx | LOW/MEDIUM | Requires architectural decision; no data loss | Client error reporting feature request |
-| Prior AGG-6: SSE O(n) eviction scan | events/route.ts:44-55 | LOW/LOW | Bounded by 1000-entry cap | Performance profiling shows bottleneck |
-| Prior AGG-7: Manual routes duplicate createApiHandler | migrate/import, restore routes | MEDIUM/MEDIUM | Requires extending createApiHandler to support multipart | Next API framework iteration |
-| Prior AGG-8: Global timer HMR pattern duplication | 4 modules | LOW/MEDIUM | DRY concern; each module works correctly | Module refactoring cycle |
-| Prior SEC-3: Anti-cheat copies text content | anti-cheat-monitor.tsx:206 | LOW/LOW | 80-char limit; privacy notice accepted | Privacy audit or user complaint |
-| Prior SEC-4: Docker build error leaks paths | docker/client.ts:169 | LOW/LOW | Admin-only; Docker output expected | Admin permission review |
-| Prior PERF-3: Anti-cheat heartbeat gap query transfers up to 5000 rows | anti-cheat/route.ts:195-204 | MEDIUM/MEDIUM | Could use SQL window function; currently bounded by limit | Long contest with many heartbeats causes slow API response |
-| Prior DES-1: Chat widget button badge lacks ARIA announcement | chat-widget.tsx:284-288 | LOW/LOW | Screen reader edge case; badge is visual-only | Accessibility audit or user complaint |
-| Prior DES-1 (cycle 46): Contests page badge hardcoded colors | contests/page.tsx:224 | LOW/LOW | Visual-only; current colors have adequate contrast | Dark mode audit |
-| Prior DOC-1: SSE route ADR | events/route.ts | LOW/LOW | Documentation-only | Next documentation cycle |
-| Prior DOC-2: Docker client dual-path docs | docker/client.ts | LOW/LOW | Documentation-only | Next documentation cycle |
-| Prior ARCH-2: Stale-while-revalidate cache pattern duplication | contest-scoring.ts, analytics/route.ts | LOW/LOW | DRY concern; both modules work correctly | Module refactoring cycle |
-| Prior SEC-2: Anti-cheat heartbeat dedup Date.now() | anti-cheat/route.ts:92 | LOW/LOW | Approximate by design; LRU cache is inherently imprecise | Performance profiling shows missed dedup |
+15. `checkServerActionRateLimit` uses `getDbNowUncached()` (cycle 47)
+16. Last remaining `Map.get()!` replaced with null guard (cycle 47)
+17. Deterministic tie-breaking in IOI leaderboard sort (cycle 46)
+18. Remaining non-null assertions replaced with null guards (cycle 46)
+19. `Map.get()` non-null assertions replaced with null guards (cycle 46)
+20. DB time for SSE coordination (cycle 46)

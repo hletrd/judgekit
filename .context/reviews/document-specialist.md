@@ -1,35 +1,34 @@
-# Document Specialist Review — RPF Cycle 47
+# Document Specialist Review — RPF Cycle 48
 
 **Date:** 2026-04-23
 **Reviewer:** document-specialist
-**Base commit:** f8ba7334
+**Base commit:** 6831c05e
 
-## Inventory of Documentation Reviewed
+## Findings
 
-- `src/lib/realtime/realtime-coordination.ts` — Clock-skew comment (verified)
-- `src/lib/security/api-rate-limit.ts` — Missing clock-skew comment for checkServerActionRateLimit
-- `src/lib/assignments/submissions.ts` — Clock-skew comment (verified)
+### DOC-1: Judge claim route lacks clock-skew comment [LOW/LOW]
 
-## Previously Fixed Items (Verified)
+**File:** `src/app/api/v1/judge/claim/route.ts:122`
 
-- `validateAssignmentSubmission` clock-skew comment: Present (added in cycle 45)
-- `realtime-coordination.ts` clock-skew comments: Present (added in cycle 46)
+**Description:** The `Date.now()` usage for `claimCreatedAt` has no comment explaining the clock-skew implications. Other locations in the codebase that still use `Date.now()` in DB contexts have been documented with comments explaining why (e.g., `atomicConsumeRateLimit` in `api-rate-limit.ts:55` has no explicit comment either, but the pattern is well-established). Adding a `// TODO(clock-skew)` comment would make it discoverable during future sweeps.
 
-## New Findings
-
-### DOC-1: `checkServerActionRateLimit` uses `Date.now()` without comment about clock-skew risk [LOW/LOW]
-
-**File:** `src/lib/security/api-rate-limit.ts:215`
-
-**Description:** The function uses `Date.now()` at line 215 to compare against DB-stored timestamps without any comment explaining the inconsistency with the codebase convention of using `getDbNowUncached()`. If the clock-skew issue is fixed, a comment similar to those in `realtime-coordination.ts` should be added.
-
-**Fix:** If fixed, add a comment. If deferred, add a `// TODO(clock-skew)` comment for visibility.
-
-**Confidence:** Low
+**Fix:** If the issue is fixed (using `getDbNowUncached()`), no comment needed. If deferred, add a `// TODO(clock-skew): use getDbNowUncached() for consistency with other DB-stored timestamps` comment.
 
 ---
 
-### Carry-Over Items
+### DOC-2: SSE route ADR [LOW/LOW] (carry-over)
 
-- **DOC-1 (from prior cycles):** SSE route ADR (LOW/LOW, deferred)
-- **DOC-2 (from prior cycles):** Docker client dual-path behavior documentation (LOW/LOW, deferred)
+**Description:** The SSE route was not migrated to `createApiHandler` and lacks an Architectural Decision Record explaining the trade-off.
+
+---
+
+### DOC-3: Docker client dual-path docs [LOW/LOW] (carry-over)
+
+**Description:** The Docker client has dual execution paths (local vs. remote) that are not documented.
+
+## Positive Observations
+
+1. The `getDbNowUncached()` function has clear JSDoc explaining when to use it
+2. The rate-limit code has good inline documentation
+3. The proxy.ts has detailed comments explaining security constraints
+4. The SSE route header comment explains why it wasn't migrated to `createApiHandler`

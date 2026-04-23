@@ -1,28 +1,51 @@
-# Tracer Review — RPF Cycle 47
+# Tracer Review — RPF Cycle 48
 
 **Date:** 2026-04-23
 **Reviewer:** tracer
-**Base commit:** f8ba7334
+**Base commit:** 6831c05e
 
 ## Causal Tracing of Suspicious Flows
 
-### TR-1: `checkServerActionRateLimit` uses `Date.now()` for DB-timestamp comparisons — clock-skew in server action rate limiting [MEDIUM/MEDIUM]
+### TR-1: Judge claim -> stale detection clock-skew chain [MEDIUM/MEDIUM]
 
-**File:** `src/lib/security/api-rate-limit.ts:215-234`
+**File:** `src/app/api/v1/judge/claim/route.ts:122`
 
-**Causal trace:**
-1. User invokes a server action (e.g., role edit)
-2. `checkServerActionRateLimit` is called
-3. Line 215: `const now = Date.now();` — app-server wall clock
-4. Line 234: `existing.windowStartedAt + windowMs <= now` — DB-stored `windowStartedAt` compared against app-server time
-5. Line 252: `windowStartedAt: now` — app-server time written to DB
-
-Steps 4-5 cross a trust boundary: app-server time is compared against and then written to DB-stored timestamps, mixing clock sources within a transaction.
+**Causal chain:**
+1. Worker calls POST `/api/v1/judge/claim`
+2. Handler captures `claimCreatedAt = Date.now()` (app-server time)
+3. SQL inserts `judge_claimed_at = to_timestamp(claimCreatedAt / 1000)` (DB-stored timestamp from app time)
+4. Stale detection SQL: `s.judge_claimed_at < NOW() - interval`
+5. `NOW()` returns DB-server time
+6. If app and DB clocks differ, the comparison is inconsistent
 
 **Competing hypotheses:**
-- H1: Clock skew is negligible in production. **Rejected:** The codebase has fixed clock-skew bugs in at least 7 previous cycles.
-- H2: Server actions are low-frequency, so the impact is minimal. **Partially accepted:** Server actions are called less frequently than API endpoints, but role/group management actions are security-sensitive — an extra allowance could permit unauthorized privilege escalation within the window.
+- **H1 (confirmed):** Clock skew causes premature stale detection. App clock behind DB -> `judge_claimed_at` is "older" than actual DB time -> stale timeout appears to expire earlier.
+- **H2 (rejected):** SKIP LOCKED prevents all issues. While it prevents data corruption from concurrent updates, it does not prevent the performance waste of duplicate container starts.
+- **H3 (rejected):** The impact is negligible. Under typical NTP sync (<10ms), the impact is minimal. But during NTP step corrections (seconds to minutes), the impact can be significant.
 
-**Fix:** Use `getDbNowUncached()` for `now` inside the transaction, consistent with the pattern in `realtime-coordination.ts` and `validateAssignmentSubmission`.
+**Verdict:** H1 confirmed. Fix by using `getDbNowUncached()` inside the transaction.
 
-**Confidence:** Medium
+---
+
+### TR-2: Rate-limited response header accuracy chain [LOW/LOW]
+
+**File:** `src/lib/security/api-rate-limit.ts:125`
+
+**Causal chain:**
+1. Request is rate-limited -> `rateLimitedResponse()` called
+2. Header computed: `X-RateLimit-Reset = Date.now() + windowMs`
+3. Actual DB reset: `windowStartedAt + windowMs` (where `windowStartedAt` may be app-time from `atomicConsumeRateLimit`)
+4. Both use app time, so they're internally consistent — the header matches the DB value only if clocks are synced
+
+**Verdict:** Internally consistent but differs from DB time under skew. Low impact since clients should respect 429 regardless.
+
+---
+
+### TR-3: Anti-cheat heartbeat dedup in single-instance mode [LOW/LOW] (carry-over)
+
+**Causal chain:**
+1. Anti-cheat POST handler receives heartbeat event
+2. If `!usesSharedRealtimeCoordination()`, checks LRU cache with `Date.now()`
+3. LRU cache decides whether to insert a DB row
+4. Under clock skew, dedup window may be slightly off
+5. Impact: extra or missing heartbeat rows — not security-critical
