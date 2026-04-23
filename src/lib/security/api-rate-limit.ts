@@ -49,13 +49,14 @@ function hasConsumedRequestKey(request: NextRequest, key: string) {
 /**
  * Atomically check rate limit and record an API request attempt inside a
  * PostgreSQL transaction with SELECT FOR UPDATE to prevent TOCTOU races.
- * Returns true if the request is rate-limited, false if allowed.
+ * Returns { limited, nowMs } — limited is true if the request is rate-limited,
+ * nowMs is the app-server timestamp used for the window computation.
  */
-async function atomicConsumeRateLimit(key: string): Promise<boolean> {
+async function atomicConsumeRateLimit(key: string): Promise<{ limited: boolean; nowMs: number }> {
   const now = Date.now();
   const { max: apiMax, windowMs } = getApiRateLimitConfig();
 
-  return execTransaction(async (tx) => {
+  const limited = await execTransaction(async (tx) => {
     const [existing] = await tx
       .select({
         attempts: rateLimits.attempts,
@@ -112,17 +113,20 @@ async function atomicConsumeRateLimit(key: string): Promise<boolean> {
 
     return false;
   });
+
+  return { limited, nowMs: now };
 }
 
-function rateLimitedResponse(windowMs?: number) {
+function rateLimitedResponse(windowMs?: number, nowMs?: number) {
   const retryAfter = windowMs ? Math.ceil(windowMs / 1000) : 60;
+  const resetMs = (nowMs ?? Date.now()) + (windowMs ?? 60_000);
   return NextResponse.json(
     { error: "rateLimited" },
     { status: 429, headers: {
       "Retry-After": String(retryAfter),
       "X-RateLimit-Limit": String(getApiRateLimitConfig().max),
       "X-RateLimit-Remaining": "0",
-      "X-RateLimit-Reset": String(Math.ceil((Date.now() + (windowMs ?? 60_000)) / 1000)),
+      "X-RateLimit-Reset": String(Math.ceil(resetMs / 1000)),
     } }
   );
 }
@@ -155,9 +159,9 @@ export async function consumeApiRateLimit(
     return rateLimitedResponse(windowMs);
   }
 
-  const limited = await atomicConsumeRateLimit(key);
+  const { limited, nowMs } = await atomicConsumeRateLimit(key);
   if (limited) {
-    return rateLimitedResponse(windowMs);
+    return rateLimitedResponse(windowMs, nowMs);
   }
 
   rememberRequestKey(request, key);
@@ -189,9 +193,9 @@ export async function consumeUserApiRateLimit(
     return rateLimitedResponse(windowMs);
   }
 
-  const limited = await atomicConsumeRateLimit(key);
+  const { limited, nowMs } = await atomicConsumeRateLimit(key);
   if (limited) {
-    return rateLimitedResponse(windowMs);
+    return rateLimitedResponse(windowMs, nowMs);
   }
 
   rememberRequestKey(request, key);
