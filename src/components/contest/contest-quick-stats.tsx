@@ -62,10 +62,10 @@ export function ContestQuickStats({
       );
       if (ok && data.data && typeof data.data === "object") {
         setStats((prev) => ({
-          participantCount: Number.isFinite(Number(data.data!.participantCount)) ? Number(data.data!.participantCount) : prev.participantCount,
-          submittedCount: Number.isFinite(Number(data.data!.submittedCount)) ? Number(data.data!.submittedCount) : prev.submittedCount,
-          avgScore: data.data!.avgScore !== null && data.data!.avgScore !== undefined && Number.isFinite(Number(data.data!.avgScore)) ? Number(data.data!.avgScore) : null,
-          problemsSolvedCount: Number.isFinite(Number(data.data!.problemsSolvedCount)) ? Number(data.data!.problemsSolvedCount) : prev.problemsSolvedCount,
+          participantCount: typeof data.data!.participantCount === "number" && Number.isFinite(data.data!.participantCount) ? data.data!.participantCount : prev.participantCount,
+          submittedCount: typeof data.data!.submittedCount === "number" && Number.isFinite(data.data!.submittedCount) ? data.data!.submittedCount : prev.submittedCount,
+          avgScore: data.data!.avgScore !== null && data.data!.avgScore !== undefined && typeof data.data!.avgScore === "number" && Number.isFinite(data.data!.avgScore) ? data.data!.avgScore : null,
+          problemsSolvedCount: typeof data.data!.problemsSolvedCount === "number" && Number.isFinite(data.data!.problemsSolvedCount) ? data.data!.problemsSolvedCount : prev.problemsSolvedCount,
         }));
       }
     } catch (err) {
