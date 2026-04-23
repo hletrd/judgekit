@@ -7,6 +7,7 @@ import { redeemAccessCodeSchema } from "@/lib/validators/access-codes";
 import { getRecruitingAccessContext } from "@/lib/recruiting/access";
 
 export const POST = createApiHandler({
+  auth: true,
   rateLimit: "contest:join",
   schema: redeemAccessCodeSchema,
   handler: async (req: NextRequest, { user, body }) => {
