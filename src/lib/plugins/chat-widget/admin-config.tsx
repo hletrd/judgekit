@@ -96,7 +96,7 @@ export default function ChatWidgetAdminConfig({ config, onSave }: PluginAdminPro
         }),
       });
       // Parse response body once — the Response body can only be consumed once
-      const data = await response.json().catch(() => ({ success: false, error: "parseError" })) as { success?: boolean; error?: string };
+      const data = await response.json().catch(() => ({ success: false, error: "parseError" })) as { success: boolean; error?: string };
       if (!response.ok) {
         setTestResult({ success: false, error: data.error ?? tCommon("error") });
         return;
