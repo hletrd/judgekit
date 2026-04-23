@@ -1,38 +1,30 @@
-# Critic Review — RPF Cycle 37
+# Critic Review — RPF Cycle 40
 
 **Date:** 2026-04-23
 **Reviewer:** critic
-**Base commit:** 3d729cee
+**Base commit:** f030233a
 
 ## Multi-Perspective Critique
 
 This review examines the change surface from multiple angles: correctness, security, maintainability, UX, and operational safety.
 
-### CRI-1: quick-create route lacks NaN guard for Date construction — inconsistent defense-in-depth [MEDIUM/MEDIUM]
+### CRI-1: Assignment PATCH uses `Date.now()` for active-contest check — clock-skew bypass [MEDIUM/MEDIUM]
 
-**File:** `src/app/api/v1/contests/quick-create/route.ts:31-34`
+**File:** `src/app/api/v1/groups/[id]/assignments/[assignmentId]/route.ts:99-101`
 
-**Description:** All recruiting invitation routes now have `Number.isFinite()` defense-in-depth guards after Date construction, but the quick-create route does not. The Zod schema validates `.datetime()` format, but the defense-in-depth pattern is inconsistent. If Zod validation is ever loosened or the schema reused, the NaN comparison `NaN >= NaN` evaluates to false, bypassing the schedule validation. This is the same class of bug that was fixed in the invitation routes in cycles 35-36.
+**Description:** The assignment PATCH route uses `Date.now()` to determine if an exam-mode contest has started, comparing against `assignment.startsAt` which comes from the database. This is the same class of clock-skew vulnerability that was systematically eliminated from the recruiting invitation routes and submission deadline enforcement. Using app server time to compare against DB timestamps introduces a TOCTOU-like race condition when the two clocks are not synchronized.
 
-**Confidence:** High
-
----
-
-### CRI-2: MAX_EXPIRY_MS constant duplicated across invitation routes — maintenance risk [LOW/MEDIUM]
-
-**File:** `src/app/api/v1/contests/[assignmentId]/recruiting-invitations/route.ts:69`, `[invitationId]/route.ts:110`, `bulk/route.ts:30`
-
-**Description:** The `MAX_EXPIRY_MS = 10 * 365.25 * 24 * 60 * 60 * 1000` constant is defined identically in 3 separate route files. This is a DRY violation that creates maintenance risk for expiry policy changes.
+The codebase has a clear, documented convention: use `getDbNowUncached()` for schedule comparisons. The comment at line 96-98 even references "active exam-mode contests" but the check at line 99 violates the established pattern.
 
 **Confidence:** High
 
 ---
 
-### CRI-3: SSE realtime-coordination LIKE queries missing ESCAPE clause — convention inconsistency [LOW/LOW]
+### CRI-2: Anti-cheat heartbeat gap detection non-null assertions on nullable field [LOW/LOW]
 
-**File:** `src/lib/realtime/realtime-coordination.ts:94, 107`
+**File:** `src/app/api/v1/contests/[assignmentId]/anti-cheat/route.ts:212-213`
 
-**Description:** Two LIKE queries in the realtime coordination module omit the `ESCAPE '\\'` clause used consistently everywhere else. The data is server-controlled and safe, but the inconsistency undermines the codebase convention.
+**Description:** The code uses `heartbeats[i - 1].createdAt!` and `heartbeats[i].createdAt!` with non-null assertions. While the preceding `if` check at line 211 already guards against null values, the `!` assertions are misleading and would hide a future regression if the null check were removed. This is a minor code quality issue.
 
 **Confidence:** High
 
@@ -40,8 +32,8 @@ This review examines the change surface from multiple angles: correctness, secur
 
 ### Positive Observations
 
-- The TABLE_MAP derivation from TABLE_ORDER (import.ts lines 19-22) is a clean, correct fix that eliminates the drift risk permanently.
-- The `verifyAndRehashPassword` consolidation is well-implemented with audit logging.
-- The `isStreamingRef` pattern correctly eliminates the stale-closure race and stabilizes the callback chain.
-- The SSE stale threshold TTL cache is a pragmatic solution that reduces DB load while maintaining timely config updates.
-- The contest stats CTE optimization (reusing `user_best` in `solved_problems`) correctly avoids the double scan.
+- The cycle 39 fixes are well-implemented: the API key countdown feature provides clear user feedback, the un-revoke fix correctly removes the broken transition instead of silently accepting it, and the exam session short-circuit saves unnecessary DB queries.
+- The `normalizeDateFilter` pattern in admin routes correctly validates dates before using them in SQL queries.
+- The bulk enrollment route properly uses `onConflictDoNothing` to handle duplicate enrollments idempotently.
+- The compiler execution module's sandbox configuration is thorough (network=none, cap-drop=ALL, read-only, seccomp, user 65534).
+- The JSON-LD `safeJsonForScript` correctly handles both `</script` and `<!--` escape sequences.

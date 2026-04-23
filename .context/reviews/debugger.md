@@ -1,40 +1,69 @@
-# Debugger Review — RPF Cycle 37
+# Debugger Review — RPF Cycle 40
 
 **Date:** 2026-04-23
 **Reviewer:** debugger
-**Base commit:** 3d729cee
+**Base commit:** f030233a
 
 ## Inventory of Files Reviewed
 
-- `src/lib/plugins/chat-widget/chat-widget.tsx` — Chat widget state management (verified isStreamingRef)
-- `src/app/api/v1/submissions/[id]/events/route.ts` — SSE connections (verified threshold cache)
-- `src/lib/security/in-memory-rate-limit.ts` — Rate limiter
-- `src/lib/db/import.ts` — Import engine (verified TABLE_MAP derivation)
-- `src/lib/compiler/execute.ts` — Compiler execution
-- `src/lib/realtime/realtime-coordination.ts` — Realtime coordination
-- `src/app/api/v1/contests/quick-create/route.ts` — Quick-create contest
+- `src/app/api/v1/groups/[id]/assignments/[assignmentId]/route.ts` — Assignment PATCH (clock-skew bug)
+- `src/app/api/v1/contests/[assignmentId]/anti-cheat/route.ts` — Anti-cheat events (non-null assertions)
+- `src/app/api/v1/submissions/route.ts` — Submissions (Date.now() usage in rate limit)
+- `src/app/api/v1/contests/quick-create/route.ts` — Quick-create (verified NaN guard)
+- `src/lib/compiler/execute.ts` — Compiler execution (container lifecycle)
 
 ## Previously Fixed Items (Verified)
 
-- DBG-1 (sendMessage isStreaming closure race): Fixed — isStreamingRef pattern
-- DBG-2 (Import engine silent table skip): Fixed — TABLE_MAP derived from TABLE_ORDER, test added
+- Exam session short-circuit for non-exam: Fixed
+- Un-revoke transition removed: Fixed
+- Bulk invitation MAX_EXPIRY_MS guard: Fixed
+- Quick-create NaN guard: Fixed
 
 ## New Findings
 
-### DBG-1: quick-create route NaN Date bypasses schedule validation — latent bug [MEDIUM/MEDIUM]
+### DBG-1: Assignment PATCH `Date.now()` vs DB time — latent clock-skew bug [MEDIUM/MEDIUM]
 
-**File:** `src/app/api/v1/contests/quick-create/route.ts:31-37`
+**File:** `src/app/api/v1/groups/[id]/assignments/[assignmentId]/route.ts:99-101`
 
-**Description:** Tracing the quick-create flow for invalid dates:
-1. `body.startsAt` = "garbage" (passes Zod `.datetime()` due to schema bypass or future loosening)
-2. Line 31: `startsAt = new Date("garbage")` → `Invalid Date`
-3. Line 33: `deadline = new Date(now.getTime() + 30 * 24 * 3600000)` → valid Date
-4. Line 36: `startsAt.getTime() >= deadline.getTime()` → `NaN >= number` → `false`
-5. Validation passes (the check is `if (startsAt >= deadline) return error`)
-6. Contest created with `Invalid Date` for startsAt — PostgreSQL may reject or store null
+**Description:** Tracing the failure mode for clock skew:
 
-The failure mode depends on how PostgreSQL handles the invalid Date. If it throws, the transaction rolls back. If it coerces to NULL, the contest has a NULL startsAt, which could allow submissions at any time (windowed contests compare against startsAt).
+1. App server and DB server clocks differ by N seconds (common in Docker/VM setups)
+2. Line 99: `const now = Date.now();` — app server time = T_app
+3. Line 100: `startsAt` is read from DB, so it's in DB time = T_db
+4. Line 101: `if (startsAt && now >= startsAt)` — compares T_app >= T_db
 
-**Fix:** Add NaN guards after Date construction, consistent with the recruiting invitation routes.
+If T_app < T_db (app server behind), the check falsely allows problem changes during an active contest.
+
+If T_app > T_db (app server ahead), the check falsely blocks pre-contest edits.
+
+The failure is subtle — it only manifests when the clocks differ by enough to cross the `startsAt` boundary, and the instructor is trying to edit problems right around contest start time. This is exactly when edits are most likely and the protection is most important.
+
+**Concrete failure scenario:** A Docker container's system clock drifts 30 seconds behind the PostgreSQL server. An exam-mode contest starts at 10:00:00 DB time. At 10:00:20 DB time (9:59:50 app time), an instructor sends a PATCH to change problem points. The `Date.now()` check returns 9:59:50, which is < 10:00:00, so the active-contest block is bypassed. Problems are modified during an active exam.
+
+**Fix:** Use `getDbNowUncached()`:
+```typescript
+const now = await getDbNowUncached();
+const startsAt = assignment.startsAt ? new Date(assignment.startsAt).getTime() : null;
+if (startsAt && now.getTime() >= startsAt) {
+```
 
 **Confidence:** Medium
+
+---
+
+### DBG-2: Anti-cheat heartbeat gap detection — non-null assertion on nullable field [LOW/LOW]
+
+**File:** `src/app/api/v1/contests/[assignmentId]/anti-cheat/route.ts:211-213`
+
+**Description:** The code at line 211 checks `if (!heartbeats[i - 1].createdAt || !heartbeats[i].createdAt) continue;` but lines 212-213 use `heartbeats[i - 1].createdAt!` and `heartbeats[i].createdAt!` with non-null assertions. If the null guard at line 211 were removed in a future refactor, the `!` assertions would suppress the TypeScript error but produce `Invalid Date` at runtime.
+
+The practical impact is minimal because the null guard is present, but the `!` assertions are redundant and misleading.
+
+**Fix:** Remove the non-null assertions:
+```typescript
+if (!heartbeats[i - 1].createdAt || !heartbeats[i].createdAt) continue;
+const prev = new Date(heartbeats[i - 1].createdAt).getTime();
+const curr = new Date(heartbeats[i].createdAt).getTime();
+```
+
+**Confidence:** Low

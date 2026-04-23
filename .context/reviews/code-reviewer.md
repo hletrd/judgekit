@@ -1,67 +1,81 @@
-# Code Review — RPF Cycle 37
+# Code Review — RPF Cycle 40
 
 **Date:** 2026-04-23
 **Reviewer:** code-reviewer
-**Base commit:** 3d729cee
+**Base commit:** f030233a
 
 ## Inventory of Files Reviewed
 
-- `src/lib/plugins/chat-widget/chat-widget.tsx` — Chat widget (verified prior fixes)
-- `src/lib/db/import.ts` — Import engine (verified TABLE_MAP derivation)
-- `src/lib/db/export.ts` — Export engine
-- `src/lib/security/password-hash.ts` — Password hash utilities (verified rehash consolidation)
-- `src/app/api/v1/contests/[assignmentId]/recruiting-invitations/` — All invitation routes
-- `src/app/api/v1/submissions/[id]/events/route.ts` — SSE route
-- `src/lib/realtime/realtime-coordination.ts` — Realtime coordination
-- `src/lib/db/like.ts` — LIKE pattern escaping
-- `src/app/api/v1/contests/quick-create/route.ts` — Quick-create contest
-- `src/components/seo/json-ld.tsx` — JSON-LD with safeJsonForScript
+- `src/app/api/v1/contests/quick-create/route.ts` — Verified NaN guard (FIXED in cycle 39)
+- `src/app/api/v1/contests/[assignmentId]/recruiting-invitations/bulk/route.ts` — Verified MAX_EXPIRY_MS guard (FIXED in cycle 39)
+- `src/app/api/v1/contests/[assignmentId]/recruiting-invitations/[invitationId]/route.ts` — Verified un-revoke fix (FIXED in cycle 39)
+- `src/app/api/v1/groups/[id]/assignments/[assignmentId]/exam-session/route.ts` — Verified exam mode short-circuit (FIXED in cycle 39)
+- `src/app/api/v1/groups/[id]/assignments/[assignmentId]/route.ts` — Assignment PATCH route
+- `src/app/api/v1/submissions/route.ts` — Submission creation route
+- `src/app/api/v1/contests/[assignmentId]/anti-cheat/route.ts` — Anti-cheat event logging
+- `src/app/api/v1/contests/[assignmentId]/invite/route.ts` — Contest invite route
+- `src/app/api/v1/groups/[id]/members/bulk/route.ts` — Bulk enrollment
+- `src/app/api/v1/users/[id]/route.ts` — User management
+- `src/app/api/v1/files/[id]/route.ts` — File serving
+- `src/app/api/v1/admin/audit-logs/route.ts` — Audit logs
+- `src/app/api/v1/admin/login-logs/route.ts` — Login logs
+- `src/app/api/v1/admin/submissions/export/route.ts` — Submission export
+- `src/lib/assignments/recruiting-invitations.ts` — Recruiting invitations library
+- `src/lib/files/storage.ts` — File storage
+- `src/lib/security/sanitize-html.ts` — HTML sanitization
 - `src/lib/compiler/execute.ts` — Compiler execution
-- `src/lib/docker/client.ts` — Docker client
+- `src/components/seo/json-ld.tsx` — JSON-LD with safeJsonForScript
+- `src/app/(dashboard)/dashboard/admin/api-keys/api-keys-client.tsx` — API key dialog
 
 ## Previously Fixed Items (Verified)
 
-- AGG-1 (PATCH invitation NaN guard): Fixed at line 119 of `[invitationId]/route.ts`
-- AGG-2 (Password rehash consolidation): Fixed — `verifyAndRehashPassword` used in all 4 locations
-- AGG-3 (LIKE pattern escaping): Fixed — `escapeLikePattern(groupId)` at line 150 of `audit-logs/page.tsx`
-- AGG-4 (Chat textarea aria-label): Fixed at line 369
-- CR-1 (isStreaming ref): Fixed — `isStreamingRef` used in sendMessage and scrollToBottom
-- CR-2 (TABLE_MAP derived from TABLE_ORDER): Fixed — lines 19-22 of import.ts
-- PERF-1 (SSE stale threshold caching): Fixed — 5-minute TTL cache at lines 84-98
+- Quick-create route NaN guard: Fixed at lines 36-44
+- Bulk invitation MAX_EXPIRY_MS guard: Fixed at lines 67-69
+- Un-revoke transition removed: Fixed at lines 96-102
+- Exam session short-circuit for non-exam: Fixed at line 29
+- API key auto-dismiss countdown: Fixed at lines 115-137
 
 ## New Findings
 
-### CR-1: SSE realtime-coordination LIKE patterns lack ESCAPE clause — inconsistent with codebase standard [LOW/MEDIUM]
+### CR-1: Assignment PATCH route uses `Date.now()` for active-contest check — clock-skew risk [MEDIUM/MEDIUM]
 
-**File:** `src/lib/realtime/realtime-coordination.ts:94, 107`
+**File:** `src/app/api/v1/groups/[id]/assignments/[assignmentId]/route.ts:99-101`
 
-**Description:** The `getSsePrefixPattern()` function returns `realtime:sse:user:%` which is used in raw SQL LIKE expressions without an `ESCAPE '\\'` clause. Every other LIKE query in the codebase uses the `ESCAPE '\\'` clause consistently. While the `SSE_KEY_PREFIX` constant (`realtime:sse:user:`) is server-controlled and doesn't contain LIKE wildcards, the absence of the ESCAPE clause is inconsistent with the codebase convention established by `escapeLikePattern()`.
+**Description:** The assignment PATCH route blocks problem changes during active exam-mode contests. At line 99, it uses `Date.now()` (app server local time) to check if `now >= startsAt`. However, `assignment.startsAt` comes from the database, and the rest of the codebase consistently uses DB server time (`getDbNowUncached()`) for schedule comparisons to avoid clock skew between the app server and DB server.
 
-**Concrete failure scenario:** A developer copies this pattern for a new LIKE query that involves user input, omitting the ESCAPE clause because the existing codebase precedent doesn't include it. The new query becomes vulnerable to LIKE injection.
+If the app server clock is behind the DB server clock, `Date.now()` could return a time before `startsAt` even though the contest has already started in DB time. An instructor could then modify problems during an active contest.
 
-**Fix:** Add `ESCAPE '\\'` to both LIKE queries for consistency:
+Conversely, if the app server clock is ahead, the check could block legitimate pre-contest edits.
+
+**Concrete failure scenario:** The app server's system clock is 2 minutes behind the DB server. An exam starts at 10:00 DB time. At 10:01 DB time (9:59 app time), an instructor sends a PATCH to change problems. The `Date.now()` check returns 9:59, which is < 10:00, so the block is bypassed. The instructor modifies problems in an active exam.
+
+**Fix:** Replace `Date.now()` with `getDbNowUncached()`:
 ```typescript
-sql`${rateLimits.key} LIKE ${getSsePrefixPattern()} ESCAPE '\\'`
+const now = await getDbNowUncached();
+const startsAt = assignment.startsAt ? new Date(assignment.startsAt).getTime() : null;
+if (startsAt && now.getTime() >= startsAt) {
+  return { error: apiError("contestProblemsLockedDuringActive", 409) };
+}
 ```
 
 **Confidence:** Medium
 
 ---
 
-### CR-2: quick-create route does not validate `startsAt`/`deadline` with NaN guard [MEDIUM/MEDIUM]
+### CR-2: Anti-cheat heartbeat gap detection uses non-null assertion on nullable `createdAt` [LOW/LOW]
 
-**File:** `src/app/api/v1/contests/quick-create/route.ts:31-34`
+**File:** `src/app/api/v1/contests/[assignmentId]/anti-cheat/route.ts:211-213`
 
-**Description:** The quick-create route constructs `new Date(body.startsAt)` and `new Date(body.deadline)` from client-provided strings. While the Zod schema enforces `.datetime()` format, there is no `Number.isFinite()` defense-in-depth check on the resulting Date objects, unlike the recruiting invitation routes which all have this guard. If the Zod validation is ever loosened or the schema is reused without the regex guard, NaN dates would bypass the `startsAt >= deadline` comparison (since `NaN >= NaN` is false) and create a contest with invalid timestamps.
+**Description:** The heartbeat gap detection loop accesses `heartbeats[i - 1].createdAt!` and `heartbeats[i].createdAt!` with non-null assertions, but the Drizzle query selects `antiCheatEvents.createdAt` which could be nullable in the schema. The `!` operator bypasses TypeScript's null safety. If a heartbeat row has a NULL `createdAt` (due to a DB migration or data corruption), the `new Date(null!)` call would produce `Invalid Date` and `getTime()` would return NaN, making `prev` or `curr` NaN. The `gap > GAP_THRESHOLD_MS` comparison with NaN evaluates to false, so the gap would be silently skipped rather than causing an error.
 
-**Concrete failure scenario:** A future refactor changes `startsAt` from `z.string().datetime()` to `z.string()` for flexibility. An attacker sends `startsAt: "invalid"` which passes Zod but produces an Invalid Date. The comparison `startsAt.getTime() >= deadline.getTime()` evaluates to false (NaN comparison), so it passes the schedule validation check. The contest is created with corrupted timestamps.
+**Concrete failure scenario:** A DB migration temporarily allows NULL `createdAt` values. A heartbeat row with NULL `createdAt` is included in the result set. The non-null assertion doesn't throw at runtime, but the gap detection silently fails for that entry and the next one.
 
-**Fix:** Add NaN guards after Date construction:
+**Fix:** Add a null guard before the comparison:
 ```typescript
-const startsAt = body.startsAt ? new Date(body.startsAt) : now;
-if (!Number.isFinite(startsAt.getTime())) return apiError("invalidStartsAt", 400);
-const deadline = body.deadline ? new Date(body.deadline) : new Date(now.getTime() + 30 * 24 * 3600000);
-if (!Number.isFinite(deadline.getTime())) return apiError("invalidDeadline", 400);
+if (!heartbeats[i - 1].createdAt || !heartbeats[i].createdAt) continue;
+const prev = new Date(heartbeats[i - 1].createdAt).getTime();
+const curr = new Date(heartbeats[i].createdAt).getTime();
 ```
+This replaces the existing `continue` on line 211 (which already guards against null, but the non-null assertion on lines 212-213 is misleading).
 
-**Confidence:** Medium
+**Confidence:** Low (existing code already has a `continue` guard on line 211, but the `!` assertions on lines 212-213 are unnecessary and misleading)

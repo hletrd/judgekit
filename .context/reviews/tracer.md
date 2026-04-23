@@ -1,30 +1,33 @@
-# Tracer Review — RPF Cycle 37
+# Tracer Review — RPF Cycle 40
 
 **Date:** 2026-04-23
 **Reviewer:** tracer
-**Base commit:** 3d729cee
+**Base commit:** f030233a
 
 ## Causal Tracing of Suspicious Flows
 
-### TR-1: quick-create route NaN Date flows through schedule check without guard [MEDIUM/MEDIUM]
+### TR-1: Assignment PATCH `Date.now()` vs DB time — clock-skew vulnerability [MEDIUM/MEDIUM]
 
-**File:** `src/app/api/v1/contests/quick-create/route.ts:31-37`
+**File:** `src/app/api/v1/groups/[id]/assignments/[assignmentId]/route.ts:99-101`
 
-**Description:** Tracing the quick-create flow for invalid dates:
-1. `body.startsAt` = "garbage" (passes Zod `.datetime()` due to schema bypass or future loosening)
-2. Line 31: `startsAt = new Date("garbage")` → `Invalid Date`
-3. Line 33: `deadline = new Date(now.getTime() + 30 * 24 * 3600000)` → valid Date
-4. Line 36: `startsAt.getTime() >= deadline.getTime()` → `NaN >= number` → `false`
-5. Validation passes (the check is `if (startsAt >= deadline) return error`)
-6. Contest created with `Invalid Date` for startsAt — PostgreSQL may reject or store null
+**Description:** Tracing the failure flow:
 
-The failure mode depends on how PostgreSQL handles the invalid Date. If it throws, the transaction rolls back. If it coerces to NULL, the contest has a NULL startsAt, which could allow submissions at any time (windowed contests compare against startsAt).
+1. Instructor sends PATCH to change problems on an exam-mode contest
+2. Line 98: `if (body.problems !== undefined && assignment.examMode !== "none")` — enters the block
+3. Line 99: `const now = Date.now();` — app server local time
+4. Line 100: `const startsAt = assignment.startsAt ? new Date(assignment.startsAt).getTime() : null;` — DB time
+5. Line 101: `if (startsAt && now >= startsAt)` — comparing apples to oranges
 
-**Hypothesis 1 (confirmed):** NaN comparison bypasses the schedule check. The `>=` check is "startsAt is at or after deadline" — if the comparison is false, it means "startsAt is before deadline", which passes validation. This is the same NaN-bypass pattern that was fixed in the recruiting invitation routes.
+**Hypothesis 1 (confirmed):** Clock skew bypasses the active-contest protection. When the app server clock is behind the DB server clock, `Date.now()` < `startsAt`, so the check fails and problem changes are allowed during an active contest. This is a TOCTOU-like race condition between the two time sources.
 
-**Hypothesis 2 (possible):** PostgreSQL rejects the NULL/NaN date, causing the transaction to fail. This is a safe failure mode but produces an unhelpful 500 error instead of a 400 validation error.
+**Hypothesis 2 (possible):** The `Date.now()` usage was intentional for performance (avoiding a DB round trip). However, `getDbNowUncached()` is already used in the same route's transaction (line 362 via `withUpdatedAt`), so the overhead of one additional call is minimal compared to the security benefit.
 
-**Fix:** Add NaN guards after Date construction, consistent with the recruiting invitation routes.
+**Fix:** Replace `Date.now()` with `getDbNowUncached()`:
+```typescript
+const now = await getDbNowUncached();
+const startsAt = assignment.startsAt ? new Date(assignment.startsAt).getTime() : null;
+if (startsAt && now.getTime() >= startsAt) {
+```
 
 **Confidence:** Medium
 
@@ -32,5 +35,6 @@ The failure mode depends on how PostgreSQL handles the invalid Date. If it throw
 
 ### Previously Fixed Items (Verified)
 
-- TR-1 (sendMessage isStreaming closure race): Fixed — isStreamingRef pattern
-- TR-2 (TABLE_MAP drift): Fixed — TABLE_MAP derived from TABLE_ORDER
+- Un-revoke transition removed: Fixed
+- Exam session short-circuit: Fixed
+- Bulk invitation MAX_EXPIRY_MS guard: Fixed

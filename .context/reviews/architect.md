@@ -1,41 +1,36 @@
-# Architecture Review — RPF Cycle 37
+# Architecture Review — RPF Cycle 40
 
 **Date:** 2026-04-23
 **Reviewer:** architect
-**Base commit:** 3d729cee
+**Base commit:** f030233a
 
 ## Inventory of Files Reviewed
 
-- `src/lib/db/import.ts` — Import engine (verified TABLE_MAP derivation from TABLE_ORDER)
-- `src/lib/db/export.ts` — Export engine
-- `src/lib/realtime/realtime-coordination.ts` — Realtime coordination
-- `src/lib/security/` — Security modules (verified rehash consolidation)
-- `src/lib/plugins/chat-widget/` — Chat widget
-- `src/app/api/v1/` — API route structure
-- `src/lib/docker/client.ts` — Docker client dual-path
-- `src/app/api/v1/contests/quick-create/route.ts` — Quick-create contest
-- `src/app/api/v1/contests/[assignmentId]/stats/route.ts` — Contest stats
+- `src/app/api/v1/groups/[id]/assignments/[assignmentId]/route.ts` — Assignment PATCH route
+- `src/app/api/v1/contests/[assignmentId]/anti-cheat/route.ts` — Anti-cheat events
+- `src/app/api/v1/submissions/route.ts` — Submissions
+- `src/app/api/v1/contests/quick-create/route.ts` — Quick-create (verified)
+- `src/lib/assignments/recruiting-invitations.ts` — Invitation library
+- `src/lib/compiler/execute.ts` — Compiler execution
+- `src/lib/realtime/realtime-coordination.ts` — SSE coordination
+- `src/app/api/v1/groups/[id]/members/bulk/route.ts` — Bulk enrollment
 
 ## Previously Fixed Items (Verified)
 
-- ARCH-1 (TABLE_MAP/TABLE_ORDER drift): Fixed — TABLE_MAP derived from TABLE_ORDER at lines 19-22
-- ARCH-2 (Password rehash DRY violation): Fixed — `verifyAndRehashPassword` utility consolidated
-- AGG-4 (createApiHandler for files route): Fixed
+- MAX_EXPIRY_MS extracted to shared constant: `src/lib/assignments/recruiting-constants.ts`
+- Exam session short-circuit for non-exam assignments: Fixed at line 29
+- Un-revoke transition removed: Fixed at lines 96-102
 
 ## New Findings
 
-### ARCH-1: MAX_EXPIRY_MS constant duplicated across 4 invitation routes — DRY violation [LOW/MEDIUM]
+### ARCH-1: Assignment PATCH mixes `Date.now()` with DB-derived timestamps — inconsistent time source [MEDIUM/MEDIUM]
 
-**File:** `src/app/api/v1/contests/[assignmentId]/recruiting-invitations/route.ts:69`, `src/app/api/v1/contests/[assignmentId]/recruiting-invitations/[invitationId]/route.ts:110`, `src/app/api/v1/contests/[assignmentId]/recruiting-invitations/bulk/route.ts:30`, and implicitly in API keys routes
+**File:** `src/app/api/v1/groups/[id]/assignments/[assignmentId]/route.ts:99-101`
 
-**Description:** The `MAX_EXPIRY_MS = 10 * 365.25 * 24 * 60 * 60 * 1000` constant is defined identically in 3 separate invitation route files. If the maximum expiry policy changes, all 3 must be updated in lockstep. This is a minor DRY violation that could lead to inconsistent expiry limits.
+**Description:** The assignment PATCH route uses `Date.now()` for the "active contest" check, but the `assignment.startsAt` value it compares against comes from the database. The codebase has established a consistent pattern of using DB server time (`getDbNowUncached()`) for all schedule comparisons to avoid clock skew. The recruiting invitation routes, submission deadline enforcement, and exam session checks all use DB time. This route is the only remaining schedule comparison that uses app server time.
 
-**Concrete failure scenario:** A policy change increases the maximum expiry from 10 years to 15 years. The developer updates 2 of the 3 route files but misses the bulk route. Bulk-created invitations now have a different maximum than single-created ones.
+This is not just a clock-skew risk (see SEC-1), but also an architectural inconsistency. Future developers looking at this code may assume `Date.now()` is the standard, while the rest of the codebase has converged on `getDbNowUncached()`.
 
-**Fix:** Extract to a shared constant:
-```typescript
-// src/lib/assignments/recruiting-constants.ts
-export const MAX_EXPIRY_MS = 10 * 365.25 * 24 * 60 * 60 * 1000; // ~10 years
-```
+**Fix:** Replace `Date.now()` with `getDbNowUncached()` to match the codebase convention.
 
 **Confidence:** Medium
