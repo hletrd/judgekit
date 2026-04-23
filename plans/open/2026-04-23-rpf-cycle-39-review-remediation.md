@@ -3,7 +3,7 @@
 **Date:** 2026-04-23
 **Cycle:** 39/100
 **Base commit:** c176d8f5
-**Status:** In Progress
+**Status:** Done
 
 ## Lanes
 
@@ -11,20 +11,14 @@
 
 **Severity:** MEDIUM/HIGH (8 of 11 perspectives)
 **File:** `src/app/api/v1/contests/[assignmentId]/recruiting-invitations/bulk/route.ts:64-66`
-**Status:** Pending
+**Status:** Done
 
 **Tasks:**
-- [ ] Add `MAX_EXPIRY_MS` check after `computeExpiryFromDays` in the bulk route, consistent with the single-create route (line 90-92)
-- [ ] Handle the new "expiryDateTooFar" error in the catch block
-- [ ] Verify that the Zod schema `max(3650)` is still below `MAX_EXPIRY_MS` (3650 * 86400000 < MAX_EXPIRY_MS)
+- [x] Add `MAX_EXPIRY_MS` check after `computeExpiryFromDays` in the bulk route, consistent with the single-create route (line 90-92)
+- [x] Handle the new "expiryDateTooFar" error in the catch block (already handled at line 117)
+- [x] Verify that the Zod schema `max(3650)` is still below `MAX_EXPIRY_MS` (3650 * 86400000 < MAX_EXPIRY_MS)
 
-**Fix:**
-```typescript
-// After line 66 (expiresAt = computeExpiryFromDays(dbNow, inv.expiryDays))
-if (expiresAt && (expiresAt.getTime() - dbNow.getTime()) > MAX_EXPIRY_MS) {
-  throw new Error("expiryDateTooFar");
-}
-```
+**Commit:** adb40db0
 
 ---
 
@@ -32,27 +26,14 @@ if (expiresAt && (expiresAt.getTime() - dbNow.getTime()) > MAX_EXPIRY_MS) {
 
 **Severity:** MEDIUM/MEDIUM (7 of 11 perspectives)
 **Files:** `src/app/api/v1/contests/[assignmentId]/recruiting-invitations/[invitationId]/route.ts:96-99` and `src/lib/assignments/recruiting-invitations.ts:207-213`
-**Status:** Pending
+**Status:** Done
 
 **Tasks:**
-- [ ] Remove `"pending"` from the allowed targets of `"revoked"` in the PATCH route's state machine (line 97-99), since the library function does not support un-revoking and the current behavior returns a 500 error
-- [ ] Add a catch handler for "invitationCannotBeRevoked" in the PATCH route to return a proper 400 error instead of 500 (defense-in-depth in case other callers trigger it)
-- [ ] Verify the PATCH route returns proper error responses for all status transitions
+- [x] Remove `"pending"` from the allowed targets of `"revoked"` in the PATCH route's state machine (line 97-99), since the library function does not support un-revoking and the current behavior returns a 500 error
+- [x] Add a catch handler for "invitationCannotBeRevoked" in the PATCH route to return a proper 400 error instead of 500 (defense-in-depth in case other callers trigger it)
+- [x] Verify the PATCH route returns proper error responses for all status transitions
 
-**Fix (route.ts state machine):**
-```typescript
-const allowed: Record<string, string[]> = {
-  pending: ["revoked"],
-  // revoked invitations cannot be un-revoked; the user must create a new invitation
-};
-```
-
-**Fix (route.ts catch block):**
-```typescript
-if (error instanceof Error && error.message === "invitationCannotBeRevoked") {
-  return apiError("invitationCannotBeRevoked", 400);
-}
-```
+**Commit:** 81c732be
 
 ---
 
@@ -60,22 +41,14 @@ if (error instanceof Error && error.message === "invitationCannotBeRevoked") {
 
 **Severity:** LOW/MEDIUM (4 of 11 perspectives)
 **File:** `src/app/api/v1/groups/[id]/assignments/[assignmentId]/exam-session/route.ts:24-28`
-**Status:** Pending
+**Status:** Done
 
 **Tasks:**
-- [ ] Include `examMode` in the initial assignment query columns
-- [ ] Return an error immediately if `examMode` is "none", before performing access checks
-- [ ] Verify the route still works correctly for valid exam assignments
+- [x] Include `examMode` in the initial assignment query columns
+- [x] Return an error immediately if `examMode` is "none", before performing access checks
+- [x] Verify the route still works correctly for valid exam assignments
 
-**Fix:**
-```typescript
-const assignment = await db.query.assignments.findFirst({
-  where: eq(assignments.id, assignmentId),
-  columns: { id: true, groupId: true, examMode: true },
-});
-if (!assignment || assignment.groupId !== id) return notFound("Assignment");
-if (assignment.examMode === "none") return apiError("examModeInvalid", 400);
-```
+**Commit:** a6700480
 
 ---
 
@@ -83,26 +56,29 @@ if (assignment.examMode === "none") return apiError("examModeInvalid", 400);
 
 **Severity:** LOW/LOW (1 of 11 perspectives)
 **File:** `src/app/(dashboard)/dashboard/admin/api-keys/api-keys-client.tsx:113-120`
-**Status:** Pending
+**Status:** Done
 
 **Tasks:**
-- [ ] Add a `timeRemaining` state that counts down from 5 minutes
-- [ ] Display the remaining time below the raw key in the dialog
-- [ ] Clean up the interval on unmount
+- [x] Add a `keyDismissCountdown` state that counts down from 5 minutes
+- [x] Display the remaining time below the raw key in the dialog
+- [x] Clean up the interval on unmount
+- [x] Add i18n keys for countdown text in en.json and ko.json
+
+**Commit:** f9ae0245
 
 ---
 
 ### Lane 5: Run quality gates
 
 **Severity:** Required
-**Status:** Pending
+**Status:** Done
 
 **Tasks:**
-- [ ] Run `eslint` and fix any failures
-- [ ] Run `npm run build` and fix any failures
-- [ ] Run `npm run test:unit` and fix any failures
-- [ ] Run `npm run test:integration` and fix any failures
-- [ ] Run `npm run test:component` and fix any failures
+- [x] Run `eslint` — passed (exit 0)
+- [x] Run `npm run build` — passed
+- [x] Run `npm run test:unit` — passed (exit 0)
+- [x] Run `npm run test:integration` — skipped (no DB connection)
+- [x] Run `npm run test:component` — 10 pre-existing failures in unrelated tests; API keys client test and chat widget test pass
 
 ---
 
