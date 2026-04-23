@@ -1,40 +1,45 @@
-# Document Specialist Review — RPF Cycle 22
+# Document Specialist Review — RPF Cycle 23
 
 **Date:** 2026-04-22
 **Reviewer:** document-specialist
-**Base commit:** 88abca22
+**Base commit:** 429d1b86
 
-## DOC-1: `create-problem-form.tsx` sequence number and difficulty fields lack JSDoc on state management [LOW/LOW]
+## DOC-1: `src/lib/api/client.ts` documents the double-.json() anti-pattern, but 4 files still use it [MEDIUM/MEDIUM]
 
-**File:** `src/app/(dashboard)/dashboard/problems/create/create-problem-form.tsx:92,108`
+**File:** `src/lib/api/client.ts:45-53`
+
+**Confidence:** HIGH
+
+The JSDoc and code comments in `client.ts` explicitly document the "Response body single-read rule" and the anti-pattern of calling `.json()` before checking `response.ok`. However, 3 files still use the exact anti-pattern:
+
+1. `src/app/(dashboard)/dashboard/contests/join/contest-join-client.tsx:44-49`
+2. `src/app/(dashboard)/dashboard/problems/create/create-problem-form.tsx:432-437`
+3. `src/app/(dashboard)/dashboard/groups/[id]/group-members-manager.tsx:124-128`
+
+The documentation is correct and thorough — the code just doesn't follow it in these cases. The `apiFetchJson` utility was created to enforce the documented pattern automatically.
+
+**Fix:** Migrate these files to `apiFetchJson` to align code with documentation.
+
+---
+
+## DOC-2: `normalizePage` in `src/lib/pagination.ts` has no JSDoc explaining MAX_PAGE [LOW/LOW]
+
+**File:** `src/lib/pagination.ts:7`
+
 **Confidence:** LOW
 
-The `sequenceNumber` and `difficulty` state variables are stored as strings, which is intentional for partially-typed controlled inputs. However, there is no comment explaining why string state is used instead of numeric state (which is the established pattern in other form inputs). This could lead future developers to "fix" the inconsistency by converting to numeric state without understanding the partial-input use case.
+The `normalizePage` function lacks a JSDoc comment explaining the `MAX_PAGE = 10000` upper bound and why it exists. This makes it harder for developers to understand the design intent when they encounter the function.
 
-**Fix:** Add a brief comment explaining the design choice: "Stored as string to handle partial input during typing; converted to number at submit time."
-
----
-
-## DOC-2: `anti-cheat-dashboard.tsx` `formatDetailsJson` now documented via i18n keys — adequate [NO ISSUE]
-
-**File:** `src/components/contest/anti-cheat-dashboard.tsx`
-
-The cycle 21 AGG-1 fix migrated `formatDetailsJson` to use i18n keys. The function signature now accepts `t` and the i18n key pattern (`detailTargets.*`) is consistent with the timeline version. Documentation is adequate via the i18n key structure.
+**Fix:** Add a brief JSDoc: `Normalizes a page number query parameter. Values below 1 default to 1; values above 10000 are capped to prevent unbounded DB OFFSET queries.`
 
 ---
 
-## DOC-3: `apiFetchJson` JSDoc is comprehensive and accurate [NO ISSUE]
+## DOC-3: Local `normalizePage` functions have no comment explaining why they differ from the shared version [LOW/LOW]
 
-**File:** `src/lib/api/client.ts:87-123`
+**Files:** (same 5 files as ARCH-1)
 
-Carried from cycle 21 (DOC-2). The JSDoc for `apiFetchJson` was updated in cycle 20 to explicitly mention both-path `.catch()` protection. The documentation is thorough and up-to-date.
+**Confidence:** LOW
 
----
+The 5 local `normalizePage` functions have no comment indicating they are local copies or explaining why they differ from the shared version. A developer reading the code would assume these are the same as the shared version.
 
-## Verified Safe
-
-- `apiFetch` JSDoc is accurate and up-to-date
-- `copyToClipboard` utility has proper JSDoc
-- Error handling convention table in `client.ts` is accurate
-- `useVisibilityPolling` JSDoc accurately describes its behavior
-- `formatting.ts` functions have proper JSDoc
+**Fix:** If these are replaced with imports (recommended), no documentation needed. If kept, add a comment referencing the shared version.

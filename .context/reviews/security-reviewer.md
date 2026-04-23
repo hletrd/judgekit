@@ -1,10 +1,29 @@
-# Security Review — RPF Cycle 22
+# Security Review — RPF Cycle 23
 
 **Date:** 2026-04-22
 **Reviewer:** security-reviewer
-**Base commit:** 88abca22
+**Base commit:** 429d1b86
 
-## SEC-1: `window.location.origin` for URL construction — carried from DEFER-24 [MEDIUM/MEDIUM]
+## SEC-1: Local `normalizePage` functions lack MAX_PAGE upper bound — pagination DoS [MEDIUM/HIGH]
+
+**Files:**
+- `src/app/(dashboard)/dashboard/problems/page.tsx:51`
+- `src/app/(dashboard)/dashboard/admin/audit-logs/page.tsx:50`
+- `src/app/(dashboard)/dashboard/admin/login-logs/page.tsx:47`
+- `src/app/(dashboard)/dashboard/admin/users/page.tsx:41`
+- `src/app/(dashboard)/dashboard/admin/files/page.tsx:26`
+
+**Confidence:** HIGH
+
+The shared `src/lib/pagination.ts:normalizePage` caps page numbers at 10000. These 5 server-component pages define their own local `normalizePage` without any upper bound. An attacker can send `?page=999999999` to cause expensive `OFFSET 999999999` database queries.
+
+**Concrete failure scenario:** Attacker sends `GET /dashboard/admin/audit-logs?page=999999999`. The local `normalizePage` returns 999999999. The database query uses `OFFSET 999999999`, causing a full table scan that takes seconds to minutes. Repeated requests could exhaust database connections.
+
+**Fix:** Import and use the shared `normalizePage` from `@/lib/pagination` which has the MAX_PAGE guard.
+
+---
+
+## SEC-2: `window.location.origin` for URL construction — carried from DEFER-24 [MEDIUM/MEDIUM]
 
 **Files:**
 - `src/components/contest/access-code-manager.tsx:137`
@@ -20,9 +39,10 @@ Four components construct invitation or app URLs using `window.location.origin`.
 
 ---
 
-## SEC-2: Gemini model name interpolation into URL path — defense-in-depth concern [LOW/MEDIUM]
+## SEC-3: Gemini model name interpolation into URL path — defense-in-depth concern [LOW/MEDIUM]
 
 **File:** `src/app/api/v1/plugins/chat-widget/test-connection/route.ts:127`
+
 **Confidence:** MEDIUM
 
 Carried from cycle 18. The model name is interpolated directly into the URL path. While `SAFE_GEMINI_MODEL_PATTERN` restricts to safe characters, this is a defense-in-depth concern.
@@ -31,22 +51,23 @@ Carried from cycle 18. The model name is interpolated directly into the URL path
 
 ---
 
-## SEC-3: Encryption plaintext fallback — carried from cycle 11 [MEDIUM/MEDIUM]
+## SEC-4: `AUTH_CACHE_TTL_MS` has no upper bound — stale auth cache [LOW/MEDIUM]
 
-The encryption module falls back to plaintext when encryption keys are not configured. Known deferred item.
+**File:** `src/proxy.ts:24-27`
+
+**Confidence:** MEDIUM
+
+The `AUTH_CACHE_TTL_MS` env var is parsed and validated only as a positive finite number. There is no upper bound, so an operator could accidentally set it to `86400000` (24 hours), meaning revoked or deactivated users retain access for up to 24 hours.
+
+**Concrete failure scenario:** An admin sets `AUTH_CACHE_TTL_MS=3600000` (1 hour) to reduce DB load. A user is deactivated but remains cached for up to an hour.
+
+**Fix:** Add an upper bound (e.g., 10 seconds) to the AUTH_CACHE_TTL_MS parsing logic.
 
 ---
 
-## SEC-4: `create-problem-form.tsx` sequence number input accepts arbitrary string — no client-side validation [LOW/LOW]
+## SEC-5: Encryption plaintext fallback — carried from cycle 11 [MEDIUM/MEDIUM]
 
-**File:** `src/app/(dashboard)/dashboard/problems/create/create-problem-form.tsx:469`
-**Confidence:** LOW
-
-The `sequenceNumber` input (`type="number"`) stores raw `e.target.value` as string state. While `type="number"` provides browser-level validation, a programmatic submission or browser with limited validation could send a non-numeric string. The server-side Zod schema (`z.number().int().positive().nullable()`) would reject it, but there's no client-side feedback about the invalid input.
-
-**Concrete failure scenario:** A user enters "abc" into the sequence number field. The browser's `type="number"` validation prevents form submission in most browsers, but the input could be modified via DevTools or accessibility tools. Server-side validation catches it, but the error message may be confusing.
-
-**Fix:** Add client-side validation feedback. Low priority since server-side validation is the primary safeguard.
+The encryption module falls back to plaintext when encryption keys are not configured. Known deferred item.
 
 ---
 
@@ -54,11 +75,14 @@ The `sequenceNumber` input (`type="number"`) stores raw `e.target.value` as stri
 
 - CSRF protection is consistent across all mutation routes
 - `apiFetch` adds `X-Requested-With` header on all requests
-- `test-connection/route.ts` properly validates `req.json()` with try/catch (returns 400 on malformed JSON)
+- `test-connection/route.ts` properly validates `req.json()` with try/catch
 - API keys are retrieved from server-side storage, not accepted from request body
 - Model name validation patterns prevent path traversal
 - No secrets in client-side code
 - HTML sanitization uses DOMPurify with strict allowlists
 - `safeJsonForScript` escapes `<!--` and `</script` sequences
-- All clipboard operations use the shared `copyToClipboard` utility with proper error handling
-- `role-editor-dialog.tsx` error response properly uses `.catch()` on `.json()`
+- All clipboard operations use the shared `copyToClipboard` utility
+- `edit-group-dialog.tsx` error response properly catches `SyntaxError` (no raw API error leak)
+- `contest-join-client.tsx` clears access code from URL to prevent Referer/header leakage
+- `proxy.ts` CSP headers are properly configured
+- `proxy.ts` HSTS headers properly set based on x-forwarded-proto

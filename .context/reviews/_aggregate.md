@@ -1,80 +1,154 @@
-# RPF Cycle 22 — Aggregate Review
+# RPF Cycle 23 — Aggregate Review
 
 **Date:** 2026-04-22
-**Base commit:** 88abca22
+**Base commit:** 429d1b86
 **Review artifacts:** code-reviewer.md, perf-reviewer.md, security-reviewer.md, architect.md, critic.md, verifier.md, debugger.md, test-engineer.md, tracer.md, designer.md, document-specialist.md
 
 ## Previously Fixed Items (Verified in Current Code)
 
-All cycle-21 aggregate findings have been addressed:
-- AGG-1 (formatDetailsJson hardcoded in anti-cheat-dashboard.tsx): Fixed — migrated to i18n `t()` function
-- AGG-3 (role-editor-dialog Number() NaN risk): Fixed — uses `parseInt(e.target.value, 10) || 0`
-- AGG-5 (inconsistent Number() vs parseInt()): Fixed — all form inputs now use `parseInt()`
-- AGG-6 (anti-cheat-dashboard aria-controls): Fixed — `aria-controls` added to expand/collapse buttons
-- AGG-7 (contest-replay aria-valuetext): Fixed — `aria-valuetext` added to range slider
-- AGG-8 (sidebar timer aria-valuenow precision): Fixed — uses precise `progressPercent`
+All cycle-22 aggregate findings have been addressed:
+- AGG-1 (create-problem-form numeric validation): Fixed — toast.warning added for invalid sequence number and difficulty inputs
 - AGG-2 (window.location.origin): Carried as DEFER-24
-- AGG-4 (contest-replay setInterval): Carried as DEFER-3
+- AGG-3 (recruiter-candidates-panel full export fetch): Carried as DEFER-29
+
+RPF cycle 28 findings also verified as fixed where applicable:
+- comment-section.tsx non-OK error feedback: Fixed (lines 49-51)
+- discussion-thread-moderation-controls.tsx: Optimistic state and AlertDialog deletion confirmed
 
 ## Deduped Findings (sorted by severity then signal)
 
-### AGG-1: `create-problem-form.tsx` sequence number and difficulty inputs silently discard invalid numeric input without feedback [LOW/MEDIUM]
+### AGG-1: 5 local `normalizePage` functions in server components use `Number()` and lack MAX_PAGE — divergence from shared version [HIGH/HIGH]
 
-**Flagged by:** code-reviewer (CR-1), architect (ARCH-1), critic (CRI-1), verifier (V-1), debugger (DBG-1), tracer (TR-1), designer (DES-1), security-reviewer (SEC-4), test-engineer (TE-1), document-specialist (DOC-1)
+**Flagged by:** code-reviewer (CR-1), security-reviewer (SEC-1), perf-reviewer (PERF-1), architect (ARCH-1), critic (CRI-1), debugger (DBG-1), verifier (V-1), test-engineer (TE-1), tracer (TR-1), document-specialist (DOC-3)
 **Signal strength:** 10 of 11 review perspectives
 
-**File:** `src/app/(dashboard)/dashboard/problems/create/create-problem-form.tsx:92,108,394,401,469,483`
+**Files:**
+- `src/app/(dashboard)/dashboard/problems/page.tsx:51`
+- `src/app/(dashboard)/dashboard/admin/audit-logs/page.tsx:50`
+- `src/app/(dashboard)/dashboard/admin/login-logs/page.tsx:47`
+- `src/app/(dashboard)/dashboard/admin/users/page.tsx:41`
+- `src/app/(dashboard)/dashboard/admin/files/page.tsx:26`
 
-**Description:** The form stores `sequenceNumber` and `difficulty` as `string` state and converts to numbers only at submit time. When a non-numeric value is entered (e.g., "abc"), `parseInt()` returns `NaN`, the `Number.isFinite()` check fails, and the value is silently set to `null`. No inline validation, toast, or error message informs the user that their input was discarded. This contrasts with the codebase's explicit-feedback pattern used elsewhere (e.g., toast.error on submission failure).
+**Description:** The shared `normalizePage` in `src/lib/pagination.ts` was fixed in cycle 28 to use `parseInt` and cap at `MAX_PAGE = 10000`. However, 5 server components define their own local `normalizePage` functions using `Number()` without the upper bound. This creates both a security/performance issue (unbounded OFFSET allows DB DoS) and a correctness issue (`Number()` accepts hex/scientific notation that `parseInt` rejects).
 
-**Concrete failure scenario:** A user types "abc" into the sequence number field. The form shows no error. On submit, `parseInt("abc", 10)` returns `NaN`, the value is set to `null`, and the problem is created without a sequence number. The user may not notice the omission.
+**Concrete failure scenario:** An attacker sends `?page=1e10` to `/dashboard/admin/audit-logs`. `Number("1e10")` is 10000000000, which passes `Number.isFinite` and `>= 1`, so `Math.floor()` returns 10000000000. The DB query uses `OFFSET 10000000000`, causing a denial-of-service query.
 
-**Fix:** Add a check before submission: if `sequenceNumber` is non-empty and `parsedSeqNum` is `null`, show a toast.warning and either prevent submission or proceed with the null value after explicit user notification. Similarly for `difficulty` if non-empty and `parseFloat(difficulty)` is `NaN`.
+**Fix:** Delete all local `normalizePage` functions and import from `@/lib/pagination`.
 
 ---
 
-### AGG-2: `window.location.origin` for URL construction — carried from DEFER-24, now 4 instances [MEDIUM/MEDIUM]
+### AGG-2: `contest-join-client.tsx` calls `.json()` twice on same Response — body double-consumption [HIGH/HIGH]
 
-**Flagged by:** security-reviewer (SEC-1)
-**Signal strength:** 1 of 11 (security-specific, carried)
+**Flagged by:** code-reviewer (CR-2), critic (CRI-2), debugger (DBG-2), verifier (V-2), tracer (TR-2), document-specialist (DOC-1)
+**Signal strength:** 6 of 11 review perspectives
+
+**File:** `src/app/(dashboard)/dashboard/contests/join/contest-join-client.tsx:44-49`
+
+**Description:** After checking `!res.ok`, the code calls `res.json()` on line 45 for the error body, then on line 49 for the success body. The Response body can only be consumed once. While the if/else branching prevents the actual "body already consumed" error today, this is the documented anti-pattern in `src/lib/api/client.ts`. The `apiFetchJson` utility was created specifically to eliminate this pattern.
+
+**Concrete failure scenario:** A developer refactors the error handling to not throw immediately (e.g., adding logging). Now both `.json()` calls execute on error paths, causing `TypeError: Body has already been consumed` which is caught by the generic catch block and shows an unhelpful error toast.
+
+**Fix:** Use `apiFetchJson` or parse the body once before branching.
+
+---
+
+### AGG-3: `create-problem-form.tsx` and `group-members-manager.tsx` same double `.json()` pattern [MEDIUM/MEDIUM]
+
+**Flagged by:** code-reviewer (CR-3, CR-4), debugger (DBG-3, DBG-4), tracer (TR-2), document-specialist (DOC-1)
+**Signal strength:** 4 of 11 review perspectives
 
 **Files:**
-- `src/components/contest/access-code-manager.tsx:137`
-- `src/components/contest/recruiting-invitations-panel.tsx:99`
-- `src/app/(dashboard)/dashboard/admin/files/file-management-client.tsx:96`
-- `src/app/(dashboard)/dashboard/admin/workers/workers-client.tsx:148`
+- `src/app/(dashboard)/dashboard/problems/create/create-problem-form.tsx:432-437`
+- `src/app/(dashboard)/dashboard/groups/[id]/group-members-manager.tsx:124-128`
 
-**Description:** Four components construct URLs using `window.location.origin`. Carried from DEFER-24.
+**Description:** Same double `.json()` anti-pattern as AGG-2. Error branch and success branch each call `.json()` on the same Response. Mutually exclusive branching prevents the actual error today.
 
-**Fix:** Use a server-provided public URL or configurable base URL.
+**Fix:** Use `apiFetchJson` or parse the body once before branching.
 
 ---
 
-### AGG-3: `recruiter-candidates-panel.tsx` full export fetch — carried as DEFER-29 [MEDIUM/HIGH]
+### AGG-4: `submission-overview.tsx` custom dialog lacks focus trap and scroll lock [MEDIUM/MEDIUM]
 
-**Flagged by:** perf-reviewer (PERF-1 carried), critic (CRI-3 carried)
-**Signal strength:** 2 of 11 (carried)
+**Flagged by:** architect (ARCH-2), critic (CRI-3), designer (DES-1), verifier (V-4)
+**Signal strength:** 4 of 11 review perspectives
 
-Carried from cycle 18 (AGG-2, DEFER-29).
+**File:** `src/components/lecture/submission-overview.tsx:152`
+
+**Description:** The component renders a `div role="dialog" aria-modal="true"` manually instead of using the shared `Dialog` component. This lacks: (1) focus trap — keyboard users can Tab past the dialog; (2) scroll lock — page body scrolls behind the dialog; (3) overlay click-to-close. The shared `Dialog` component provides all these features.
+
+**Fix:** Refactor to use the shared `Dialog` component from `@/components/ui/dialog`.
 
 ---
 
-## Performance Findings (carried)
+### AGG-5: `contest-quick-stats.tsx` displays misleading "0.0" avgScore when no data exists [MEDIUM/MEDIUM]
 
-### PERF-1: `recruiter-candidates-panel.tsx` full export fetch — carried as DEFER-29
-### PERF-2: Practice page Path B progress filter — carried from cycles 18-20
+**Flagged by:** code-reviewer (CR-5), architect (ARCH-3), critic (CRI-4), debugger (DBG-5), designer (DES-2), verifier (V-5), tracer (TR-3)
+**Signal strength:** 7 of 11 review perspectives
+
+**File:** `src/components/contest/contest-quick-stats.tsx:42,67,110`
+
+**Description:** When the API returns `avgScore: null` (no submissions), the initial state has `avgScore: 0`. The null check on line 67 preserves the previous value (0 from initial state), displaying "0.0" as the average score. This is semantically incorrect — 0.0 implies all submissions scored 0, while null means no submissions exist.
+
+**Fix:** Change initial `avgScore` to `null`, update type to `number | null`, handle null in display (show "---" or similar).
+
+---
+
+### AGG-6: `submission-overview.tsx` polls when dialog is closed — wasted callbacks [LOW/MEDIUM]
+
+**Flagged by:** perf-reviewer (PERF-2), verifier (V-4)
+**Signal strength:** 2 of 11 review perspectives
+
+**File:** `src/components/lecture/submission-overview.tsx:123`
+
+**Description:** The component passes `!open` as the pause flag to `useVisibilityPolling`, but the callback still fires (returning immediately due to the `openRef` guard). Minor performance waste.
+
+**Fix:** Conditionally mount the component only when `open` is true.
+
+---
+
+### AGG-7: `normalizePageSize` uses `Number()` instead of `parseInt` — inconsistency with `normalizePage` [LOW/LOW]
+
+**Flagged by:** code-reviewer (CR-6)
+**Signal strength:** 1 of 11 review perspectives
+
+**File:** `src/lib/pagination.ts:18`
+
+**Description:** While `normalizePage` was fixed to use `parseInt`, `normalizePageSize` still uses `Number()`. The risk is lower because `PAGE_SIZE_OPTIONS` is a strict allowlist, but for consistency this should match.
+
+**Fix:** Change to `parseInt(value ?? String(DEFAULT_PAGE_SIZE), 10)`.
+
+---
+
+### AGG-8: `normalizePage` lacks JSDoc explaining MAX_PAGE [LOW/LOW]
+
+**Flagged by:** document-specialist (DOC-2)
+**Signal strength:** 1 of 11 review perspectives
+
+**File:** `src/lib/pagination.ts:7`
+
+**Description:** The function has no JSDoc explaining the `MAX_PAGE = 10000` upper bound.
+
+**Fix:** Add a brief JSDoc comment.
+
+---
 
 ## Security Findings (carried)
 
-### SEC-1: `window.location.origin` for URL construction — covered by AGG-2 above
-### SEC-2: Gemini model name URL interpolation — LOW/MEDIUM, carried from cycle 18
-### SEC-3: Encryption plaintext fallback — MEDIUM/MEDIUM, carried from cycle 11
+### SEC-2: `window.location.origin` for URL construction — covered by DEFER-24 (4 instances)
+### SEC-3: Gemini model name URL interpolation — LOW/MEDIUM, carried from cycle 18
+### SEC-4: `AUTH_CACHE_TTL_MS` has no upper bound — LOW/MEDIUM, new this cycle (src/proxy.ts:24-27)
+### SEC-5: Encryption plaintext fallback — MEDIUM/MEDIUM, carried from cycle 11
+
+## Performance Findings (carried)
+
+### PERF-3: `recruiter-candidates-panel.tsx` full export fetch — carried as DEFER-29
+### PERF-4: Practice page Path B progress filter — carried from cycles 18-22
 
 ## Test Coverage Gaps (from test-engineer)
 
-### TE-1: No unit tests for `create-problem-form.tsx` numeric validation — new [LOW/MEDIUM]
-### TE-2 through TE-5: Carried from cycle 21 (anti-cheat-dashboard, role-editor-dialog, contest-replay, formatDetailsJson)
-### TE-6 through TE-11: Carried from previous cycles (see test-engineer.md)
+### TE-1: No tests for local normalizePage divergence — resolved by replacing with shared import
+### TE-2: No unit tests for contest-join-client.tsx double .json() pattern — new [LOW/MEDIUM]
+### TE-3 through TE-7: Carried from previous cycles
 
 ## Previously Deferred Items (Carried Forward)
 
@@ -84,15 +158,9 @@ Carried from cycle 18 (AGG-2, DEFER-29).
 - D1: JWT authenticatedAt clock skew with DB tokenInvalidatedAt (MEDIUM)
 - D2: JWT callback DB query on every request — add TTL cache (MEDIUM)
 - A19: `new Date()` clock skew risk in remaining routes (LOW)
-- DEFER-20 through DEFER-30: See previous aggregates
-- DEFER-50 through DEFER-57: Test gaps (see test-engineer.md)
-- DEFER-24: Invitation URL uses window.location.origin (same as AGG-2)
-- DEFER-29: Add dedicated candidates summary endpoint (same as PERF-1)
-- DEFER-3 (from cycle 21): `contest-replay.tsx` `setInterval` without visibility awareness
-- DEFER-4 (from cycle 21): `recruiter-candidates-panel.tsx` full export fetch (same as AGG-3)
-- DEFER-5 (from cycle 21): Component tests for anti-cheat-dashboard, role-editor-dialog, contest-replay
-- DEFER-6 (from cycle 21): Gemini model name URL interpolation
-- DEFER-7 (from cycle 21): Encryption plaintext fallback
+- DEFER-24: Invitation URL uses window.location.origin (same as SEC-2)
+- DEFER-29: Add dedicated candidates summary endpoint (same as PERF-3)
+- DEFER-30 through DEFER-40: See RPF cycle 28 plan
 
 ## Agent Failures
 

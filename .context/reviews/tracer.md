@@ -1,43 +1,56 @@
-# Tracer Review — RPF Cycle 22
+# Tracer Review — RPF Cycle 23
 
 **Date:** 2026-04-22
 **Reviewer:** tracer
-**Base commit:** 88abca22
+**Base commit:** 429d1b86
 
-## TR-1: `create-problem-form.tsx` sequence number silent null — causal trace [LOW/MEDIUM]
+## TR-1: DRY violation trace — how 5 local `normalizePage` copies diverged from the shared version [HIGH/HIGH]
 
-**File:** `src/app/(dashboard)/dashboard/problems/create/create-problem-form.tsx:394,401,469`
+**Confidence:** HIGH
+
+**Causal trace:**
+
+1. The shared `normalizePage` was created in `src/lib/pagination.ts` and used by client components and public routes.
+2. Server components (admin pages, problems page) were written with local `normalizePage` functions, likely predating the shared utility or created by copy-paste.
+3. In RPF cycle 28, the shared `normalizePage` was fixed: `Number()` -> `parseInt()`, `MAX_PAGE = 10000` added.
+4. The 5 local copies were NOT updated at the same time because they are local functions, not imports.
+
+**Competing hypotheses:**
+- H1: The developer who fixed the shared version didn't realize local copies existed. (Most likely — no grep for `normalizePage` was done)
+- H2: The local copies were intentionally kept because server components can't import from `@/lib/pagination`. (Disproven — server components CAN import from shared modules)
+- H3: The local copies were left as-is with a plan to migrate later, but the plan was lost. (Possible)
+
+**Conclusion:** H1 is most likely. The fix is to replace all local copies with imports from the shared module.
+
+---
+
+## TR-2: Double `.json()` pattern trace — recurring anti-pattern across codebase [MEDIUM/MEDIUM]
+
 **Confidence:** MEDIUM
 
-**Trace:**
-1. User types "abc" into the sequence number field (line 469: `setSequenceNumber(e.target.value)`)
-2. `sequenceNumber` state is now `"abc"`
-3. User clicks "Create" button
-4. `handleSubmit` is called (line 387)
-5. `parseInt("abc", 10)` returns `NaN` (line 394)
-6. `Number.isFinite(NaN) && NaN > 0` is `false` (line 401)
-7. `parsedSeqNum` is set to `null`
-8. Problem is submitted with `sequenceNumber: null`
-9. Server accepts `null` as valid (Zod schema allows nullable)
-10. Problem created without a sequence number — no error shown to user
+**Pattern occurrences found:**
+1. `contest-join-client.tsx:44-49` — error branch + success branch
+2. `create-problem-form.tsx:432-437` — error branch + success branch
+3. `group-members-manager.tsx:124-128` — error branch + success branch
+4. `recruiting-invitations-panel.tsx:207-208` — success branch (ok check, then json)
 
-**Hypothesis:** The silent null fallback was intended as a convenience (empty = no sequence number), but it also catches truly invalid input that should provide feedback.
+These all follow the same pattern: check `res.ok`, call `.json()` on error, call `.json()` on success. The codebase's `apiFetchJson` utility was created to eliminate this pattern. The recurring nature suggests developers are copy-pasting from existing code rather than using the utility.
 
-**Fix:** Add a check: if `sequenceNumber` is non-empty and `parsedSeqNum` is null, show a toast.warning before proceeding with the submission.
+**Fix:** Systematically migrate these 4 files to `apiFetchJson` or the single-parse pattern documented in `client.ts`.
 
 ---
 
-## TR-2: `forceNavigate` call sites — confirmed safe (carried from cycle 21) [NO ISSUE]
+## TR-3: `contest-quick-stats.tsx` avgScore trace — null handling inconsistency [MEDIUM/MEDIUM]
 
-**File:** `src/lib/navigation/client.ts:3-5`
+**Confidence:** MEDIUM
 
-Re-traced. Both call sites remain justified:
-- `src/app/(dashboard)/dashboard/contests/layout.tsx:37` — opt-in data attribute
-- `src/app/(dashboard)/dashboard/contests/join/contest-join-client.tsx:23` — RSC streaming bug workaround
+**Data flow trace:**
+1. API returns `{ data: { avgScore: null } }` (no submissions)
+2. `apiFetchJson` parses this as `{ ok: true, data: { data: { avgScore: null } } }`
+3. Line 67: `data.data!.avgScore !== null && data.data!.avgScore !== undefined && ...` evaluates to false
+4. Fallback: `prev.avgScore` which is `0` from initial state (line 42)
+5. Display (line 110): `formatNumber(0, { locale, maximumFractionDigits: 1 })` -> "0.0"
 
----
+The issue is that the initial state uses `0` instead of `null` for `avgScore`. The `participantCount` and `submittedCount` fields default to `0` correctly (0 participants is a valid state), but `avgScore: 0` is semantically different from `avgScore: null`.
 
-## Previously Fixed — Verified
-
-- `anti-cheat-dashboard.tsx` `formatDetailsJson` now uses i18n `t()` — trace from cycle 21 TR-1 no longer applies
-- `role-editor-dialog.tsx` level input uses `parseInt(e.target.value, 10) || 0` — trace from cycle 21 TR-2 no longer applies
+**Fix:** Change initial `avgScore` to `null`, update type to `number | null`, handle null in display.

@@ -1,71 +1,44 @@
-# Test Engineer Review — RPF Cycle 22
+# Test Engineer Review — RPF Cycle 23
 
 **Date:** 2026-04-22
 **Reviewer:** test-engineer
-**Base commit:** 88abca22
+**Base commit:** 429d1b86
 
-## TE-1: No unit tests for `create-problem-form.tsx` numeric input validation behavior [LOW/MEDIUM]
-
-**File:** `src/app/(dashboard)/dashboard/problems/create/create-problem-form.tsx:394,401,469`
-**Confidence:** HIGH
-
-The sequence number and difficulty inputs have no test coverage for the edge case where non-numeric input is silently discarded (set to null). This is the same finding pattern as CR-1/V-1/DBG-1 but from the test perspective.
-
-**Fix:** Add unit tests for the form's submit handler: valid number, empty string, non-numeric string ("abc"), partial number ("12abc"). Verify the behavior for each case.
-
----
-
-## TE-2: No component tests for `anti-cheat-dashboard.tsx` (carried from cycle 21) [LOW/MEDIUM]
-
-**File:** `src/components/contest/anti-cheat-dashboard.tsx`
-**Confidence:** MEDIUM
-
-Carried from cycle 21 (TE-2). The anti-cheat dashboard component has no component tests. Key interactions to test: event loading, type/student filtering, expand/collapse details, load more pagination, similarity check trigger.
-
----
-
-## TE-3: No component tests for `role-editor-dialog.tsx` (carried from cycle 21) [LOW/MEDIUM]
-
-**File:** `src/app/(dashboard)/dashboard/admin/roles/role-editor-dialog.tsx`
-**Confidence:** MEDIUM
-
-Carried from cycle 21 (TE-3). The role editor dialog has no component tests. Key interactions to test: role creation, role editing, level input validation, capability selection.
-
----
-
-## TE-4: No component tests for `contest-replay.tsx` (carried from cycle 21) [LOW/LOW]
-
-**File:** `src/components/contest/contest-replay.tsx`
-**Confidence:** MEDIUM
-
-Carried from cycle 21 (TE-4). The contest replay component has no component tests.
-
----
-
-## TE-5: `formatDetailsJson` in both anti-cheat components — tests should cover i18n rendering (carried from cycle 21) [LOW/MEDIUM]
+## TE-1: No tests for local `normalizePage` divergence from shared version [MEDIUM/HIGH]
 
 **Files:**
-- `src/components/contest/anti-cheat-dashboard.tsx` (now i18n-aware)
-- `src/components/contest/participant-anti-cheat-timeline.tsx` (i18n-aware since cycle 18)
+- `src/app/(dashboard)/dashboard/problems/page.tsx:51`
+- `src/app/(dashboard)/dashboard/admin/audit-logs/page.tsx:50`
+- `src/app/(dashboard)/dashboard/admin/login-logs/page.tsx:47`
+- `src/app/(dashboard)/dashboard/admin/users/page.tsx:41`
+- `src/app/(dashboard)/dashboard/admin/files/page.tsx:26`
 
-Carried from cycle 21 (TE-1/TE-11). Both `formatDetailsJson` implementations should have unit tests covering: valid JSON with target field, valid JSON without target field, malformed JSON fallback, empty object.
+**Confidence:** HIGH
 
----
+The shared `normalizePage` has unit tests in `tests/unit/pagination-and-ratings.test.ts`. However, the 5 local copies in server components are untested. The divergence from the shared version (using `Number()` instead of `parseInt`, no MAX_PAGE) means edge cases like `?page=1e10` or `?page=0x10` behave differently in these pages vs. pages using the shared version.
 
-## Carried Forward Test Gaps
+**Concrete failure scenario:** A test for `?page=1e10` passes for the shared `normalizePage` (returns 1) but fails silently for the local copies (returns 10000000000). Without tests, this divergence is invisible.
 
-- TE-6: `apiFetchJson` helper untested — carried from DEFER-56
-- TE-7: Encryption module untested — carried from DEFER-50
-- TE-8: `compiler-client.tsx` untested — carried from cycle 16
-- TE-9: `invite-participants.tsx` untested — carried from cycle 16
-- TE-10: `recruiter-candidates-panel.tsx` untested — carried from cycle 16
-- TE-11: `access-code-manager.tsx` untested — carried from cycle 16
+**Fix:** After replacing local copies with the shared import (recommended), no additional tests are needed since the shared version is already tested. If local copies are kept, add tests matching the shared version's test suite.
 
 ---
 
-## Verified Safe
+## TE-2: No unit tests for `contest-join-client.tsx` double `.json()` pattern [LOW/MEDIUM]
 
-- Unit test suite passes all tests
-- Component tests for `contest-quick-stats`, `contest-clarifications`, `contest-announcements` exist and pass
-- `formatting.test.ts` covers `formatNumber`, `formatBytes`, `formatScore`, `formatDuration`
-- `apiFetch` unit tests exist and pass
+**File:** `src/app/(dashboard)/dashboard/contests/join/contest-join-client.tsx:44-49`
+
+**Confidence:** MEDIUM
+
+The double `.json()` pattern on the same Response object has no test coverage. While the current if/else branching prevents the error, a test would document the expected behavior and catch regressions if the pattern is changed.
+
+**Fix:** After migrating to `apiFetchJson`, the pattern is eliminated and the test becomes about the correct API call. If keeping the current pattern, add a component test that verifies both error and success paths work correctly.
+
+---
+
+## Test Coverage Gaps (carried)
+
+### TE-3: No component tests for anti-cheat-dashboard — carried from cycle 21
+### TE-4: No component tests for role-editor-dialog — carried from cycle 21
+### TE-5: No component tests for contest-replay — carried from cycle 21
+### TE-6: Security module test gaps — carried as DEFER-36
+### TE-7: Hook test gaps — carried as DEFER-37
