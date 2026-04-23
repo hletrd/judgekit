@@ -28,7 +28,7 @@ All cycle 29 tasks are complete:
 3. Use `clearTimeout` instead of `clearInterval` in the cleanup function
 4. Verify all gates pass
 
-**Status:** TODO
+**Status:** DONE (commit 19de5cf6)
 
 ---
 
@@ -45,7 +45,7 @@ All cycle 29 tasks are complete:
 2. Check for `null` result and handle parse errors by incrementing circuit breaker and returning null
 3. Verify all gates pass
 
-**Status:** TODO
+**Status:** DONE (commit 7ae57906)
 
 ---
 
@@ -64,7 +64,7 @@ All cycle 29 tasks are complete:
 4. Remove `messages` from the dependency array of `sendMessage`
 5. Verify all gates pass
 
-**Status:** TODO
+**Status:** DONE (commit ce9aa4fa)
 
 ---
 
@@ -108,4 +108,5 @@ All deferred items from the cycle 29 plan carry forward unchanged.
 
 ## Progress log
 
-- 2026-04-23: Plan created with 3 tasks and 1 new deferred item (DEFER-42). Task A (countdown timer setTimeout) is highest priority. Task B (rate-limiter .json() guard) is medium priority. Task C (chat widget dependency stabilization) is low priority.
+- 2026-04-23: Plan created with 3 tasks and 1 new deferred item (DEFER-42).
+- 2026-04-23: All 3 tasks completed. Task A (countdown timer setTimeout) — commit 19de5cf6. Task B (rate-limiter .json() guard) — commit 7ae57906. Task C (chat widget dependency stabilization) — commit ce9aa4fa. All gates passed (ESLint, next build, vitest unit 294/294 pass, vitest integration 37 skipped, vitest component 22 pre-existing failures unrelated to changes).
