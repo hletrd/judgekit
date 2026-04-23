@@ -130,7 +130,7 @@ export function QuickCreateContestForm({ problems }: { problems: Problem[] }) {
                 min={1}
                 max={1440}
                 value={durationMinutes}
-                onChange={(e) => setDurationMinutes(Number(e.target.value) || 60)}
+                onChange={(e) => setDurationMinutes(parseInt(e.target.value, 10) || 60)}
                 className="w-24"
               />
               <span className="text-sm text-muted-foreground">{t("minutes")}</span>
@@ -169,7 +169,7 @@ export function QuickCreateContestForm({ problems }: { problems: Problem[] }) {
                 type="number"
                 min={1}
                 value={sp.points}
-                onChange={(e) => updateProblemPoints(i, Number(e.target.value) || 100)}
+                onChange={(e) => updateProblemPoints(i, parseInt(e.target.value, 10) || 100)}
                 className="w-20"
               />
               <span className="text-xs text-muted-foreground">{t("pts")}</span>
