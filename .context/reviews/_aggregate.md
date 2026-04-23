@@ -1,25 +1,14 @@
-# RPF Cycle 49 — Aggregate Review
+# RPF Cycle 50 — Aggregate Review
 
 **Date:** 2026-04-23
-**Base commit:** b6daa282
+**Base commit:** 6463cdda
 **Review artifacts:** code-reviewer, perf-reviewer, security-reviewer, architect, critic, verifier, debugger, test-engineer, tracer, designer, document-specialist
 
 ## Deduped Findings (sorted by severity then signal)
 
-### AGG-1: ICPC leaderboard sort lacks deterministic `userId` tie-breaker [LOW/MEDIUM]
+**No new findings this cycle.** All 11 review perspectives agree: the codebase is stable with no new issues introduced since cycle 49.
 
-**Flagged by:** code-reviewer (CR-1), perf-reviewer (PERF-1), architect (ARCH-1), critic (CRI-1), verifier (V-1), debugger (DBG-1), test-engineer (TE-1), tracer (TR-1), designer (DES-1), document-specialist (DOC-3)
-**Signal strength:** 10 of 11 review perspectives
-
-**File:** `src/lib/assignments/contest-scoring.ts:346-357`
-
-**Description:** The IOI leaderboard sort (line 359) includes `|| a.userId.localeCompare(b.userId)` as a final deterministic tie-breaker, added in cycle 46. The ICPC sort (lines 346-357) compares solved count, penalty, and last AC time but has no such tie-breaker. When two users have identical values on all three criteria, the sort comparator returns 0, leaving the relative order implementation-defined by the JavaScript engine.
-
-**Concrete failure scenario:** Two students each solve 3 problems with 200 penalty minutes and last AC at 10:30:00. The sort comparator returns 0. Between page loads, Alice and Bob may swap positions on the leaderboard, causing visual flicker.
-
-**Fix:** Add `|| a.userId.localeCompare(b.userId)` as the final tie-breaker in the ICPC sort, matching the IOI pattern from cycle 46.
-
----
+The ICPC leaderboard tie-breaker (AGG-1 from cycle 49) was fixed in commit 39dcd495 and verified intact by all reviewers.
 
 ## Carry-Over Items (Still Unfixed from Prior Cycles)
 
@@ -43,9 +32,9 @@
 
 ## Verified Fixes From Prior Cycles (All Still Intact)
 
-All fixes from cycles 37-48 remain intact:
+All fixes from cycles 37-49 remain intact:
 1. `"redeemed"` removed from PATCH route state machine
-2. `Date.now()` replaced with `getDbNowUnc()` in assignment PATCH
+2. `Date.now()` replaced with `getDbNowUncached()` in assignment PATCH
 3. Non-null assertions removed from anti-cheat heartbeat gap detection
 4. NaN guard in quick-create route
 5. MAX_EXPIRY_MS guard in bulk route
@@ -66,3 +55,4 @@ All fixes from cycles 37-48 remain intact:
 20. DB time for SSE coordination (cycle 46)
 21. Judge claim route uses DB time (cycle 48)
 22. rateLimitedResponse X-RateLimit-Reset uses DB-consistent time (cycle 48)
+23. Deterministic userId tie-breaker in ICPC leaderboard sort (cycle 49)
