@@ -2,7 +2,7 @@
 
 **Date:** 2026-04-22
 **Source:** `.context/reviews/_aggregate.md`
-**Status:** In Progress
+**Status:** Done (H1, H2, M1, M2, L1 all complete)
 
 ## Scope
 
@@ -29,7 +29,7 @@ No cycle-15 review finding is silently dropped. No new refactor-only work is add
   2. Refactor `fetchStats` to use `apiFetchJson`
   3. Preserve existing behavior: AbortController, error handling, loading state
   4. Verify all gates pass
-- **Status:** PENDING
+- **Status:** DONE
 
 ### H2: Migrate `workers-client.tsx` to `apiFetchJson` and add `.catch()` guards (AGG-1, partial)
 
@@ -43,7 +43,7 @@ No cycle-15 review finding is silently dropped. No new refactor-only work is add
   2. Refactor `fetchData` to use `apiFetchJson` for stats endpoint
   3. Preserve existing behavior: loading state, error handling
   4. Verify all gates pass
-- **Status:** PENDING
+- **Status:** DONE
 
 ### M1: Add `aria-label` to metadata remove button in `recruiting-invitations-panel.tsx` (AGG-2)
 
@@ -56,7 +56,7 @@ No cycle-15 review finding is silently dropped. No new refactor-only work is add
   1. Add `aria-label={t("removeField")}` to the metadata remove button
   2. Add i18n key `removeField` to `messages/en.json` and `messages/ko.json`
   3. Verify all gates pass
-- **Status:** PENDING
+- **Status:** DONE
 
 ### M2: Add shallow comparison to anti-cheat dashboard polling `setEvents` updater (AGG-3)
 
@@ -70,7 +70,7 @@ No cycle-15 review finding is silently dropped. No new refactor-only work is add
   2. If first-page data is identical (same IDs in same order), return `prev` to skip re-render
   3. Preserve the existing logic for preserving beyond-first-page data
   4. Verify all gates pass
-- **Status:** PENDING
+- **Status:** DONE
 
 ### L1: Update `apiFetchJson` JSDoc to document `signal` option (DOC-1)
 
@@ -133,3 +133,4 @@ Key items:
 ## Progress log
 
 - 2026-04-22: Plan created from RPF cycle 15 aggregate review. 5 new tasks (H1, H2, M1, M2, L1). 4 new deferred items (DEFER-54 through DEFER-57). All findings from the aggregate review are either scheduled for implementation or explicitly deferred.
+- 2026-04-22: H1 DONE (38a55d25 — migrate recruiting-invitations-panel to apiFetchJson), H2 DONE (f05ba27c — migrate workers-client to apiFetchJson), M1 DONE (dcc85bf2 — add aria-label to metadata remove button + i18n keys), M2 DONE (c1e12b39 — skip unnecessary re-renders in anti-cheat dashboard polling), L1 DONE (4b487415 — document signal option in apiFetchJson JSDoc). All gates pass: eslint (0 errors), next build (success), vitest unit (2105/2105 pass), vitest integration (37 skipped, no DB available), vitest component (12 pre-existing DB-dependent failures, no test files modified).
