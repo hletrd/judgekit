@@ -88,7 +88,7 @@ export default function ChatWidget() {
     const container = messagesContainerRef.current;
     if (!container) return;
 
-    if (isStreaming) {
+    if (isStreamingRef.current) {
       // During streaming, batch scroll updates via requestAnimationFrame to avoid layout thrash
       if (scrollRafRef.current != null) return; // already scheduled
       scrollRafRef.current = requestAnimationFrame(() => {
@@ -102,7 +102,7 @@ export default function ChatWidget() {
         behavior: "smooth",
       });
     }
-  }, [isStreaming]);
+  }, []);
 
   useEffect(() => {
     scrollToBottom();
