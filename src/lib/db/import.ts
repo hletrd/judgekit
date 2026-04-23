@@ -7,52 +7,19 @@
 
 import { getTableColumns, sql } from "drizzle-orm";
 import { db } from "./index";
-import * as schema from "./schema";
-import { validateExport, getTableOrder, getReversedTableOrder, type JudgeKitExport } from "./export";
+import { validateExport, getTableOrder, getReversedTableOrder, TABLE_ORDER, type JudgeKitExport } from "./export";
 import { logger } from "@/lib/logger";
 
-/** Map of logical table names to Drizzle table references */
-const TABLE_MAP: Record<string, any> = {
-  users: schema.users,
-  roles: schema.roles,
-  tags: schema.tags,
-  systemSettings: schema.systemSettings,
-  judgeWorkers: schema.judgeWorkers,
-  languageConfigs: schema.languageConfigs,
-  plugins: schema.plugins,
-  rateLimits: schema.rateLimits,
-  sessions: schema.sessions,
-  accounts: schema.accounts,
-  loginEvents: schema.loginEvents,
-  auditEvents: schema.auditEvents,
-  apiKeys: schema.apiKeys,
-  groups: schema.groups,
-  problems: schema.problems,
-  files: schema.files,
-  problemSets: schema.problemSets,
-  enrollments: schema.enrollments,
-  groupInstructors: schema.groupInstructors,
-  testCases: schema.testCases,
-  problemGroupAccess: schema.problemGroupAccess,
-  assignments: schema.assignments,
-  problemSetProblems: schema.problemSetProblems,
-  problemSetGroupAccess: schema.problemSetGroupAccess,
-  problemTags: schema.problemTags,
-  chatMessages: schema.chatMessages,
-  discussionThreads: schema.discussionThreads,
-  communityVotes: schema.communityVotes,
-  discussionPosts: schema.discussionPosts,
-  assignmentProblems: schema.assignmentProblems,
-  recruitingInvitations: schema.recruitingInvitations,
-  examSessions: schema.examSessions,
-  contestAccessTokens: schema.contestAccessTokens,
-  submissions: schema.submissions,
-  antiCheatEvents: schema.antiCheatEvents,
-  scoreOverrides: schema.scoreOverrides,
-  codeSnapshots: schema.codeSnapshots,
-  submissionResults: schema.submissionResults,
-  submissionComments: schema.submissionComments,
-};
+/**
+ * Map of logical table names to Drizzle table references.
+ * Derived from TABLE_ORDER in export.ts so the two lists cannot drift.
+ * If a table is added to the schema, it must be added to TABLE_ORDER in
+ * export.ts — the import side will pick it up automatically.
+ */
+export const TABLE_MAP: Record<string, any> = {};
+for (const { name, table } of TABLE_ORDER) {
+  TABLE_MAP[name] = table;
+}
 
 function buildImportColumnSets(tableMap: Record<string, any>) {
   const timestampColumns = new Set<string>();

@@ -153,7 +153,7 @@ export function streamDatabaseExport(options: { signal?: AbortSignal; sanitize?:
  * Tables in FK-dependency order (parents before children).
  * Each entry maps a logical name to the Drizzle table reference.
  */
-const TABLE_ORDER: { name: string; table: PgTable; orderColumns: string[] }[] = [
+export const TABLE_ORDER: { name: string; table: PgTable; orderColumns: string[] }[] = [
   // Level 0: no foreign keys
   { name: "users", table: schema.users, orderColumns: ["id"] },
   { name: "roles", table: schema.roles, orderColumns: ["id"] },
