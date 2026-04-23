@@ -6,6 +6,7 @@ import { getContestAssignment, canManageContest } from "@/lib/assignments/contes
 
 
 export const GET = createApiHandler({
+  auth: { capabilities: ["contests.manage_access_codes"] },
   handler: async (req: NextRequest, { user, params }) => {
     const { assignmentId } = params;
 
@@ -19,6 +20,7 @@ export const GET = createApiHandler({
 });
 
 export const POST = createApiHandler({
+  auth: { capabilities: ["contests.manage_access_codes"] },
   handler: async (req: NextRequest, { user, params }) => {
     const { assignmentId } = params;
 
@@ -32,6 +34,7 @@ export const POST = createApiHandler({
 });
 
 export const DELETE = createApiHandler({
+  auth: { capabilities: ["contests.manage_access_codes"] },
   handler: async (req: NextRequest, { user, params }) => {
     const { assignmentId } = params;
 

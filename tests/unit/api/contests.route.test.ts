@@ -363,7 +363,7 @@ describe("/api/v1/contests/[assignmentId]/access-code", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     getApiUserMock.mockResolvedValue(ADMIN_USER);
-    resolveCapabilitiesMock.mockResolvedValue(new Set(["contests.create"]));
+    resolveCapabilitiesMock.mockResolvedValue(new Set(["contests.create", "contests.manage_access_codes"]));
     getContestAssignmentMock.mockResolvedValue(CONTEST_ASSIGNMENT);
     canManageContestMock.mockImplementation((user, assignment) => user.role === "admin" || assignment.instructorId === user.id);
     getAccessCodeMock.mockResolvedValue("ABC123");
