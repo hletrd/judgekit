@@ -92,7 +92,7 @@ export function apiFetch(
  * 3. Calling `.json()` twice on the same response (body already consumed)
  *
  * @param input - URL or RequestInfo to fetch
- * @param init - Optional fetch options
+ * @param init - Optional fetch options. Supports `signal` for AbortController-based cancellation.
  * @param fallback - Value returned when `.json()` throws (e.g., non-JSON body).
  *                    Also returned as `data` when `res.ok` is false.
  * @returns `{ ok: true, data: T }` on success, `{ ok: false, data: T }` on error.
