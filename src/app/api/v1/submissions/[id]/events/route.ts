@@ -78,14 +78,31 @@ declare global {
   var __sseCleanupTimer: ReturnType<typeof setInterval> | undefined;
 }
 
+// Cached stale threshold with 5-minute TTL to avoid calling getConfiguredSettings()
+// on every cleanup tick. The setting rarely changes, so this reduces unnecessary
+// DB queries while still allowing config updates to take effect within 5 minutes.
+let cachedStaleThreshold: number | null = null;
+let cachedStaleThresholdAt = 0;
+const STALE_THRESHOLD_TTL_MS = 5 * 60 * 1000;
+
+function getStaleThreshold(): number {
+  const now = Date.now();
+  if (cachedStaleThreshold !== null && now - cachedStaleThresholdAt < STALE_THRESHOLD_TTL_MS) {
+    return cachedStaleThreshold;
+  }
+  const sseTimeout = getConfiguredSettings().sseTimeoutMs;
+  cachedStaleThreshold = Number.isFinite(sseTimeout)
+    ? Math.min(sseTimeout + 30_000, 2 * 60 * 60 * 1000)
+    : 30_030_000; // 30min + 30s fallback
+  cachedStaleThresholdAt = now;
+  return cachedStaleThreshold;
+}
+
 if (globalThis.__sseCleanupTimer) clearInterval(globalThis.__sseCleanupTimer);
 globalThis.__sseCleanupTimer = setInterval(() => {
   if (connectionInfoMap.size === 0) return;
   const now = Date.now();
-  const sseTimeout = getConfiguredSettings().sseTimeoutMs;
-  const staleThreshold = Number.isFinite(sseTimeout)
-    ? Math.min(sseTimeout + 30_000, 2 * 60 * 60 * 1000)
-    : 30_030_000; // 30min + 30s fallback
+  const staleThreshold = getStaleThreshold();
   for (const [connId, info] of connectionInfoMap) {
     if (now - info.createdAt > staleThreshold) {
       removeConnection(connId)
