@@ -17,8 +17,12 @@ type CodeEditorProps = {
   ariaLabelledby?: string;
   className?: string;
   editorTheme?: string | null;
+  exitButtonLabel?: string;
+  exitFullscreenLabel?: string;
+  fullscreenLabel?: string;
   id?: string;
   language?: string | null;
+  languageFallbackLabel?: string;
   lineWrapping?: boolean;
   minHeight?: number;
   onSubmitShortcut?: () => void;
@@ -29,7 +33,7 @@ type CodeEditorProps = {
 };
 
 export function CodeEditor(props: CodeEditorProps) {
-  const { minHeight, onSubmitShortcut, onValueChange, showFullscreen = false, lineWrapping, ...surfaceProps } = props;
+  const { minHeight, onSubmitShortcut, onValueChange, showFullscreen = false, lineWrapping, fullscreenLabel = "Fullscreen (F)", exitFullscreenLabel = "Exit fullscreen (Esc)", exitButtonLabel = "Exit", languageFallbackLabel = "Code Editor", ...surfaceProps } = props;
   const height = minHeight ?? 300;
   const [isFullscreen, setIsFullscreen] = useState(false);
 
@@ -93,8 +97,8 @@ export function CodeEditor(props: CodeEditorProps) {
             type="button"
             onClick={toggleFullscreen}
             className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-            title="Fullscreen (F) · Exit (Esc)"
-            aria-label="Fullscreen (F)"
+            title={`${fullscreenLabel} · ${exitFullscreenLabel}`}
+            aria-label={fullscreenLabel}
           >
             <Maximize2 className="size-3.5" />
             <span>F</span>
@@ -104,17 +108,17 @@ export function CodeEditor(props: CodeEditorProps) {
       {isFullscreen && (
         <div className="flex items-center justify-between mb-2">
           <span className="text-sm font-medium text-muted-foreground">
-            {props.language ?? "Code Editor"}
+            {props.language ?? languageFallbackLabel}
           </span>
           <button
             type="button"
             onClick={toggleFullscreen}
             className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-            title="Exit fullscreen (Esc)"
-            aria-label="Exit fullscreen (Esc)"
+            title={exitFullscreenLabel}
+            aria-label={exitFullscreenLabel}
           >
             <Minimize2 className="size-3.5" />
-            Exit
+            {exitButtonLabel}
           </button>
         </div>
       )}

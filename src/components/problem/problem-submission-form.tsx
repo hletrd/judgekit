@@ -51,6 +51,7 @@ export function ProblemSubmissionForm({
   const router = useRouter();
   const t = useTranslations("problems");
   const tCommon = useTranslations("common");
+  const tCompiler = useTranslations("compiler");
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const availableLanguages = useMemo(() => languages.map((entry) => entry.language), [languages]);
@@ -333,6 +334,10 @@ export function ProblemSubmissionForm({
           onValueChange={setSourceCode}
           onSubmitShortcut={() => void handleSubmit()}
           showFullscreen
+          fullscreenLabel={tCompiler("fullscreenLabel")}
+          exitFullscreenLabel={tCompiler("exitFullscreenLabel")}
+          exitButtonLabel={tCompiler("exitFullscreen")}
+          languageFallbackLabel={tCompiler("codeEditorFallback")}
         />
       </div>
       <div className="space-y-2">

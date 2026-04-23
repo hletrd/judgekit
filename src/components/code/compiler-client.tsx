@@ -402,6 +402,10 @@ export function CompilerClient({ languages, title, description, preferredLanguag
               onValueChange={setSourceCode}
               minHeight={LAYOUT_CONSTANTS.EDITOR_MIN_HEIGHT}
               ariaLabel={t("codeEditorLabel")}
+              fullscreenLabel={t("fullscreenLabel")}
+              exitFullscreenLabel={t("exitFullscreenLabel")}
+              exitButtonLabel={t("exitFullscreen")}
+              languageFallbackLabel={t("codeEditorFallback")}
             />
           </div>
           <div className="flex flex-col gap-3">

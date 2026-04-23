@@ -2443,7 +2443,11 @@
     "noLanguagesDescription": "활성화된 프로그래밍 언어가 없습니다. 관리자에게 문의하세요.",
     "showFullOutput": "전체 출력 보기",
     "outputEmpty": "(비어 있음)",
-    "outputTruncated": "... (출력 생략)"
+    "outputTruncated": "... (출력 생략)",
+    "fullscreenLabel": "전체 화면 (F)",
+    "exitFullscreenLabel": "전체 화면 나가기 (Esc)",
+    "exitFullscreen": "나가기",
+    "codeEditorFallback": "코드 편집기"
   },
   "capabilities": {
     "groups": {

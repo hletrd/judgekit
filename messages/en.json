@@ -2443,7 +2443,11 @@
     "noLanguagesDescription": "No programming languages are enabled. Contact an administrator.",
     "showFullOutput": "Show full output",
     "outputEmpty": "(empty)",
-    "outputTruncated": "... (output truncated)"
+    "outputTruncated": "... (output truncated)",
+    "fullscreenLabel": "Fullscreen (F)",
+    "exitFullscreenLabel": "Exit fullscreen (Esc)",
+    "exitFullscreen": "Exit",
+    "codeEditorFallback": "Code Editor"
   },
   "capabilities": {
     "groups": {
