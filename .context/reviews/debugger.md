@@ -1,57 +1,69 @@
-# Debugger Review — RPF Cycle 15
+# Debugger Review — RPF Cycle 16
 
 **Date:** 2026-04-22
 **Reviewer:** debugger
-**Base commit:** 6c07a08d
+**Base commit:** 9379c26b
 
-## Previously Fixed Items (Verified)
+## Inventory of Review-Relevant Files
 
-All cycle 14 debugger findings are fixed:
-- DBG-1 (double `res.json()` in create-problem-form): Fixed
-- DBG-2 (problem-export-button null-safety): Fixed
-- DBG-3 (contest-join-client variable shadowing): Fixed
-- DBG-4 (problem-import-button file size validation): Fixed
+Focus: latent bug surface, failure modes, unhandled exceptions, edge cases that could cause runtime errors.
 
 ## Findings
 
-### DBG-1: `recruiting-invitations-panel.tsx` — `fetchInvitations` unguarded `res.json()` can throw SyntaxError on success path [MEDIUM/MEDIUM]
+### DBG-1: `compiler-client.tsx:270` unguarded `res.json()` can throw SyntaxError in error handler [MEDIUM/HIGH]
 
-**File:** `src/components/contest/recruiting-invitations-panel.tsx:137`
-
-**Description:** Inside `if (invRes.ok)`, line 137 calls `await invRes.json()` without `.catch()`. If the server returns a 200 with a non-JSON body (e.g., proxy misconfiguration), this throws SyntaxError. The outer catch on line 140 shows `t("fetchError")` toast, which is correct but provides no diagnostic detail about the parse failure.
-
-**Concrete failure scenario:** A CDN or reverse proxy returns 200 with an HTML error page. `invRes.json()` throws SyntaxError. The catch block shows "fetchError" toast. The user refreshes and sees the same error. There is no indication that the issue is a malformed response.
-
-**Fix:** Add `.catch(() => ({ data: [] }))` or use `apiFetchJson`.
-
+**File:** `src/components/code/compiler-client.tsx:267-275`
 **Confidence:** HIGH
+
+Also flagged by code-reviewer (CR-1), critic (CRI-2), verifier (V-1).
+
+When the server returns a non-JSON error body, the inner `try` block throws SyntaxError. The outer `catch` block then produces a generic error message:
+
+```
+Error path: res.ok = false -> try { res.json() } -> SyntaxError -> outer catch -> "Network error"
+```
+
+The failure mode is: user submits code, compiler runner is down (502), user sees "Network error" toast instead of something useful. The `res.statusText` is available but never used when the inner `.json()` throws.
+
+**Fix:** Add `.catch(() => ({}))` to the `res.json()` call at line 270.
 
 ---
 
-### DBG-2: `workers-client.tsx` — `fetchData` unguarded `res.json()` can throw SyntaxError [MEDIUM/MEDIUM]
+### DBG-2: `invite-participants.tsx` race condition on rapid search input [MEDIUM/MEDIUM]
 
-**File:** `src/app/(dashboard)/dashboard/admin/workers/workers-client.tsx:235,241`
-
-**Description:** Same class of issue as DBG-1. Both `workersRes.json()` and `statsRes.json()` are called without `.catch()` inside `if (res.ok)` blocks. A non-JSON 200 response would throw SyntaxError.
-
-**Fix:** Add `.catch()` guards or use `apiFetchJson`.
-
+**File:** `src/components/contest/invite-participants.tsx:34-64`
 **Confidence:** HIGH
+
+Also flagged by perf-reviewer (PERF-1), critic (CRI-3), verifier (V-4).
+
+The search function has no request cancellation. Rapid typing causes multiple overlapping requests. The last one to resolve wins, which may not correspond to the current search query. This can produce confusing UX where the displayed results don't match what the user typed.
+
+**Fix:** Add AbortController to cancel previous in-flight search requests.
 
 ---
 
-### DBG-3: `recruiting-invitations-panel.tsx` metadata remove button missing `aria-label` [LOW/MEDIUM]
+### DBG-3: `recruiter-candidates-panel.tsx` exports open `window.open` to `_blank` [LOW/LOW]
 
-**File:** `src/components/contest/recruiting-invitations-panel.tsx:479-485`
+**File:** `src/components/contest/recruiter-candidates-panel.tsx:90-98`
+**Confidence:** LOW
 
-**Description:** Icon-only button without `aria-label`. This is the same class of issue fixed in cycles 11-13.
+The CSV download uses `window.open(url, "_blank")` without `noopener,noreferrer`. This is a minor tab-napping risk where the opened page could access `window.opener`. Since these are same-origin API URLs, the risk is negligible.
 
-**Fix:** Add `aria-label`.
-
-**Confidence:** HIGH
+**Fix:** Add `noopener,noreferrer` as a security best practice, or use `<a>` element with `download` attribute instead.
 
 ---
+
+### DBG-4: `anti-cheat-monitor.tsx` retry logic may accumulate timers if multiple events fail simultaneously [LOW/LOW]
+
+**File:** `src/components/exam/anti-cheat-monitor.tsx:122-129`
+**Confidence:** LOW
+
+When `sendEvent` fails, a retry timer is set. If multiple events fail in quick succession, only one timer is created (due to `if (!retryTimerRef.current)`), and `flushPendingEvents` is called once. This is actually correct behavior — it batches retries. However, if `flushPendingEvents` itself fails for all events, the timer is cleared but no new timer is set for the remaining events. The events stay in localStorage and will be retried on next mount (via `flushPendingEventsRef.current()` in the `useEffect`), so no data is lost. This is acceptable behavior.
+
+**Fix:** No fix needed. Current behavior is correct for the use case.
 
 ## Final Sweep
 
-The cycle 14 fixes are properly implemented. The remaining issues are the 4 unguarded `.json()` calls in 2 files that were missed by the `apiFetchJson` refactor. These are the same class of latent bug that has been identified in prior cycles. The accessibility issue with the metadata remove button is a minor regression.
+- No new crash-inducing bugs found
+- The `compiler-client.tsx` unguarded `.json()` is the highest-severity latent bug
+- Previously fixed items from cycles 11-15 remain intact

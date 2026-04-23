@@ -1,69 +1,95 @@
-# Tracer Review — RPF Cycle 15
+# Tracer Review — RPF Cycle 16
 
 **Date:** 2026-04-22
 **Reviewer:** tracer
-**Base commit:** 6c07a08d
+**Base commit:** 9379c26b
 
-## Previously Fixed Items (Verified)
+## Inventory of Review-Relevant Files
 
-All cycle 14 tracer findings are fixed:
-- TR-1 (double `res.json()` in create-problem-form): Fixed — single parse + `.catch()` guard
-- TR-2 (problem-export-button null-safety): Fixed — null-safe access
-- TR-3 (problem-import-button file size validation): Fixed — 10MB limit
+Focus: causal tracing of suspicious data flows, competing hypotheses for failure modes, and cross-component interaction analysis.
 
 ## Findings
 
-### TR-1: `recruiting-invitations-panel.tsx:137` — causal trace: unguarded `res.json()` on success path [MEDIUM/MEDIUM]
+### TR-1: `compiler-client.tsx` error path `.json()` — causal chain tracing [MEDIUM/HIGH]
 
-**Description:** Causal trace when the API returns a non-JSON 200 response:
-
-1. User opens the recruiting invitations panel
-2. `fetchInvitations` calls `apiFetch(...)` on line 133
-3. Server returns 200 but with HTML body (e.g., CDN injects error page)
-4. Line 136: `invRes.ok` is `true`
-5. Line 137: `await invRes.json()` throws SyntaxError: "Unexpected token <"
-6. Line 140: catch block shows `t("fetchError")` toast
-7. User sees generic "fetch error" with no indication that the response was malformed
-8. User refreshes — same error persists until CDN is fixed
-
-**Hypothesis 1 (confirmed):** The unguarded `.json()` on the success path can throw when the response is non-JSON, even though `res.ok` is true.
-
-**Alternative hypothesis (rejected):** The CDN would return a non-200 status. Rejected — CDNs often return 200 with HTML error pages.
-
-**Fix:** Add `.catch(() => ({ data: [] }))` or use `apiFetchJson`.
-
+**File:** `src/components/code/compiler-client.tsx:267-284`
 **Confidence:** HIGH
 
+**Causal chain:**
+1. User clicks "Run" in compiler client
+2. `apiFetch(runEndpoint, ...)` sends POST to compiler runner
+3. Compiler runner is behind nginx reverse proxy
+4. nginx returns 502 Bad Gateway with HTML body
+5. `res.ok` is `false`, entering the `if (!res.ok)` branch
+6. `await res.json()` is called on HTML body
+7. `SyntaxError: Unexpected token <` is thrown
+8. Inner `catch` block catches the SyntaxError
+9. `errorMessage = res.statusText || errorMessage` — `res.statusText` is "Bad Gateway"
+10. **Wait** — the inner `catch` actually sets `errorMessage = res.statusText || errorMessage`
+
+Re-reading the code more carefully:
+
+```ts
+if (!res.ok) {
+  let errorMessage = "Request failed";
+  try {
+    const errorData = await res.json();     // throws on non-JSON
+    errorMessage = errorData.error || errorData.message || errorMessage;
+  } catch {
+    // Server returned non-JSON error
+    errorMessage = res.statusText || errorMessage;
+  }
+```
+
+The inner `catch` does use `res.statusText` as fallback. So the actual behavior is:
+- If the error body IS JSON: uses `errorData.error || errorData.message || "Request failed"`
+- If the error body is NOT JSON: uses `res.statusText || "Request failed"`
+
+This means the bug is less severe than initially assessed — the fallback works correctly. However, the `res.json()` call without `.catch()` still represents a code pattern inconsistency that contradicts the `apiFetch` JSDoc guidelines. The concern is that the outer `catch` block would handle this differently (producing a "Network error" message) if the inner catch didn't exist.
+
+**Revised assessment:** LOW/MEDIUM — The code works correctly in practice due to the inner catch, but the pattern violates the documented convention and creates a subtle code smell.
+
 ---
 
-### TR-2: `workers-client.tsx:235,241` — causal trace: unguarded `res.json()` on success paths [MEDIUM/MEDIUM]
+### TR-2: `invite-participants.tsx` search race condition — causal chain [MEDIUM/MEDIUM]
 
-**Description:** Same causal trace as TR-1, but for the workers admin page. If the workers API or stats API returns a 200 with non-JSON body, both `.json()` calls throw SyntaxError. The catch block shows generic "fetchError" toast.
-
-**Fix:** Add `.catch()` guards or use `apiFetchJson`.
-
+**File:** `src/components/contest/invite-participants.tsx:34-64`
 **Confidence:** HIGH
 
----
+**Causal chain:**
+1. User types "j" — debounce timer starts (300ms)
+2. After 300ms, `search("j")` fires: `apiFetch("/api/v1/contests/.../invite?q=j")`
+3. User types "jo" — new debounce timer starts (previous timer cleared)
+4. After 300ms, `search("jo")` fires: `apiFetch("/api/v1/contests/.../invite?q=jo")`
+5. Both requests are now in-flight simultaneously
+6. Request for "j" resolves: `setResults(data.data)` — shows results for "j"
+7. Request for "jo" resolves: `setResults(data.data)` — shows results for "jo"
+8. If step 6 happens AFTER step 7, the user briefly sees correct "jo" results, then sees stale "j" results
 
-### TR-3: `recruiting-invitations-panel.tsx:99` — causal trace: `window.location.origin` for invitation URLs [MEDIUM/MEDIUM]
+This is a confirmed race condition. The user sees results for the wrong search query.
 
-**Description:** Carried from cycle 14. Causal trace when the app is behind a reverse proxy:
-
-1. App is deployed behind nginx at `algo.xylolabs.com`
-2. Nginx proxies to Next.js on `localhost:3000`
-3. `window.location.origin` resolves to `http://localhost:3000` on the client
-4. Wait — on the client side, `window.location.origin` would resolve to the public URL since the browser sees the public domain
-5. BUT if the app uses SSR with a misconfigured proxy that doesn't set `X-Forwarded-Host`, the client could see the internal URL in some edge cases
-
-**Revised hypothesis:** The risk is lower than initially assessed because `window.location.origin` resolves on the client side (browser), which sees the public URL. The risk only applies in unusual proxy configurations where the browser sees an internal hostname.
-
-**Fix:** Use server-provided `appUrl` for consistency and to handle edge cases.
-
-**Confidence:** MEDIUM
+**Fix:** Add AbortController to cancel previous in-flight search.
 
 ---
+
+### TR-3: `test-connection/route.ts` — tracing the `req.json()` call without `.catch()` [MEDIUM/MEDIUM]
+
+**File:** `src/app/api/v1/plugins/chat-widget/test-connection/route.ts:37`
+**Confidence:** HIGH
+
+**Causal chain:**
+1. Client sends POST with malformed body (not valid JSON)
+2. `createApiHandler` wrapper calls the inner handler
+3. Handler calls `await req.json()` at line 37 — throws SyntaxError
+4. The `createApiHandler` wrapper catches this in its outer `try/catch` (line 195-198 of handler.ts)
+5. Returns `{ error: "internalServerError" }` with status 500
+
+But if the `schema` option were used, `createApiHandler` would catch the parse error at lines 156-158 and return `{ error: "invalidJson" }` with status 400. The current code returns 500 for a 400-class error.
+
+**Fix:** Use `schema` option in `createApiHandler` config, or add try/catch around `req.json()`.
 
 ## Final Sweep
 
-The 4 remaining unguarded `.json()` calls in 2 files are the primary concern. The causal traces show they can fail when a 200 response has a non-JSON body. The `window.location.origin` risk is lower than initially assessed since it resolves on the client side, but using a server-provided config remains the safer approach.
+- Traced all API call chains in recently changed components
+- Verified that the compiler-client inner catch mitigates the unguarded `.json()` — severity revised downward
+- The `test-connection/route.ts` returns wrong HTTP status code for malformed JSON — this is a concrete bug

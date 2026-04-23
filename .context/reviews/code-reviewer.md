@@ -1,84 +1,91 @@
-# Code Quality Review — RPF Cycle 15
+# Code Quality Review — RPF Cycle 16
 
 **Date:** 2026-04-22
 **Reviewer:** code-reviewer
-**Base commit:** 6c07a08d
+**Base commit:** 9379c26b
 
-## Previously Fixed Items (Verified in Current Code)
+## Inventory of Review-Relevant Files
 
-All cycle 14 findings are fixed:
-- AGG-1 (systemic unguarded `res.json()` — centralized `apiFetchJson` helper): Fixed — helper created and used in anti-cheat-dashboard, analytics-charts, leaderboard-table, participant-anti-cheat-timeline
-- AGG-2 (double `res.json()` in create-problem-form): Fixed — now uses single parse + `.catch()` guard
-- AGG-3 (problem-import-button file size validation): Fixed — 10MB limit added
-- AGG-4 (problem-export-button unguarded `res.json()` + null check): Fixed — `.catch()` and null-safe access added
-- AGG-5 (contest-join-client variable shadowing): Fixed — renamed to `errorPayload`
+All `src/` files under app, components, lib, hooks, contexts. Key focus areas: recently changed files (recruiting-invitations-panel, anti-cheat-dashboard, workers-client, api/client.ts) and common cross-cutting patterns (error handling, API consumption, i18n, accessibility).
 
 ## Findings
 
-### CR-1: Four remaining unguarded `res.json()` calls missed by cycle 14 `apiFetchJson` refactor [MEDIUM/HIGH]
+### CR-1: `compiler-client.tsx` unguarded `res.json()` on error path [MEDIUM/HIGH]
 
-**Files:**
-- `src/components/contest/recruiting-invitations-panel.tsx:137` — `const json = await invRes.json();` inside `if (invRes.ok)`, no `.catch()`
-- `src/components/contest/recruiting-invitations-panel.tsx:152` — `const json = await statsRes.json();` inside `if (statsRes.ok)`, no `.catch()`
-- `src/app/(dashboard)/dashboard/admin/workers/workers-client.tsx:235` — `const wd = await workersRes.json();` inside `if (workersRes.ok)`, no `.catch()`
-- `src/app/(dashboard)/dashboard/admin/workers/workers-client.tsx:241` — `const sd = await statsRes.json();` inside `if (statsRes.ok)`, no `.catch()`
-
-**Description:** The cycle 14 `apiFetchJson` refactor covered 4 components (anti-cheat-dashboard, analytics-charts, leaderboard-table, participant-anti-cheat-timeline) and added `.catch()` guards to several others. However, 4 calls in 2 files were missed. The `recruiting-invitations-panel.tsx` fetch functions (`fetchInvitations` and `fetchStats`) use `apiFetch` directly and call `.json()` without `.catch()` inside `if (res.ok)` blocks. The `workers-client.tsx` fetchData function does the same with both `workersRes` and `statsRes`.
-
-While these are on success paths (after `res.ok` check), a 200 response with non-JSON body (e.g., proxy misconfiguration) would throw an unhandled SyntaxError inside the try-catch, showing a generic error toast with no diagnostic value.
-
-**Concrete failure scenario:** Reverse proxy returns 200 with HTML body instead of JSON. `res.json()` throws SyntaxError. The catch block shows a generic "fetchError" toast, but the user has no indication that the data was malformed.
-
-**Fix:** Either refactor to use `apiFetchJson`, or add `.catch()` guards:
-- `recruiting-invitations-panel.tsx`: Use `apiFetchJson` for both fetch calls, or add `.catch(() => ({ data: [] }))` / `.catch(() => ({ data: prev }))`
-- `workers-client.tsx`: Use `apiFetchJson` for both fetch calls, or add `.catch(() => ({ data: [] }))` / `.catch(() => ({ data: null }))`
-
+**File:** `src/components/code/compiler-client.tsx:270`
 **Confidence:** HIGH
 
----
+The error path calls `await res.json()` without `.catch()`. If the server returns a non-JSON body (e.g., 502 HTML from a reverse proxy), this will throw a SyntaxError and the outer `catch` block will produce a generic "Network error" message instead of using the server's statusText.
 
-### CR-2: `recruiting-invitations-panel.tsx` uses raw `apiFetch` instead of `apiFetchJson` for data fetching — inconsistent with other refactored components [LOW/MEDIUM]
-
-**File:** `src/components/contest/recruiting-invitations-panel.tsx:133-152`
-
-**Description:** While anti-cheat-dashboard, analytics-charts, leaderboard-table, and participant-anti-cheat-timeline were refactored to use `apiFetchJson` in cycle 14, the recruiting-invitations-panel still uses raw `apiFetch` for its two main fetch operations. This creates inconsistency — some components use the safe centralized helper, others don't.
-
-**Fix:** Refactor `fetchInvitations` and `fetchStats` to use `apiFetchJson`, consistent with other contest components.
-
-**Confidence:** MEDIUM
-
----
-
-### CR-3: `workers-client.tsx` uses raw `apiFetch` instead of `apiFetchJson` [LOW/MEDIUM]
-
-**File:** `src/app/(dashboard)/dashboard/admin/workers/workers-client.tsx:230-245`
-
-**Description:** Same inconsistency as CR-2. The workers-client uses raw `apiFetch` + manual `.json()` parsing without `.catch()` guards, while other admin components have been migrated to `apiFetchJson`.
-
-**Fix:** Refactor `fetchData` to use `apiFetchJson` for both the workers and stats endpoints.
-
-**Confidence:** MEDIUM
-
----
-
-### CR-4: `recruiting-invitations-panel.tsx` metadata remove button is icon-only without `aria-label` [LOW/MEDIUM]
-
-**File:** `src/components/contest/recruiting-invitations-panel.tsx:479-485`
-
-**Description:** The "remove metadata field" button uses `size="sm"` with only a `Trash2` icon and no `aria-label`. While this is a `size="sm"` button rather than `size="icon"`, it is still effectively an icon-only button (no visible text). Screen readers would announce it as an unlabeled button.
-
-```tsx
-<Button variant="ghost" size="sm" onClick={() => setMetadataFields(metadataFields.filter((_, j) => j !== i))}>
-  <Trash2 className="h-4 w-4" />
-</Button>
+```ts
+// Line 270
+const errorData = await res.json();
+errorMessage = errorData.error || errorData.message || errorMessage;
 ```
 
-**Fix:** Add `aria-label={t("removeField")}` or similar i18n key.
-
-**Confidence:** HIGH
+**Fix:** Change to `const errorData = await res.json().catch(() => ({}));` to be consistent with the established pattern across the entire codebase.
 
 ---
+
+### CR-2: `recruiter-candidates-panel.tsx` uses raw `apiFetch` + `.json()` instead of `apiFetchJson` [MEDIUM/MEDIUM]
+
+**File:** `src/components/contest/recruiter-candidates-panel.tsx:50-54`
+**Confidence:** HIGH
+
+This component was not migrated to `apiFetchJson` during the cycle 14-15 refactor. It uses raw `apiFetch` + `res.json().catch(() => [])` which is the old pattern. The `.catch(() => [])` returns an array fallback but `setCandidates(Array.isArray(data) ? data : [])` guards it, so it works but is inconsistent with the rest of the codebase.
+
+**Fix:** Migrate to `apiFetchJson` for consistency.
+
+---
+
+### CR-3: `invite-participants.tsx` uses raw `apiFetch` + `.json()` instead of `apiFetchJson` [MEDIUM/MEDIUM]
+
+**File:** `src/components/contest/invite-participants.tsx:42-47, 68-78`
+**Confidence:** HIGH
+
+Same as CR-2. Two separate fetch calls using the old pattern. Both the search and invite functions could use `apiFetchJson` for consistency and safety.
+
+**Fix:** Migrate both fetch calls to `apiFetchJson`.
+
+---
+
+### CR-4: `access-code-manager.tsx` uses raw `apiFetch` + `.json()` instead of `apiFetchJson` [MEDIUM/MEDIUM]
+
+**File:** `src/components/contest/access-code-manager.tsx:41-43, 82-88`
+**Confidence:** HIGH
+
+Three fetch operations (fetchCode, handleGenerate) all use raw `apiFetch` + `.json()` with manual `.catch()`. Same class of inconsistency as CR-2/CR-3.
+
+**Fix:** Migrate to `apiFetchJson`.
+
+---
+
+### CR-5: `file-management-client.tsx` copy/delete buttons missing `aria-label` [LOW/MEDIUM]
+
+**File:** `src/app/(dashboard)/dashboard/admin/files/file-management-client.tsx:199-210`
+**Confidence:** HIGH
+
+The "Copy URL" and "Delete" buttons use `variant="ghost" size="sm"` with only `title` attributes but no `aria-label`. The `title` attribute is not reliably announced by screen readers; `aria-label` is required for icon-only buttons.
+
+**Fix:** Add `aria-label` to both buttons.
+
+---
+
+### CR-6: `recruiter-candidates-panel.tsx` `handleCsvDownload` uses `window.open` with no sanitization of assignmentId [LOW/LOW]
+
+**File:** `src/components/contest/recruiter-candidates-panel.tsx:90-98`
+**Confidence:** LOW
+
+The `assignmentId` prop is used directly in `window.open()` URL construction. If `assignmentId` contained special characters, it could cause unexpected behavior. Since assignment IDs come from route params and are UUIDs, this is extremely unlikely.
+
+**Fix:** Add `encodeURIComponent(assignmentId)` for defense-in-depth.
 
 ## Final Sweep
 
-The cycle 14 `apiFetchJson` refactor was a significant improvement, but 4 `res.json()` calls in 2 files were missed. The remaining unguarded calls are in `recruiting-invitations-panel.tsx` (2 calls) and `workers-client.tsx` (2 calls). These files should be migrated to `apiFetchJson` for consistency. A minor accessibility issue was also found with an icon-only button in the metadata fields section.
+- All `src/` directories reviewed: app, components, lib, hooks, contexts
+- No SQL injection risks found (parameterized queries used throughout)
+- No `eval()` or `new Function()` usage found
+- No `innerHTML` usage found (only `dangerouslySetInnerHTML` with `sanitizeHtml` and `safeJsonForScript`)
+- No `@ts-ignore` or `@ts-expect-error` usage found
+- Only 2 `eslint-disable` comments, both justified
+- All previously fixed items from cycles 11-15 remain fixed

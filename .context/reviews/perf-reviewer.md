@@ -1,67 +1,69 @@
-# Performance Review — RPF Cycle 15
+# Performance Review — RPF Cycle 16
 
 **Date:** 2026-04-22
 **Reviewer:** perf-reviewer
-**Base commit:** 6c07a08d
+**Base commit:** 9379c26b
 
-## Previously Fixed Items (Verified)
+## Inventory of Review-Relevant Files
 
-All cycle 14 performance findings remain addressed:
-- PERF-2 (problem-import-button file size validation): Fixed — 10MB limit added
+Focus: components with polling/fetching patterns, large list rendering, useMemo/useCallback usage, and bundle-size concerns.
 
 ## Findings
 
-### PERF-1: Anti-cheat dashboard polling replaces all data on every tick — carried from PERF-1 (cycle 13) [MEDIUM/LOW]
+### PERF-1: `invite-participants.tsx` search effect does not cancel in-flight requests [MEDIUM/MEDIUM]
 
-**File:** `src/components/contest/anti-cheat-dashboard.tsx:120-152`
+**File:** `src/components/contest/invite-participants.tsx:58-64`
+**Confidence:** HIGH
 
-**Description:** Carried from cycle 13. The `fetchEvents` callback replaces the entire first-page events slice on every 30-second polling tick. While the code preserves extra-page data via `prev.slice(PAGE_SIZE)`, the first page is always recreated, causing unnecessary React re-renders even when the data is identical.
+The `useEffect` for debounced search fires `search(query)` on every 300ms debounce tick, but there is no AbortController. If the user types rapidly, multiple search requests can be in-flight simultaneously. The last one to resolve wins, which may not be the latest query. This is a race condition that can produce stale results.
 
-The `setEvents` updater on line 128 always creates a new array: `[...firstPage, ...prev.slice(PAGE_SIZE)]`. React's state setter does not do a shallow comparison, so even if `firstPage` has identical content, a new reference triggers a re-render of the entire table.
-
-**Fix:** Add shallow comparison before calling `setEvents()`:
 ```ts
-setEvents((prev) => {
-  if (prev.length > PAGE_SIZE) {
-    const merged = [...firstPage, ...prev.slice(PAGE_SIZE)];
-    // Only update if first page actually changed
-    if (prev.slice(0, PAGE_SIZE).every((e, i) => e.id === firstPage[i]?.id)) return prev;
-    return merged;
-  }
-  // Compare by id for simple case
-  if (prev.length === firstPage.length && prev.every((e, i) => e.id === firstPage[i]?.id)) return prev;
-  return firstPage;
-});
+useEffect(() => {
+  if (debounceRef.current) clearTimeout(debounceRef.current);
+  debounceRef.current = setTimeout(() => search(query), 300);
+  return () => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+  };
+}, [query, search]);
 ```
 
+**Fix:** Add AbortController support to the search function, aborting the previous request before starting a new one.
+
+---
+
+### PERF-2: `recruiter-candidates-panel.tsx` fetches full export endpoint just to display a summary table [MEDIUM/LOW]
+
+**File:** `src/components/contest/recruiter-candidates-panel.tsx:50-52`
 **Confidence:** MEDIUM
 
+The component fetches `/api/v1/contests/${assignmentId}/export?format=json` which returns the full contest export data. This endpoint likely returns all candidate data including problem-level breakdowns. For a summary table showing only rank, name, score, solved, and flags, this is more data than needed. This is partially covered by the existing DEFER-29 (dedicated candidates summary endpoint).
+
+**Fix:** This is already tracked as DEFER-29. No new action needed.
+
 ---
 
-### PERF-2: `recruiting-invitations-panel.tsx` fetches invitations and stats sequentially via `Promise.all` but stats fetch is best-effort — could skip on failure [LOW/LOW]
+### PERF-3: `anti-cheat-dashboard.tsx` `uniqueStudents` computation is O(n) on every render with full events array [LOW/LOW]
 
-**File:** `src/components/contest/recruiting-invitations-panel.tsx:160-162`
-
-**Description:** The `fetchData` function uses `Promise.all([fetchInvitations(), fetchStats()])`. The `fetchStats` function already swallows errors (empty catch on line 155-157). If the stats endpoint is slow, it blocks the invitations data from being processed even though invitations data is independent.
-
-**Fix:** Use `Promise.allSettled` or fire stats fetch separately so invitations data renders immediately regardless of stats latency.
-
+**File:** `src/components/contest/anti-cheat-dashboard.tsx:205-213`
 **Confidence:** LOW
 
+The `useMemo` for `uniqueStudents` iterates the full events array and builds a Map. While this is cached via `useMemo([events])`, when events is large (potentially thousands for a long contest), this creates a new Map every time events changes. The first-page-only optimization from cycle 15 mitigates this for polling (events reference only changes when data actually changes), so this is low priority.
+
+**Fix:** No action needed currently. If performance profiling reveals this as a bottleneck, consider computing from filteredEvents or using a Web Worker.
+
 ---
 
-### PERF-3: `contest-join-client.tsx` uses 1-second `setTimeout` delay before navigation — carried from PERF-3 (cycle 14) [LOW/LOW]
+### PERF-4: `countdown-timer.tsx` uses `setInterval` instead of recursive `setTimeout` [LOW/LOW]
 
-**File:** `src/app/(dashboard)/dashboard/contests/join/contest-join-client.tsx:57`
-
-**Description:** Carried from cycle 14. The 1-second artificial delay adds perceived latency.
-
-**Fix:** Reduce to 500ms or use `startTransition` for navigation.
-
+**File:** `src/components/exam/countdown-timer.tsx:123`
 **Confidence:** LOW
 
----
+The timer uses `setInterval(recalculate, 1000)`. If `recalculate` takes longer than 1 second (unlikely but possible under extreme load), intervals can stack up. Recursive `setTimeout` is generally preferred for timers that need consistent spacing. This is very low priority since the recalculate function is trivial.
 
-## Final Sweep
+**Fix:** Consider switching to recursive `setTimeout` if timer accuracy becomes a concern.
 
-The anti-cheat dashboard polling re-render issue (PERF-1) remains the most significant performance concern, carried since cycle 13. The `apiFetchJson` refactor in cycle 14 eliminated the exception overhead from unguarded `res.json()` calls in 4 components. The 4 remaining unguarded `.json()` calls (identified in code-reviewer CR-1) have the same exception-overhead concern but are lower priority since they are on success paths after `res.ok` checks.
+## Previously Deferred (Carried Forward)
+
+- DEFER-53: `contest-join-client.tsx` 1-second setTimeout delay (from PERF-3 cycle 14)
+- DEFER-54: Anti-cheat dashboard polling full shallow comparison for multi-page data
+- DEFER-55: `recruiting-invitations-panel.tsx` Promise.all vs Promise.allSettled

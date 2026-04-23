@@ -1,53 +1,79 @@
-# Architectural Review — RPF Cycle 15
+# Architectural Review — RPF Cycle 16
 
 **Date:** 2026-04-22
 **Reviewer:** architect
-**Base commit:** 6c07a08d
+**Base commit:** 9379c26b
 
-## Previously Fixed Items (Verified)
+## Inventory of Review-Relevant Files
 
-- ARCH-1 (centralized `apiFetchJson` helper): Fixed — helper created and used in 4 contest components
-- ARCH-2 (double `res.json()` in create-problem-form): Fixed — now uses single parse + branch
+Focus: module boundaries, coupling patterns, API handler abstraction adoption, component decomposition, data flow patterns.
 
 ## Findings
 
-### ARCH-1: Incomplete `apiFetchJson` adoption — 4 success-path `.json()` calls still use raw `apiFetch` [MEDIUM/MEDIUM]
+### ARCH-1: Incomplete `apiFetchJson` adoption — remaining components still use raw pattern [MEDIUM/HIGH]
 
 **Files:**
-- `src/components/contest/recruiting-invitations-panel.tsx:133-152`
-- `src/app/(dashboard)/dashboard/admin/workers/workers-client.tsx:230-245`
-
-**Description:** The cycle 14 `apiFetchJson` refactor was a significant architectural improvement that eliminated the unguarded `.json()` pattern in 4 components. However, the refactor was incomplete — 2 components still use raw `apiFetch` + manual `.json()` parsing without `.catch()` guards. This creates an inconsistent codebase where some components use the centralized safe pattern and others don't.
-
-The `recruiting-invitations-panel.tsx` is particularly notable because it's in the same `contest` feature area as the 4 refactored components. Having different patterns in the same feature area makes the code harder to maintain and increases the risk of the unguarded pattern being copied as a template.
-
-**Fix:** Migrate both components to use `apiFetchJson`. The `recruiting-invitations-panel.tsx` fetch functions can use:
-```ts
-const { ok, data: json } = await apiFetchJson<{ data: Invitation[] }>(
-  `/api/v1/contests/${assignmentId}/recruiting-invitations?${query}`,
-  { signal: controller.signal },
-  { data: [] }
-);
-```
-
-The `workers-client.tsx` can use `apiFetchJson` for both the workers and stats endpoints.
+- `src/components/contest/recruiter-candidates-panel.tsx:50-54`
+- `src/components/contest/invite-participants.tsx:42-47, 68-78`
+- `src/components/contest/access-code-manager.tsx:41-43, 82-88`
+- `src/components/code/compiler-client.tsx:270,287`
+- `src/components/contest/quick-create-contest-form.tsx:80`
+- `src/components/contest/contest-quick-stats.tsx:52`
+- `src/components/contest/code-timeline-panel.tsx:57`
+- `src/components/lecture/submission-overview.tsx:87`
+- `src/app/(dashboard)/dashboard/admin/files/file-upload-dialog.tsx:102`
+- `src/app/(dashboard)/dashboard/admin/roles/role-editor-dialog.tsx:97`
+- `src/app/(dashboard)/dashboard/admin/roles/role-delete-dialog.tsx:50`
+- `src/app/(dashboard)/dashboard/admin/api-keys/api-keys-client.tsx:141,177`
+- `src/app/(dashboard)/dashboard/submissions/[id]/submission-detail-client.tsx:105`
+- `src/app/(dashboard)/dashboard/groups/[id]/group-instructors-manager.tsx:72`
+- `src/app/(dashboard)/dashboard/admin/languages/language-config-table.tsx:94,136,159,177`
+- `src/app/(dashboard)/dashboard/problems/create/create-problem-form.tsx:220,332,336,424,428`
+- `src/app/(dashboard)/dashboard/problems/problem-import-button.tsx:37,42`
+- `src/app/(dashboard)/dashboard/problems/[id]/problem-export-button.tsx:19`
 
 **Confidence:** HIGH
 
----
+The `apiFetchJson` helper was introduced in cycle 14 and adopted in 4 contest components + workers-client + recruiting-invitations-panel. However, 17+ components still use the raw `apiFetch` + `res.json().catch()` pattern. While these all have `.catch()` guards (so they are safe), the inconsistency means:
+1. New developers may copy the old pattern from existing code
+2. The `apiFetchJson` helper's value (eliminating a class of bugs) is not fully realized
+3. Mutation operations (POST, PATCH, DELETE) still universally use raw `apiFetch`
 
-### ARCH-2: `language-config-table.tsx` is 688 lines — should be decomposed [LOW/LOW]
+The architectural concern is that two patterns coexist without a clear migration strategy. A `apiFetchJsonMutation` helper for POST/PATCH/DELETE would complete the abstraction.
 
-**File:** `src/app/(dashboard)/dashboard/admin/languages/language-config-table.tsx`
-
-**Description:** Carried from ARCH-3 (cycle 14). This component contains: the main table, edit sheet, add sheet, confirmation dialog, image status fetching, build/remove/prune handlers, search filtering, and disk usage display. At 688 lines it is difficult to maintain.
-
-**Fix:** Extract `LanguageEditSheet`, `LanguageAddSheet`, and `LanguageConfirmDialog` as separate components.
-
-**Confidence:** LOW
+**Fix:** Create a systematic plan to migrate all remaining GET-pattern fetches to `apiFetchJson` and consider adding an `apiFetchJsonMutation` helper for mutation operations.
 
 ---
 
-## Final Sweep
+### ARCH-2: `test-connection/route.ts` bypasses `createApiHandler` body parsing [MEDIUM/MEDIUM]
 
-The `apiFetchJson` helper was the right architectural fix for the recurring unguarded `.json()` pattern. The remaining gap is incomplete adoption — 2 components with 4 calls still use the old raw pattern. Completing the migration would make the codebase consistent and prevent future instances of the same bug class. The `language-config-table.tsx` decomposition remains a low-priority structural improvement.
+**File:** `src/app/api/v1/plugins/chat-widget/test-connection/route.ts:20-37`
+**Confidence:** HIGH
+
+This route uses `createApiHandler` with `auth: false` but then manually calls `req.json()` and `requestSchema.safeParse()` inside the handler. This defeats the purpose of `createApiHandler`, which provides built-in body parsing + Zod validation when the `schema` option is used. The manual approach:
+1. Bypasses the handler's error handling for malformed JSON (returns 500 instead of 400)
+2. Duplicates the body-parsing logic that `createApiHandler` already implements
+3. Creates a maintenance risk where future schema changes must be kept in sync manually
+
+**Fix:** Use the `schema` option in `createApiHandler` config to delegate body parsing and validation. Move the auth/capability checks into the handler body since `auth: false` is needed for the CSRF bypass (but auth is still required via manual session check).
+
+---
+
+### ARCH-3: `language-config-table.tsx` is 688 lines — should be decomposed — carried from ARCH-3 (cycle 14) [LOW/LOW]
+
+Already tracked. No new finding.
+
+---
+
+### ARCH-4: `recruiting-invitations-panel.tsx` mutation operations all use raw `apiFetch` with manual error handling [LOW/LOW]
+
+**File:** `src/components/contest/recruiting-invitations-panel.tsx:195-311`
+**Confidence:** HIGH
+
+The GET endpoints were migrated to `apiFetchJson` in cycle 15, but all 4 mutation operations (handleCreate, handleRevoke, handleResetAccountPassword, handleDelete) still use raw `apiFetch`. This creates a split pattern within the same component where reads use one abstraction and writes use another. This is a design smell but not a bug — the `.catch()` guards are present.
+
+**Fix:** Consider an `apiFetchMutation` helper that handles the common pattern of: fetch, check ok, parse error/success bodies, return structured result.
+
+## Previously Deferred (Carried Forward)
+
+- DEFER-1: Migrate raw route handlers to `createApiHandler` (22 routes)

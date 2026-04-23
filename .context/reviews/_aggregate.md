@@ -1,118 +1,161 @@
-# RPF Cycle 15 — Aggregate Review
+# RPF Cycle 16 — Aggregate Review
 
 **Date:** 2026-04-22
-**Base commit:** 6c07a08d
+**Base commit:** 9379c26b
 **Review artifacts:** code-reviewer.md, perf-reviewer.md, security-reviewer.md, architect.md, critic.md, verifier.md, debugger.md, test-engineer.md, tracer.md, designer.md, document-specialist.md
 
 ## Previously Fixed Items (Verified in Current Code)
 
-All cycle 14 aggregate findings have been addressed:
-- AGG-1 (systemic unguarded `res.json()` — centralized `apiFetchJson` helper): Fixed — helper created and used in 4 contest components
-- AGG-2 (double `res.json()` in create-problem-form): Fixed — single parse + `.catch()` guard
-- AGG-3 (problem-import-button file size validation): Fixed — 10MB limit
-- AGG-4 (problem-export-button null-safety): Fixed — `.catch()` and null-safe access
-- AGG-5 (contest-join-client variable shadowing): Fixed — renamed to `errorPayload`
+All cycle 15 aggregate findings have been addressed:
+- AGG-1 (4 remaining unguarded `res.json()` calls): Fixed — migrated to `apiFetchJson`
+- AGG-2 (metadata remove button `aria-label`): Fixed — added i18n keys
+- AGG-3 (anti-cheat dashboard polling re-renders): Fixed — shallow comparison added
 
 ## Deduped Findings (sorted by severity then signal)
 
-### AGG-1: Four remaining unguarded `res.json()` calls — incomplete `apiFetchJson` adoption [MEDIUM/HIGH]
+### AGG-1: `compiler-client.tsx` unguarded `res.json()` on error path — last remaining unguarded call [MEDIUM/HIGH]
 
-**Flagged by:** code-reviewer (CR-1), critic (CRI-1), verifier (V-1), debugger (DBG-1, DBG-2), tracer (TR-1, TR-2), architect (ARCH-1), security-reviewer (SEC-3), perf-reviewer (implicit)
-**Signal strength:** 8 of 11 review perspectives
-
-**Files:**
-- `src/components/contest/recruiting-invitations-panel.tsx:137` — `const json = await invRes.json();` — no `.catch()`
-- `src/components/contest/recruiting-invitations-panel.tsx:152` — `const json = await statsRes.json();` — no `.catch()`
-- `src/app/(dashboard)/dashboard/admin/workers/workers-client.tsx:235` — `const wd = await workersRes.json();` — no `.catch()`
-- `src/app/(dashboard)/dashboard/admin/workers/workers-client.tsx:241` — `const sd = await statsRes.json();` — no `.catch()`
-
-**Description:** The cycle 14 `apiFetchJson` refactor addressed the root cause of the recurring unguarded `.json()` pattern by creating a centralized helper. However, the refactor was incomplete — 4 calls in 2 files were missed. The `recruiting-invitations-panel.tsx` is particularly notable because it's in the same feature area as the 4 refactored contest components, creating an inconsistency where adjacent components use different patterns.
-
-**Fix:** Migrate both files to use `apiFetchJson`:
-- `recruiting-invitations-panel.tsx`: Use `apiFetchJson` for `fetchInvitations` and `fetchStats`
-- `workers-client.tsx`: Use `apiFetchJson` for workers and stats endpoints
-
----
-
-### AGG-2: `recruiting-invitations-panel.tsx` metadata remove button missing `aria-label` [LOW/MEDIUM]
-
-**Flagged by:** code-reviewer (CR-4), critic (CRI-2), verifier (V-2), debugger (DBG-3), designer (DES-1)
+**Flagged by:** code-reviewer (CR-1), critic (CRI-2), verifier (V-1), debugger (DBG-1), tracer (TR-1, revised)
 **Signal strength:** 5 of 11 review perspectives
 
-**File:** `src/components/contest/recruiting-invitations-panel.tsx:479-485`
+**File:** `src/components/code/compiler-client.tsx:270`
 
-**Description:** The "remove metadata field" button renders a `Trash2` icon with no visible text and no `aria-label`. While this uses `size="sm"` instead of `size="icon"`, it is functionally an icon-only button. This is the same class of accessibility issue that was fixed in cycles 11-13 for `size="icon"` buttons. The prior fix scope did not cover `size="sm"` icon-only buttons.
+**Description:** The error path calls `await res.json()` without `.catch()`. The tracer analysis revealed that the inner `catch` block does handle the SyntaxError by falling back to `res.statusText`, so the actual runtime behavior is correct — the user will see "Bad Gateway" or similar. However, the pattern violates the `apiFetch` JSDoc convention and represents the last remaining unguarded `.json()` call in the entire codebase.
 
-**Fix:** Add `aria-label={t("removeField")}` and add the i18n key to en.json and ko.json.
+**Revised severity:** LOW/MEDIUM (behavior is correct due to inner catch, but pattern is inconsistent)
+
+**Fix:** Add `.catch(() => ({}))` to the `res.json()` call at line 270 for pattern consistency.
 
 ---
 
-### AGG-3: Anti-cheat dashboard polling re-renders on every tick without data comparison — carried from AGG-PERF-1 (cycle 13) [MEDIUM/LOW]
+### AGG-2: Incomplete `apiFetchJson` adoption — remaining components use raw pattern [MEDIUM/HIGH]
 
-**Flagged by:** perf-reviewer (PERF-1), critic (CRI-3)
+**Flagged by:** code-reviewer (CR-2, CR-3, CR-4), architect (ARCH-1), critic (CRI-1)
+**Signal strength:** 5 of 11 review perspectives
+
+**Files:**
+- `src/components/contest/recruiter-candidates-panel.tsx:50-54`
+- `src/components/contest/invite-participants.tsx:42-47, 68-78`
+- `src/components/contest/access-code-manager.tsx:41-43, 82-88`
+- `src/components/code/compiler-client.tsx:270,287`
+- Plus 12+ additional components listed in ARCH-1
+
+**Description:** After cycles 14-15 introduced and adopted `apiFetchJson` in 6 components, 17+ components still use the raw `apiFetch` + `res.json().catch()` pattern. While all have `.catch()` guards (safe), the inconsistency creates a two-pattern codebase. New developers may copy the old pattern from existing code.
+
+**Fix:** Systematically migrate remaining GET-pattern fetches to `apiFetchJson`. Priority components: recruiter-candidates-panel, invite-participants, access-code-manager, compiler-client.
+
+---
+
+### AGG-3: `invite-participants.tsx` search has no AbortController — race condition [MEDIUM/MEDIUM]
+
+**Flagged by:** perf-reviewer (PERF-1), critic (CRI-3), verifier (V-4), debugger (DBG-2), tracer (TR-2)
+**Signal strength:** 5 of 11 review perspectives
+
+**File:** `src/components/contest/invite-participants.tsx:34-64`
+
+**Description:** The search function is debounced at 300ms but has no AbortController. Rapid typing causes multiple overlapping requests where the last one to resolve (not the last one sent) sets the results. This can produce stale results that don't match the current search query. Compare with `recruiting-invitations-panel.tsx` which properly uses AbortController.
+
+**Fix:** Add AbortController to the search function, aborting the previous request before starting a new one.
+
+---
+
+### AGG-4: `test-connection/route.ts` manual `req.json()` bypasses `createApiHandler` safety — returns 500 for malformed JSON [MEDIUM/MEDIUM]
+
+**Flagged by:** security-reviewer (SEC-1), architect (ARCH-2), critic (CRI-5), tracer (TR-3)
+**Signal strength:** 4 of 11 review perspectives
+
+**File:** `src/app/api/v1/plugins/chat-widget/test-connection/route.ts:37`
+
+**Description:** The route uses `createApiHandler` with `auth: false` but manually calls `req.json()` inside the handler body instead of using the `schema` option. When the request body is malformed JSON, `req.json()` throws SyntaxError, and the outer `createApiHandler` catch returns a 500 error instead of the expected 400 "invalidJson" error. This is a concrete bug: the wrong HTTP status code is returned.
+
+**Fix:** Use the `schema` option in `createApiHandler` to delegate body parsing, or wrap `req.json()` in a try/catch that returns 400 on parse failure.
+
+---
+
+### AGG-5: `file-management-client.tsx` icon-only buttons missing `aria-label` [LOW/MEDIUM]
+
+**Flagged by:** code-reviewer (CR-5), critic (CRI-4), designer (DES-1)
+**Signal strength:** 3 of 11 review perspectives
+
+**File:** `src/app/(dashboard)/dashboard/admin/files/file-management-client.tsx:199-210`
+
+**Description:** The "Copy URL" and "Delete" buttons use `variant="ghost" size="sm"` with only `title` attributes but no `aria-label`. The `title` attribute is not reliably announced by screen readers. Same class of accessibility issue that was fixed in cycles 11-13 for `size="icon"` buttons.
+
+**Fix:** Add `aria-label` to both buttons.
+
+---
+
+### AGG-6: Anti-cheat monitor privacy notice dialog lacks focus trap [LOW/MEDIUM]
+
+**Flagged by:** designer (DES-4)
+**Signal strength:** 1 of 11 review perspectives
+
+**File:** `src/components/exam/anti-cheat-monitor.tsx:252-278`
+
+**Description:** The privacy notice uses raw `div` elements with `role="dialog"` and `aria-modal="true"` instead of the project's `Dialog` component which handles focus trapping. The user can tab out of the dialog to elements behind the overlay, violating WCAG 2.2 SC 2.4.3.
+
+**Fix:** Use the `Dialog` component from the UI library, which handles focus trapping automatically.
+
+---
+
+### AGG-7: `countdown-timer.tsx` uses `aria-live="assertive"` for all threshold announcements [LOW/LOW]
+
+**Flagged by:** designer (DES-5)
+**Signal strength:** 1 of 11 review perspectives
+
+**File:** `src/components/exam/countdown-timer.tsx:151-153`
+
+**Description:** All threshold announcements use `aria-live="assertive"`, which interrupts screen readers. Only the 1-minute warning warrants assertive; 15-minute and 5-minute warnings should use `polite`.
+
+**Fix:** Use `aria-live="polite"` for non-critical announcements, reserving `assertive` for the 1-minute warning.
+
+---
+
+### AGG-8: `recruiter-candidates-panel.tsx` CSV download uses `window.open` without `noopener` [LOW/LOW]
+
+**Flagged by:** debugger (DBG-3), designer (DES-3)
 **Signal strength:** 2 of 11 review perspectives
 
-**File:** `src/components/contest/anti-cheat-dashboard.tsx:128-136`
+**File:** `src/components/contest/recruiter-candidates-panel.tsx:90-98`
 
-**Description:** Carried from cycle 13. The polling callback always creates a new events array via `setEvents()`, causing unnecessary React re-renders every 30 seconds even when the server data is identical.
+**Description:** The CSV download uses `window.open(url, "_blank")` without `noopener,noreferrer`. Minor tab-napping risk. Also no loading/progress feedback for the download.
 
-**Fix:** Add shallow comparison in the `setEvents` updater to skip updates when data is unchanged.
-
----
+**Fix:** Add `noopener,noreferrer` or use `<a>` element with `download` attribute.
 
 ## Security Findings (from security-reviewer)
 
-### SEC-1: Plaintext fallback in encryption module — carried from SEC-2 (cycle 11) [MEDIUM/HIGH]
+### SEC-1: `test-connection/route.ts` unguarded `req.json()` — covered by AGG-4 above
 
-**File:** `src/lib/security/encryption.ts:78-81`
+### SEC-2: Plaintext fallback in encryption module — carried from SEC-2 (cycle 11) [MEDIUM/MEDIUM]
 
-**Fix:** Add integrity check or HMAC. Monitor plaintext fallback hits in production.
+### SEC-3: `window.location.origin` for URL construction — carried from DEFER-24 [MEDIUM/MEDIUM]
 
-### SEC-2: `window.location.origin` for URL construction — carried from DEFER-24 [MEDIUM/MEDIUM]
-
-**Files:** recruiting-invitations-panel.tsx:99, access-code-manager.tsx:134, file-management-client.tsx:96, workers-client.tsx:148
-
----
+### SEC-4: Gemini model name interpolation into URL path — defense-in-depth concern [LOW/MEDIUM]
 
 ## Performance Findings (from perf-reviewer)
 
-### PERF-1: Anti-cheat dashboard polling replaces all data on every tick — covered by AGG-3 above
+### PERF-1: `invite-participants.tsx` search no AbortController — covered by AGG-3 above
 
-### PERF-2: `recruiting-invitations-panel.tsx` fetches invitations and stats via `Promise.all` — stats latency blocks invitations rendering [LOW/LOW]
+### PERF-2: `recruiter-candidates-panel.tsx` fetches full export — covered by DEFER-29
 
-### PERF-3: `contest-join-client.tsx` 1-second setTimeout delay before navigation — carried from PERF-3 (cycle 14) [LOW/LOW]
+### PERF-3: Anti-cheat dashboard uniqueStudents computation — LOW/LOW, no action needed
 
----
-
-## Architectural Findings (from architect)
-
-### ARCH-1: Incomplete `apiFetchJson` adoption — covered by AGG-1 above [MEDIUM/MEDIUM]
-
-### ARCH-2: `language-config-table.tsx` is 688 lines — should be decomposed — carried from ARCH-3 (cycle 14) [LOW/LOW]
-
----
+### PERF-4: `countdown-timer.tsx` uses setInterval — LOW/LOW, no action needed
 
 ## Test Coverage Gaps (from test-engineer)
 
-### TE-1: No unit tests for `workers-client.tsx` — carried from TE-1 (cycle 14) [LOW/MEDIUM]
-
-### TE-2: No unit tests for `chat-logs-client.tsx` — carried from TE-2 (cycle 14) [LOW/MEDIUM]
-
-### TE-3: Encryption module still untested — carried from TE-3 (cycle 11) [MEDIUM/HIGH]
-
-### TE-4: No unit tests for `apiFetchJson` helper — new [LOW/MEDIUM]
-
-### TE-5: No unit tests for `recruiting-invitations-panel.tsx` — new [LOW/MEDIUM]
-
----
+### TE-1: No unit tests for `compiler-client.tsx` — new [MEDIUM/MEDIUM]
+### TE-2: No unit tests for `invite-participants.tsx` — new [MEDIUM/MEDIUM]
+### TE-3: No unit tests for `recruiter-candidates-panel.tsx` — new [LOW/MEDIUM]
+### TE-4: No unit tests for `access-code-manager.tsx` — new [LOW/MEDIUM]
+### TE-5: `apiFetchJson` helper untested — carried from DEFER-56 [LOW/MEDIUM]
+### TE-6: Encryption module untested — carried from DEFER-50 [MEDIUM/HIGH]
 
 ## Documentation Findings (from document-specialist)
 
-### DOC-1: `apiFetchJson` JSDoc could document `signal` option for abort support [LOW/LOW]
-
-### DOC-2: `encryption.ts` plaintext fallback lacks migration guidance — carried from DOC-2 (cycle 14) [LOW/LOW]
-
----
+### DOC-1: `apiFetchJson` signal option — RESOLVED in cycle 15
+### DOC-2: Encryption plaintext fallback migration guidance — carried from cycle 14 [LOW/LOW]
+### DOC-3: `compiler-client.tsx` error path comment could be improved [LOW/LOW]
 
 ## Previously Deferred Items (Carried Forward)
 
@@ -140,6 +183,10 @@ All cycle 14 aggregate findings have been addressed:
 - DEFER-51: Unit tests for create-problem-form.tsx (from TE-4)
 - DEFER-52: Unit tests for problem-export-button.tsx (from TE-5)
 - DEFER-53: `contest-join-client.tsx` 1-second setTimeout delay (from PERF-3)
+- DEFER-54: Anti-cheat dashboard polling full shallow comparison for multi-page data
+- DEFER-55: `recruiting-invitations-panel.tsx` Promise.all vs Promise.allSettled
+- DEFER-56: Unit tests for apiFetchJson helper (from TE-4)
+- DEFER-57: Unit tests for recruiting-invitations-panel.tsx (from TE-5)
 
 ## Agent Failures
 
