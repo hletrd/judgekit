@@ -267,7 +267,7 @@ export function CompilerClient({ languages, title, description, preferredLanguag
       if (!res.ok) {
         let errorMessage = "Request failed";
         try {
-          const errorData = await res.json();
+          const errorData = await res.json().catch(() => ({})) as { error?: string; message?: string };
           errorMessage = errorData.error || errorData.message || errorMessage;
         } catch {
           // Server returned non-JSON error (e.g., 502 HTML from reverse proxy)
