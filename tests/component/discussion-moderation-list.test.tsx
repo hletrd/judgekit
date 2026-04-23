@@ -36,8 +36,13 @@ describe("DiscussionModerationList", () => {
               pinLabel: "Pin",
               unpinLabel: "Unpin",
               deleteLabel: "Delete",
+              deleteConfirmTitle: "Confirm Delete",
+              deleteConfirmDescription: "Are you sure?",
+              cancelLabel: "Cancel",
               successLabel: "Updated",
               deleteSuccessLabel: "Deleted",
+              errorLabel: "Error",
+              deleteErrorLabel: "Delete Error",
             },
           },
         ]}

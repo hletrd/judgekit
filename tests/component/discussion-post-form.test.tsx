@@ -40,6 +40,7 @@ describe("DiscussionPostForm", () => {
         contentLabel="Reply"
         submitLabel="Post"
         successLabel="Posted"
+        errorLabel="Error"
         signInLabel="Sign in"
         canPost
         signInHref="/login"

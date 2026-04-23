@@ -41,6 +41,7 @@ describe("DiscussionThreadForm", () => {
         contentLabel="Content"
         submitLabel="Create"
         successLabel="Created"
+        errorLabel="Error"
         signInLabel="Sign in"
         canPost
         signInHref="/login"

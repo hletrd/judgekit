@@ -48,6 +48,7 @@ describe("DiscussionVoteButtons", () => {
         canVote
         upvoteLabel="Upvote"
         downvoteLabel="Downvote"
+        voteFailedLabel="Vote failed"
       />
     );
 
