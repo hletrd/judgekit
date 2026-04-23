@@ -51,7 +51,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { apiFetch } from "@/lib/api/client";
+import { apiFetch, apiFetchJson } from "@/lib/api/client";
 import { Plus, Copy, Trash2, Check } from "lucide-react";
 
 interface ApiKey {
@@ -136,9 +136,12 @@ export function ApiKeysClient({ roleOptions }: { roleOptions?: RoleOption[] }) {
 
   const fetchKeys = useCallback(async () => {
     try {
-      const res = await apiFetch("/api/v1/admin/api-keys");
-      if (res.ok) {
-        const json = await res.json().catch(() => ({ data: [] })) as { data?: ApiKey[] };
+      const { ok, data: json } = await apiFetchJson<{ data?: ApiKey[] }>(
+        "/api/v1/admin/api-keys",
+        undefined,
+        { data: [] }
+      );
+      if (ok) {
         setKeys(json.data ?? []);
       } else {
         toast.error(fetchFailedMessage);
@@ -165,16 +168,19 @@ export function ApiKeysClient({ roleOptions }: { roleOptions?: RoleOption[] }) {
         expiryDays = createExpiry === "30d" ? 30 : createExpiry === "90d" ? 90 : 365;
       }
 
-      const res = await apiFetch("/api/v1/admin/api-keys", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
+      const { ok, data: json } = await apiFetchJson<{ data?: CreatedKey | null }>(
+        "/api/v1/admin/api-keys",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ name: createName.trim(), role: createRole, expiryDays }),
         },
-        body: JSON.stringify({ name: createName.trim(), role: createRole, expiryDays }),
-      });
+        { data: null }
+      );
 
-      if (res.ok) {
-        const json = await res.json().catch(() => ({ data: null })) as { data?: CreatedKey | null };
+      if (ok) {
         setCreateOpen(false);
         setCreateName("");
         setCreateRole(createRoleOptions[0]?.name ?? "admin");
