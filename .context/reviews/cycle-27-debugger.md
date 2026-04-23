@@ -1,35 +1,35 @@
 # Cycle 27 Debugger
 
-**Date:** 2026-04-20
-**Base commit:** ca3459dd
+**Date:** 2026-04-22
+**Base commit:** 14025d58
 
 ## Findings
 
-### DBG-1: Recruit page temporal comparison uses app server clock — diverges from DB clock [MEDIUM/HIGH]
+### DBG-1: 14 unguarded `console.error` calls in client components -- latent information leak [MEDIUM/MEDIUM]
 
-**File:** `src/app/(auth)/recruit/[token]/page.tsx:33,89,167`
-**Description:** Three places on the recruit page compare dates using `new Date()`:
-- Line 33: `invitation.expiresAt && invitation.expiresAt < new Date()` (in `generateMetadata`)
-- Line 89: same check (in page component)
-- Line 167: `assignment.deadline && assignment.deadline < new Date()`
+**Files:** (see code-reviewer CR-1 through CR-4 for full list)
 
-The API route for the same domain logic uses `SQL NOW()` to avoid clock skew. If the app server clock drifts relative to the DB server, the page will show inconsistent state compared to what the API enforces.
+**Description:** The error boundary components were fixed to gate `console.error` behind `process.env.NODE_ENV === "development"`. However, 14 other client-side `console.error` calls in API-consuming components remain ungated. These are in the "happy path before error boundary" zone -- they fire before any error boundary is triggered, so the error boundary gate does not protect them.
 
-**Failure scenario:** App server clock is 3 minutes behind DB server clock. An invitation expires at DB time 12:00. At DB time 12:02, the page still shows the invitation as valid (app server thinks it's 11:59). User clicks "Start" — the API rejects with "expired".
-**Fix:** Use DB server time for all temporal comparisons. Fetch `NOW()` from the DB and pass it as a parameter, or perform the comparison in SQL.
+**Failure scenario:** A network error in a discussion post creation returns `{ "error": "ECONNREFUSED 127.0.0.1:5432" }`. The `console.error("Discussion post creation failed:", ...)` at line 47 of `discussion-post-form.tsx` writes the internal connection details to the browser console. This happens before any error boundary, and the user-visible toast only shows the i18n error message.
+
+**Fix:** Gate all 14 `console.error` calls behind `process.env.NODE_ENV === "development"`.
+
 **Confidence:** HIGH
 
-### DBG-2: SSE `user!` non-null assertion could mask future bugs [LOW/LOW]
+### DBG-2: `admin-config.tsx` double `.json()` -- latent runtime error risk [LOW/MEDIUM]
 
-**File:** `src/app/api/v1/submissions/[id]/events/route.ts:319`
-**Description:** `const viewerId = user!.id;` uses a non-null assertion. While the comment explains the reasoning, it would be safer to capture the value before entering the closure.
-**Failure scenario:** If the SSE handler is refactored in a way that `user` could be null, the non-null assertion silently passes the null check and throws at runtime instead of getting a clear compile-time error.
-**Fix:** Capture `const viewerId = user?.id;` before the closure.
-**Confidence:** LOW
+**File:** `src/lib/plugins/chat-widget/admin-config.tsx:99+103`
+
+**Description:** The test-connection handler calls `response.json()` twice (error branch at line 99, success branch at line 103). The `return` at line 101 prevents the second call from running, but this is a latent bug: if the early return is removed during refactoring, the second `.json()` call will throw `TypeError: Body already consumed`. This is the same pattern fixed in cycle 26 AGG-1.
+
+**Fix:** Parse response body once before branching.
+
+**Confidence:** MEDIUM
 
 ## Verified Safe
 
-- All previous cycle bugs are confirmed fixed (recruit-page-metadata test, ESLint warnings, React.cache deduplication).
+- All previous cycle bugs are confirmed fixed (clock-skew, toLocaleString, non-null assertion, React.cache deduplication).
 - No empty catch blocks in production code.
-- Error boundaries properly log errors.
+- Error boundaries properly log errors in dev-only.
 - Judge claim/poll routes handle edge cases (invalid claim token, stale claims, worker capacity).

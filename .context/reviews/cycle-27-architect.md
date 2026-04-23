@@ -1,29 +1,32 @@
 # Cycle 27 Architect Review
 
-**Date:** 2026-04-20
-**Base commit:** ca3459dd
+**Date:** 2026-04-22
+**Base commit:** 14025d58
 
 ## Findings
 
-### ARCH-1: Clock-skew inconsistency between server-rendered pages and API validation [MEDIUM/HIGH]
+### ARCH-1: Inconsistent `console.error` pattern across client components -- convention violation [MEDIUM/MEDIUM]
 
-**File:** `src/app/(auth)/recruit/[token]/page.tsx:33,89,167` vs `src/app/api/v1/recruiting/validate/route.ts:36`
-**Description:** The recruit page uses `new Date()` for temporal comparisons while the API uses SQL `NOW()`. This is a layering violation: business logic for "is this invitation expired?" should use a single authoritative time source. The API correctly identified and fixed this (commit b42a7fe4), but the server-rendered page was not aligned.
-**Failure scenario:** Clock drift causes the page to show a different state than the API. This violates the principle that a user should see consistent state between what the page displays and what the API enforces.
-**Fix:** Introduce a shared "now" value that the page and API both use. For server components, fetch `SELECT NOW()` as part of the invitation query. For API routes, continue using SQL `NOW()`.
+**Description:** The codebase established a convention in `src/lib/api/client.ts:23` that errors should be logged in development only. The error boundary components follow this convention (gated behind `process.env.NODE_ENV === "development"`). However, 14+ client-side `console.error` calls in API-consuming components do not follow this convention. This is a cross-cutting consistency issue that affects maintainability -- developers seeing mixed patterns may not know which to follow.
+
+**Fix:** Apply the dev-only gate consistently across all client-side `console.error` calls. Consider a `devLog` utility function to make the convention explicit.
+
 **Confidence:** HIGH
 
-### ARCH-2: Inconsistent use of `createApiHandler` across route handlers [LOW/MEDIUM]
+### ARCH-2: `admin-config.tsx` double `.json()` -- incomplete migration from cycle 26 [LOW/MEDIUM]
 
-**File:** 22 raw route handlers in `src/app/api/`
-**Description:** 22 route handlers use manual auth/CSRF/rate-limit logic instead of `createApiHandler`. While some have legitimate reasons (SSE streaming, judge token auth, multipart form data), others (backup, restore, migrate/import, migrate/export, files POST) manually duplicate the auth+CSRF+rate-limit pattern. This creates maintenance risk: if the pattern changes, 22 files must be updated instead of 1.
-**Failure scenario:** A future security fix to the auth pattern is applied to `createApiHandler` but missed in one of the 22 manual routes.
-**Fix:** For routes that can use `createApiHandler` (backup, restore, files POST), migrate to it. For routes that genuinely cannot (SSE, judge auth), document why.
+**File:** `src/lib/plugins/chat-widget/admin-config.tsx:99+103`
+
+**Description:** Cycle 26 (AGG-1) migrated `assignment-form-dialog.tsx`, `create-group-dialog.tsx`, and `create-problem-form.tsx` from the double `.json()` anti-pattern to the "parse once, then branch" pattern. The `admin-config.tsx` test-connection handler was missed because it is in the plugins directory, which may not have been included in the original sweep.
+
+**Fix:** Migrate to "parse once, then branch" pattern.
+
 **Confidence:** MEDIUM
 
 ## Verified Safe
 
-- `createApiHandler` provides a solid middleware pattern covering auth, CSRF, rate limiting, and Zod validation.
-- The handler correctly sets `Cache-Control: no-store` on all authenticated API responses.
-- Recruiting context cache (AsyncLocalStorage) properly wraps the handler for DB query deduplication.
-- Capability-based authorization is properly integrated with the handler.
+- API route architecture is well-structured with `createApiHandler` for standard routes.
+- Raw route handlers (SSE, judge, cron) have legitimate reasons to avoid the abstraction.
+- Plugin system properly encapsulated in `src/lib/plugins/`.
+- i18n architecture is consistent with next-intl.
+- Navigation architecture uses both client-side (next/navigation) and full-page (window.location) navigation as appropriate.

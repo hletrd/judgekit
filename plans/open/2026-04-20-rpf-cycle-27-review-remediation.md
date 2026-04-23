@@ -1,22 +1,22 @@
 # RPF Cycle 27 Review Remediation Plan
 
-**Date:** 2026-04-20
+**Date:** 2026-04-22 (updated)
 **Source:** `.context/reviews/cycle-27-aggregate.md`
 **Status:** In progress
 
 ## Scope
 
-This cycle addresses the updated cycle-27 findings from the multi-agent review plus fresh deep review:
-- AGG-1 through AGG-3: Already fixed in prior cycles (confirmed)
-- AGG-4: Inconsistent `createApiHandler` — architectural, deferred
-- AGG-5: SSE O(n) eviction — acceptable, no action
-- AGG-6: Recruit page 3 DB queries — low priority, deferred
-- AGG-7: No test coverage for recruit/SSE — deferred
-- AGG-8: Error boundaries use `console.error` in production — NEW, to fix
-- AGG-9: `console.warn` in create-problem-form — NEW, to fix
-- AGG-10: `not-found.tsx` tracking-[0.2em] not documented — NEW, to fix
-- AGG-11: Contest layout forced navigation — NEW, documented, low priority
-- AGG-12: use-source-draft JSON.parse cast — NEW, low priority, deferred
+This cycle addresses the updated cycle-27 findings from the fresh multi-agent review:
+- AGG-1: Ungated `console.error` in 14 client-side components [MEDIUM/MEDIUM] -- NEW, to fix
+- AGG-2: `admin-config.tsx` double `.json()` anti-pattern [LOW/MEDIUM] -- NEW, to fix
+- AGG-3: `bulk-create-dialog.tsx` raw `err.message` in user-visible string [LOW/LOW] -- NEW, to fix
+
+Prior cycle-27 findings (AGG-1 through AGG-12 from the old review) are already fixed:
+- Old AGG-1 through AGG-3: Already fixed (clock-skew, toLocaleString, non-null assertion)
+- Old AGG-8: Error boundary `console.error` gating: DONE (commit 02985db9)
+- Old AGG-9: `console.warn` gating: DONE (commit ed7eb3f0)
+- Old AGG-10: not-found.tsx tracking comment: DONE (commit 080670c3)
+- Old AGG-4, AGG-5, AGG-6, AGG-7, AGG-11, AGG-12: Deferred (see deferred section)
 
 No cycle-27 review finding is silently dropped. No new refactor-only work is added under deferred.
 
@@ -24,54 +24,57 @@ No cycle-27 review finding is silently dropped. No new refactor-only work is add
 
 ## Implementation lanes
 
-### H1: Gate `console.error` in error boundary components behind dev-only check (AGG-8)
+### H1: Gate 14 ungated `console.error` calls in client components behind dev-only check (AGG-1)
 
-- **Source:** AGG-8
+- **Source:** AGG-1
 - **Severity / confidence:** MEDIUM / MEDIUM
-- **Citations:** `src/app/(dashboard)/dashboard/admin/error.tsx:17`, `src/app/(dashboard)/dashboard/submissions/error.tsx:17`, `src/app/(dashboard)/dashboard/problems/error.tsx:17`, `src/app/(dashboard)/dashboard/groups/error.tsx:17`
-- **Problem:** Four error boundary components use `console.error()` unconditionally in production. This leaks stack traces and internal paths to browser DevTools in production. The project's own convention (documented in `src/lib/api/client.ts:23`) says "Log errors in development only". Next.js error boundaries already provide server-side error tracking via the `digest` field.
+- **Citations:**
+  - `src/components/discussions/discussion-post-form.tsx:47,54`
+  - `src/components/discussions/discussion-thread-form.tsx:53,61`
+  - `src/components/discussions/discussion-post-delete-button.tsx:29,36`
+  - `src/components/discussions/discussion-thread-moderation-controls.tsx:77,83,98,105`
+  - `src/app/(dashboard)/dashboard/groups/edit-group-dialog.tsx:66`
+  - `src/app/(dashboard)/dashboard/groups/create-group-dialog.tsx:43`
+  - `src/app/(dashboard)/dashboard/admin/roles/role-editor-dialog.tsx:106`
+  - `src/app/(dashboard)/dashboard/admin/roles/role-delete-dialog.tsx:58`
+  - `src/app/(dashboard)/dashboard/problems/create/create-problem-form.tsx:310`
+  - `src/app/(dashboard)/dashboard/problem-sets/_components/problem-set-form.tsx:241`
+  - `src/app/(dashboard)/dashboard/admin/users/bulk-create-dialog.tsx:214`
+  - `src/components/code/compiler-client.tsx:292`
+  - `src/app/(dashboard)/dashboard/submissions/[id]/_components/comment-section.tsx:78`
+- **Problem:** 14 client-side `console.error()` calls write unstructured error data to browser DevTools in production, violating the "Log errors in development only" convention documented in `src/lib/api/client.ts:23`. The error boundary components were fixed in prior cycles, but API-consuming components were not.
 - **Plan:**
-  1. Gate the `console.error` calls behind `process.env.NODE_ENV === "development"` in all four error boundary components.
-  2. Verify all gates pass.
-- **Status:** DONE (commit 02985db9)
+  1. Gate each `console.error` call behind `if (process.env.NODE_ENV === "development")`.
+  2. Pattern: wrap the existing `console.error(...)` call with the dev-only guard.
+  3. For `getErrorMessage` default branches (edit-group-dialog, create-group-dialog, create-problem-form, problem-set-form), move the `console.error` inside the `if` block.
+  4. For catch blocks (discussion components, role editor, role delete, bulk-create, compiler-client, comment-section), wrap the `console.error` with the guard.
+  5. Verify all gates pass.
+- **Status:** PENDING
 
-### M1: Gate `console.warn` in create-problem-form behind dev-only check (AGG-9)
+### M1: Fix double `.json()` anti-pattern in `admin-config.tsx` (AGG-2)
 
-- **Source:** AGG-9
+- **Source:** AGG-2
 - **Severity / confidence:** LOW / MEDIUM
-- **Citations:** `src/app/(dashboard)/dashboard/problems/create/create-problem-form.tsx:225`
-- **Problem:** A `console.warn()` call in a catch block for non-critical tag suggestions. The codebase convention says "Log errors in development only". While the comment correctly identifies the call as non-critical, it still writes to the console in production.
+- **Citations:** `src/lib/plugins/chat-widget/admin-config.tsx:99+103`
+- **Problem:** The test-connection handler calls `response.json()` twice (error branch line 99, success branch line 103). This is the same anti-pattern fixed in cycle 26 AGG-1. The `return` at line 101 prevents runtime errors, but the pattern violates the documented convention.
 - **Plan:**
-  1. Gate the `console.warn` behind `process.env.NODE_ENV === "development"`.
+  1. Parse response body once before branching: `const data = await response.json().catch(() => ({}));`
+  2. Check `response.ok` after parsing.
+  3. If not OK, use `data.error` for the error display.
+  4. If OK, use `data` for the success display.
+  5. Verify all gates pass.
+- **Status:** PENDING
+
+### M2: Sanitize `err.message` in `bulk-create-dialog.tsx` (AGG-3)
+
+- **Source:** AGG-3
+- **Severity / confidence:** LOW / LOW
+- **Citations:** `src/app/(dashboard)/dashboard/admin/users/bulk-create-dialog.tsx:194`
+- **Problem:** `setParseError(t("bulkCsvParseError", { message: err.message }))` interpolates raw `err.message` from papaparse into a user-visible string. While papaparse errors are typically benign, this pattern contradicts the convention of never showing raw error details to users.
+- **Plan:**
+  1. Replace `err.message` with a truncated/sanitized version, or use a generic fallback like `tCommon("error")`.
   2. Verify all gates pass.
-- **Status:** DONE (commit ed7eb3f0)
-
-### M2: Add Korean-locale documentation comment on not-found.tsx "404" tracking (AGG-10)
-
-- **Source:** AGG-10
-- **Severity / confidence:** LOW / MEDIUM
-- **Citations:** `src/app/not-found.tsx:58`
-- **Problem:** `tracking-[0.2em]` on "404" text is unconditional. While "404" is a numeric code (safe for Korean), the pattern is inconsistent with the rest of the codebase where tracking is either locale-conditional or explicitly documented.
-- **Plan:**
-  1. Add a comment `/* "404" is a numeric status code — tracking safe for Korean locale */` for consistency with the existing documentation convention.
-  2. Verify all gates pass.
-- **Status:** DONE (commit 080670c3)
-
-### M3: Continue workspace-to-public migration — Phase 5 remaining items
-
-- **Source:** User-injected TODO, carried from Phase 5 remaining work
-- **Severity / confidence:** MEDIUM / HIGH
-- **Citations:** `src/components/layout/app-sidebar.tsx`, `plans/open/2026-04-19-workspace-to-public-migration.md`
-- **Problem:** Phase 5 remaining items from the migration plan:
-  - Evaluate icon-rail mode for admin sidebar (collapsed by default, expand on hover/click)
-  - Mobile UX audit: verify admin sidebar behavior on small screens
-  - Clean up `navGroups` constant — non-admin group items are now unreachable for non-admin users and redundant with the dropdown for admin users
-- **Plan:**
-  1. Evaluate the admin sidebar for mobile behavior — ensure it collapses properly on small screens.
-  2. Verify the `navGroups` constant is clean — non-admin items should already be removed.
-  3. Consider adding a collapse/expand toggle for the admin sidebar.
-  4. Verify all gates pass.
-- **Status:** DONE (commit edca1d5e)
+- **Status:** PENDING
 
 ---
 
@@ -114,7 +117,7 @@ See `plans/open/2026-04-20-rpf-cycle-23-review-remediation.md` for the full defe
 - **Severity / confidence:** LOW / MEDIUM
 - **Original severity preserved:** LOW / MEDIUM
 - **Citations:** 22 raw route handlers in `src/app/api/`
-- **Reason for deferral:** Migrating routes to `createApiHandler` is a large-scale refactor that should be done holistically. Some routes (SSE streaming, judge token auth, multipart form data) have legitimate reasons to avoid the abstraction. The risk of a security pattern divergence across 22 files is real but not immediate.
+- **Reason for deferral:** Migrating routes to `createApiHandler` is a large-scale refactor that should be done holistically. Some routes (SSE streaming, judge token auth, multipart form data) have legitimate reasons to avoid the abstraction.
 - **Exit criterion:** When a cycle has capacity for a focused API-route refactor pass, or when a new security-critical auth change requires updating all routes.
 
 ### DEFER-18: Contest layout forced full page navigation (from AGG-11)
@@ -123,7 +126,7 @@ See `plans/open/2026-04-20-rpf-cycle-23-review-remediation.md` for the full defe
 - **Severity / confidence:** LOW / MEDIUM
 - **Original severity preserved:** LOW / MEDIUM
 - **Citations:** `src/app/(dashboard)/dashboard/contests/layout.tsx:16-45`
-- **Reason for deferral:** The workaround is necessary due to a Next.js 16 RSC streaming bug with nginx proxy headers. The existing TODO comment tracks removal. Fixing this requires an upstream Next.js fix.
+- **Reason for deferral:** The workaround is necessary due to a Next.js 16 RSC streaming bug with nginx proxy headers. The existing TODO comment tracks removal.
 - **Exit criterion:** When the Next.js bug is fixed in a version the project upgrades to. Track via the TODO in the file.
 
 ### DEFER-19: `use-source-draft.ts` JSON.parse runtime validation (from AGG-12)
@@ -132,25 +135,35 @@ See `plans/open/2026-04-20-rpf-cycle-23-review-remediation.md` for the full defe
 - **Severity / confidence:** LOW / LOW
 - **Original severity preserved:** LOW / LOW
 - **Citations:** `src/hooks/use-source-draft.ts:185`
-- **Reason for deferral:** The JSON.parse is already inside a try/catch block. The `as Partial<DraftPayload>` cast bypasses runtime validation, but the hook handles malformed data gracefully by falling back to defaults. Adding zod validation would improve robustness but is not urgent.
+- **Reason for deferral:** The JSON.parse is already inside a try/catch block. The `as Partial<DraftPayload>` cast bypasses runtime validation, but the hook handles malformed data gracefully by falling back to defaults.
 - **Exit criterion:** When the draft schema changes significantly, or when a shared localStorage validation utility is created.
 
----
+### DEFER-20: Contest replay setInterval vs recursive setTimeout (carried from cycle 26)
 
-## Workspace-to-Public Migration Progress
+- **Source:** Cycle 26 AGG-5, cycle 27 PERF-1
+- **Severity / confidence:** LOW / LOW
+- **Original severity preserved:** LOW / LOW
+- **Citations:** `src/components/contest/contest-replay.tsx:77-87`
+- **Reason for deferral:** Low priority. The `setInterval` works correctly for the replay use case. The drift issue only manifests under browser throttling, which is unlikely for a user-initiated replay.
+- **Exit criterion:** When a cycle has capacity for a UI polish pass, or when a user reports a replay timing issue.
 
-**Current phase:** Phase 5 IN PROGRESS. Working on AppSidebar slim-down and remaining items.
+### DEFER-21: Sidebar interval re-entry edge case (carried from cycle 26)
 
-Per the user-injected TODO, this cycle makes incremental progress on the workspace-to-public migration through M3.
+- **Source:** Cycle 26 AGG-6, cycle 27 PERF-2
+- **Severity / confidence:** LOW / LOW
+- **Original severity preserved:** LOW / LOW
+- **Citations:** `src/components/layout/active-timed-assignment-sidebar-panel.tsx:53-89`
+- **Reason for deferral:** The edge case requires a very specific sequence (assignment added while interval is stopped but component still mounted). Low real-world impact.
+- **Exit criterion:** When a shared `useVisibilityAwarePolling` hook is implemented, or when a user reports a stale timer issue.
 
 ---
 
 ## Progress log
 
-- 2026-04-20: Plan created from updated cycle-27 aggregate review. Prior AGG-1 through AGG-3 already fixed. New findings AGG-8 through AGG-12 added as implementation lanes.
+- 2026-04-20: Plan created from initial cycle-27 aggregate review. Prior AGG-1 through AGG-3 already fixed. New findings AGG-8 through AGG-12 added as implementation lanes.
 - 2026-04-20: H1 (error boundary console.error) DONE — gated behind dev-only check in all 4 error boundary components (commit 02985db9).
 - 2026-04-20: M1 (console.warn) DONE — gated behind dev-only check in create-problem-form (commit ed7eb3f0).
 - 2026-04-20: M2 (not-found.tsx tracking comment) DONE — added Korean-locale documentation comment (commit 080670c3).
-- 2026-04-20: M3 (migration Phase 5) DONE — evaluated admin sidebar mobile behavior (already uses Sheet), navGroups clean, Phase 5 marked COMPLETE (commit edca1d5e).
-- 2026-04-20: All gates green (eslint 0 errors, tsc --noEmit clean, vitest 294/294 passed, next build success).
-- 2026-04-20: Deploy attempted but failed — `docker-compose` not available on local dev machine (expected; deployment is for production server).
+- 2026-04-20: M3 (migration Phase 5) DONE — evaluated admin sidebar mobile behavior (commit edca1d5e).
+- 2026-04-20: All gates green. Deploy attempted but failed (expected -- local dev machine).
+- 2026-04-22: Plan updated with fresh findings from cycle 27 re-review. New AGG-1 (ungated console.error x14), AGG-2 (admin-config double .json()), AGG-3 (bulk-create err.message). Prior H1/M1/M2/M3 all DONE.

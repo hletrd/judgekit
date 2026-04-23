@@ -1,38 +1,54 @@
 # Cycle 27 Security Reviewer
 
-**Date:** 2026-04-20
-**Base commit:** ca3459dd
+**Date:** 2026-04-22
+**Base commit:** 14025d58
 
 ## Findings
 
-### SEC-1: Recruit page clock-skew inconsistency with API validation [MEDIUM/HIGH]
+### SEC-1: Ungated `console.error` leaks error details in production across 14 client components [MEDIUM/MEDIUM]
 
-**File:** `src/app/(auth)/recruit/[token]/page.tsx:33,89,167` vs `src/app/api/v1/recruiting/validate/route.ts:36`
-**Description:** The server-rendered recruit page uses `new Date()` (app server clock) for expiry and deadline comparisons, while the API validation endpoint uses `SQL NOW()` (database server clock). This creates a security-relevant inconsistency: an invitation that appears valid on the page could be expired from the DB's perspective (or vice versa), leading to a confusing user experience or a brief window where an expired invitation could be submitted.
-**Failure scenario:** If the app server clock is 5 minutes behind the DB server clock, the page shows "valid" for an invitation that is actually expired. The subsequent redeem API call would correctly reject it, but the user already saw the invitation as valid.
-**Fix:** Align the page's expiry check with the DB server's time by fetching `SELECT NOW()` alongside the invitation data, or add the `now` value to the cached invitation result.
+**Files:** (see code-reviewer CR-1, CR-2, CR-3, CR-4 for full list)
+
+**Description:** 14 client-side `console.error()` calls across discussion, admin, dialog, and compiler components write unstructured error data to browser DevTools in production. While the user-facing toasts use i18n keys (safe), the console output may include raw API error messages, stack traces, or internal paths. The error boundary components were already fixed to gate behind `process.env.NODE_ENV === "development"`, but the API-consuming components were not.
+
+**Concrete failure scenario:** A failed API call to `POST /api/v1/community/threads` returns `{ "error": "Internal server error: column 'foo' not found at query.ts:42" }`. The `console.error` writes this to the browser console, exposing the SQL column name and file path to any user who opens DevTools.
+
+**Fix:** Gate all client-side `console.error` calls behind `process.env.NODE_ENV === "development"`.
+
 **Confidence:** HIGH
 
-### SEC-2: SSE events route connection tracking has potential memory leak under high churn [LOW/MEDIUM]
+### SEC-2: `bulk-create-dialog.tsx:194` leaks `err.message` to user via i18n interpolation [LOW/MEDIUM]
 
-**File:** `src/app/api/v1/submissions/[id]/events/route.ts:39-58`
-**Description:** `addConnection()` adds entries to `activeConnectionSet`, `connectionInfoMap`, and `userConnectionCounts`. The eviction logic in `addConnection` (lines 44-55) only triggers when `connectionInfoMap.size >= MAX_TRACKED_CONNECTIONS` (1000). Between cleanups, if connections are closed without `removeConnection` being called (e.g., process crash, ungraceful disconnect), the tracking maps could grow until the next periodic cleanup. The cleanup timer runs every 60 seconds and evicts entries older than the stale threshold.
-**Failure scenario:** Under high connection churn with frequent ungraceful disconnects, the in-memory maps could temporarily hold stale entries until the next cleanup tick. Not a critical leak since the cleanup timer bounds it.
-**Fix:** The current design is adequate for the use case. The `MAX_TRACKED_CONNECTIONS` cap and periodic cleanup timer provide sufficient bounds. No immediate action required.
+**File:** `src/app/(dashboard)/dashboard/admin/users/bulk-create-dialog.tsx:194`
+
+**Description:** `setParseError(t("bulkCsvParseError", { message: err.message }))` interpolates the raw `err.message` from papaparse into a translated string shown to the user. While papaparse errors are typically benign (e.g., "Quoted field not terminated"), this pattern of interpolating raw error messages into user-visible strings is inconsistent with the codebase's convention of never showing raw error details to users.
+
+**Concrete failure scenario:** A papaparse internal error message containing file path details is shown to the user. Low likelihood but inconsistent with security posture.
+
+**Fix:** Replace `err.message` with a sanitized version or a generic fallback.
+
+**Confidence:** LOW
+
+### SEC-3: `admin-config.tsx` double `.json()` pattern -- security consistency [LOW/LOW]
+
+**File:** `src/lib/plugins/chat-widget/admin-config.tsx:99+103`
+
+**Description:** Same anti-pattern as identified in code-reviewer CR-5. While not directly exploitable (the `return` prevents double consumption), the pattern is inconsistent with the documented security convention in `src/lib/api/client.ts:44-52` which marks this as "DO NOT USE".
+
 **Confidence:** LOW
 
 ## Verified Safe
 
-- All judge routes (`/claim`, `/poll`, `/register`, `/heartbeat`, `/deregister`) properly validate IP allowlist + auth token before processing.
-- Judge claim uses atomic `FOR UPDATE SKIP LOCKED` SQL preventing race conditions.
-- Judge poll verifies `claimToken` in the WHERE clause preventing result injection from unauthorized workers.
-- Password re-confirmation is required for backup, restore, and import routes.
-- Transparent rehash (bcrypt to argon2id) is properly implemented across all password re-confirmation endpoints.
-- CSRF protection is properly skipped for API key auth (no cookies).
-- Rate limiting is applied across all public and mutation endpoints.
-- HTML sanitization uses DOMPurify with strict allowlists for tags and attributes.
-- JSON-LD script injection is protected by `safeJsonForScript()` which escapes `</script>`.
-- SQL injection is prevented by using parameterized queries throughout.
-- Recruiting token validation uses SHA-256 hashing (not storing plaintext tokens).
-- The recruiting validate API uses uniform invalid responses to prevent information leakage.
-- Environment variable validation is enforced in production.
+- Auth flow robust with Argon2id, timing-safe dummy hash, rate limiting, token invalidation.
+- No `dangerouslySetInnerHTML` without sanitization.
+- CSRF protection via `X-Requested-With` header in `apiFetch`.
+- Rate limiting has two-tier strategy preventing TOCTOU races.
+- Recruiting token flow uses atomic SQL transactions.
+- Environment variables properly validated in production.
+- No `as any` type casts.
+- No `@ts-ignore` or `@ts-expect-error`.
+- Server actions properly gated with auth checks.
+- Encryption key handling uses `requireNonEmptyEnv` with production enforcement.
+- `safeJsonForScript` prevents `</script>` injection in JSON-LD.
+- `sanitizeHtml` with DOMPurify prevents XSS in problem descriptions.
+- Anti-cheat heartbeat uses recursive `setTimeout` (not `setInterval`).

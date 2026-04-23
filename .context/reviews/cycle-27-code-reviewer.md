@@ -1,44 +1,88 @@
 # Cycle 27 Code Reviewer
 
-**Date:** 2026-04-20
-**Base commit:** ca3459dd
+**Date:** 2026-04-22
+**Base commit:** 14025d58
 
 ## Findings
 
-### CR-1: Recruit page uses `new Date()` for deadline comparison — clock skew risk [MEDIUM/HIGH]
+### CR-1: `console.error` in 6 discussion components not gated behind dev-only check [MEDIUM/MEDIUM]
 
-**File:** `src/app/(auth)/recruit/[token]/page.tsx:33,89,167`
-**Description:** The recruit page compares `invitation.expiresAt < new Date()` and `assignment.deadline < new Date()` using the app server's local clock. The API route `src/app/api/v1/recruiting/validate/route.ts` correctly uses `SQL NOW()` for the same comparison (line 36: `${recruitingInvitations.expiresAt} > NOW()`) to avoid clock skew between the app server and DB server. The server-rendered page does not follow this pattern.
-**Failure scenario:** If the app server clock drifts ahead of the DB server clock, a recruit page could show "expired" while the API still considers the invitation valid (or vice versa). The inconsistency was documented in commit b42a7fe4 for the API route but the server page was not updated.
-**Fix:** Use a server-provided timestamp or SQL-level comparison for the page's expiry/deadline checks. At minimum, fetch `SELECT NOW()` alongside the invitation data, or pass a `now` parameter from the server render.
+**Files:**
+- `src/components/discussions/discussion-post-form.tsx:47`
+- `src/components/discussions/discussion-post-form.tsx:54`
+- `src/components/discussions/discussion-thread-form.tsx:53`
+- `src/components/discussions/discussion-thread-form.tsx:61`
+- `src/components/discussions/discussion-post-delete-button.tsx:29`
+- `src/components/discussions/discussion-post-delete-button.tsx:36`
+
+**Description:** All three discussion components (`discussion-post-form`, `discussion-thread-form`, `discussion-post-delete-button`) use `console.error()` unconditionally in both the `!response.ok` branch and the catch block. The codebase convention (documented in `src/lib/api/client.ts:23`) says "Log errors in development only". The error boundary components were fixed in a prior cycle to gate `console.error` behind `process.env.NODE_ENV === "development"`, but these discussion components were not updated to follow the same pattern.
+
+**Failure scenario:** Production errors in discussion features write unstructured error data (including potentially sensitive API error messages or stack traces) to browser DevTools.
+
+**Fix:** Gate all `console.error` calls in these three files behind `process.env.NODE_ENV === "development"`, matching the pattern used in the error boundary components.
+
 **Confidence:** HIGH
 
-### CR-2: SSE events route has non-null assertion on `user` across closure boundary [LOW/MEDIUM]
+### CR-2: `console.error` in 4 admin/dialog components not gated behind dev-only check [MEDIUM/MEDIUM]
 
-**File:** `src/app/api/v1/submissions/[id]/events/route.ts:319`
-**Description:** `const viewerId = user!.id;` uses a non-null assertion because TypeScript cannot infer that `user` is non-null across the closure boundary of `sendTerminalResult()`. While the comment explains the reasoning, a safer pattern would be to capture `user.id` in a local variable before the closure.
-**Failure scenario:** If the closure is somehow invoked after `user` becomes null (unlikely in current flow), this would throw at runtime instead of getting a controlled failure.
-**Fix:** Capture `const viewerId = user?.id;` at the top of the stream start handler and use that in closures.
+**Files:**
+- `src/app/(dashboard)/dashboard/groups/edit-group-dialog.tsx:66`
+- `src/app/(dashboard)/dashboard/groups/create-group-dialog.tsx:43`
+- `src/app/(dashboard)/dashboard/admin/roles/role-editor-dialog.tsx:106`
+- `src/app/(dashboard)/dashboard/admin/roles/role-delete-dialog.tsx:58`
+
+**Description:** Same pattern as CR-1. These four dialog components use `console.error()` in `getErrorMessage()` default branches or catch blocks without a dev-only guard. The `edit-group-dialog` and `create-group-dialog` use it for "Unmapped error" logging; the role editor and delete dialogs log raw errors.
+
+**Failure scenario:** Production errors in group management or role management write sensitive error details to browser DevTools.
+
+**Fix:** Gate behind `process.env.NODE_ENV === "development"`.
+
+**Confidence:** HIGH
+
+### CR-3: `console.error` in 3 additional components not gated behind dev-only check [LOW/MEDIUM]
+
+**Files:**
+- `src/app/(dashboard)/dashboard/problems/create/create-problem-form.tsx:310`
+- `src/app/(dashboard)/dashboard/problem-sets/_components/problem-set-form.tsx:241`
+- `src/app/(dashboard)/dashboard/admin/users/bulk-create-dialog.tsx:214`
+
+**Description:** Same pattern. `create-problem-form` and `problem-set-form` log "Unmapped error" in default branches. `bulk-create-dialog` logs "Bulk create failed" with the raw API error body.
+
+**Fix:** Gate behind `process.env.NODE_ENV === "development"`.
+
+**Confidence:** HIGH
+
+### CR-4: `console.error` in `compiler-client.tsx:292` not gated behind dev-only check [LOW/MEDIUM]
+
+**File:** `src/components/code/compiler-client.tsx:292`
+
+**Description:** The compiler run catch block logs `console.error("Compiler run failed:", err)` unconditionally. While the user-visible error display correctly uses `t("networkError")`, the raw error (which may include network details) is logged to the console in production.
+
+**Fix:** Gate behind `process.env.NODE_ENV === "development"`.
+
 **Confidence:** MEDIUM
 
-### CR-3: Recruit page `toLocaleString()` is locale-unaware for deadline display [LOW/MEDIUM]
+### CR-5: `admin-config.tsx` double `.json()` anti-pattern [LOW/MEDIUM]
 
-**File:** `src/app/(auth)/recruit/[token]/page.tsx:218`
-**Description:** `new Date(assignment.deadline).toLocaleString()` uses the server's default locale for date formatting in a server component. Since this is a Korean-locale-aware app (next-intl), the deadline display should use the user's locale.
-**Failure scenario:** Users see the deadline in the wrong locale format (e.g., "4/20/2026, 11:00:00 PM" instead of "2026. 4. 20. 오후 11:00:00").
-**Fix:** Use `formatDateTime` from `@/lib/datetime` or the next-intl formatter instead of raw `toLocaleString()`.
+**File:** `src/lib/plugins/chat-widget/admin-config.tsx:99+103`
+
+**Description:** The test-connection handler calls `response.json()` at line 99 in the `!response.ok` branch, then calls `response.json()` again at line 103 for the success case. Since the error branch returns early, the second call never runs after the first, so this is not a runtime bug. However, this is the same anti-pattern that was fixed across 3+ files in cycle 26 (AGG-1). The codebase convention in `src/lib/api/client.ts:44-52` documents this as "DO NOT USE".
+
+**Failure scenario:** If someone removes the `return` at line 101, the second `.json()` call would throw `TypeError: Body already consumed`.
+
+**Fix:** Parse response body once before branching, matching the pattern used in `assignment-form-dialog.tsx:273`, `create-group-dialog.tsx:67`, and other files fixed in cycle 26.
+
 **Confidence:** MEDIUM
 
 ## Verified Safe
 
-- All 83 API routes using `createApiHandler` have proper auth, CSRF, and rate limiting middleware.
-- The 22 raw route handlers all implement their own auth checks (judge IP/token auth, cron secret, user session).
-- No `as any` type casts found in the codebase.
-- No `@ts-ignore` or `@ts-expect-error` found.
-- Only 2 `eslint-disable` directives, both with justification comments.
-- `dangerouslySetInnerHTML` is used in only 2 places, both properly sanitized (`safeJsonForScript` and `sanitizeHtml` with DOMPurify).
-- Error boundaries use `console.error` only for unhandled errors (appropriate).
-- Only `console.log` usage is in a code template string (safe).
-- `_total` destructuring ESLint warning was properly fixed in cycle 26.
-- `React.cache()` deduplication is properly implemented for recruit page invitation lookup.
-- Korean letter-spacing is properly locale-conditional across all components with tracking classes.
+- All prior cycle-27 findings (clock-skew, non-null assertion, toLocaleString) confirmed fixed.
+- Error boundary components properly gate `console.error` behind dev-only check.
+- `create-problem-form.tsx:228` properly gates `console.warn` behind dev-only check.
+- No `as any` type casts in production code.
+- No `@ts-ignore` or `@ts-expect-error`.
+- Only 2 `eslint-disable` directives, both with justification.
+- `dangerouslySetInnerHTML` used only in 2 places, both sanitized.
+- Korean letter-spacing properly locale-conditional.
+- `assignment-form-dialog.tsx:273` and `create-group-dialog.tsx:67` properly use "parse once, then branch" pattern.
+- `problem-set-form.tsx` already uses "parse once, then branch" pattern (lines 129, 158, 180, 214).
