@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useTranslations, useLocale } from "next-intl";
-import { apiFetch } from "@/lib/api/client";
+import { apiFetch, apiFetchJson } from "@/lib/api/client";
 import { useVisibilityPolling } from "@/hooks/use-visibility-polling";
 import {
   Card,
@@ -227,19 +227,17 @@ export function WorkersPageClient() {
 
   const fetchData = useCallback(async () => {
     try {
-      const [workersRes, statsRes] = await Promise.all([
-        apiFetch("/api/v1/admin/workers"),
-        apiFetch("/api/v1/admin/workers/stats"),
+      const [workersResult, statsResult] = await Promise.all([
+        apiFetchJson<{ data: Worker[] }>("/api/v1/admin/workers", undefined, { data: [] }),
+        apiFetchJson<{ data: WorkerStats }>("/api/v1/admin/workers/stats", undefined, { data: null as unknown as WorkerStats }),
       ]);
-      if (workersRes.ok) {
-        const wd = await workersRes.json();
-        setWorkers(wd.data ?? []);
+      if (workersResult.ok) {
+        setWorkers(workersResult.data.data ?? []);
       } else {
         toast.error(t("fetchError"));
       }
-      if (statsRes.ok) {
-        const sd = await statsRes.json();
-        setStats(sd.data ?? null);
+      if (statsResult.ok) {
+        setStats(statsResult.data.data ?? null);
       } else {
         toast.error(t("fetchError"));
       }
