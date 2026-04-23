@@ -331,12 +331,13 @@ export default function CreateProblemForm({
         body: formData,
       });
 
+      // Parse response body once — the Response body can only be consumed once
+      const uploadData = await res.json().catch(() => ({ data: {} })) as { error?: string; data?: { originalName?: string; url?: string } };
+
       if (!res.ok) {
-        const errData = await res.json().catch(() => ({}));
-        throw new Error((errData as { error?: string }).error ?? "uploadFailed");
+        throw new Error(uploadData.error ?? "uploadFailed");
       }
 
-      const uploadData = await res.json().catch(() => ({ data: {} })) as { data?: { originalName?: string; url?: string } };
       const { originalName, url } = uploadData.data ?? {};
       const markdown = `![${originalName}](${url})`;
       setDescription((prev) => prev.replace(placeholder, markdown));

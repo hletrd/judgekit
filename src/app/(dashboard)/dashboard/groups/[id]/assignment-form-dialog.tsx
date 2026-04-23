@@ -269,12 +269,12 @@ export default function AssignmentFormDialog({
         }
       );
 
-      if (!response.ok) {
-        const errorBody = await response.json().catch(() => ({}));
-        throw new Error((errorBody as { error?: string }).error || (isEditing ? "assignmentUpdateFailed" : "assignmentCreateFailed"));
-      }
+      // Parse response body once — the Response body can only be consumed once
+      const payload = await response.json().catch(() => ({ data: {} })) as { error?: string; data?: { id?: string } };
 
-      const payload = await response.json().catch(() => ({ data: {} })) as { data?: { id?: string } };
+      if (!response.ok) {
+        throw new Error(payload.error || (isEditing ? "assignmentUpdateFailed" : "assignmentCreateFailed"));
+      }
 
       toast.success(
         t(

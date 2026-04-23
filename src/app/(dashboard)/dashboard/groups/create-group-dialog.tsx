@@ -63,12 +63,12 @@ export default function CreateGroupDialog() {
           body: JSON.stringify({ name, description }),
         });
 
-        if (!response.ok) {
-          const errorBody = await response.json().catch(() => ({}));
-          throw new Error((errorBody as { error?: string }).error || "createError");
-        }
+        // Parse response body once — the Response body can only be consumed once
+        const data = await response.json().catch(() => ({ data: {} })) as { error?: string; data?: { id?: string } };
 
-        const data = await response.json().catch(() => ({ data: {} })) as { data?: { id?: string } };
+        if (!response.ok) {
+          throw new Error(data.error || "createError");
+        }
 
         toast.success(t("createSuccess"));
         await handleOpenChange(false);
