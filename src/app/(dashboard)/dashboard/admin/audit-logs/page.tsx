@@ -147,7 +147,7 @@ function buildGroupMemberScopeFilter(groupIds: string[]) {
   return or(
     ...groupIds.map(
       (groupId) =>
-        sql`${auditEvents.details} LIKE '%"groupId":"${groupId}"%'`
+        sql`${auditEvents.details} LIKE ${'%"groupId":"' + escapeLikePattern(groupId) + '"%'} ESCAPE '\\'`
     )
   );
 }
