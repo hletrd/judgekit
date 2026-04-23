@@ -240,7 +240,10 @@ async function _computeContestRankingInner(assignmentId: string, cutoffSec?: num
         problems: new Map(),
       });
     }
-    userMap.get(row.userId)!.problems.set(row.problemId, row);
+    const entry = userMap.get(row.userId);
+    if (entry) {
+      entry.problems.set(row.problemId, row);
+    }
   }
 
   // Get all problem IDs in assignment order

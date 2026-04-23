@@ -256,7 +256,8 @@ export async function computeContestAnalytics(assignmentId: string, includeTimel
       if (!userProgressMap.has(sub.userId)) {
         userProgressMap.set(sub.userId, { name: sub.name, bestScores: new Map(), progressionPoints: [] });
       }
-      const userData = userProgressMap.get(sub.userId)!;
+      const userData = userProgressMap.get(sub.userId);
+      if (!userData) continue;
       const rawScaledScore = sub.score != null ? Math.round(Math.min(Math.max(Number(sub.score), 0), 100) / 100 * Number(sub.points) * 100) / 100 : 0;
       const currentBest = userData.bestScores.get(sub.problemId) ?? 0;
       const submittedAtMs = new Date(sub.submittedAt).getTime();
