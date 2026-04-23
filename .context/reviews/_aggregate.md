@@ -1,92 +1,101 @@
-# RPF Cycle 41 — Aggregate Review
+# RPF Cycle 42 — Aggregate Review
 
 **Date:** 2026-04-23
-**Base commit:** 24a04687
+**Base commit:** 8912b987
 **Review artifacts:** code-reviewer.md, perf-reviewer.md, security-reviewer.md, architect.md, critic.md, verifier.md, debugger.md, test-engineer.md, tracer.md, designer.md, document-specialist.md
 
 ## Deduped Findings (sorted by severity then signal)
 
-### AGG-1: PATCH route includes `"redeemed"` in allowed transitions — bypasses atomic redeem invariant [MEDIUM/MEDIUM]
+### AGG-1: `problemPoints` array length not validated against `problemIds` in quick-create — silent scoring corruption [MEDIUM/MEDIUM]
 
-**Flagged by:** code-reviewer (CR-1), security-reviewer (SEC-1), architect (ARCH-1), critic (CRI-1), verifier (V-1), debugger (DBG-1), tracer (TR-1), test-engineer (TE-1), document-specialist (DOC-1)
+**Flagged by:** code-reviewer (CR-1), security-reviewer (SEC-1), architect (ARCH-2), critic (CRI-1), verifier (V-1), debugger (DBG-1), test-engineer (TE-1), tracer (TR-1), document-specialist (DOC-1)
 **Signal strength:** 9 of 11 review perspectives
 
-**File:** `src/app/api/v1/contests/[assignmentId]/recruiting-invitations/[invitationId]/route.ts:97`
+**File:** `src/app/api/v1/contests/quick-create/route.ts:17-21,89`
 
-**Description:** The PATCH route's status transition map includes `"redeemed"` as a valid transition from `"pending"`. If a future change extends the Zod schema to allow `status: "redeemed"` in PATCH requests, the route would accept it and call `updateRecruitingInvitation`, which would set the invitation's status to `"redeemed"` without creating the associated user account, enrollment, or contest access token. The `redeemRecruitingToken` function is the only path that should transition an invitation to `"redeemed"`, as it atomically creates all required records.
+**Description:** The `quickCreateSchema` accepts `problemIds` (1-50 items) and an optional `problemPoints` array without validating that their lengths match. When `problemPoints` is shorter, extra problems silently default to 100 points via `body.problemPoints?.[i] ?? 100`. When longer, extra entries are silently ignored. This violates the expected behavior where an instructor specifying custom point values should have them applied consistently.
 
-The Zod schema (`updateRecruitingInvitationSchema`) currently limits `status` to `z.enum(["revoked"])`, making this unreachable via the API today. However, the state machine entry is architecturally wrong and misleading.
+**Concrete failure scenario:** An instructor creates a 10-problem contest with `problemPoints: [1, 2, 3]` intending a point gradient. Problems 4-10 get 100 points each. Students submitting correct answers to problems 4-10 receive disproportionately high scores. No error is returned.
 
-**Concrete failure scenario:** A developer extends `updateRecruitingInvitationSchema` to include `"redeemed"` (e.g., for an admin override). The PATCH route's state machine approves the transition. `updateRecruitingInvitation` executes `UPDATE SET status = 'redeemed' WHERE id = ? AND status = 'pending'`. The invitation is now "redeemed" with `userId = null`. The candidate has no user account, cannot log in, and the invitation cannot be re-redeemed.
-
-**Fix:** Remove `"redeemed"` from the PATCH route's allowed transitions map:
+**Fix:** Add `.refine()` to the Zod schema:
 ```typescript
-const allowed: Record<string, string[]> = {
-  pending: ["revoked"],
-  // Revoked invitations cannot be un-revoked; the user must create a new
-  // invitation instead. The library function (updateRecruitingInvitation)
-  // only supports revoking pending invitations (WHERE status = 'pending'),
-  // so allowing un-revoke here would cause a silent failure + 500 error.
-};
+const quickCreateSchema = z.object({
+  // ... existing fields
+  problemIds: z.array(z.string()).min(1).max(50),
+  problemPoints: z.array(z.number().int().min(1)).optional(),
+}).refine(
+  (data) => !data.problemPoints || data.problemPoints.length === data.problemIds.length,
+  { message: "problemPoints length must match problemIds length", path: ["problemPoints"] }
+);
 ```
 
 ---
 
-### AGG-2: Audit logs page uses fragile LIKE-based JSON key matching instead of JSONB operators [LOW/LOW]
+### AGG-2: Access-code management routes lack capability-based auth at the framework level [LOW/MEDIUM]
 
-**Flagged by:** code-reviewer (CR-2), critic (CRI-2), test-engineer (TE-2)
+**Flagged by:** code-reviewer (CR-2), security-reviewer (SEC-2), architect (ARCH-1), critic (CRI-2), tracer (TR-2), test-engineer (TE-2)
+**Signal strength:** 6 of 11 review perspectives
+
+**File:** `src/app/api/v1/contests/[assignmentId]/access-code/route.ts:8-45`
+
+**Description:** The GET, POST, and DELETE handlers for access-code management use `createApiHandler({ handler: ... })` without specifying `auth: { capabilities: [...] }`. They rely solely on the handler-internal `canManageContest()` check. This is inconsistent with the recruiting-invitations routes which use `auth: { capabilities: ["recruiting.manage_invitations"] }` for defense-in-depth. While safe today, this pattern inconsistency could lead to future vulnerabilities.
+
+**Concrete failure scenario:** A developer adds a new method to the access-code route without the inner `canManageContest` check, assuming the framework enforces authorization. Any authenticated user could then manage access codes.
+
+**Fix:** Add `auth: { capabilities: ["contests.manage"] }` (or appropriate capability) to each handler's `createApiHandler` config.
+
+---
+
+### AGG-3: Redundant non-null assertion on `invitation.userId` in `resetRecruitingInvitationAccountPassword` [LOW/LOW]
+
+**Flagged by:** code-reviewer (CR-3), critic (CRI-3), debugger (DBG-2)
 **Signal strength:** 3 of 11 review perspectives
 
-**File:** `src/app/(dashboard)/dashboard/admin/audit-logs/page.tsx:150`
+**File:** `src/lib/assignments/recruiting-invitations.ts:253`
 
-**Description:** The `buildGroupMemberScopeFilter` function builds a LIKE pattern `'"groupId":"VALUE"'` to search JSON in the `details` column. While `escapeLikePattern` correctly escapes SQL wildcards, the pattern is fragile against JSON serialization changes (whitespace, key ordering). PostgreSQL JSONB containment operators (`@>`) would be more robust and index-friendly.
+**Description:** The `invitation.userId!` assertion is redundant because line 230 already guards against null (`!invitation.userId`). While harmless today, it sets a pattern where developers might use `!` assertions instead of proper type narrowing.
 
-**Concrete failure scenario:** A future change to the audit logger adds spaces in JSON serialization, producing `{"groupId": "abc"}` instead of `{"groupId":"abc"}`. The LIKE pattern stops matching, and audit logs for that group disappear from the admin view.
-
-**Fix:** Replace LIKE with JSONB containment:
-```typescript
-sql`${auditEvents.details} @> ${JSON.stringify({ groupId })}::jsonb`
-```
+**Fix:** Replace `invitation.userId!` with `invitation.userId` — TypeScript can narrow the type after the guard check.
 
 ---
 
 ## Carry-Over Items (Still Unfixed from Prior Cycles)
 
-- **Prior AGG-5:** Console.error in client components instead of structured logging (deferred)
-- **Prior AGG-6:** SSE O(n) eviction scan (deferred — bounded by 1000 cap)
-- **Prior AGG-7:** Manual routes duplicate createApiHandler boilerplate (deferred)
-- **Prior AGG-8:** Global timer HMR pattern duplication (deferred)
-- **Prior SEC-3:** Anti-cheat copies user text content (deferred)
-- **Prior SEC-4:** Docker build error leaks paths (deferred)
-- **Prior DOC-1:** SSE route ADR (deferred)
-- **Prior DOC-2:** Docker client dual-path behavior documentation (deferred)
-- **Prior DES-1:** Chat widget button badge lacks ARIA announcement (deferred)
-- **Prior PERF-3:** Anti-cheat heartbeat gap query transfers up to 5000 rows (deferred)
-- **Prior ARCH-2:** Stale-while-revalidate cache pattern duplication (deferred)
-- **Cycle 39 CR-2:** `new Date()` for min date in recruiting invitations panel (deferred, LOW)
-- **Cycle 39 ARCH-2:** `computeExpiryFromDays` naming in recruiting-constants.ts (deferred, LOW)
+- **Prior AGG-2:** Audit logs LIKE-based JSON search (deferred, LOW/LOW)
+- **Prior AGG-5:** Console.error in client components (deferred, LOW/MEDIUM)
+- **Prior AGG-6:** SSE O(n) eviction scan (deferred, LOW/LOW)
+- **Prior AGG-7:** Manual routes duplicate createApiHandler boilerplate (deferred, MEDIUM/MEDIUM)
+- **Prior AGG-8:** Global timer HMR pattern duplication (deferred, LOW/MEDIUM)
+- **Prior SEC-3:** Anti-cheat copies user text content (deferred, LOW/LOW)
+- **Prior SEC-4:** Docker build error leaks paths (deferred, LOW/LOW)
+- **Prior PERF-3:** Anti-cheat heartbeat gap query transfers up to 5000 rows (deferred, MEDIUM/MEDIUM)
+- **Prior DES-1:** Chat widget button badge lacks ARIA announcement (deferred, LOW/LOW)
+- **Prior DOC-1:** SSE route ADR (deferred, LOW/LOW)
+- **Prior DOC-2:** Docker client dual-path docs (deferred, LOW/LOW)
+- **Prior ARCH-2:** Stale-while-revalidate cache pattern duplication (deferred, LOW/LOW)
 
 ## Verified Fixes This Cycle
 
-All fixes from cycles 37-40 remain intact and working:
-1. `Date.now()` replaced with `getDbNowUncached()` in assignment PATCH active-contest check
-2. Non-null assertions removed from anti-cheat heartbeat gap detection
-3. NaN guard in quick-create route
-4. MAX_EXPIRY_MS guard in bulk route expiryDays path
-5. Un-revoke transition removed from PATCH route state machine
-6. Exam session short-circuit for non-exam assignments
-7. ESCAPE clause in SSE LIKE queries
-8. Chat widget ARIA label with message count
+All fixes from cycles 37-41 remain intact:
+1. `"redeemed"` removed from PATCH route state machine
+2. `Date.now()` replaced with `getDbNowUncached()` in assignment PATCH
+3. Non-null assertions removed from anti-cheat heartbeat gap detection
+4. NaN guard in quick-create route
+5. MAX_EXPIRY_MS guard in bulk route
+6. Un-revoke transition removed from PATCH route
+7. Exam session short-circuit for non-exam assignments
+8. ESCAPE clause in SSE LIKE queries
+9. Chat widget ARIA label with message count
+10. Case-insensitive email dedup in bulk route
+11. computeExpiryFromDays extracted to shared helper
 
 ## Deferred Items
 
 | Finding | File+Line | Severity/Confidence | Reason for Deferral | Exit Criterion |
 |---------|-----------|-------------------|--------------------|---------------|
-| AGG-2: Audit logs LIKE-based JSON search | audit-logs/page.tsx:150 | LOW/LOW | Works today; robustness improvement | JSON serialization changes or PostgreSQL upgrade |
-| PERF-1: Shared poll timer reads config on restart | events/route.ts:161 | LOW/LOW | Timer only restarts on first subscriber after quiet period; infrequent | Performance profiling shows bottleneck |
-| PERF-2: SSE connection eviction linear search | events/route.ts:44-55 | LOW/LOW | Bounded by 1000-entry cap; O(n) is acceptable | Cap is raised significantly |
-| PERF-3: Anti-cheat heartbeat gap query transfers up to 5000 rows | anti-cheat/route.ts:195-204 | MEDIUM/MEDIUM | Could use SQL window function; currently bounded by limit | Long contest with many heartbeats causes slow API response |
-| DES-1: Chat widget button badge lacks ARIA announcement | chat-widget.tsx:284-288 | LOW/LOW | Screen reader edge case; badge is visual-only | Accessibility audit or user complaint |
+| AGG-3: Redundant non-null assertion | recruiting-invitations.ts:253 | LOW/LOW | Safe today; cosmetic improvement | Refactoring cycle |
+| Prior AGG-2: Audit logs LIKE-based JSON search | audit-logs/page.tsx:150 | LOW/LOW | Works today; robustness improvement | JSON serialization changes or PostgreSQL upgrade |
+| Prior PERF-3: Anti-cheat heartbeat gap query transfers up to 5000 rows | anti-cheat/route.ts:195-204 | MEDIUM/MEDIUM | Could use SQL window function; currently bounded by limit | Long contest with many heartbeats causes slow API response |
 | Prior AGG-5: Console.error in client components | discussions/*.tsx, groups/*.tsx | LOW/MEDIUM | Requires architectural decision; no data loss | Client error reporting feature request |
 | Prior AGG-6: SSE O(n) eviction scan | events/route.ts:44-55 | LOW/LOW | Bounded by 1000-entry cap | Performance profiling shows bottleneck |
 | Prior AGG-7: Manual routes duplicate createApiHandler | migrate/import, restore routes | MEDIUM/MEDIUM | Requires extending createApiHandler to support multipart | Next API framework iteration |
@@ -96,3 +105,4 @@ All fixes from cycles 37-40 remain intact and working:
 | Prior DOC-1: SSE route ADR | events/route.ts | LOW/LOW | Documentation-only | Next documentation cycle |
 | Prior DOC-2: Docker client dual-path docs | docker/client.ts | LOW/LOW | Documentation-only | Next documentation cycle |
 | Prior ARCH-2: Stale-while-revalidate cache pattern duplication | contest-scoring.ts, analytics/route.ts | LOW/LOW | DRY concern; both modules work correctly | Module refactoring cycle |
+| Prior DES-1: Chat widget button badge lacks ARIA announcement | chat-widget.tsx:284-288 | LOW/LOW | Screen reader edge case; badge is visual-only | Accessibility audit or user complaint |
