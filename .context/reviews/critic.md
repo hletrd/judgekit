@@ -1,39 +1,38 @@
-# Critic Review — RPF Cycle 40
+# Critic Review — RPF Cycle 43
 
 **Date:** 2026-04-23
 **Reviewer:** critic
-**Base commit:** f030233a
+**Base commit:** b0d843e7
 
-## Multi-Perspective Critique
+## Inventory of Files Reviewed
 
-This review examines the change surface from multiple angles: correctness, security, maintainability, UX, and operational safety.
+- All API routes and core libraries
+- Focus on cross-cutting concerns: auth consistency, time source consistency, error handling patterns
 
-### CRI-1: Assignment PATCH uses `Date.now()` for active-contest check — clock-skew bypass [MEDIUM/MEDIUM]
+## Previously Fixed Items (Verified)
 
-**File:** `src/app/api/v1/groups/[id]/assignments/[assignmentId]/route.ts:99-101`
+- All cycle 42 fixes verified and intact
 
-**Description:** The assignment PATCH route uses `Date.now()` to determine if an exam-mode contest has started, comparing against `assignment.startsAt` which comes from the database. This is the same class of clock-skew vulnerability that was systematically eliminated from the recruiting invitation routes and submission deadline enforcement. Using app server time to compare against DB timestamps introduces a TOCTOU-like race condition when the two clocks are not synchronized.
+## New Findings
 
-The codebase has a clear, documented convention: use `getDbNowUncached()` for schedule comparisons. The comment at line 96-98 even references "active exam-mode contests" but the check at line 99 violates the established pattern.
+### CRI-1: Submission rate-limit uses `Date.now()` for time window — cross-cutting consistency risk [MEDIUM/MEDIUM]
 
-**Confidence:** High
+**File:** `src/app/api/v1/submissions/route.ts:249`
 
----
+**Description:** The submission route is the only remaining API route that uses `Date.now()` for a comparison against DB-stored data. Every other schedule-related comparison in the codebase has been migrated to `getDbNowUncached()`. This creates a maintenance risk: developers seeing `Date.now()` in this file may assume it is the correct pattern for new code, reintroducing clock-skew risks that were previously fixed across the codebase.
 
-### CRI-2: Anti-cheat heartbeat gap detection non-null assertions on nullable field [LOW/LOW]
+The rate limit is not a hard security boundary (the advisory lock prevents true concurrent bypass), but the inconsistency is a pattern hazard.
 
-**File:** `src/app/api/v1/contests/[assignmentId]/anti-cheat/route.ts:212-213`
+**Fix:** Replace `new Date(Date.now() - 60_000)` with `new Date((await getDbNowUncached()).getTime() - 60_000)`.
 
-**Description:** The code uses `heartbeats[i - 1].createdAt!` and `heartbeats[i].createdAt!` with non-null assertions. While the preceding `if` check at line 211 already guards against null values, the `!` assertions are misleading and would hide a future regression if the null check were removed. This is a minor code quality issue.
-
-**Confidence:** High
+**Confidence:** Medium
 
 ---
 
 ### Positive Observations
 
-- The cycle 39 fixes are well-implemented: the API key countdown feature provides clear user feedback, the un-revoke fix correctly removes the broken transition instead of silently accepting it, and the exam session short-circuit saves unnecessary DB queries.
-- The `normalizeDateFilter` pattern in admin routes correctly validates dates before using them in SQL queries.
-- The bulk enrollment route properly uses `onConflictDoNothing` to handle duplicate enrollments idempotently.
-- The compiler execution module's sandbox configuration is thorough (network=none, cap-drop=ALL, read-only, seccomp, user 65534).
-- The JSON-LD `safeJsonForScript` correctly handles both `</script` and `<!--` escape sequences.
+- The compiler/playground run routes are well-structured with consistent Docker image validation and capability checks.
+- The community votes route uses an atomic transaction with `onConflictDoUpdate` for TOCTOU-safe vote toggling.
+- The backup/restore routes properly require password re-confirmation and CSRF checks.
+- The access code generation uses unbiased random bytes with rejection sampling.
+- The recruiting invitation library correctly stores only token hashes, never plaintext tokens.

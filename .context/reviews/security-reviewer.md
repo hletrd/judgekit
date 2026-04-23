@@ -1,52 +1,60 @@
-# Security Review — RPF Cycle 40
+# Security Review — RPF Cycle 43
 
 **Date:** 2026-04-23
 **Reviewer:** security-reviewer
-**Base commit:** f030233a
+**Base commit:** b0d843e7
 
 ## Inventory of Files Reviewed
 
 - All API routes (`src/app/api/v1/`)
+- Auth framework (`src/lib/api/handler.ts`, `src/lib/api/auth.ts`)
 - Security modules (`src/lib/security/`)
-- Auth (`src/lib/auth/`)
-- File storage (`src/lib/files/storage.ts`)
-- HTML sanitization (`src/lib/security/sanitize-html.ts`)
-- JSON-LD sanitization (`src/components/seo/json-ld.tsx`)
-- Compiler execution (`src/lib/compiler/execute.ts`)
 - Recruiting invitations (`src/lib/assignments/recruiting-invitations.ts`)
-- Anti-cheat route (`src/app/api/v1/contests/[assignmentId]/anti-cheat/route.ts`)
-- Assignment PATCH route (`src/app/api/v1/groups/[id]/assignments/[assignmentId]/route.ts`)
-- User management (`src/app/api/v1/users/[id]/route.ts`)
-- Contest invite (`src/app/api/v1/contests/[assignmentId]/invite/route.ts`)
+- Access codes (`src/lib/assignments/access-codes.ts`)
+- Compiler execution (`src/lib/compiler/execute.ts`)
+- Database backup/restore/export/import
+- Admin routes (backup, restore, migrate, api-keys)
 
 ## Previously Fixed Items (Verified)
 
-- Quick-create NaN guard: Verified at lines 36-44
-- Bulk invitation MAX_EXPIRY_MS guard: Verified at lines 67-69
-- Un-revoke transition removed: Verified at lines 96-102
-- Password rehash consolidation: Verified — `verifyAndRehashPassword` with audit logging
-- Docker client remote path error leak: Verified — sanitized messages
-- Compiler spawn error leak: Verified — "Execution failed to start"
+- problemPoints/refine validation: Verified at line 21-24
+- Access-code capability auth: Verified at lines 9, 23, 37
+- Date.now() replaced with getDbNowUncached() in assignment PATCH: Verified at line 103
+- LIKE pattern escaping: Verified — `escapeLikePattern` used consistently
+- Password rehash consolidation: Verified
+- Compiler spawn error leak: Verified — sanitized messages
 - Import JSON body deprecation: Verified — Sunset header
-- LIKE pattern escaping: Verified — `escapeLikePattern` and ESCAPE clauses used consistently
 
 ## New Findings
 
-### SEC-1: Assignment PATCH uses `Date.now()` instead of DB time for active-contest check — clock-skew bypass risk [MEDIUM/MEDIUM]
+### SEC-1: Submission rate-limit `oneMinuteAgo` uses app-server `Date.now()` in SQL comparison — clock-skew bypass potential [MEDIUM/MEDIUM]
 
-**File:** `src/app/api/v1/groups/[id]/assignments/[assignmentId]/route.ts:99-101`
+**File:** `src/app/api/v1/submissions/route.ts:249`
 
-**Description:** The assignment PATCH route blocks problem changes during active exam-mode contests. The check at line 99 uses `Date.now()` (app server time) to compare against `assignment.startsAt` (DB time). If the app server clock lags behind the DB server clock, an instructor could bypass the "active contest" protection and modify problems after the contest has already started in DB time.
+**Description:** The submission creation route computes `oneMinuteAgo = new Date(Date.now() - 60_000)` using the app server's clock, then passes this value as a SQL parameter for `SUM(CASE WHEN submittedAt > ${oneMinuteAgo})`. The `submittedAt` column is stored using DB server time (via `getDbNowUncached()` at line 318). If the app server clock is behind the DB server clock, the `oneMinuteAgo` threshold will be too far in the past, allowing users to exceed the intended rate limit.
 
-This is the same class of clock-skew vulnerability that was identified and fixed in the recruiting invitation routes (where `getDbNowUncached()` was adopted as the standard) and the submission route (where exam deadline enforcement uses `NOW()` in SQL).
+This is the same class of clock-skew issue that was identified and fixed in the assignment PATCH route (cycle 40) and recruiting invitation routes.
 
-**Concrete failure scenario:** App server clock is 2 minutes behind DB server clock. Exam starts at 10:00 DB time. At 10:01 DB time (9:59 app time), an attacker with instructor credentials sends a PATCH request to change problems. The `Date.now()` check returns 9:59, which is < 10:00, so the block is bypassed. The attacker modifies problems in an active exam, potentially giving advantages to specific students.
+**Concrete failure scenario:** App server clock is 30 seconds behind DB server clock. The `oneMinuteAgo` window is effectively 90 seconds in DB time. A user can submit 50% more submissions per minute than intended.
 
-**Fix:** Use `getDbNowUncached()` instead of `Date.now()`:
+**Fix:** Use `getDbNowUncached()` for the threshold computation:
 ```typescript
-const now = await getDbNowUncached();
-const startsAt = assignment.startsAt ? new Date(assignment.startsAt).getTime() : null;
-if (startsAt && now.getTime() >= startsAt) {
+const dbNow = await getDbNowUncached();
+const oneMinuteAgo = new Date(dbNow.getTime() - 60_000);
 ```
 
 **Confidence:** Medium
+
+---
+
+### SEC-2: Anti-cheat heartbeat deduplication uses `Date.now()` instead of DB time — inconsistent with contest boundary checks [LOW/LOW]
+
+**File:** `src/app/api/v1/contests/[assignmentId]/anti-cheat/route.ts:92-95`
+
+**Description:** The non-shared heartbeat path uses `Date.now()` for the LRU cache deduplication check, while the contest start/end checks at lines 68-73 use DB time (`rawQueryOne("SELECT NOW()")`). The `Date.now()` here is used only for in-memory deduplication (prevent writing a heartbeat DB row more than once per 60 seconds), not for a security-critical comparison. The DB row's `createdAt` is correctly set using DB time (the `now` variable from line 67). This is a consistency concern rather than a security vulnerability.
+
+**Concrete failure scenario:** If app server clock is 5 seconds behind DB, a heartbeat could be recorded slightly more frequently than every 60 seconds (up to 55s intervals), causing extra DB writes but no data corruption.
+
+**Fix:** Low priority — the LRU cache is inherently approximate and the DB-stored timestamps are correct.
+
+**Confidence:** Low

@@ -1,22 +1,25 @@
-# Performance Review — RPF Cycle 40
+# Performance Review — RPF Cycle 43
 
 **Date:** 2026-04-23
 **Reviewer:** perf-reviewer
-**Base commit:** f030233a
+**Base commit:** b0d843e7
 
 ## Inventory of Files Reviewed
 
-- `src/app/api/v1/submissions/[id]/events/route.ts` — SSE connection management (verified stale threshold cache)
-- `src/app/api/v1/contests/[assignmentId]/anti-cheat/route.ts` — Anti-cheat heartbeat gap detection
+- `src/app/api/v1/submissions/route.ts` — Submission creation + listing
+- `src/app/api/v1/contests/[assignmentId]/anti-cheat/route.ts` — Anti-cheat heartbeat + gap detection
 - `src/app/api/v1/contests/[assignmentId]/analytics/route.ts` — Contest analytics caching
-- `src/app/api/v1/groups/[id]/assignments/[assignmentId]/route.ts` — Assignment PATCH
-- `src/lib/compiler/execute.ts` — Compiler execution concurrency limiter
-- `src/app/api/v1/groups/[id]/members/bulk/route.ts` — Bulk enrollment
+- `src/app/api/v1/compiler/run/route.ts` — Compiler execution
+- `src/app/api/v1/playground/run/route.ts` — Playground execution
+- `src/lib/compiler/execute.ts` — Docker container management
+- `src/app/api/v1/judge/claim/route.ts` — Judge claim with raw SQL
+- `src/app/api/v1/submissions/[id]/events/route.ts` — SSE connection management
 
 ## Previously Fixed Items (Verified)
 
 - SSE stale threshold caching: Fixed — 5-minute TTL
 - Contest stats CTE optimization: Fixed — `user_best` reused in `solved_problems`
+- Compiler execution concurrency limiter: Working — `pLimit(Math.max(cpus().length - 1, 1))`
 
 ## New Findings
 

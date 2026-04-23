@@ -1,26 +1,27 @@
-# UI/UX Review — RPF Cycle 40
+# UI/UX Review — RPF Cycle 43
 
 **Date:** 2026-04-23
 **Reviewer:** designer
-**Base commit:** f030233a
+**Base commit:** b0d843e7
 
 ## Inventory of UI Files Reviewed
 
-- `src/app/(dashboard)/dashboard/admin/api-keys/api-keys-client.tsx` — API key management (verified countdown feature)
-- `src/lib/plugins/chat-widget/chat-widget.tsx` — Chat widget (verified prior fixes)
-- `src/app/globals.css` — Global styles
-- `src/components/ui/` — UI components
+- `src/app/(dashboard)/dashboard/admin/api-keys/api-keys-client.tsx` — API key management (verified countdown)
+- `src/app/(dashboard)/dashboard/contests/join/page.tsx` — Contest join page
+- `src/components/contest/export-button.tsx` — Contest export
+- `src/app/(dashboard)/dashboard/groups/[id]/assignment-delete-button.tsx` — Delete confirmation
+- `src/components/destructive-action-dialog.tsx` — Destructive action dialog
 
 ## Previously Fixed Items (Verified)
 
-- Chat widget entry animation + prefers-reduced-motion: PASS — `globals.css` media query covers all animations
-- Chat textarea aria-label: PASS — `aria-label={t("placeholder")}` at line 369
+- Chat widget entry animation + prefers-reduced-motion: PASS
+- Chat textarea aria-label: PASS
 - Chat widget button aria-label with message count: PASS
-- API key auto-dismiss countdown: PASS — Lines 337-341 show countdown text
+- API key auto-dismiss countdown: PASS
 
 ## New Findings
 
-No new UI/UX findings. The API key countdown feature from cycle 39 properly addresses the prior concern about visual feedback for the auto-dismiss timer.
+No new UI/UX findings. The codebase's UI layer continues to use proper ARIA labels, destructive action confirmations, and loading states.
 
 ### Carry-Over Items
 

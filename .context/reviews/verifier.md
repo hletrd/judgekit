@@ -1,37 +1,38 @@
-# Verifier Review — RPF Cycle 40
+# Verifier Review — RPF Cycle 43
 
 **Date:** 2026-04-23
 **Reviewer:** verifier
-**Base commit:** f030233a
+**Base commit:** b0d843e7
 
 ## Evidence-Based Correctness Check
 
 This review validates that the stated behavior of each recently-fixed item matches the actual code.
 
-### Verified Fixes (All Pass)
+## Verified Fixes (All Pass)
 
-1. **Quick-create NaN guard** — Lines 36-44: `Number.isFinite()` checks on both `startsAt` and `deadline`. PASS.
-2. **Bulk invitation MAX_EXPIRY_MS guard** — Lines 67-69: `(expiresAt.getTime() - dbNow.getTime()) > MAX_EXPIRY_MS` check after `computeExpiryFromDays`. PASS.
-3. **Un-revoke transition removed** — Lines 96-102: The `allowed` map for `"revoked"` status is empty (no transitions out of revoked). PASS.
-4. **Exam session short-circuit** — Line 29: `if (assignment.examMode === "none") return apiError("examModeInvalid", 400)` before any enrollment check. PASS.
-5. **API key auto-dismiss countdown** — Lines 115-137: 5-minute timer with `setKeyDismissCountdown` state and visible countdown text. PASS.
-6. **MAX_EXPIRY_MS shared constant** — `src/lib/assignments/recruiting-constants.ts` imported in all 3 invitation routes. PASS.
-7. **ESCAPE clause on LIKE queries** — `src/lib/realtime/realtime-coordination.ts` lines 94, 107: `ESCAPE '\\'` added. PASS.
-8. **Chat widget button aria-label with message count** — Verified. PASS.
+1. **problemPoints/refine validation** — Lines 21-24: `.refine()` checks `problemPoints.length === problemIds.length`. PASS.
+2. **Access-code capability auth** — Lines 9, 23, 37: `auth: { capabilities: ["contests.manage_access_codes"] }` on all 3 handlers. PASS.
+3. **Redundant non-null assertion removed** — Line 237: `const userId = invitation.userId;` captured after guard. PASS.
+4. **Date.now() replaced in assignment PATCH** — Line 103: `const now = await getDbNowUncached();`. PASS.
+5. **Non-null assertions removed from anti-cheat** — Lines 211-213: Null guard with `continue`, no `!` assertions. PASS.
 
 ## New Findings
 
-### V-1: Assignment PATCH uses `Date.now()` instead of DB time for active-contest check — clock-skew inconsistency [MEDIUM/MEDIUM]
+### V-1: Submission `oneMinuteAgo` computed from app clock while `submittedAt` uses DB clock — rate-limit may be inaccurate under clock skew [MEDIUM/MEDIUM]
 
-**File:** `src/app/api/v1/groups/[id]/assignments/[assignmentId]/route.ts:99-101`
+**File:** `src/app/api/v1/submissions/route.ts:249,318`
 
-**Description:** Tracing the active-contest check:
-1. Line 99: `const now = Date.now();` — uses app server time
-2. Line 100: `const startsAt = assignment.startsAt ? new Date(assignment.startsAt).getTime() : null;` — compares DB time against app time
-3. Line 101: `if (startsAt && now >= startsAt)` — if clocks differ, the check is wrong
+**Description:** The rate-limit check at line 249 uses `Date.now()` to compute the 60-second window, while the submission's `submittedAt` at line 318 is set via `getDbNowUncached()`. Under clock skew, the rate limit may over- or under-count recent submissions.
 
-Compare with the submission route at line 299 which uses `sql`${examSessions.personalDeadline} < NOW()`` to enforce deadlines in SQL (DB time). The recruiting invitation routes use `getDbNowUncached()`. This is the only remaining schedule check that uses app server time.
+Evidence: The code at line 249 computes `oneMinuteAgo = new Date(Date.now() - 60_000)` and uses it in `SUM(CASE WHEN submittedAt > ${oneMinuteAgo})` at line 257. The `submittedAt` is set with `await getDbNowUncached()` at line 318. When app server and DB server clocks diverge, the comparison is against two different time references.
 
-**Verification:** The fix should use `getDbNowUncached()` which returns a Date object from `SELECT NOW()::timestamptz AS now`, ensuring both sides of the comparison use DB time.
+**Concrete failure scenario:** App server clock is 15 seconds behind DB. A submission stored at DB time 10:01:00 will be compared against a window computed from 09:59:45 (app time minus 60s). The effective rate-limit window is 75 seconds instead of 60, allowing more submissions than intended.
+
+**Fix:** Compute `oneMinuteAgo` from DB time:
+```typescript
+const dbNow = await getDbNowUncached();
+const oneMinuteAgo = new Date(dbNow.getTime() - 60_000);
+```
+Also use `dbNow` for the `submittedAt` insert at line 318 (which already uses `getDbNowUncached()` but could reuse the same cached value to avoid a second round-trip).
 
 **Confidence:** Medium

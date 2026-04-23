@@ -1,40 +1,27 @@
-# Tracer Review — RPF Cycle 40
+# Tracer Review — RPF Cycle 43
 
 **Date:** 2026-04-23
 **Reviewer:** tracer
-**Base commit:** f030233a
+**Base commit:** b0d843e7
 
 ## Causal Tracing of Suspicious Flows
 
-### TR-1: Assignment PATCH `Date.now()` vs DB time — clock-skew vulnerability [MEDIUM/MEDIUM]
+### TR-1: Submission rate-limit `Date.now()` vs DB-stored `submittedAt` — two different time sources in one comparison [MEDIUM/MEDIUM]
 
-**File:** `src/app/api/v1/groups/[id]/assignments/[assignmentId]/route.ts:99-101`
+**File:** `src/app/api/v1/submissions/route.ts:249,257,318`
 
-**Description:** Tracing the failure flow:
+**Causal trace:**
+1. User sends POST /api/v1/submissions at app-server wall-clock time T_app
+2. Line 249: `oneMinuteAgo = new Date(Date.now() - 60_000)` — threshold computed from T_app
+3. Line 257: SQL `CASE WHEN submittedAt > ${oneMinuteAgo}` — DB timestamps compared against T_app threshold
+4. Line 318: `submittedAt: await getDbNowUncached()` — new submission stored with T_db time
 
-1. Instructor sends PATCH to change problems on an exam-mode contest
-2. Line 98: `if (body.problems !== undefined && assignment.examMode !== "none")` — enters the block
-3. Line 99: `const now = Date.now();` — app server local time
-4. Line 100: `const startsAt = assignment.startsAt ? new Date(assignment.startsAt).getTime() : null;` — DB time
-5. Line 101: `if (startsAt && now >= startsAt)` — comparing apples to oranges
+The comparison at step 3 crosses a trust boundary: T_app (untrusted relative to DB) is compared against T_db (authoritative). Under clock skew where T_app < T_db, the effective rate-limit window widens, allowing more submissions than intended.
 
-**Hypothesis 1 (confirmed):** Clock skew bypasses the active-contest protection. When the app server clock is behind the DB server clock, `Date.now()` < `startsAt`, so the check fails and problem changes are allowed during an active contest. This is a TOCTOU-like race condition between the two time sources.
+**Competing hypotheses:**
+- H1: Clock skew is negligible in production (container orchestration syncs NTP). **Rejected:** The codebase has previously fixed clock-skew bugs in assignment PATCH, recruiting invitations, and exam session routes, indicating skew is a real production concern.
+- H2: The advisory lock prevents true concurrent bypass. **Partially accepted:** The advisory lock serializes concurrent submissions from the same user, but it doesn't prevent a user from making rapid sequential submissions that each pass the rate check.
 
-**Hypothesis 2 (possible):** The `Date.now()` usage was intentional for performance (avoiding a DB round trip). However, `getDbNowUncached()` is already used in the same route's transaction (line 362 via `withUpdatedAt`), so the overhead of one additional call is minimal compared to the security benefit.
-
-**Fix:** Replace `Date.now()` with `getDbNowUncached()`:
-```typescript
-const now = await getDbNowUncached();
-const startsAt = assignment.startsAt ? new Date(assignment.startsAt).getTime() : null;
-if (startsAt && now.getTime() >= startsAt) {
-```
+**Fix:** Use `getDbNowUncached()` for the `oneMinuteAgo` computation.
 
 **Confidence:** Medium
-
----
-
-### Previously Fixed Items (Verified)
-
-- Un-revoke transition removed: Fixed
-- Exam session short-circuit: Fixed
-- Bulk invitation MAX_EXPIRY_MS guard: Fixed
