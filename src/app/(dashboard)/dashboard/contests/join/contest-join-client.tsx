@@ -42,11 +42,11 @@ export function ContestJoinClient() {
       });
 
       if (!res.ok) {
-        const payload = await res.json().catch(() => ({}));
-        throw new Error((payload as { error?: string }).error ?? "joinFailed");
+        const errorPayload = await res.json().catch(() => ({}));
+        throw new Error((errorPayload as { error?: string }).error ?? "joinFailed");
       }
 
-      const payload = await res.json();
+      const payload = await res.json().catch(() => ({ data: {} }));
 
       setSuccess(true);
       if (payload.data.alreadyEnrolled) {

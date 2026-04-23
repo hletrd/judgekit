@@ -51,6 +51,25 @@
  * }
  * ```
  * Always check `response.ok` BEFORE calling `.json()`.
+ *
+ * **Response body single-read rule:**
+ * The Response body can only be consumed once. Calling `.json()` twice on the
+ * same Response throws "body already consumed". Always parse once and branch:
+ * ```ts
+ * const data = await response.json().catch(() => ({}));
+ * if (!response.ok) { throw new Error(...) }
+ * // use data for success
+ * ```
+ *
+ * **Using `apiFetchJson` for safe parsing:**
+ * For the common pattern of fetching + checking ok + safely parsing JSON,
+ * use the `apiFetchJson` helper which combines all three steps:
+ * ```ts
+ * // Returns { ok: true, data } or { ok: false, data: fallback }
+ * const { ok, data } = await apiFetchJson("/api/v1/resource", undefined, {});
+ * if (!ok) { toast.error(errorLabel); return; }
+ * // use data (typed) for success
+ * ```
  */
 export function apiFetch(
   input: RequestInfo | URL,
@@ -63,4 +82,42 @@ export function apiFetch(
   }
 
   return fetch(input, { ...init, headers });
+}
+
+/**
+ * Fetch a URL with CSRF headers, check `res.ok`, and safely parse the JSON
+ * response body in one call. This eliminates the common footguns of:
+ * 1. Forgetting to check `res.ok` before `.json()`
+ * 2. Forgetting `.catch()` on `.json()` calls
+ * 3. Calling `.json()` twice on the same response (body already consumed)
+ *
+ * @param input - URL or RequestInfo to fetch
+ * @param init - Optional fetch options
+ * @param fallback - Value returned when `.json()` throws (e.g., non-JSON body).
+ *                    Also returned as `data` when `res.ok` is false.
+ * @returns `{ ok: true, data: T }` on success, `{ ok: false, data: T }` on error.
+ *          In both cases `data` is the parsed JSON or the fallback value.
+ *
+ * @example
+ * ```ts
+ * const { ok, data } = await apiFetchJson<{ sessions: Session[] }>(
+ *   "/api/v1/admin/chat-logs",
+ *   undefined,
+ *   { sessions: [], total: 0 }
+ * );
+ * if (!ok) { toast.error(t("fetchError")); return; }
+ * setSessions(data.sessions);
+ * ```
+ */
+export async function apiFetchJson<T = unknown>(
+  input: RequestInfo | URL,
+  init: RequestInit | undefined,
+  fallback: T
+): Promise<{ ok: true; data: T } | { ok: false; data: T }> {
+  const res = await apiFetch(input, init);
+  const data = await res.json().catch(() => fallback) as T;
+  if (res.ok) {
+    return { ok: true, data };
+  }
+  return { ok: false, data };
 }
