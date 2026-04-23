@@ -246,7 +246,10 @@ export const POST = createApiHandler({
     const maxGlobalQueue = getSubmissionGlobalQueueLimit();
 
     const txResult = await execTransaction(async (tx) => {
-      const oneMinuteAgo = new Date(Date.now() - 60_000);
+      // Use DB server time for the rate-limit window to avoid clock skew
+      // between app and DB servers, consistent with other schedule checks.
+      const dbNow = await getDbNowUncached();
+      const oneMinuteAgo = new Date(dbNow.getTime() - 60_000);
 
       // Acquire advisory lock on user ID to serialize concurrent submissions
       await tx.execute(sql`SELECT pg_advisory_xact_lock(('x' || md5(${user.id}))::bit(64)::bigint)`);
@@ -315,7 +318,7 @@ export const POST = createApiHandler({
         assignmentId: normalizedAssignmentId,
         status: initialStatus,
         ipAddress: ip,
-        submittedAt: await getDbNowUncached(),
+        submittedAt: dbNow,
       });
 
       return null; // success
