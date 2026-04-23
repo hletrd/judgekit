@@ -1,71 +1,61 @@
-# Code Review — RPF Cycle 28 (Fresh)
+# Code Review — RPF Cycle 29
 
 **Date:** 2026-04-23
 **Reviewer:** code-reviewer
-**Base commit:** 63557cc2
+**Base commit:** a51772ae
 
-## Previously Fixed Items (Verified)
+## Previously Fixed Items (Verified in Current Code)
 
-All cycle-26/27 aggregate findings have been addressed:
-- AGG-1 (double `.json()` in 3 files): Fixed
-- AGG-2 (compiler-client raw error): Fixed — uses i18n key
-- AGG-3 (handleResetAccountPassword fetchAll): Fixed
-- AGG-4 (quick-stats redundant `!`): Fixed
-- localStorage try/catch in compiler-client and submission-detail-client: Fixed
-- console.error gating (14 components): Fixed
-- admin-config double `.json()`: Fixed
-- bulk-create raw err.message: Fixed (truncated)
-- comment-section GET error feedback: Fixed
-- normalizePage parseInt + upper bound: Fixed
-- discussion-thread-moderation-controls optimistic state: Fixed
+All prior cycle aggregate findings have been addressed:
+- AGG-1 (code-editor i18n): Fixed in commit 5c387c7b
+- AGG-5 (contest-replay setInterval): Fixed in commit 9cc30d51
+- All other prior findings verified as fixed
 
-## CR-1: `code-editor.tsx` hardcoded English strings in aria-label and title [MEDIUM/MEDIUM]
+## CR-1: Hardcoded English strings in clarification quick-answer buttons [MEDIUM/HIGH]
 
-**File:** `src/components/code/code-editor.tsx:96-97,107,113-114`
+**File:** `src/components/contest/contest-clarifications.tsx:290-296`
 
-The fullscreen button and exit button use hardcoded English strings:
-- Line 96: `title="Fullscreen (F) · Exit (Esc)"`
-- Line 97: `aria-label="Fullscreen (F)"`
-- Line 107: `{props.language ?? "Code Editor"}` — hardcoded fallback
-- Line 113: `title="Exit fullscreen (Esc)"`
-- Line 114: `aria-label="Exit fullscreen (Esc)"`
+The quick-answer buttons pass hardcoded English strings as the `answerText` argument to `handleAnswer`:
 
-This is inconsistent with the rest of the codebase, which uses i18n keys for all user-visible strings including accessibility attributes. Korean users accessing these buttons via screen readers will hear English labels.
+- Line 290: `handleAnswer(clarification.id, "yes", "Yes")`
+- Line 293: `handleAnswer(clarification.id, "no", "No")`
+- Line 296: `handleAnswer(clarification.id, "no_comment", "No comment")`
 
-**Concrete scenario:** A Korean user using a screen reader navigates to the fullscreen button and hears "Fullscreen (F)" instead of the Korean translation.
+These strings are sent directly to the API as the answer text and stored in the database. When Korean users click the quick-answer buttons, the answer stored and displayed will be "Yes", "No", or "No comment" instead of Korean translations.
 
-**Fix:** Add i18n keys for these strings and use `t()` calls, or accept the hardcoded keyboard shortcut labels as locale-independent (the `F` and `Esc` key names are universal).
+**Concrete failure scenario:** A Korean contest organizer clicks the "Yes" quick-answer button on a clarification. The answer "Yes" is stored and shown to all Korean-speaking participants.
+
+**Fix:** Replace hardcoded English strings with i18n keys:
+- `"Yes"` -> `t("quickYesAnswer")` or similar
+- `"No"` -> `t("quickNoAnswer")`
+- `"No comment"` -> `t("quickNoCommentAnswer")`
+
+Add corresponding keys to `messages/en.json` and `messages/ko.json` under `contests.clarifications`.
 
 ---
 
-## CR-2: `edit-group-dialog.tsx` getErrorMessage lacks SyntaxError guard [LOW/MEDIUM]
+## CR-2: `handleAnswer` quick-answer text bypasses answer draft state [LOW/MEDIUM]
 
-**File:** `src/app/(dashboard)/dashboard/groups/edit-group-dialog.tsx:52-70`
+**File:** `src/components/contest/contest-clarifications.tsx:133-154`
 
-The `getErrorMessage` function switches on `error.message`. While the default case now correctly returns `tCommon("error")`, a `SyntaxError` from a failed `.json()` parse would match the default case rather than being explicitly handled. Other `getErrorMessage` functions in the codebase (e.g., `create-problem-form.tsx`) have the same pattern but with a broader set of known error codes.
+When a user clicks a quick-answer button (yes/no/no_comment), the `answerText` parameter is passed directly to the API. However, when `answerType === "custom"`, the code falls through to `answerDrafts[id] ?? ""`. This means:
 
-The real concern is at line 92: `throw new Error((errorBody as { error?: string }).error || "updateError")` — this throws with the raw API error string. If the API returns an unexpected error code like `"SyntaxError"` or `"internal_server_error"`, the `getErrorMessage` switch won't match it, and the user sees `tCommon("error")` which is correct. But the thrown `Error.message` contains the raw API string, which is fine since it's only used for matching.
+1. The quick-answer text is not reflected in the textarea (answerDrafts)
+2. If the user clicks a quick-answer, then later opens the same clarification to add a custom answer, the textarea shows stale draft content, not the previously submitted answer.
 
-**Fix:** This is already safe (the default case returns `tCommon("error")`). No action required beyond documentation.
+This is a minor UX inconsistency but could confuse contest organizers.
 
----
-
-## CR-3: `contest-join-client.tsx` error handling chain could be cleaner [LOW/LOW]
-
-**File:** `src/app/(dashboard)/dashboard/contests/join/contest-join-client.tsx:48-51`
-
-After `apiFetchJson` returns `!ok`, line 49 extracts the error: `(payload as { error?: string }).error ?? "joinFailed"` and throws it as `new Error(errorMessage)`. The catch block on line 66-69 catches this and shows `t("joinFailed")`. The thrown Error's message is never shown to the user, so this is safe. However, the `apiFetchJson` helper already returns `{ ok, data }` — the error code could be checked directly without the intermediate `throw new Error`.
-
-**Fix:** Low priority — the current pattern is functional and safe. Could be simplified to check `payload.error` directly for specific error codes (like `alreadyEnrolled`).
+**Fix:** After a successful answer submission, the `answerDrafts` entry for that clarification should be cleared (already done on line 149). The real issue is that quick-answer text is sent to the API but not stored locally for UI consistency. Consider using the existing `clarification.answer` from the re-fetched data instead of local draft state for display.
 
 ---
 
 ## Verified Safe / No Issue
 
-- All `.json()` patterns now follow "parse once, then branch" or use `apiFetchJson`
+- All `.json()` patterns follow "parse once, then branch" or use `apiFetchJson`
 - `localStorage` write operations all have try/catch guards
 - `console.error` calls all gated behind `process.env.NODE_ENV === "development"`
-- Error boundary `console.error` calls properly gated
-- Korean letter-spacing compliance maintained
 - No `as any`, `@ts-ignore`, or `@ts-expect-error` in production code
 - No silently swallowed catch blocks
+- Korean letter-spacing compliance maintained
+- Code editor i18n fix from cycle 28 verified (commit 5c387c7b)
+- Contest replay setInterval->setTimeout fix verified (commit 9cc30d51)

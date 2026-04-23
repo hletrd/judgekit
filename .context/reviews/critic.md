@@ -1,42 +1,42 @@
-# Critic Review — RPF Cycle 28 (Fresh)
+# Critic Review — RPF Cycle 29
 
 **Date:** 2026-04-23
 **Reviewer:** critic
-**Base commit:** 63557cc2
+**Base commit:** a51772ae
 
-## CRI-1: `code-editor.tsx` hardcoded English strings are the last i18n holdout [MEDIUM/MEDIUM]
+## Previously Fixed Items (Verified)
 
-**File:** `src/components/code/code-editor.tsx:96-97,107,113-114`
+- Code editor i18n: Fixed (commit 5c387c7b)
+- Contest replay setInterval: Fixed (commit 9cc30d51)
+- All prior cycle findings verified as fixed
 
-The code editor is the only component in the codebase with hardcoded English strings in user-facing positions (title, aria-label, fallback text). The cycle-28 plan (Task 6) identified hardcoded English in `compiler-client.tsx`, but that has been fixed (defaultValue parameters removed). The code-editor.tsx issue is the remaining holdout.
+## CRI-1: Clarification quick-answer buttons embed locale-specific text into shared data [MEDIUM/HIGH]
 
-Specific strings:
-- `"Fullscreen (F) · Exit (Esc)"` (title attribute)
-- `"Fullscreen (F)"` (aria-label)
-- `"Code Editor"` (language fallback)
-- `"Exit fullscreen (Esc)"` (title and aria-label)
-- `"Exit"` (button text at line 117)
+**File:** `src/components/contest/contest-clarifications.tsx:290-296`
 
-**Concrete scenario:** A Korean screen reader user navigates to the code editor fullscreen button and hears English instead of Korean.
+This is the most significant finding this cycle. The quick-answer buttons pass hardcoded English text ("Yes", "No", "No comment") as the answer content to the API. This text is stored in the database and shown to all participants regardless of their locale.
 
-**Fix:** Add i18n keys for these 5 strings. The `F` and `Esc` key names are universal keyboard shortcuts and can remain in the localized string as-is (e.g., Korean translation would be "전체 화면 (F)").
+From a multi-perspective critique:
 
----
+1. **i18n perspective:** The codebase is consistent in using i18n for all user-facing strings. These 3 strings break that consistency.
+2. **Data integrity perspective:** The `answerType` field already encodes the semantic meaning. The `answer` text field is redundant for quick answers and should contain localized display text.
+3. **UX perspective:** Korean contest organizers see Korean UI but produce English answer text that is shown to Korean participants.
+4. **Consistency perspective:** The i18n keys `quickYes`, `quickNo`, `quickNoComment` exist for the *button labels* but not for the *answer content*.
 
-## CRI-2: `contest-replay.tsx` still uses `setInterval` — carried from cycle 26 [LOW/LOW]
-
-**File:** `src/components/contest/contest-replay.tsx:77-87`
-
-This has been deferred for 3 cycles. While the impact is LOW, the inconsistency with the codebase convention (recursive `setTimeout`) is a growing maintenance risk.
-
-**Fix:** Replace `setInterval` with recursive `setTimeout`.
+**Fix:** Add i18n keys for the answer content strings and use them instead of hardcoded English.
 
 ---
 
-## Verified Safe / No Issue
+## CRI-2: `useVisibilityPolling` inconsistency with established timer patterns [LOW/LOW]
 
-- All console.error calls properly gated behind dev check
-- All .json() patterns follow "parse once, then branch" convention
-- Error handling consistently uses i18n keys for user-facing messages
-- localStorage operations all have try/catch
-- Korean letter-spacing compliance thorough
+**File:** `src/hooks/use-visibility-polling.ts:55`
+
+The codebase has converged on recursive `setTimeout` as the standard pattern for timer-based effects. The shared `useVisibilityPolling` hook still uses `setInterval`. This is a minor architectural inconsistency but functionally safe.
+
+**Fix:** Migrate to recursive `setTimeout` for consistency.
+
+---
+
+## Critic Findings (carried/deferred)
+
+### CRI-CARRIED-1: Contest layout forced navigation — carried from DEFER-18

@@ -1,52 +1,36 @@
-# UI/UX Review — RPF Cycle 28 (Fresh)
+# UI/UX Review — RPF Cycle 29
 
 **Date:** 2026-04-23
 **Reviewer:** designer
-**Base commit:** 63557cc2
+**Base commit:** a51772ae
 
 ## Previously Fixed Items (Verified)
 
-- AGG-1 (localStorage crashes): Fixed
-- AGG-2 (clarifications userId): Deferred (requires backend change)
-- AGG-3 (compiler defaultValue): Fixed (removed)
-- Error boundary gating: Fixed
-- comment-section error feedback: Fixed
+- Code editor i18n (fullscreen/exit labels): Fixed (commit 5c387c7b)
+- Korean letter-spacing compliance: Maintained across codebase
 
-## DES-1: `code-editor.tsx` hardcoded English strings — accessibility and i18n violation [MEDIUM/MEDIUM]
+## DES-1: Clarification quick-answer buttons produce English text for Korean users [MEDIUM/HIGH]
 
-**File:** `src/components/code/code-editor.tsx:96-97,107,113-114,117`
+**File:** `src/components/contest/contest-clarifications.tsx:290-296`
 
-The code editor has 5 hardcoded English strings in user-facing positions:
-1. `title="Fullscreen (F) · Exit (Esc)"` — tooltip
-2. `aria-label="Fullscreen (F)"` — screen reader label
-3. `{props.language ?? "Code Editor"}` — visible text in fullscreen mode
-4. `title="Exit fullscreen (Esc)"` — tooltip
-5. `aria-label="Exit fullscreen (Esc)"` — screen reader label
-6. `<span>Exit</span>` — visible button text at line 117
+**UX impact:** When a Korean-speaking contest organizer clicks the "Yes" quick-answer button (which is labeled with the Korean `t("quickYes")` key), the answer stored and displayed to participants is the English word "Yes" instead of the Korean equivalent. This creates a jarring language-switch experience for Korean participants reading clarifications.
 
-**Impact:** Korean screen reader users hear English labels. The "Exit" button text at line 117 is particularly visible — it's not hidden or icon-only.
+**Accessibility concern:** Screen readers in Korean locale will announce the English answer text, creating a language-switch announcement that disrupts the reading flow. WCAG 2.2 SC 3.1.2 (Language of Parts) requires that the human language of each passage can be programmatically determined.
 
-**Concrete scenario:** A Korean user with a visual impairment uses a screen reader to navigate the code editor. The fullscreen button is announced as "Fullscreen (F)" instead of the Korean equivalent.
-
-**Fix:** Add i18n keys and use `t()` or accept i18n props for these strings.
+**Fix:** Add i18n keys for the answer content and use them in the `handleAnswer` calls.
 
 ---
 
-## DES-2: Contest clarifications still show "askedByOther" instead of username [LOW/MEDIUM]
+## DES-2: `active-timed-assignment-sidebar-panel` progress bar missing accessible label update [LOW/LOW]
 
-**File:** `src/components/contest/contest-clarifications.tsx:249`
+**File:** `src/components/layout/active-timed-assignment-sidebar-panel.tsx:172`
 
-The component now uses `t("askedByOther")` (a generic label) instead of showing the raw `userId`. This is an improvement over the previous behavior (showing UUIDs). However, the UX is still suboptimal — users cannot identify who asked a question. The fix requires a backend API change to include `userName`.
+The progress bar has `aria-valuenow={progressPercent}` but the `aria-valuenow` value is a number (percentage) without context. The progress bar's purpose is not described in an `aria-label` or `aria-labelledby` attribute. A screen reader user would hear a percentage value without knowing what it represents.
 
-**Fix:** Deferred (DEFER-20) — requires backend change.
+**Fix:** Add `aria-label={tNav("progress")}` to the progress bar div to provide context for the percentage value.
 
 ---
 
-## Verified Safe / No Issue
+## Designer Findings (carried/deferred)
 
-- Korean letter-spacing compliance thorough
-- PublicHeader mobile menu has proper focus trap and Escape to close
-- Screen reader announcements for menu state
-- All interactive elements in recruiting panel have proper aria-label
-- Lecture toolbar has proper aria-label for all buttons
-- Sidebar admin section has locale-conditional tracking
+### DES-CARRIED-1: Dialog semantics for submission overview — carried from DEFER-41

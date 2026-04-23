@@ -1,48 +1,52 @@
-# Verifier Review — RPF Cycle 28 (Fresh)
+# Verifier Review — RPF Cycle 29
 
 **Date:** 2026-04-23
 **Reviewer:** verifier
-**Base commit:** 63557cc2
+**Base commit:** a51772ae
 
-## V-1: Verify `code-editor.tsx` hardcoded English strings — CONFIRMED [MEDIUM/MEDIUM]
+## Previously Fixed Items (Verified)
 
-**File verified:** `src/components/code/code-editor.tsx:96-97,107,113-114,117`
+- Code editor i18n (AGG-1 from cycle 28): Verified fixed in commit 5c387c7b. The `CodeEditor` now accepts `fullscreenLabel`, `exitFullscreenLabel`, `exitButtonLabel`, and `languageFallbackLabel` props from the parent `CompilerClient`, which provides `t(...)` calls. English and Korean message files updated.
+- Contest replay setInterval (PERF-CARRIED-1): Verified fixed in commit 9cc30d51. The auto-play effect now uses recursive `setTimeout` with a `cancelled` flag.
 
-**Evidence:** Read the file directly. Five hardcoded English strings confirmed:
-- Line 96: `title="Fullscreen (F) · Exit (Esc)"`
-- Line 97: `aria-label="Fullscreen (F)"`
-- Line 107: `{props.language ?? "Code Editor"}`
-- Line 113: `title="Exit fullscreen (Esc)"`
-- Line 114: `aria-label="Exit fullscreen (Esc)"`
-- Line 117: `<span>Exit</span>`
+## V-1: Hardcoded English answer text in clarifications — evidence-based verification [MEDIUM/HIGH]
 
-These are the last remaining hardcoded English strings in the codebase.
+**File:** `src/components/contest/contest-clarifications.tsx:290-296`
 
----
+**Evidence:** The `handleAnswer` function (line 133) accepts an `answerText` parameter. On line 134: `const answer = answerText ?? answerDrafts[id] ?? ""`. The quick-answer buttons invoke:
 
-## V-2: Verify cycle-26/27/28 fixes — ALL VERIFIED
+```
+handleAnswer(clarification.id, "yes", "Yes")       // line 290
+handleAnswer(clarification.id, "no", "No")           // line 293
+handleAnswer(clarification.id, "no_comment", "No comment")  // line 296
+```
 
-- AGG-1 (double `.json()` in assignment-form, create-group, create-problem-form): Verified — all use "parse once, then branch"
-- AGG-2 (compiler-client i18n): Verified — uses `t("networkError")` for inline display
-- AGG-3 (handleResetAccountPassword fetchAll): Verified at line 298
-- AGG-4 (quick-stats typeof): Verified — `typeof x === "number" && Number.isFinite(x)` pattern
-- localStorage try/catch in compiler-client: Verified at line 188
-- localStorage try/catch in submission-detail-client: Verified at line 94
-- console.error gating (14 components): Verified — all use `process.env.NODE_ENV === "development"`
-- admin-config double .json(): Verified — uses "parse once" pattern
-- bulk-create err.message truncation: Verified — `err.message.slice(0, 120)`
-- normalizePage parseInt + upper bound: Verified — `parseInt(value, 10)` and `MAX_PAGE = 10000`
-- comment-section GET error feedback: Verified — `else { toast.error(tComments("loadError")); }`
-- discussion-thread-moderation-controls optimistic state: Verified — `useState(isLockedProp)` and `useState(isPinnedProp)`
-- contest-join uses apiFetchJson: Verified at line 38
-- recruiting-invitations AbortController: Verified at lines 122-126
+The `answer` variable is sent to the API as `body: JSON.stringify({ answer, answerType, isPublic: true })` (line 141-143). This means "Yes", "No", and "No comment" are stored as the answer text in the database.
+
+**Verification of stated behavior:** The i18n keys for button labels exist (`quickYes`, `quickNo`, `quickNoComment`) but there are no i18n keys for the answer *content*. The button labels are displayed in Korean when locale is "ko", but clicking them produces English answer text.
+
+**Fix:** Add i18n keys for answer content and use them in the `handleAnswer` calls.
 
 ---
 
-## V-3: `contest-replay.tsx` setInterval — still present [LOW/LOW]
+## V-2: Chat widget provider error messages may leak API details [MEDIUM/MEDIUM]
 
-**File:** `src/components/contest/contest-replay.tsx:77`
+**File:** `src/lib/plugins/chat-widget/providers.ts:101,134-135,202`
 
-Verified that `setInterval` is still used. This has been deferred for 3 cycles (AGG-5 from cycle 26).
+**Evidence:** The provider `stream()` and `chatWithTools()` methods include the full API response body in thrown errors:
 
-**Fix:** Replace with recursive `setTimeout` when capacity allows.
+- OpenAI stream (line 101): `throw new Error(`OpenAI API error ${response.status}: ${text}`)`
+- OpenAI chatWithTools (line 134-135): same pattern
+- Claude stream (line 202): `throw new Error(`Claude API error ${response.status}: ${text}`)`
+
+The `${text}` variable contains the full response body from the API provider. These errors propagate through the chat route handler to the client.
+
+**Verification needed:** The chat route handler (`src/app/api/v1/plugins/chat-widget/chat/route.ts`) catches these errors. Need to verify whether the raw error message is sanitized before being sent to the client.
+
+**Fix:** Strip the response body from thrown errors and only include the HTTP status code. Log the full response server-side.
+
+---
+
+## Verifier Findings (carried/deferred)
+
+### V-CARRIED-1: Encryption plaintext fallback — MEDIUM/MEDIUM, carried from DEFER-39

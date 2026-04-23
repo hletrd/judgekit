@@ -1,49 +1,39 @@
-# Architecture Review — RPF Cycle 28 (Fresh)
+# Architecture Review — RPF Cycle 29
 
 **Date:** 2026-04-23
 **Reviewer:** architect
-**Base commit:** 63557cc2
+**Base commit:** a51772ae
 
 ## Previously Fixed Items (Verified)
 
-- Double `.json()` anti-pattern migration: Complete — all known instances migrated
-- handleResetAccountPassword fetchAll: Fixed
-- normalizePage upper bound: Fixed
-- comment-section GET error feedback: Fixed
-- discussion-thread-moderation-controls optimistic state: Fixed
+- Code editor i18n: Fixed (commit 5c387c7b)
+- Contest replay setInterval: Fixed (commit 9cc30d51)
 
-## ARCH-1: `code-editor.tsx` fullscreen buttons bypass the i18n system [MEDIUM/MEDIUM]
+## ARCH-1: Hardcoded English answer text in clarifications breaks i18n architectural consistency [MEDIUM/HIGH]
 
-**File:** `src/components/code/code-editor.tsx:96-97,107,113-114`
+**File:** `src/components/contest/contest-clarifications.tsx:290-296`
 
-The code editor component uses hardcoded English strings for accessibility attributes (`title`, `aria-label`) and the language fallback label. This is an architectural inconsistency — all other components in the codebase use i18n keys for user-facing strings. The code editor is the only component that hardcodes strings.
+The codebase has a strong architectural convention of i18n-first design — all user-facing strings go through `useTranslations()`. The quick-answer buttons ("Yes", "No", "No comment") violate this convention by passing hardcoded English strings as API payloads. This is architecturally worse than the previous code-editor issue (AGG-1 from cycle 28) because:
 
-The `CodeEditor` component does not currently accept translation props or use `useTranslations`, so adding i18n support requires either:
-1. Adding i18n props to the component (consistent with how `ContestReplay` receives label props)
-2. Using `useTranslations` inside the component (consistent with how `CompilerClient` does it)
+1. The strings are not just displayed — they are **persisted to the database** as answer content
+2. They become the canonical answer shown to all participants, regardless of locale
+3. The `answerType` enum ("yes", "no", "no_comment") already encodes the semantic meaning — the text is redundant display content that should be localized
 
-**Fix:** Add `useTranslations` calls or pass label props for the fullscreen/exit buttons and the "Code Editor" fallback.
+**Fix:** Add i18n keys for the answer text. The `answerType` field determines the semantic meaning; the `answer` field should contain the localized human-readable text.
 
 ---
 
-## ARCH-2: Duplicated visibility-aware polling pattern across components [LOW/LOW]
+## ARCH-2: `useVisibilityPolling` is the only shared hook still using `setInterval` [LOW/LOW]
 
-**Files:**
-- `src/components/contest/contest-announcements.tsx`
-- `src/components/contest/contest-clarifications.tsx`
-- `src/hooks/use-visibility-polling.ts`
+**File:** `src/hooks/use-visibility-polling.ts:55`
 
-Carried from prior cycles. The `useVisibilityPolling` hook has been extracted and is now used by `contest-quick-stats`, `contest-clarifications`, and `submission-overview`. However, `contest-announcements` and `participant-anti-cheat-timeline` may still have inline implementations.
+The codebase has established a convention of using recursive `setTimeout` for timer-based effects (contest-replay, countdown-timer, anti-cheat-monitor). The `useVisibilityPolling` hook is the exception, still using `setInterval`. While functionally correct (the visibility change handler mitigates drift), this creates an inconsistency in the timer architecture pattern.
 
-**Fix:** Verify remaining components use `useVisibilityPolling` and migrate any that don't.
+**Fix:** Migrate to recursive `setTimeout` for architectural consistency. This also improves the jitter mechanism's effectiveness since each tick would independently schedule the next.
 
 ---
 
-## Verified Safe / No Issue
+## Architectural Findings (carried/deferred)
 
-- Route group structure is clean
-- Navigation centralized via shared helpers
-- Capability-based filtering consistent between PublicHeader and AppSidebar
-- Proxy middleware properly handles auth, CSP, locale, cache headers
-- i18n well-structured with proper locale resolution
-- Workspace-to-public migration complete
+### ARCH-CARRIED-1: Inconsistent createApiHandler usage — carried from DEFER-17
+### ARCH-CARRIED-2: Duplicated visibility-aware polling pattern — carried from DEFER-21

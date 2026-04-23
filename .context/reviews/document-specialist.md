@@ -1,21 +1,35 @@
-# Document Specialist Review — RPF Cycle 28 (Fresh)
+# Document Specialist Review — RPF Cycle 29
 
 **Date:** 2026-04-23
 **Reviewer:** document-specialist
-**Base commit:** 63557cc2
+**Base commit:** a51772ae
 
-## DOC-1: `apiFetchJson` JSDoc already mentions the "parse once" pattern — no update needed [INFO]
+## Previously Fixed Items (Verified)
 
-**File:** `src/lib/api/client.ts`
+- Code editor i18n: Fixed (commit 5c387c7b)
+- Contest replay setInterval: Fixed (commit 9cc30d51)
 
-The `apiFetchJson` JSDoc was updated in a prior cycle to mention the "parse once, then branch" pattern. No further documentation updates are needed.
+## DOC-1: Quick-answer text in clarifications not documented as i18n-requiring [LOW/LOW]
+
+**File:** `src/components/contest/contest-clarifications.tsx:290-296`
+
+The `apiFetchJson` client documentation in `src/lib/api/client.ts` documents the pattern for error handling, but there is no documentation about the convention that *all* user-facing strings passed to API calls must be localized. The quick-answer text ("Yes", "No", "No comment") passed to the API is a data string, not a label, which makes it less obvious that it needs i18n treatment.
+
+**Fix:** This is a code issue, not a documentation issue. The strings should be localized. No doc change needed.
 
 ---
 
-## DOC-2: `code-editor.tsx` lacks i18n documentation for hardcoded strings [LOW/LOW]
+## DOC-2: `useVisibilityPolling` doc comment doesn't mention `setInterval` vs `setTimeout` convention [LOW/LOW]
 
-**File:** `src/components/code/code-editor.tsx`
+**File:** `src/hooks/use-visibility-polling.ts:1-16`
 
-The code editor has 5 hardcoded English strings without any comment explaining why they are not i18n-ized. If there was a deliberate decision to keep them in English (e.g., because keyboard shortcut names are universal), a comment should document this. Otherwise, they should be migrated to i18n.
+The hook's doc comment says "Starts polling immediately when the page is visible" and "Pauses polling when the page is hidden." It does not mention that the codebase convention is to use recursive `setTimeout` instead of `setInterval`, and that this hook is the exception.
 
-**Fix:** Either add i18n keys for these strings, or add a comment documenting why they are intentionally kept in English.
+**Fix:** Minor doc improvement — note the setInterval usage and the reason it has not yet been migrated.
+
+---
+
+## Document Specialist Findings (carried/deferred)
+
+### DOC-CARRIED-1: SubmissionStatus type split — carried from DEFER-32
+### DOC-CARRIED-2: CSRF documentation mismatch — carried from DEFER-35

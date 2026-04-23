@@ -1,32 +1,41 @@
-# Test Engineer Review — RPF Cycle 28 (Fresh)
+# Test Engineer Review — RPF Cycle 29
 
 **Date:** 2026-04-23
 **Reviewer:** test-engineer
-**Base commit:** 63557cc2
+**Base commit:** a51772ae
 
-## TE-1: No tests for `code-editor.tsx` fullscreen accessibility labels [LOW/MEDIUM]
+## Previously Fixed Items (Verified)
 
-**File:** `src/components/code/code-editor.tsx`
+- All prior cycle test findings remain as deferred items (DEFER-36, DEFER-37)
 
-There are no tests verifying that the fullscreen buttons have proper accessibility attributes (title, aria-label). This is the only component with hardcoded English strings. When these strings are migrated to i18n, tests should verify the correct i18n keys are used.
+## TE-1: No test coverage for clarification quick-answer i18n behavior [LOW/MEDIUM]
 
-**Fix:** Add tests that verify the fullscreen buttons have `aria-label` attributes with the correct i18n keys after migration.
+**File:** `src/components/contest/contest-clarifications.tsx:290-296`
 
----
+The clarification component has no tests verifying that quick-answer buttons send localized answer text. A regression test should verify:
 
-## TE-2: Carried test coverage gaps from previous cycles
+1. Clicking quick-answer buttons sends the correct `answerType` and localized `answer` text
+2. The answer text in the API payload matches the expected i18n key value
 
-- TE-1 (cycle 25): No unit tests for `getErrorMessage` default case behavior — still open
-- TE-2 (cycle 25): No tests for compiler-client error display behavior — still open
-- TE-3 (cycle 25): No tests for contest-quick-stats data validation logic — still open
-- TE-1 (cycle 26): No tests for double `.json()` anti-pattern regression — now less relevant (pattern eliminated)
-- TE-2 (cycle 26): No tests for `handleResetAccountPassword` behavior — still open
-- TE-1 (cycle 27): Security module test coverage gaps (6 of 17 modules have no tests) — still open
-- TE-2 (cycle 27): Hook test coverage gaps (5 of 7 hooks have no tests) — still open
+**Fix:** Add unit/integration tests for the `handleAnswer` function that verify both `answerType` and `answer` content.
 
 ---
 
-## Verified Safe / No Issue
+## TE-2: No test coverage for chat widget provider error sanitization [LOW/MEDIUM]
 
-- Discussion component tests now include required props (fixed in e8cfd718)
-- The apiFetchJson pattern makes double-.json() regression unlikely
+**File:** `src/lib/plugins/chat-widget/providers.ts:101,134-135,202`
+
+The provider error messages currently include full API response bodies. There are no tests verifying that these errors are sanitized before reaching the client. A test should verify:
+
+1. Provider errors thrown with API response details are caught by the route handler
+2. The route handler strips sensitive details before sending the error to the client
+
+**Fix:** Add unit tests for the chat route handler's error handling chain.
+
+---
+
+## Test Engineer Findings (carried/deferred)
+
+### TE-CARRIED-1: Security module test coverage gaps — carried from DEFER-36
+### TE-CARRIED-2: Hook test coverage gaps — carried from DEFER-37
+### TE-CARRIED-3: Unguarded `.json()` on success paths — carried from DEFER-38

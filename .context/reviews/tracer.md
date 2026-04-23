@@ -1,41 +1,56 @@
-# Tracer Review — RPF Cycle 28 (Fresh)
+# Tracer Review — RPF Cycle 29
 
 **Date:** 2026-04-23
 **Reviewer:** tracer
-**Base commit:** 63557cc2
+**Base commit:** a51772ae
 
-## TR-1: Causal trace of `code-editor.tsx` hardcoded English strings [MEDIUM/MEDIUM]
+## Previously Fixed Items (Verified)
 
-**File:** `src/components/code/code-editor.tsx:96-97,107,113-114,117`
+- Code editor i18n: Fixed (commit 5c387c7b)
+- Contest replay setInterval: Fixed (commit 9cc30d51)
 
-**Trace:**
-1. User opens the playground/compiler page
-2. The `CodeEditor` component renders with `showFullscreen={true}`
-3. The fullscreen button renders with `aria-label="Fullscreen (F)"` — hardcoded English
-4. A Korean screen reader user navigates to this button
-5. The screen reader announces "Fullscreen (F)" in English
-6. The user presses Enter to activate fullscreen
-7. The fullscreen overlay renders with `{props.language ?? "Code Editor"}` at line 107 — hardcoded "Code Editor"
-8. The exit button renders with `aria-label="Exit fullscreen (Esc)"` — hardcoded English
-9. The visible text "Exit" at line 117 is also hardcoded English
+## TR-1: Clarification quick-answer text flows from UI to database without i18n [MEDIUM/HIGH]
 
-**Hypothesis:** The code editor was likely written before the i18n system was fully established, or the developer assumed keyboard shortcut labels (F, Esc) don't need translation. However, the surrounding text ("Fullscreen", "Exit", "Code Editor") does need translation.
+**Causal trace of the data flow:**
 
-**Assessment:** This is a genuine i18n gap. The keyboard shortcut names (F, Esc) are universal, but the descriptive text needs localization.
+1. User clicks quick-answer button in `contest-clarifications.tsx:290-296`
+2. `handleAnswer(id, "yes", "Yes")` is called (line 290)
+3. `answerText` parameter is "Yes" (line 134: `const answer = answerText ?? answerDrafts[id] ?? ""`)
+4. `apiFetch(...)` sends `body: JSON.stringify({ answer, answerType, isPublic: true })` to API (lines 136-143)
+5. API route stores `answer: "Yes"` in the database
+6. On subsequent page loads, `loadClarifications` fetches clarifications from the API (line 81)
+7. The answer "Yes" is rendered in the UI (line 269: `{clarification.answer}`)
+
+**Competing hypotheses for the English text:**
+
+H1 (confirmed): The hardcoded "Yes"/"No"/"No comment" strings are simply missing i18n keys. The button labels use i18n, but the answer content passed to the API does not.
+
+H2 (rejected): The answer text is overwritten by the server. Tracing the API call shows the client-sent `answer` is stored directly.
+
+**Fix:** Add i18n keys for answer content and use them at the call sites on lines 290, 293, 296.
 
 ---
 
-## TR-2: `contest-replay.tsx` setInterval drift trace [LOW/LOW]
+## TR-2: Chat widget provider error response body propagates to client [MEDIUM/MEDIUM]
 
-**File:** `src/components/contest/contest-replay.tsx:77-87`
+**Causal trace of the data flow:**
 
-**Trace:**
-1. User opens contest replay with 100 snapshots
-2. User clicks "Play" at 4x speed (interval = 350ms)
-3. The `setInterval` fires every 350ms
-4. User switches to another tab (background)
-5. Browser throttles the interval (fires at most once per second in most browsers)
-6. User returns to the tab after 10 seconds
-7. The accumulated intervals fire rapidly, causing the replay to jump forward multiple snapshots at once
+1. Provider `stream()` or `chatWithTools()` fails (e.g., OpenAI returns 403)
+2. Provider throws: `new Error(`OpenAI API error ${response.status}: ${text}`)` (line 101)
+3. The `${text}` variable contains the full API response body (line 100: `const text = await response.text()`)
+4. This error propagates up through the chat route handler
+5. If the route handler doesn't sanitize the error message, it reaches the client
 
-**Fix:** Replace `setInterval` with recursive `setTimeout`.
+**Competing hypotheses for error leaking:**
+
+H1 (likely): The chat route handler catches the error and may include `error.message` in the response, which contains the full API response body.
+
+H2 (less likely): The chat route handler wraps all provider errors in generic messages before sending to the client.
+
+**Fix:** Verify the chat route handler sanitizes provider errors. In the provider methods, strip the response body from thrown errors and only include the status code.
+
+---
+
+## Tracer Findings (carried/deferred)
+
+### TR-CARRIED-1: Contest layout forced navigation — carried from DEFER-18

@@ -1,48 +1,55 @@
-# Security Review — RPF Cycle 28 (Fresh)
+# Security Review — RPF Cycle 29
 
 **Date:** 2026-04-23
 **Reviewer:** security-reviewer
-**Base commit:** 63557cc2
+**Base commit:** a51772ae
 
 ## Previously Fixed Items (Verified)
 
-- AGG-1 (localStorage crashes): Fixed — both compiler-client and submission-detail-client have try/catch
-- AGG-8 (console.error gating): Fixed — all 14 components gate behind dev check
-- admin-config double `.json()`: Fixed
-- bulk-create raw err.message: Fixed — truncated to 120 chars
-- normalizePage upper bound: Fixed — prevents unbounded DB OFFSET queries
+- console.error gating (14 components): Verified
+- bulk-create raw err.message truncation: Verified
+- SSRF via test-connection endpoint: Mitigated (uses stored keys, model validation)
+- `sanitizeHtml` root-relative img src: Deferred (LOW/LOW)
 
-## SEC-1: `contest-join-client.tsx` raw API error code propagates through Error chain [LOW/LOW]
+## SEC-1: Chat widget provider `stream()` functions leak API error details to client [MEDIUM/MEDIUM]
 
-**File:** `src/app/(dashboard)/dashboard/contests/join/contest-join-client.tsx:49-50`
+**Files:**
+- `src/lib/plugins/chat-widget/providers.ts:101` — OpenAI: `throw new Error(`OpenAI API error ${response.status}: ${text}`)`
+- `src/lib/plugins/chat-widget/providers.ts:134-135` — OpenAI chatWithTools: same pattern
+- `src/lib/plugins/chat-widget/providers.ts:202` — Claude: `throw new Error(`Claude API error ${response.status}: ${text}`)`
 
-`(payload as { error?: string }).error ?? "joinFailed"` extracts the raw API error string and throws it. While this is never shown to the user (the catch block uses `t("joinFailed")`), the raw error code exists in the Error object. This is acceptable since Error objects are only accessible via DevTools.
+The `stream()` and `chatWithTools()` methods throw errors containing the full API response body. When the chat widget's route handler catches these errors, the raw error text could be forwarded to the client. The OpenAI/Claude error response bodies can contain sensitive information such as:
+- Account/organization IDs
+- Rate limit details
+- Internal error messages
 
-**Fix:** No action required. The user-facing display is already using i18n keys.
+**Concrete failure scenario:** An OpenAI API call fails with a 403. The error response includes the organization ID and billing details. This information propagates up through the chat widget route handler and is sent to the client browser.
+
+**Fix:** Sanitize error messages before throwing. Replace the full response body with a generic message:
+```typescript
+throw new Error(`OpenAI API error ${response.status}`);
+// Instead of:
+throw new Error(`OpenAI API error ${response.status}: ${text}`);
+```
+
+Log the full error server-side for debugging, but only expose the status code to the client.
 
 ---
 
-## SEC-2: Carried security findings (unchanged)
+## SEC-2: Chat widget error propagation chain may expose provider error details [LOW/MEDIUM]
 
-- SEC-CARRIED-1: `window.location.origin` for URL construction — covered by DEFER-24
-- SEC-CARRIED-2: Encryption plaintext fallback — MEDIUM/MEDIUM, carried from DEFER-39
-- SEC-CARRIED-3: `AUTH_CACHE_TTL_MS` has no upper bound — LOW/MEDIUM, carried from DEFER-40
-- SEC-CARRIED-4: Anti-cheat localStorage persistence — LOW/LOW, carried from DEFER-48
-- SEC-CARRIED-5: `sanitizeHtml` root-relative img src — LOW/LOW, carried from DEFER-49
+**File:** `src/app/api/v1/plugins/chat-widget/chat/route.ts`
+
+Following from SEC-1, the chat route handler catches errors from provider methods and may include the raw error message in the client-facing error response. Need to verify that the error handling chain properly sanitizes provider error messages before sending them to the client.
+
+**Fix:** Ensure the chat route handler wraps provider errors in generic user-facing messages and only logs the detailed error server-side.
 
 ---
 
-## Verified Safe / No Issue
+## Security Findings (carried/deferred)
 
-- CSP headers comprehensive and properly configured
-- HSTS headers correctly set with includeSubDomains for HTTPS
-- CSRF protection via X-Requested-With header on all apiFetch calls
-- Rate limiting uses two-tier strategy preventing TOCTOU races
-- Auth flow: Argon2id, timing-safe dummy hash, token invalidation
-- Proxy correctly strips x-forwarded-host to prevent RSC streaming corruption
-- UA hash mismatch is audit-only (appropriate)
-- authUserCache is FIFO with 2-second TTL, 500-entry cap, no negative caching
-- sign-out.ts properly clears app-specific storage prefixes
-- No dangerouslySetInnerHTML without sanitization
-- No eval() or innerHTML assignments
-- `handleResetAccountPassword` now calls `fetchAll()` after success
+### SEC-CARRIED-1: `window.location.origin` for URL construction — covered by DEFER-24
+### SEC-CARRIED-2: Encryption plaintext fallback — MEDIUM/MEDIUM, carried from DEFER-39
+### SEC-CARRIED-3: `AUTH_CACHE_TTL_MS` has no upper bound — LOW/MEDIUM, carried from DEFER-40
+### SEC-CARRIED-4: Anti-cheat localStorage persistence — LOW/LOW, carried from DEFER-48
+### SEC-CARRIED-5: `sanitizeHtml` root-relative img src — LOW/LOW, carried from DEFER-49
