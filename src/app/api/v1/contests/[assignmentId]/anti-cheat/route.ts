@@ -209,8 +209,8 @@ export const GET = createApiHandler({
       const GAP_THRESHOLD_MS = 120_000; // 2 minutes
       for (let i = 1; i < heartbeats.length; i++) {
         if (!heartbeats[i - 1].createdAt || !heartbeats[i].createdAt) continue;
-        const prev = new Date(heartbeats[i - 1].createdAt!).getTime();
-        const curr = new Date(heartbeats[i].createdAt!).getTime();
+        const prev = new Date(heartbeats[i - 1].createdAt).getTime();
+        const curr = new Date(heartbeats[i].createdAt).getTime();
         const gap = curr - prev;
         if (gap > GAP_THRESHOLD_MS) {
           heartbeatGaps.push({
