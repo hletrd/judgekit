@@ -4,6 +4,8 @@ export const PAGE_SIZE_QUERY_PARAM = "pageSize";
 
 const MAX_PAGE = 10000;
 
+/** Normalizes a page number query parameter. Values below 1 default to 1;
+ *  values above 10000 are capped to prevent unbounded DB OFFSET queries. */
 export function normalizePage(value?: string) {
   const parsed = parseInt(value ?? "1", 10);
 
@@ -15,7 +17,7 @@ export function normalizePage(value?: string) {
 }
 
 export function normalizePageSize(value?: string) {
-  const parsed = Number(value ?? DEFAULT_PAGE_SIZE);
+  const parsed = parseInt(value ?? String(DEFAULT_PAGE_SIZE), 10);
 
   if (PAGE_SIZE_OPTIONS.includes(parsed as (typeof PAGE_SIZE_OPTIONS)[number])) {
     return parsed;
