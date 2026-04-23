@@ -8,6 +8,7 @@ const { authMock, dbSelectMock, getRecruitingInvitationByTokenMock } = vi.hoiste
 }));
 
 vi.mock("next-intl/server", () => ({
+  getLocale: async () => "en",
   getTranslations: async () => (key: string, values?: Record<string, string | number>) => {
     const messages: Record<string, string> = {
       title: "Coding Assessment",
@@ -61,6 +62,10 @@ vi.mock("@/lib/compiler/catalog", () => ({
   ]),
 }));
 vi.mock("@/lib/db", () => ({ db: { select: dbSelectMock } }));
+vi.mock("@/lib/db-time", () => ({
+  getDbNowUncached: vi.fn(async () => new Date()),
+  getDbNow: vi.fn(async () => new Date()),
+}));
 vi.mock("@/app/(auth)/recruit/[token]/recruit-start-form", () => ({
   RecruitStartForm: ({ assignmentId, isReentry, resumeWithCurrentSession, requiresAccountPassword }: { assignmentId: string; isReentry: boolean; resumeWithCurrentSession: boolean; requiresAccountPassword: boolean }) => (
     <div data-testid="recruit-start-form" data-assignment-id={assignmentId} data-reentry={String(isReentry)} data-resume={String(resumeWithCurrentSession)} data-requires-account-password={String(requiresAccountPassword)} />

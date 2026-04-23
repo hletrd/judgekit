@@ -152,7 +152,8 @@ describe("HomePage hero CTAs", () => {
     expect(screen.getByText("Supported languages: 120")).toBeInTheDocument();
     const props = publicHeaderPropsMock.mock.calls.at(-1)?.[0];
     expect(props?.loggedInUser?.label).toBe("Dashboard");
-    expect(props?.items.map((item: { label: string }) => item.label)).toContain("Languages");
+    // "Languages" was moved from the header nav to the footer; verify the remaining items
+    expect(props?.items.map((item: { label: string }) => item.label)).toContain("Community");
   });
 
   it("shows the sign-in hero CTA for guests", async () => {

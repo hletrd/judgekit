@@ -67,6 +67,11 @@ vi.mock("sonner", () => ({
   },
 }));
 
+vi.mock("lucide-react", () => {
+  const Icon = () => <span data-testid="icon" />;
+  return { Download: Icon, Upload: Icon };
+});
+
 describe("DatabaseBackupRestore", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
@@ -74,6 +79,8 @@ describe("DatabaseBackupRestore", () => {
     apiFetchMock.mockResolvedValue({
       ok: true,
       blob: async () => new Blob(["backup"]),
+      headers: new Headers(),
+      json: async () => ({}),
     });
     vi.stubGlobal("URL", {
       createObjectURL: createObjectURLMock,
@@ -89,7 +96,10 @@ describe("DatabaseBackupRestore", () => {
     expect(screen.getByText("Portable Sanitized Export")).toBeInTheDocument();
     expect(screen.getByText("Full Disaster-Recovery Backup")).toBeInTheDocument();
 
+    // Click the download button to reveal the password input
     await user.click(screen.getByRole("button", { name: "Download Portable Export" }));
+
+    // Type the password and click Confirm (the inline download button)
     await user.type(screen.getByPlaceholderText("Enter your password"), "secret-password");
     await user.click(screen.getByRole("button", { name: "Confirm" }));
 
@@ -111,7 +121,10 @@ describe("DatabaseBackupRestore", () => {
     const user = userEvent.setup();
     render(<DatabaseBackupRestore isSuperAdmin />);
 
+    // Click the full backup button to reveal the password input
     await user.click(screen.getByRole("button", { name: "Download Full Backup" }));
+
+    // Type the password and click Confirm
     await user.type(screen.getByPlaceholderText("Enter your password"), "secret-password");
     await user.click(screen.getByRole("button", { name: "Confirm" }));
 

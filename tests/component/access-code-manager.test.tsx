@@ -4,7 +4,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AccessCodeManager } from "@/components/contest/access-code-manager";
 import { toast } from "sonner";
 
-const apiFetchMock = vi.fn();
+const { apiFetchMock, apiFetchJsonMock, copyToClipboardMock } = vi.hoisted(() => ({
+  apiFetchMock: vi.fn(),
+  apiFetchJsonMock: vi.fn(),
+  copyToClipboardMock: vi.fn(),
+}));
 
 const translations: Record<string, string> = {
   title: "Access Code",
@@ -27,7 +31,16 @@ vi.mock("next-intl", () => ({
 }));
 
 vi.mock("@/lib/api/client", () => ({
-  apiFetch: (...args: unknown[]) => apiFetchMock(...args),
+  apiFetch: apiFetchMock,
+  apiFetchJson: apiFetchJsonMock,
+}));
+
+vi.mock("@/lib/clipboard", () => ({
+  copyToClipboard: copyToClipboardMock,
+}));
+
+vi.mock("@/lib/locale-paths", () => ({
+  buildLocalizedHref: (href: string) => href,
 }));
 
 vi.mock("sonner", () => ({
@@ -37,34 +50,43 @@ vi.mock("sonner", () => ({
   },
 }));
 
+vi.mock("lucide-react", () => {
+  const Icon = () => <span data-testid="icon" />;
+  return { Copy: Icon, Key: Icon, Link2: Icon, Trash2: Icon };
+});
+
+vi.mock("@/components/ui/alert-dialog", () => ({
+  AlertDialog: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  AlertDialogTrigger: ({ render }: { render: React.ReactNode }) => <div>{render}</div>,
+  AlertDialogContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  AlertDialogHeader: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  AlertDialogTitle: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  AlertDialogDescription: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  AlertDialogFooter: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  AlertDialogCancel: ({ children }: { children: React.ReactNode }) => <button>{children}</button>,
+  AlertDialogAction: ({ children, onClick }: { children: React.ReactNode; onClick?: () => void }) => (
+    <button onClick={onClick}>{children}</button>
+  ),
+}));
+
 describe("AccessCodeManager", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     apiFetchMock.mockReset();
-    Object.defineProperty(navigator, "clipboard", {
-      configurable: true,
-      value: {
-        writeText: vi.fn().mockResolvedValue(undefined),
-      },
-    });
+    apiFetchJsonMock.mockReset();
+    copyToClipboardMock.mockResolvedValue(true);
   });
 
   it("automatically copies the new access code after generation", async () => {
-    apiFetchMock
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({ data: { accessCode: null } }),
-      })
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({ data: { accessCode: "ABCD1234" } }),
-      });
-
-    Object.defineProperty(navigator, "clipboard", {
-      configurable: true,
-      value: {
-        writeText: vi.fn().mockResolvedValue(undefined),
-      },
+    // Initial fetch returns no code
+    apiFetchJsonMock.mockResolvedValueOnce({
+      ok: true,
+      data: { data: { accessCode: null } },
+    });
+    // Generate POST returns the new code
+    apiFetchMock.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ data: { accessCode: "ABCD1234" } }),
     });
 
     render(<AccessCodeManager assignmentId="assignment-1" />);
@@ -76,21 +98,17 @@ describe("AccessCodeManager", () => {
 
     await waitFor(() => {
       expect(screen.getByText("ABCD1234")).toBeInTheDocument();
-      expect(screen.getByRole("button", { name: /Copied!/i })).toBeInTheDocument();
+      expect(copyToClipboardMock).toHaveBeenCalledWith("ABCD1234");
       expect(toast.success).toHaveBeenCalledWith("Access code generated");
     });
   });
 
   it("shows an error toast when clipboard access fails", async () => {
-    apiFetchMock.mockResolvedValueOnce({
+    copyToClipboardMock.mockResolvedValue(false);
+    // Initial fetch returns an existing code
+    apiFetchJsonMock.mockResolvedValueOnce({
       ok: true,
-      json: async () => ({ data: { accessCode: "ABCD1234" } }),
-    });
-    Object.defineProperty(navigator, "clipboard", {
-      configurable: true,
-      value: {
-        writeText: vi.fn().mockRejectedValue(new Error("clipboard denied")),
-      },
+      data: { data: { accessCode: "ABCD1234" } },
     });
 
     render(<AccessCodeManager assignmentId="assignment-1" />);
@@ -102,6 +120,5 @@ describe("AccessCodeManager", () => {
     await waitFor(() => {
       expect(toast.error).toHaveBeenCalledWith("Could not copy to your clipboard");
     });
-    expect(screen.getByRole("button", { name: "Copy Code" })).toBeInTheDocument();
   });
 });

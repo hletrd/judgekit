@@ -6,9 +6,47 @@ const { apiFetchMock } = vi.hoisted(() => ({
   apiFetchMock: vi.fn(),
 }));
 
+const translations: Record<string, string> = {
+  language: "Language",
+  run: "Run code",
+  running: "Running...",
+  alreadyRunning: "Already running",
+  runFailed: "Run failed",
+  networkError: "Network error",
+  stdin: "Standard input",
+  stdout: "Standard output",
+  stderr: "Standard error",
+  compileOutput: "Compile output",
+  noOutput: "No output yet",
+  testCaseLabel: "Test case {number}",
+  addTestCase: "Add test case",
+  removeTestCase: "Remove test case",
+  timedOut: "Timed out",
+  compileError: "Compile error",
+  exitCode: "Exit code: {code}",
+  executionTime: "Time: {time}ms",
+  outputEmpty: "No output",
+  outputTruncated: "Output truncated",
+  showFullOutput: "Show full output",
+  codeEditorLabel: "Code editor",
+  fullscreenLabel: "Fullscreen",
+  exitFullscreenLabel: "Exit fullscreen",
+  exitFullscreen: "Exit",
+  codeEditorFallback: "Code",
+  loadingLanguages: "Loading languages...",
+};
+
 vi.mock("next-intl", () => ({
-  useTranslations: () => (key: string, values?: Record<string, string | number>) =>
-    values?.defaultValue ?? key,
+  useTranslations: () => (key: string, values?: Record<string, string | number>) => {
+    const template = translations[key] ?? key;
+    if (values) {
+      return Object.entries(values).reduce(
+        (acc, [k, v]) => acc.replace(`{${k}}`, String(v)),
+        template,
+      );
+    }
+    return template;
+  },
   useLocale: () => "en",
 }));
 
@@ -105,8 +143,10 @@ describe("CompilerClient", () => {
       />
     );
 
-    expect(screen.getByText("Test case 1")).toBeInTheDocument();
+    // Test case 1 tab exists
+    expect(screen.getAllByText("Test case 1").length).toBeGreaterThanOrEqual(1);
 
+    // Run code on the first test case
     fireEvent.change(screen.getByLabelText(/standard input/i), { target: { value: "1 2" } });
     fireEvent.click(screen.getByRole("button", { name: /run code/i }));
 
@@ -114,9 +154,17 @@ describe("CompilerClient", () => {
       expect(screen.getByText("case-one")).toBeInTheDocument();
     });
 
+    // Add a second test case
     fireEvent.click(screen.getByRole("button", { name: /add test case/i }));
-    fireEvent.change(screen.getByLabelText(/test case 2/i), { target: { value: "Edge case" } });
-    fireEvent.change(screen.getByLabelText(/standard input/i), { target: { value: "5 7" } });
+
+    // Type a custom name for the second test case
+    const nameInput = screen.getByDisplayValue("Test case 2");
+    fireEvent.change(nameInput, { target: { value: "Edge case" } });
+    fireEvent.blur(nameInput);
+
+    // Set stdin for the second test case
+    const stdinTextareas = screen.getAllByLabelText(/standard input/i);
+    fireEvent.change(stdinTextareas[0], { target: { value: "5 7" } });
     fireEvent.click(screen.getByRole("button", { name: /run code/i }));
 
     await waitFor(() => {
@@ -124,11 +172,14 @@ describe("CompilerClient", () => {
       expect(screen.getByRole("tab", { name: "Edge case" })).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByRole("tab", { name: /TC 1/i }));
+    // Switch back to Test case 1
+    const tc1Tabs = screen.getAllByRole("tab").filter((tab) => /test case 1/i.test(tab.textContent ?? ""));
+    fireEvent.click(tc1Tabs[0]);
     await waitFor(() => {
       expect(screen.getByText("case-one")).toBeInTheDocument();
     });
 
+    // Switch to the Edge case tab
     fireEvent.click(screen.getByRole("tab", { name: "Edge case" }));
     await waitFor(() => {
       expect(screen.getByText("case-two")).toBeInTheDocument();

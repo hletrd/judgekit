@@ -43,6 +43,11 @@ vi.mock("@/lib/db", () => ({
   db: { select: dbSelectMock },
 }));
 
+vi.mock("@/lib/db-time", () => ({
+  getDbNowUncached: vi.fn(async () => new Date()),
+  getDbNow: vi.fn(async () => new Date()),
+}));
+
 vi.mock("@/lib/system-settings", () => ({
   getResolvedSystemSettings: getResolvedSystemSettingsMock,
 }));

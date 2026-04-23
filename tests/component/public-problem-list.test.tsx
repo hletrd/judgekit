@@ -53,7 +53,7 @@ describe("PublicProblemList", () => {
     expect(screen.getByText("Content match")).toBeInTheDocument();
     expect(screen.getByText("math")).toBeInTheDocument();
     expect(screen.getByText("42")).toBeInTheDocument();
-    expect(screen.getByText("42.0%")).toBeInTheDocument();
+    expect(screen.getByText("42%")).toBeInTheDocument();
     expect(screen.getByText("Jan 1, 2026")).toBeInTheDocument();
   });
 

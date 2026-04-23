@@ -27,6 +27,10 @@ vi.mock("@/lib/auth/sign-out", () => ({
   handleSignOutWithCleanup: vi.fn(),
 }));
 
+vi.mock("@/components/layout/active-timed-assignment-sidebar-panel", () => ({
+  ActiveTimedAssignmentSidebarPanel: () => null,
+}));
+
 vi.mock("next/link", () => ({
   default: ({
     href,
@@ -35,6 +39,14 @@ vi.mock("next/link", () => ({
     href: string;
     children: ReactNode;
   }) => <a href={href}>{children}</a>,
+}));
+
+vi.mock("next/image", () => ({
+  default: (props: Record<string, unknown>) => {
+    const { src, alt, ...rest } = props;
+    // eslint-disable-next-line @next/next/no-img-element
+    return <img src={src as string} alt={alt as string} {...rest} />;
+  },
 }));
 
 vi.mock("@/components/ui/sidebar", () => ({
@@ -104,8 +116,8 @@ vi.mock("lucide-react", () => {
 });
 
 describe("AppSidebar", () => {
-  it("hides recruiting-only suppressed navigation and removes the mode badge text", () => {
-    render(
+  it("returns null for non-admin users whose navigation lives in the PublicHeader", () => {
+    const { container } = render(
       <AppSidebar
         user={{ id: "user-1", username: "candidate", name: "Candidate", role: "student" }}
         siteTitle="JudgeKit"
@@ -114,44 +126,42 @@ describe("AppSidebar", () => {
       />
     );
 
-    expect(screen.getByText("JudgeKit")).toBeInTheDocument();
-    expect(screen.queryByText("platformModes.recruiting")).not.toBeInTheDocument();
-    expect(screen.queryByText("groups")).not.toBeInTheDocument();
-    expect(screen.queryByText("problems")).not.toBeInTheDocument();
-    // Contests and rankings are in the PublicHeader dropdown, not the sidebar
-    expect(screen.queryByText("contests")).not.toBeInTheDocument();
+    // Non-admin users have no sidebar — all their nav is in the PublicHeader dropdown
+    expect(container.innerHTML).toBe("");
   });
 
-  it("routes scoped reviewers to the filtered review queue from the submissions nav item", () => {
+  it("shows admin navigation items for users with admin capabilities", () => {
     render(
       <AppSidebar
-        user={{ id: "user-2", username: "ta", name: "TA", role: "assistant" }}
+        user={{ id: "user-2", username: "admin", name: "Admin", role: "admin" }}
         siteTitle="JudgeKit"
         platformMode="homework"
-        capabilities={["assignments.view_status"]}
+        capabilities={["submissions.view_all"]}
       />
     );
 
-    expect(screen.getByRole("link", { name: "submissions" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "allSubmissions" })).toHaveAttribute(
       "href",
       "/dashboard/admin/submissions"
     );
   });
 
-  it("shows problem sets navigation for scoped staff who can edit but not create problem sets", () => {
+  it("shows only capability-filtered admin items", () => {
     render(
       <AppSidebar
         user={{ id: "user-3", username: "editor", name: "Editor", role: "assistant" }}
         siteTitle="JudgeKit"
         platformMode="homework"
-        capabilities={["problem_sets.edit"]}
+        capabilities={["system.settings"]}
       />
     );
 
-    expect(screen.getByRole("link", { name: "problemSets" })).toHaveAttribute(
+    // Only system-settings items should appear; submissions (submissions.view_all) should not
+    expect(screen.getByRole("link", { name: "systemSettings" })).toHaveAttribute(
       "href",
-      "/dashboard/problem-sets"
+      "/dashboard/admin/settings"
     );
+    expect(screen.queryByRole("link", { name: "allSubmissions" })).not.toBeInTheDocument();
   });
 
   it("shows the localized assistant role label instead of the raw role slug", () => {
@@ -160,7 +170,7 @@ describe("AppSidebar", () => {
         user={{ id: "user-4", username: "ta", name: "TA", role: "assistant" }}
         siteTitle="JudgeKit"
         platformMode="homework"
-        capabilities={[]}
+        capabilities={["system.settings"]}
       />
     );
 
