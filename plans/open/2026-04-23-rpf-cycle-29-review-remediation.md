@@ -26,7 +26,7 @@ All cycle 28 tasks are complete:
 3. Replace hardcoded strings on lines 290, 293, 296 with `t("quickYesAnswer")`, `t("quickNoAnswer")`, `t("quickNoCommentAnswer")`
 4. Verify all gates pass
 
-**Status:** TODO
+**Status:** DONE (commit 7e0b3bb8)
 
 ---
 
@@ -47,7 +47,7 @@ All cycle 28 tasks are complete:
 3. Import `logger` from `@/lib/logger` if not already imported
 4. Verify all gates pass
 
-**Status:** TODO
+**Status:** DONE (commit 93beb49d)
 
 ---
 
@@ -65,7 +65,7 @@ All cycle 28 tasks are complete:
 3. In the recursive pattern, schedule the next tick only after the current one fires
 4. Verify all gates pass
 
-**Status:** TODO
+**Status:** DONE (commit 60f24288)
 
 ---
 
@@ -81,7 +81,7 @@ All cycle 28 tasks are complete:
 1. Add `aria-label={tNav("progress")}` to the progress bar div on line 172
 2. Verify all gates pass
 
-**Status:** TODO
+**Status:** DONE (commit 3530a989)
 
 ---
 
@@ -161,3 +161,4 @@ All cycle 28 tasks are complete:
 ## Progress log
 
 - 2026-04-23: Plan created with 4 tasks and 13 deferred items.
+- 2026-04-23: All 4 tasks completed. Task A (clarification i18n) — commit 7e0b3bb8. Task B (provider error sanitization) — commit 93beb49d. Task C (useVisibilityPolling setTimeout) — commit 60f24288. Task D (aria-label on progress bar) — commit 3530a989. All gates passed (ESLint, next build, vitest unit 294/294 pass, vitest component 22 pre-existing failures unrelated to changes).
