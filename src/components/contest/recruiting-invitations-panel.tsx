@@ -295,6 +295,7 @@ export function RecruitingInvitationsPanel({ assignmentId }: { assignmentId: str
       }
 
       toast.success(t("accountPasswordResetSuccess"));
+      await fetchAll();
     } catch {
       toast.error(t("accountPasswordResetError"));
     }
