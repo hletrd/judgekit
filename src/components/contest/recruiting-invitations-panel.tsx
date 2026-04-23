@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { toast } from "sonner";
 import { Plus, Check, Ban, Trash2, Link, Copy, ShieldAlert } from "lucide-react";
-import { apiFetch } from "@/lib/api/client";
+import { apiFetch, apiFetchJson } from "@/lib/api/client";
 import { formatDateTimeInTimeZone } from "@/lib/datetime";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -130,12 +130,15 @@ export function RecruitingInvitationsPanel({ assignmentId }: { assignmentId: str
       if (statusFilter !== "all") query.set("status", statusFilter);
       if (debouncedSearch) query.set("search", debouncedSearch);
 
-      const invRes = await apiFetch(`/api/v1/contests/${assignmentId}/recruiting-invitations?${query}`, {
-        signal: controller.signal,
-      });
-      if (invRes.ok) {
-        const json = await invRes.json();
+      const { ok, data: json } = await apiFetchJson<{ data: Invitation[] }>(
+        `/api/v1/contests/${assignmentId}/recruiting-invitations?${query}`,
+        { signal: controller.signal },
+        { data: [] }
+      );
+      if (ok) {
         setInvitations(json.data ?? []);
+      } else {
+        toast.error(t("fetchError"));
       }
     } catch (err) {
       if (err instanceof DOMException && err.name === "AbortError") return;
@@ -147,9 +150,12 @@ export function RecruitingInvitationsPanel({ assignmentId }: { assignmentId: str
 
   const fetchStats = useCallback(async () => {
     try {
-      const statsRes = await apiFetch(`/api/v1/contests/${assignmentId}/recruiting-invitations/stats`);
-      if (statsRes.ok) {
-        const json = await statsRes.json();
+      const { ok, data: json } = await apiFetchJson<{ data: Stats }>(
+        `/api/v1/contests/${assignmentId}/recruiting-invitations/stats`,
+        undefined,
+        { data: { total: 0, pending: 0, redeemed: 0, revoked: 0, expired: 0 } }
+      );
+      if (ok) {
         setStats((prev) => json.data ?? prev);
       }
     } catch {
@@ -480,6 +486,7 @@ export function RecruitingInvitationsPanel({ assignmentId }: { assignmentId: str
                         variant="ghost"
                         size="sm"
                         onClick={() => setMetadataFields(metadataFields.filter((_, j) => j !== i))}
+                        aria-label={t("removeField")}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
