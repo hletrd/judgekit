@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { eq, and, inArray, sql } from "drizzle-orm";
+import { eq, and, sql } from "drizzle-orm";
 import { createApiHandler } from "@/lib/api/handler";
 import { apiSuccess, apiError } from "@/lib/api/responses";
 import { execTransaction } from "@/lib/db";
@@ -38,13 +38,17 @@ export const POST = createApiHandler({
         }
 
         if (orderedEmails.length > 0) {
+          // Use case-insensitive comparison to match the single-create route's
+          // lower() approach.  inArray on the raw column is case-sensitive in
+          // PostgreSQL, which would miss an existing invitation stored with
+          // different casing (e.g., "Alice@Example.COM" vs "alice@example.com").
           const existing = await tx
-            .select({ email: recruitingInvitations.candidateEmail })
+            .select({ email: sql<string>`lower(${recruitingInvitations.candidateEmail})` })
             .from(recruitingInvitations)
             .where(
               and(
                 eq(recruitingInvitations.assignmentId, assignmentId),
-                inArray(recruitingInvitations.candidateEmail, orderedEmails)
+                sql`lower(${recruitingInvitations.candidateEmail}) = ANY(${orderedEmails})`
               )
             );
           if (existing.length > 0) {
