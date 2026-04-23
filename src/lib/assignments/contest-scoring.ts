@@ -356,7 +356,7 @@ async function _computeContestRankingInner(assignmentId: string, cutoffSec?: num
       return aLastAc - bLastAc;
     });
   } else {
-    entries.sort((a, b) => b.totalScore - a.totalScore);
+    entries.sort((a, b) => b.totalScore - a.totalScore || a.userId.localeCompare(b.userId));
   }
 
   // Assign ranks (tied entries get the same rank)
