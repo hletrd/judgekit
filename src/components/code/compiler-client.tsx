@@ -264,15 +264,11 @@ export function CompilerClient({ languages, title, description, preferredLanguag
         signal: abortController.signal,
       });
 
+      // Parse response body once — the Response body can only be consumed once
+      const data = await res.json().catch(() => ({ data: null })) as { error?: string; message?: string; data?: unknown };
+
       if (!res.ok) {
-        let errorMessage = "Request failed";
-        try {
-          const errorData = await res.json().catch(() => ({})) as { error?: string; message?: string };
-          errorMessage = errorData.error || errorData.message || errorMessage;
-        } catch {
-          // Server returned non-JSON error (e.g., 502 HTML from reverse proxy)
-          errorMessage = res.statusText || errorMessage;
-        }
+        const errorMessage = data.error || data.message || res.statusText || "Request failed";
         updateTestCase(runningTestCaseId, (testCase) => ({
           ...testCase,
           error: errorMessage,
@@ -283,8 +279,6 @@ export function CompilerClient({ languages, title, description, preferredLanguag
         });
         return;
       }
-
-      const data = await res.json().catch(() => ({ data: null }));
 
       updateTestCase(runningTestCaseId, (testCase) => ({
         ...testCase,
