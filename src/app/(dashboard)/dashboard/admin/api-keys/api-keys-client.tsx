@@ -138,8 +138,8 @@ export function ApiKeysClient({ roleOptions }: { roleOptions?: RoleOption[] }) {
     try {
       const res = await apiFetch("/api/v1/admin/api-keys");
       if (res.ok) {
-        const json = await res.json().catch(() => ({ data: [] }));
-        setKeys((json as { data?: unknown[] }).data ?? []);
+        const json = await res.json().catch(() => ({ data: [] })) as { data?: ApiKey[] };
+        setKeys(json.data ?? []);
       } else {
         toast.error(fetchFailedMessage);
       }
@@ -174,12 +174,12 @@ export function ApiKeysClient({ roleOptions }: { roleOptions?: RoleOption[] }) {
       });
 
       if (res.ok) {
-        const json = await res.json().catch(() => ({ data: null }));
+        const json = await res.json().catch(() => ({ data: null })) as { data?: CreatedKey | null };
         setCreateOpen(false);
         setCreateName("");
         setCreateRole(createRoleOptions[0]?.name ?? "admin");
         setCreateExpiry("none");
-        setCreatedKey((json as { data?: string | null }).data ?? null);
+        setCreatedKey(json.data ?? null);
         setCreatedKeyCopied(false);
         toast.success(t("createSuccess"));
         fetchKeys();

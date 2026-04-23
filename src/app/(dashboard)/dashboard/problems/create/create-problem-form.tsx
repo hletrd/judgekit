@@ -217,8 +217,8 @@ export default function CreateProblemForm({
     try {
       const res = await apiFetch(`/api/v1/tags?q=${encodeURIComponent(query)}&limit=10`);
       if (res.ok) {
-        const data = await res.json().catch(() => ({ data: [] }));
-        setTagSuggestions((data as { data?: unknown[] }).data ?? []);
+        const data = await res.json().catch(() => ({ data: [] })) as { data?: Array<{ id: string; name: string; color: string | null }> };
+        setTagSuggestions(data.data ?? []);
       }
     } catch {
       // Tag suggestions are non-critical — log in development only.
