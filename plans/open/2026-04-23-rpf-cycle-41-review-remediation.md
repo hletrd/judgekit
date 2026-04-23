@@ -3,7 +3,7 @@
 **Date:** 2026-04-23
 **Cycle:** 41/100
 **Base commit:** 24a04687
-**Status:** In Progress
+**Status:** Done
 
 ## Lanes
 
@@ -11,13 +11,15 @@
 
 **Severity:** MEDIUM/MEDIUM (9 of 11 perspectives)
 **File:** `src/app/api/v1/contests/[assignmentId]/recruiting-invitations/[invitationId]/route.ts:97`
-**Status:** Pending
+**Status:** Done
 
 **Tasks:**
-- [ ] Remove `"redeemed"` from the `allowed` map's `pending` entry, leaving only `["revoked"]`
-- [ ] Verify the Zod schema already blocks `"redeemed"` (defense-in-depth remains)
-- [ ] Verify TypeScript compiles without errors
-- [ ] Commit with message: `fix(invitations): 🐛 remove "redeemed" from PATCH route state machine`
+- [x] Remove `"redeemed"` from the `allowed` map's `pending` entry, leaving only `["revoked"]`
+- [x] Verify the Zod schema already blocks `"redeemed"` (defense-in-depth remains)
+- [x] Verify TypeScript compiles without errors
+- [x] Commit with message: `fix(invitations): 🐛 remove "redeemed" from PATCH route state machine`
+
+**Commit:** 498eb3e2
 
 ---
 
@@ -36,14 +38,14 @@
 ### Lane 3: Run quality gates
 
 **Severity:** Required
-**Status:** Pending
+**Status:** Done
 
 **Tasks:**
-- [ ] Run `eslint` — must pass
-- [ ] Run `npm run build` — must pass
-- [ ] Run `npm run test:unit` — must pass
-- [ ] Run `npm run test:integration` — skipped if no DB
-- [ ] Run `npm run test:component` — verify no regressions in changed files
+- [x] Run `eslint` — passed (exit 0)
+- [x] Run `npm run build` — passed
+- [x] Run `npm run test:unit` — passed (294 test files, 2116 tests)
+- [x] Run `npm run test:integration` — skipped (no DB connection)
+- [x] Run `npm run test:component` — 10 pre-existing failures in unrelated tests (PostgreSQL pool not available); all tests related to changed files pass
 
 ---
 
