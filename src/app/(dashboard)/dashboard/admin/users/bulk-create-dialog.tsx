@@ -191,7 +191,7 @@ export default function BulkCreateDialog() {
         setParsedRows(rows);
       },
       error: (err) => {
-        setParseError(t("bulkCsvParseError", { message: err.message }));
+        setParseError(t("bulkCsvParseError", { message: err.message.slice(0, 120) }));
       },
     });
   }
