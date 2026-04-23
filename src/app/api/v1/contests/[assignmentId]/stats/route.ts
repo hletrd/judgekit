@@ -104,12 +104,10 @@ export const GET = createApiHandler({
         FROM user_totals ut
       ),
       solved_problems AS (
-        SELECT COUNT(DISTINCT s.problem_id)::int AS solved_count
-        FROM submissions s
-        INNER JOIN assignment_problems ap ON ap.assignment_id = s.assignment_id AND ap.problem_id = s.problem_id
-        WHERE s.assignment_id = @assignmentId
-          AND s.status IN (${TERMINAL_SUBMISSION_STATUSES_SQL_LIST})
-          AND ROUND(s.score, 2) >= ROUND(COALESCE(ap.points, 100), 2)
+        SELECT COUNT(DISTINCT ub.problem_id)::int AS solved_count
+        FROM user_best ub
+        INNER JOIN assignment_problems ap ON ap.assignment_id = @assignmentId AND ap.problem_id = ub.problem_id
+        WHERE ROUND(ub.best_score, 2) >= ROUND(COALESCE(ap.points, 100), 2)
       )
       SELECT
         (SELECT count FROM participants) AS "participantCount",
