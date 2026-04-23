@@ -63,9 +63,7 @@ export default function EditGroupDialog({ group }: { group: EditableGroup }) {
       case "updateError":
         return t("updateError");
       default:
-        if (error instanceof SyntaxError) {
-          return tCommon("error");
-        }
+        console.error("Unmapped error in edit-group-dialog:", error);
         return tCommon("error");
     }
   }

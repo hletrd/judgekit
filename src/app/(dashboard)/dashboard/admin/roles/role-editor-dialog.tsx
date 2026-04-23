@@ -103,10 +103,8 @@ export default function RoleEditorDialog({ mode, role, superAdminLevel = 4 }: Ro
       resetForm();
       router.refresh();
     } catch (error) {
-      const msg = error instanceof Error ? error.message : "unknown";
-      toast.error(mode === "create" ? t("createFailed") : t("updateFailed"), {
-        description: msg,
-      });
+      console.error("Role editor failed:", error);
+      toast.error(mode === "create" ? t("createFailed") : t("updateFailed"));
     } finally {
       setLoading(false);
     }

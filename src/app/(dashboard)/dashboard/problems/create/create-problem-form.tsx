@@ -307,7 +307,8 @@ export default function CreateProblemForm({
       case "createError":
         return t("createError");
       default:
-        return error.message || tCommon("error");
+        console.error("Unmapped error in create-problem-form:", error);
+        return tCommon("error");
     }
   }
 

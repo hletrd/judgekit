@@ -40,10 +40,7 @@ export default function CreateGroupDialog() {
       case "createError":
         return t("createError");
       default:
-        // Avoid showing raw SyntaxError or parse error strings to the user
-        if (error instanceof SyntaxError) {
-          return t("createError");
-        }
+        console.error("Unmapped error in create-group-dialog:", error);
         return tCommon("error");
     }
   }

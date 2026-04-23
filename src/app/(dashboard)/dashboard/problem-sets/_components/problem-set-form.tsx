@@ -225,17 +225,21 @@ export default function ProblemSetForm({
       router.refresh();
     } catch (error) {
       const msg = error instanceof Error ? error.message : "";
-      const key = [
+      const knownKeys = [
         "problemSetNameRequired",
         "problemSetNameTooLong",
         "problemSetDescriptionTooLong",
         "problemSetProblemDuplicate",
         "tooManyProblemSetProblems",
-      ].includes(msg)
+      ];
+      const key = knownKeys.includes(msg)
         ? msg
         : isEditing
           ? "updateFailed"
           : "createFailed";
+      if (!knownKeys.includes(msg)) {
+        console.error("Unmapped error in problem-set-form:", error);
+      }
       toast.error(t(key));
     } finally {
       setIsLoading(false);

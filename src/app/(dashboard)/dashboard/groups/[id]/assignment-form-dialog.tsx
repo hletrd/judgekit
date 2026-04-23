@@ -203,7 +203,8 @@ export default function AssignmentFormDialog({
       case "examTimingChangeBlocked":
         return t(error.message);
       default:
-        return error.message || tCommon("error");
+        console.error("Unmapped error in assignment-form-dialog:", error);
+        return tCommon("error");
     }
   }
 
