@@ -1,48 +1,38 @@
-# Critic Review — RPF Cycle 34
+# Critic Review — RPF Cycle 37
 
 **Date:** 2026-04-23
 **Reviewer:** critic
-**Base commit:** 16cf7ecf
+**Base commit:** 3d729cee
 
 ## Multi-Perspective Critique
 
 This review examines the change surface from multiple angles: correctness, security, maintainability, UX, and operational safety.
 
-### CRI-1: Import engine TABLE_MAP/EXPORT TABLE_ORDER drift — systematic risk [MEDIUM/MEDIUM]
+### CRI-1: quick-create route lacks NaN guard for Date construction — inconsistent defense-in-depth [MEDIUM/MEDIUM]
 
-**File:** `src/lib/db/import.ts:15-55`, `src/lib/db/export.ts:156-202`
+**File:** `src/app/api/v1/contests/quick-create/route.ts:31-34`
 
-**Description:** Two independently maintained lists (`TABLE_MAP` in import, `TABLE_ORDER` in export) must stay in sync with the schema. The drift risk is real: a developer adding a new table to the schema must update both lists. The import side silently skips unknown tables (line 183: `if (!table) continue`), so data loss is invisible. This is the highest-priority carry-over finding from prior cycles.
-
-**Confidence:** High
-
----
-
-### CRI-2: Chat widget `sendMessage` dependency on `isStreaming` — callback instability [LOW/MEDIUM]
-
-**File:** `src/lib/plugins/chat-widget/chat-widget.tsx:237`
-
-**Description:** The `isStreaming` state variable in the `sendMessage` dependency array causes the entire callback chain (`sendMessage` -> `sendMessageRef` -> `handleSend` -> `handleKeyDown`) to be recreated on every streaming state transition. While not a correctness bug, it's a wasteful pattern that's easy to fix with a ref. This is a carry-over from AGG-4 in cycle 33.
+**Description:** All recruiting invitation routes now have `Number.isFinite()` defense-in-depth guards after Date construction, but the quick-create route does not. The Zod schema validates `.datetime()` format, but the defense-in-depth pattern is inconsistent. If Zod validation is ever loosened or the schema reused, the NaN comparison `NaN >= NaN` evaluates to false, bypassing the schedule validation. This is the same class of bug that was fixed in the invitation routes in cycles 35-36.
 
 **Confidence:** High
 
 ---
 
-### CRI-3: Import route JSON body path sends password in plaintext — operational risk [MEDIUM/MEDIUM]
+### CRI-2: MAX_EXPIRY_MS constant duplicated across invitation routes — maintenance risk [LOW/MEDIUM]
 
-**File:** `src/app/api/v1/admin/migrate/import/route.ts:127-183`
+**File:** `src/app/api/v1/contests/[assignmentId]/recruiting-invitations/route.ts:69`, `[invitationId]/route.ts:110`, `bulk/route.ts:30`
 
-**Description:** The JSON body path for the import route includes the admin password as a JSON field. This is less secure than the multipart/form-data path because request bodies can be logged by reverse proxies, load balancers, or CDN access logs. This is a carry-over from AGG-7 in cycle 33. The fix is straightforward: deprecate the JSON path and require multipart/form-data.
+**Description:** The `MAX_EXPIRY_MS = 10 * 365.25 * 24 * 60 * 60 * 1000` constant is defined identically in 3 separate route files. This is a DRY violation that creates maintenance risk for expiry policy changes.
 
-**Confidence:** Medium
+**Confidence:** High
 
 ---
 
-### CRI-4: Chat widget entry animation does not respect `prefers-reduced-motion` [LOW/LOW]
+### CRI-3: SSE realtime-coordination LIKE queries missing ESCAPE clause — convention inconsistency [LOW/LOW]
 
-**File:** `src/lib/plugins/chat-widget/chat-widget.tsx:288`
+**File:** `src/lib/realtime/realtime-coordination.ts:94, 107`
 
-**Description:** The chat widget uses `animate-in fade-in slide-in-from-bottom-4 duration-200` for its entry animation. The typing indicator correctly uses `motion-safe:animate-bounce`, but the entry animation does not respect the reduced-motion preference. This is a carry-over from AGG-3 in cycle 33.
+**Description:** Two LIKE queries in the realtime coordination module omit the `ESCAPE '\\'` clause used consistently everywhere else. The data is server-controlled and safe, but the inconsistency undermines the codebase convention.
 
 **Confidence:** High
 
@@ -50,6 +40,8 @@ This review examines the change surface from multiple angles: correctness, secur
 
 ### Positive Observations
 
-- The NaN guard for SSE stale threshold (AGG-3, fixed in 8ca143d4) is well-implemented with a sensible fallback.
-- The ARIA role addition for the chat widget messages container (AGG-7, fixed in 16cf7ecf) is correct.
-- The password rehash logic, while duplicated, is correct in all three locations — the algorithm and argon2id parameters are consistent.
+- The TABLE_MAP derivation from TABLE_ORDER (import.ts lines 19-22) is a clean, correct fix that eliminates the drift risk permanently.
+- The `verifyAndRehashPassword` consolidation is well-implemented with audit logging.
+- The `isStreamingRef` pattern correctly eliminates the stale-closure race and stabilizes the callback chain.
+- The SSE stale threshold TTL cache is a pragmatic solution that reduces DB load while maintaining timely config updates.
+- The contest stats CTE optimization (reusing `user_best` in `solved_problems`) correctly avoids the double scan.

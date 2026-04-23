@@ -1,124 +1,67 @@
-# Code Review — RPF Cycle 34
+# Code Review — RPF Cycle 37
 
 **Date:** 2026-04-23
 **Reviewer:** code-reviewer
-**Base commit:** 16cf7ecf
+**Base commit:** 3d729cee
 
 ## Inventory of Files Reviewed
 
-- `src/app/api/v1/` — All API route handlers (85+ routes)
-- `src/lib/` — Business logic (auth, db, docker, judge, security, plugins, etc.)
-- `src/lib/plugins/chat-widget/` — Chat widget component, tools, route
-- `src/lib/db/` — Schema, queries, import/export, import-transfer
-- `src/lib/security/` — Rate limiting, CSRF, password hash, sanitize-html
-- `src/lib/compiler/` — Execute, catalog
-- `src/lib/docker/` — Client, image validation
+- `src/lib/plugins/chat-widget/chat-widget.tsx` — Chat widget (verified prior fixes)
+- `src/lib/db/import.ts` — Import engine (verified TABLE_MAP derivation)
+- `src/lib/db/export.ts` — Export engine
+- `src/lib/security/password-hash.ts` — Password hash utilities (verified rehash consolidation)
+- `src/app/api/v1/contests/[assignmentId]/recruiting-invitations/` — All invitation routes
+- `src/app/api/v1/submissions/[id]/events/route.ts` — SSE route
+- `src/lib/realtime/realtime-coordination.ts` — Realtime coordination
+- `src/lib/db/like.ts` — LIKE pattern escaping
+- `src/app/api/v1/contests/quick-create/route.ts` — Quick-create contest
+- `src/components/seo/json-ld.tsx` — JSON-LD with safeJsonForScript
+- `src/lib/compiler/execute.ts` — Compiler execution
+- `src/lib/docker/client.ts` — Docker client
 
-## Findings
+## Previously Fixed Items (Verified)
 
-### CR-1: Chat widget `sendMessage` still includes `isStreaming` in dependency array — unstable callback chain [MEDIUM/MEDIUM]
+- AGG-1 (PATCH invitation NaN guard): Fixed at line 119 of `[invitationId]/route.ts`
+- AGG-2 (Password rehash consolidation): Fixed — `verifyAndRehashPassword` used in all 4 locations
+- AGG-3 (LIKE pattern escaping): Fixed — `escapeLikePattern(groupId)` at line 150 of `audit-logs/page.tsx`
+- AGG-4 (Chat textarea aria-label): Fixed at line 369
+- CR-1 (isStreaming ref): Fixed — `isStreamingRef` used in sendMessage and scrollToBottom
+- CR-2 (TABLE_MAP derived from TABLE_ORDER): Fixed — lines 19-22 of import.ts
+- PERF-1 (SSE stale threshold caching): Fixed — 5-minute TTL cache at lines 84-98
 
-**File:** `src/lib/plugins/chat-widget/chat-widget.tsx:237`
+## New Findings
 
-**Description:** The `sendMessage` callback has `isStreaming` in its dependency array. This causes `sendMessage` to be recreated on every streaming state change (every SSE chunk), which cascades to `sendMessageRef` update via the useEffect on line 240, `handleSend` recreation (line 242-244), and `handleKeyDown` recreation (line 246-254). This was identified as AGG-4 in cycle 33 but remains unfixed. Using a ref for the streaming guard would stabilize the entire callback chain and avoid unnecessary re-renders.
+### CR-1: SSE realtime-coordination LIKE patterns lack ESCAPE clause — inconsistent with codebase standard [LOW/MEDIUM]
 
-**Concrete failure scenario:** During streaming of an AI response, every chunk triggers `setIsStreaming(true)`, which recreates `sendMessage`, `handleSend`, and `handleKeyDown`. On a fast connection with 50+ chunks per second, this causes 50+ callback recreations per second.
+**File:** `src/lib/realtime/realtime-coordination.ts:94, 107`
 
-**Fix:** Replace `isStreaming` dependency with a ref:
-```tsx
-const isStreamingRef = useRef(isStreaming);
-useEffect(() => { isStreamingRef.current = isStreaming; }, [isStreaming]);
+**Description:** The `getSsePrefixPattern()` function returns `realtime:sse:user:%` which is used in raw SQL LIKE expressions without an `ESCAPE '\\'` clause. Every other LIKE query in the codebase uses the `ESCAPE '\\'` clause consistently. While the `SSE_KEY_PREFIX` constant (`realtime:sse:user:`) is server-controlled and doesn't contain LIKE wildcards, the absence of the ESCAPE clause is inconsistent with the codebase convention established by `escapeLikePattern()`.
 
-const sendMessage = useCallback(async (text: string, displayText?: string) => {
-  if (!text || isStreamingRef.current) return;
-  // ...rest unchanged, remove isStreaming from dependency array
-}, [editorContent?.code, editorContent?.language, problemContext, sessionId, t]);
-```
+**Concrete failure scenario:** A developer copies this pattern for a new LIKE query that involves user input, omitting the ESCAPE clause because the existing codebase precedent doesn't include it. The new query becomes vulnerable to LIKE injection.
 
-**Confidence:** High
-
----
-
-### CR-2: Import engine `TABLE_MAP` uses `any` type — schema drift risk with no compile-time check [MEDIUM/MEDIUM]
-
-**File:** `src/lib/db/import.ts:15-55`
-
-**Description:** The `TABLE_MAP` is a manually maintained mapping of table names to Drizzle table objects typed as `Record<string, any>`. If a new table is added to `schema.pg.ts` but not to `TABLE_MAP`, imports will silently skip that table's data. No compile-time or runtime check exists to detect this drift. The `TABLE_ORDER` in `export.ts` (line 156) has the same problem but is a separate list. This was identified as AGG-6 in cycle 33 but remains unfixed.
-
-**Concrete failure scenario:** A developer adds a `contestAnnouncements` table to the schema but forgets to add it to `TABLE_MAP`. An export includes the table, but an import silently skips it. The imported database is missing all announcement data with no error.
-
-**Fix:** Add a startup validation that compares `TABLE_MAP` keys against the schema's exported tables:
+**Fix:** Add `ESCAPE '\\'` to both LIKE queries for consistency:
 ```typescript
-import * as schema from "./schema";
-
-const schemaTableNames = new Set(
-  Object.keys(schema).filter(k => {
-    const val = (schema as Record<string, unknown>)[k];
-    return typeof val === "object" && val !== null && "dbType" in (val as object);
-  })
-);
-
-for (const name of schemaTableNames) {
-  if (!TABLE_MAP[name]) {
-    logger.error({ tableName: name }, "[import] Schema table missing from TABLE_MAP — imports will skip this table");
-  }
-}
+sql`${rateLimits.key} LIKE ${getSsePrefixPattern()} ESCAPE '\\'`
 ```
 
-**Confidence:** High
+**Confidence:** Medium
 
 ---
 
-### CR-3: Duplicate password rehash logic across three files — violates DRY [LOW/MEDIUM]
+### CR-2: quick-create route does not validate `startsAt`/`deadline` with NaN guard [MEDIUM/MEDIUM]
 
-**File:** `src/app/api/v1/admin/migrate/import/route.ts:64-74, 164-174`, `src/app/api/v1/admin/restore/route.ts:63-73`
+**File:** `src/app/api/v1/contests/quick-create/route.ts:31-34`
 
-**Description:** The exact same password rehash logic (verify password, check needsRehash, hashPassword, update DB) is duplicated three times — twice in the migrate/import route (for formData and JSON paths) and once in the restore route. This was identified as AGG-5 in cycle 33 but remains unfixed.
+**Description:** The quick-create route constructs `new Date(body.startsAt)` and `new Date(body.deadline)` from client-provided strings. While the Zod schema enforces `.datetime()` format, there is no `Number.isFinite()` defense-in-depth check on the resulting Date objects, unlike the recruiting invitation routes which all have this guard. If the Zod validation is ever loosened or the schema is reused without the regex guard, NaN dates would bypass the `startsAt >= deadline` comparison (since `NaN >= NaN` is false) and create a contest with invalid timestamps.
 
-**Concrete failure scenario:** A developer changes the rehash logic in one location (e.g., adds audit logging) but forgets the other two. One path now logs rehashes, the other two don't.
+**Concrete failure scenario:** A future refactor changes `startsAt` from `z.string().datetime()` to `z.string()` for flexibility. An attacker sends `startsAt: "invalid"` which passes Zod but produces an Invalid Date. The comparison `startsAt.getTime() >= deadline.getTime()` evaluates to false (NaN comparison), so it passes the schedule validation check. The contest is created with corrupted timestamps.
 
-**Fix:** Extract to a shared utility:
+**Fix:** Add NaN guards after Date construction:
 ```typescript
-// src/lib/security/password-hash.ts
-export async function verifyAndRehashPassword(
-  password: string,
-  userId: string,
-  storedHash: string
-): Promise<{ valid: boolean }> {
-  const { valid, needsRehash } = await verifyPassword(password, storedHash);
-  if (valid && needsRehash) {
-    try {
-      const newHash = await hashPassword(password);
-      await db.update(users).set({ passwordHash: newHash }).where(eq(users.id, userId));
-    } catch (err) {
-      logger.error({ err, userId }, "[password-rehash] Failed to rehash password");
-    }
-  }
-  return { valid };
-}
+const startsAt = body.startsAt ? new Date(body.startsAt) : now;
+if (!Number.isFinite(startsAt.getTime())) return apiError("invalidStartsAt", 400);
+const deadline = body.deadline ? new Date(body.deadline) : new Date(now.getTime() + 30 * 24 * 3600000);
+if (!Number.isFinite(deadline.getTime())) return apiError("invalidDeadline", 400);
 ```
 
-**Confidence:** High
-
----
-
-### CR-4: Chat widget `animate-in slide-in-from-bottom-4` entry animation not respecting `prefers-reduced-motion` [LOW/MEDIUM]
-
-**File:** `src/lib/plugins/chat-widget/chat-widget.tsx:288`
-
-**Description:** The chat widget container uses `animate-in fade-in slide-in-from-bottom-4 duration-200` for its entry animation. While Tailwind's `motion-safe:` prefix is used for the typing indicator (line 339), the entry animation does not respect `prefers-reduced-motion`. This was identified as prior AGG-3 in cycle 33 but remains unfixed.
-
-**Concrete failure scenario:** A user with vestibular disorders has `prefers-reduced-motion: reduce` enabled. The chat widget slides in from the bottom with a 200ms animation, causing discomfort.
-
-**Fix:** Either use `motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-4` or add a CSS override in `globals.css` (which already has a `prefers-reduced-motion: reduce` section at line 138).
-
-**Confidence:** High
-
----
-
-### Previously Known Items (Verified Fixed)
-
-- AGG-1 (Docker client remote path error leak): Fixed in commit 5527e96b
-- AGG-2 (Compiler spawn error leak): Fixed in commit 46ba5e0c
-- AGG-3 (SSE NaN guard): Fixed in commit 8ca143d4
-- AGG-7 (Chat widget ARIA role): Fixed in commit 16cf7ecf
+**Confidence:** Medium

@@ -1,59 +1,40 @@
-# Debugger Review — RPF Cycle 34
+# Debugger Review — RPF Cycle 37
 
 **Date:** 2026-04-23
 **Reviewer:** debugger
-**Base commit:** 16cf7ecf
+**Base commit:** 3d729cee
 
 ## Inventory of Files Reviewed
 
-- `src/lib/plugins/chat-widget/chat-widget.tsx` — Chat widget state management
-- `src/app/api/v1/submissions/[id]/events/route.ts` — SSE connections
+- `src/lib/plugins/chat-widget/chat-widget.tsx` — Chat widget state management (verified isStreamingRef)
+- `src/app/api/v1/submissions/[id]/events/route.ts` — SSE connections (verified threshold cache)
 - `src/lib/security/in-memory-rate-limit.ts` — Rate limiter
-- `src/lib/db/import.ts` — Import engine
+- `src/lib/db/import.ts` — Import engine (verified TABLE_MAP derivation)
 - `src/lib/compiler/execute.ts` — Compiler execution
 - `src/lib/realtime/realtime-coordination.ts` — Realtime coordination
+- `src/app/api/v1/contests/quick-create/route.ts` — Quick-create contest
 
-## Findings
+## Previously Fixed Items (Verified)
 
-### DBG-1: Chat widget `sendMessage` uses `isStreaming` from closure — potential stale guard after abort [MEDIUM/MEDIUM]
+- DBG-1 (sendMessage isStreaming closure race): Fixed — isStreamingRef pattern
+- DBG-2 (Import engine silent table skip): Fixed — TABLE_MAP derived from TABLE_ORDER, test added
 
-**File:** `src/lib/plugins/chat-widget/chat-widget.tsx:157-237`
+## New Findings
 
-**Description:** The `sendMessage` callback checks `if (!text || isStreaming) return` at line 158, reading `isStreaming` from its closure. When the user aborts a streaming request (line 302: `abortControllerRef.current?.abort()`), the abort handler in the catch block (line 225) does NOT set `isStreaming` to false — only the `finally` block does (line 234). However, the `finally` block runs after the catch, so `isStreaming` IS correctly set to false. The real issue is that `isStreaming` is in the dependency array, making the guard stale-sensitive. If a user rapidly clicks "send" after aborting, the `sendMessage` instance they call may still have `isStreaming=true` from a prior render cycle. Using a ref would make the guard always-current.
+### DBG-1: quick-create route NaN Date bypasses schedule validation — latent bug [MEDIUM/MEDIUM]
 
-**Concrete failure scenario:** User is streaming, aborts, the `finally` block sets `isStreaming=false`, but a re-render hasn't happened yet. The old `sendMessage` closure still has `isStreaming=true`. If the user clicks send before the re-render, the guard incorrectly rejects the message. This is a timing-dependent race that's more likely on slow devices.
+**File:** `src/app/api/v1/contests/quick-create/route.ts:31-37`
 
-**Fix:** Use ref for `isStreaming` check:
-```tsx
-const isStreamingRef = useRef(isStreaming);
-useEffect(() => { isStreamingRef.current = isStreaming; }, [isStreaming]);
+**Description:** Tracing the quick-create flow for invalid dates:
+1. `body.startsAt` = "garbage" (passes Zod `.datetime()` due to schema bypass or future loosening)
+2. Line 31: `startsAt = new Date("garbage")` → `Invalid Date`
+3. Line 33: `deadline = new Date(now.getTime() + 30 * 24 * 3600000)` → valid Date
+4. Line 36: `startsAt.getTime() >= deadline.getTime()` → `NaN >= number` → `false`
+5. Validation passes (the check is `if (startsAt >= deadline) return error`)
+6. Contest created with `Invalid Date` for startsAt — PostgreSQL may reject or store null
 
-const sendMessage = useCallback(async (text: string, displayText?: string) => {
-  if (!text || isStreamingRef.current) return;
-  // ...rest unchanged
-}, [editorContent?.code, editorContent?.language, problemContext, sessionId, t]);
-```
+The failure mode depends on how PostgreSQL handles the invalid Date. If it throws, the transaction rolls back. If it coerces to NULL, the contest has a NULL startsAt, which could allow submissions at any time (windowed contests compare against startsAt).
+
+**Fix:** Add NaN guards after Date construction, consistent with the recruiting invitation routes.
 
 **Confidence:** Medium
-
----
-
-### DBG-2: Import engine silently skips unknown tables — data loss is invisible [MEDIUM/MEDIUM]
-
-**File:** `src/lib/db/import.ts:183-184`
-
-**Description:** When importing, if a table name in the export data doesn't have a corresponding entry in `TABLE_MAP`, the import silently continues (line 183: `if (!table) continue`). This means data for missing tables is silently dropped with only a `result.errors.push()` entry. The error is not prominent enough — a full database import that silently drops a table is a significant data integrity issue.
-
-**Concrete failure scenario:** After adding a new table to the schema and updating the export but not the import, a production restore silently drops all data from the new table. The `errors` array mentions it, but the import still reports `success: true` if the transaction completes.
-
-**Fix:** If any table is skipped due to missing `TABLE_MAP` entry, set `result.success = false` or at least add a warning-level log. Better yet, derive `TABLE_MAP` from `TABLE_ORDER` (see ARCH-1).
-
-**Confidence:** High
-
----
-
-### Previously Fixed Items (Verified)
-
-- AGG-1 (Docker client remote path error leak): Fixed — verified
-- AGG-2 (Compiler spawn error leak): Fixed — verified
-- AGG-3 (SSE NaN guard): Fixed — verified

@@ -1,8 +1,8 @@
-# Security Review — RPF Cycle 34
+# Security Review — RPF Cycle 37
 
 **Date:** 2026-04-23
 **Reviewer:** security-reviewer
-**Base commit:** 16cf7ecf
+**Base commit:** 3d729cee
 
 ## Inventory of Files Reviewed
 
@@ -17,41 +17,47 @@
 - Sanitization (`src/lib/security/sanitize-html.ts`)
 - DB import/restore routes (`src/app/api/v1/admin/migrate/import/route.ts`, `src/app/api/v1/admin/restore/route.ts`)
 - Chat widget (`src/lib/plugins/chat-widget/`)
-- Recruiting (`src/app/api/v1/recruiting/validate/route.ts`)
+- Recruiting (`src/lib/assignments/recruiting-invitations.ts`)
+- `src/components/seo/json-ld.tsx` — JSON-LD with safeJsonForScript
+- `src/lib/realtime/realtime-coordination.ts` — SSE coordination
 
-## Findings
+## Previously Fixed Items (Verified)
 
-### SEC-1: Import route JSON body path includes password in request body — potential log/middleware exposure [MEDIUM/MEDIUM]
+- AGG-1 (PATCH invitation NaN guard): Fixed
+- AGG-2 (Password rehash consolidation): Fixed — `verifyAndRehashPassword` with audit logging
+- AGG-3 (LIKE pattern escaping): Fixed — `escapeLikePattern(groupId)` used
+- Docker client remote path error leak: Fixed — sanitized messages
+- Compiler spawn error leak: Fixed — "Execution failed to start"
+- Import JSON body deprecation: Fixed — Sunset header added (commit f7d9fdbf)
 
-**File:** `src/app/api/v1/admin/migrate/import/route.ts:127-183`
+## New Findings
 
-**Description:** The JSON body path for the import route accepts `{ password, data: {...} }` in the request body. This means the admin's password is transmitted as a JSON field, which could be logged by request-logging middleware, load balancers, or CDN access logs. The multipart/form-data path (lines 38-125) sends the password as a form field, which is standard. This was identified as prior AGG-7 in cycle 33 but remains unfixed.
+### SEC-1: quick-create route accepts Datetime strings without NaN guard — potential schedule bypass [MEDIUM/MEDIUM]
 
-**Concrete failure scenario:** A reverse proxy or CDN logs request bodies for error diagnostics. The admin's password appears in plaintext in those logs.
+**File:** `src/app/api/v1/contests/quick-create/route.ts:31-34`
 
-**Fix:** Deprecate the JSON body path and require multipart/form-data for all imports. Add a deprecation warning header for the JSON path while it remains for backward compatibility.
+**Description:** The quick-create route constructs `new Date(body.startsAt)` and `new Date(body.deadline)` from client-provided strings validated only by Zod's `.datetime()` format. All other date-accepting routes in the codebase (recruiting invitations, API keys) now have `Number.isFinite()` defense-in-depth guards after Date construction. The quick-create route lacks this guard. If Zod validation is bypassed or the schema is loosened, NaN dates would cause `startsAt.getTime() >= deadline.getTime()` to evaluate to false, bypassing the schedule validation.
+
+**Concrete failure scenario:** An attacker finds a way to pass a non-parseable date string that passes Zod but produces `Invalid Date` (e.g., edge cases in V8's Date parser). The contest is created with corrupted timestamps, potentially allowing submissions outside the intended time window.
+
+**Fix:** Add NaN guards after Date construction, consistent with recruiting invitation routes:
+```typescript
+const startsAt = body.startsAt ? new Date(body.startsAt) : now;
+if (!Number.isFinite(startsAt.getTime())) return apiError("invalidStartsAt", 400);
+const deadline = body.deadline ? new Date(body.deadline) : new Date(now.getTime() + 30 * 24 * 3600000);
+if (!Number.isFinite(deadline.getTime())) return apiError("invalidDeadline", 400);
+```
 
 **Confidence:** Medium
 
 ---
 
-### SEC-2: Duplicate password rehash logic creates inconsistent audit coverage [LOW/MEDIUM]
+### SEC-2: SSE realtime-coordination LIKE queries missing ESCAPE clause — inconsistent defense-in-depth [LOW/LOW]
 
-**File:** `src/app/api/v1/admin/migrate/import/route.ts:64-74, 164-174`, `src/app/api/v1/admin/restore/route.ts:63-73`
+**File:** `src/lib/realtime/realtime-coordination.ts:94, 107`
 
-**Description:** The password rehash logic is duplicated three times across two files. While not a direct security vulnerability, the duplication means any security improvement (e.g., adding audit logging for rehash events, or rate-limiting rehash attempts) must be applied consistently to all three locations. Currently, none of them log the rehash event, which is a gap in audit coverage.
+**Description:** The `getSsePrefixPattern()` function returns `realtime:sse:user:%` used in LIKE queries without `ESCAPE '\\'`. While the prefix is server-controlled and contains no wildcards, this is inconsistent with every other LIKE query in the codebase which uses `ESCAPE '\\'`. The inconsistency could lead a developer to copy the pattern for a user-input query without the ESCAPE clause.
 
-**Concrete failure scenario:** A security auditor asks "when was the last time an admin password was transparently rehashed from bcrypt to argon2id?" — there is no audit trail for this event.
+**Fix:** Add `ESCAPE '\\'` to both LIKE queries for consistency.
 
-**Fix:** Extract to a shared utility with built-in audit logging (same as CR-3 in code-reviewer review).
-
-**Confidence:** Medium
-
----
-
-### Previously Fixed Items (Verified in Current Code)
-
-- AGG-1 (Docker client remote path error leak): Fixed in commit 5527e96b — verified at lines 249, 305, 351
-- AGG-2 (Compiler spawn error leak): Fixed in commit 46ba5e0c — verified at line 484
-- AGG-3 (SSE NaN guard): Fixed in commit 8ca143d4 — verified at lines 86-88
-- AGG-7 (Chat widget ARIA role): Fixed in commit 16cf7ecf — verified at line 314
+**Confidence:** Low

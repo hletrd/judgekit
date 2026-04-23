@@ -1,56 +1,36 @@
-# Tracer Review — RPF Cycle 34
+# Tracer Review — RPF Cycle 37
 
 **Date:** 2026-04-23
 **Reviewer:** tracer
-**Base commit:** 16cf7ecf
+**Base commit:** 3d729cee
 
 ## Causal Tracing of Suspicious Flows
 
-### TR-1: Chat widget sendMessage -> isStreaming guard — closure vs ref race [MEDIUM/MEDIUM]
+### TR-1: quick-create route NaN Date flows through schedule check without guard [MEDIUM/MEDIUM]
 
-**File:** `src/lib/plugins/chat-widget/chat-widget.tsx:157-237`
+**File:** `src/app/api/v1/contests/quick-create/route.ts:31-37`
 
-**Description:** Tracing the `sendMessage` flow:
-1. User types and presses Enter -> `handleKeyDown` calls `handleSend`
-2. `handleSend` calls `sendMessage(input.trim())`
-3. `sendMessage` checks `if (!text || isStreaming) return` — `isStreaming` is from the closure
-4. If `isStreaming=true` from a prior render, the message is incorrectly rejected
+**Description:** Tracing the quick-create flow for invalid dates:
+1. `body.startsAt` = "garbage" (passes Zod `.datetime()` due to schema bypass or future loosening)
+2. Line 31: `startsAt = new Date("garbage")` → `Invalid Date`
+3. Line 33: `deadline = new Date(now.getTime() + 30 * 24 * 3600000)` → valid Date
+4. Line 36: `startsAt.getTime() >= deadline.getTime()` → `NaN >= number` → `false`
+5. Validation passes (the check is `if (startsAt >= deadline) return error`)
+6. Contest created with `Invalid Date` for startsAt — PostgreSQL may reject or store null
 
-The key question: **Can the closure value of `isStreaming` be stale?**
+The failure mode depends on how PostgreSQL handles the invalid Date. If it throws, the transaction rolls back. If it coerces to NULL, the contest has a NULL startsAt, which could allow submissions at any time (windowed contests compare against startsAt).
 
-Tracing: After abort, the `finally` block (line 233-236) calls `setIsStreaming(false)`. React batches state updates, so the re-render with `isStreaming=false` may not have happened yet when the user's next click fires the old `sendMessage`. The `sendMessageRef` pattern (line 240) mitigates this for the auto-analysis effect, but `handleSend` (line 242) captures `sendMessage` from the closure of its own `useCallback`, which is also stale if `isStreaming` hasn't updated.
+**Hypothesis 1 (confirmed):** NaN comparison bypasses the schedule check. The `>=` check is "startsAt is at or after deadline" — if the comparison is false, it means "startsAt is before deadline", which passes validation. This is the same NaN-bypass pattern that was fixed in the recruiting invitation routes.
 
-**Hypothesis 1 (confirmed):** Stale closure can cause a false rejection on rapid abort+resend.
-**Hypothesis 2 (unlikely):** Stale closure can cause a double-send. Unlikely because `isStreaming` can only be stale-true, not stale-false (abort always sets it to false before the user can resend).
+**Hypothesis 2 (possible):** PostgreSQL rejects the NULL/NaN date, causing the transaction to fail. This is a safe failure mode but produces an unhelpful 500 error instead of a 400 validation error.
 
-**Fix:** Use a ref for the `isStreaming` guard to make it always-current.
+**Fix:** Add NaN guards after Date construction, consistent with the recruiting invitation routes.
 
 **Confidence:** Medium
 
 ---
 
-### TR-2: Import TABLE_MAP drift — silent data loss path [MEDIUM/MEDIUM]
-
-**File:** `src/lib/db/import.ts:174-184`
-
-**Description:** Tracing the import flow for a table not in `TABLE_MAP`:
-1. Export data contains table `contestAnnouncements` with 500 rows
-2. Import loops through `tableOrder`, reaches `contestAnnouncements`
-3. Line 182: `const table = TABLE_MAP[tableName]` — returns `undefined`
-4. Line 183: `if (!table)` — true, so `continue`
-5. Line 184: `result.errors.push(...)` — error is recorded
-6. Import completes with `success: true` because the transaction committed
-
-The 500 rows are silently dropped. The error in `result.errors` is a string message, not a structured failure. The import reports success because the transaction completed without throwing.
-
-**Fix:** Either (a) set `result.success = false` when tables are skipped, or (b) derive `TABLE_MAP` from `TABLE_ORDER` so they cannot drift.
-
-**Confidence:** High
-
----
-
 ### Previously Fixed Items (Verified)
 
-- AGG-1 (Docker remote error leak): Fixed — the three remote catch blocks now return sanitized messages
-- AGG-2 (Compiler spawn error leak): Fixed — returns generic "Execution failed to start"
-- AGG-3 (SSE NaN guard): Fixed — Number.isFinite check with fallback
+- TR-1 (sendMessage isStreaming closure race): Fixed — isStreamingRef pattern
+- TR-2 (TABLE_MAP drift): Fixed — TABLE_MAP derived from TABLE_ORDER

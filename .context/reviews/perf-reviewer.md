@@ -1,80 +1,47 @@
-# Performance Review — RPF Cycle 34
+# Performance Review — RPF Cycle 37
 
 **Date:** 2026-04-23
 **Reviewer:** perf-reviewer
-**Base commit:** 16cf7ecf
+**Base commit:** 3d729cee
 
 ## Inventory of Files Reviewed
 
-- `src/app/api/v1/submissions/[id]/events/route.ts` — SSE connection management
+- `src/app/api/v1/submissions/[id]/events/route.ts` — SSE connection management (verified stale threshold cache)
 - `src/lib/realtime/realtime-coordination.ts` — Shared realtime coordination
 - `src/lib/security/in-memory-rate-limit.ts` — In-memory rate limiter
-- `src/lib/security/rate-limit.ts` — DB-backed rate limiter
-- `src/lib/plugins/chat-widget/chat-widget.tsx` — Chat widget rendering
+- `src/lib/plugins/chat-widget/chat-widget.tsx` — Chat widget (verified isStreamingRef)
 - `src/lib/db/export.ts` — Database export streaming
-- `src/lib/data-retention-maintenance.ts` — Data pruning
 - `src/lib/compiler/execute.ts` — Compiler execution
+- `src/app/api/v1/contests/[assignmentId]/stats/route.ts` — Contest stats (verified CTE optimization)
 
-## Findings
+## Previously Fixed Items (Verified)
 
-### PERF-1: SSE cleanup timer calls `getConfiguredSettings()` every 60s — unnecessary repeated cost [LOW/MEDIUM]
+- PERF-1 (SSE stale threshold caching): Fixed — 5-minute TTL at lines 84-98
+- CR-1 (isStreaming ref for sendMessage): Fixed — isStreamingRef pattern used
+- Contest stats CTE: `user_best` reused in `solved_problems` (line 109) to avoid double scan
 
-**File:** `src/app/api/v1/submissions/[id]/events/route.ts:82-91`
+## New Findings
 
-**Description:** The global SSE cleanup `setInterval` calls `getConfiguredSettings()` on every 60-second tick. The setting rarely changes and should be cached with a TTL. This was identified as AGG-5 in cycle 33 but remains unfixed. The `getConfiguredSettings()` function may involve DB queries (depending on cache state), so calling it every 60s is wasteful.
+### PERF-1: SSE shared poll timer reads `getConfiguredSettings()` on every timer creation — not cached [LOW/LOW]
 
-**Concrete failure scenario:** Under normal operation, 24 calls/hour x N config settings each with a potential DB round-trip if the internal cache has expired. On a lightly loaded system, this adds unnecessary DB load.
+**File:** `src/app/api/v1/submissions/[id]/events/route.ts:161`
 
-**Fix:** Cache the stale threshold with a 5-minute TTL:
-```typescript
-let cachedThreshold: number | null = null;
-let cachedAt = 0;
-const THRESHOLD_TTL_MS = 5 * 60 * 1000;
+**Description:** The `startSharedPollTimer()` function calls `getConfiguredSettings().ssePollIntervalMs` each time a new subscriber arrives and the timer needs to be restarted. Unlike the stale threshold (which is now cached with TTL), the poll interval is read from the config every time. However, the timer is only started when the first subscriber joins (after a period of zero subscribers), so this call happens infrequently. The performance impact is negligible.
 
-function getStaleThreshold(): number {
-  const now = Date.now();
-  if (cachedThreshold !== null && now - cachedAt < THRESHOLD_TTL_MS) {
-    return cachedThreshold;
-  }
-  const sseTimeout = getConfiguredSettings().sseTimeoutMs;
-  cachedThreshold = Number.isFinite(sseTimeout)
-    ? Math.min(sseTimeout + 30_000, 2 * 60 * 60 * 1000)
-    : 30_030_000;
-  cachedAt = now;
-  return cachedThreshold;
-}
-```
+**Concrete failure scenario:** Under normal operation, the shared poll timer is started once when the first SSE connection arrives after a quiet period, and stopped when all connections close. This might happen 5-10 times per day on a moderately loaded system.
 
-**Confidence:** Medium
-
----
-
-### PERF-2: Chat widget `sendMessage` re-creation on streaming state change [MEDIUM/MEDIUM]
-
-**File:** `src/lib/plugins/chat-widget/chat-widget.tsx:237`
-
-**Description:** The `sendMessage` callback includes `isStreaming` in its dependency array. During streaming, `isStreaming` is set to `true` once at the start (line 165) and `false` at the end (line 234), so the re-creation only happens at stream start and end, not on every chunk. However, if the user rapidly starts/stops streams, each transition causes `sendMessage`, `sendMessageRef`, `handleSend`, and `handleKeyDown` to be recreated. Using a ref for the streaming guard would eliminate this entirely.
-
-**Concrete failure scenario:** User submits a message, streaming starts (1 recreation), user aborts and submits again (2 more recreations in rapid succession). On each recreation, the useEffect at line 240 runs to update `sendMessageRef`.
-
-**Fix:** Use ref for `isStreaming` check (same as CR-1 in code-reviewer review).
-
-**Confidence:** Medium
-
----
-
-### PERF-3: In-memory rate limiter FIFO sort on overflow creates O(n log n) allocation [LOW/LOW]
-
-**File:** `src/lib/security/in-memory-rate-limit.ts:42`
-
-**Description:** When the in-memory rate limiter exceeds `MAX_ENTRIES` (10,000), it sorts all entries by `lastAttempt` to find the oldest ones to evict. This creates a new array via spread + sort, allocating O(n) memory and O(n log n) CPU. Since this is bounded by the 10K cap, the impact is minimal. This was identified in prior cycles as a deferred cosmetic issue.
-
-**Fix:** Could use a min-heap or linked-list for O(1) eviction, but the 10K cap makes this low priority.
+**Fix:** Could cache the poll interval with the same TTL pattern as the stale threshold, but the ROI is minimal given the low frequency of timer restarts.
 
 **Confidence:** Low
 
 ---
 
-### Previously Known Items (Verified Fixed)
+### PERF-2: SSE connection eviction scan uses linear search for oldest entry [LOW/LOW]
 
-- AGG-3 (SSE NaN guard): Fixed in commit 8ca143d4
+**File:** `src/app/api/v1/submissions/[id]/events/route.ts:44-55`
+
+**Description:** The `addConnection` function iterates the entire `connectionInfoMap` to find the oldest entry when `MAX_TRACKED_CONNECTIONS` is exceeded. This is O(n) but bounded by `MAX_TRACKED_CONNECTIONS` (1000), making the impact minimal. This was identified in prior cycles as a deferred cosmetic issue.
+
+**Fix:** Could use a min-heap for O(log n) eviction, but the 1000-entry cap makes this very low priority.
+
+**Confidence:** Low

@@ -1,94 +1,103 @@
-# RPF Cycle 36 — Aggregate Review
+# RPF Cycle 37 — Aggregate Review
 
 **Date:** 2026-04-23
-**Base commit:** 601ff71a
-**Review artifacts:** rpf-cycle-36-code-reviewer.md, rpf-cycle-36-perf-reviewer.md, rpf-cycle-36-security-reviewer.md, rpf-cycle-36-architect.md, rpf-cycle-36-critic.md, rpf-cycle-36-verifier.md, rpf-cycle-36-debugger.md, rpf-cycle-36-test-engineer.md, rpf-cycle-36-tracer.md, rpf-cycle-36-designer.md, rpf-cycle-36-document-specialist.md
+**Base commit:** 3d729cee
+**Review artifacts:** code-reviewer.md, perf-reviewer.md, security-reviewer.md, architect.md, critic.md, verifier.md, debugger.md, test-engineer.md, tracer.md, designer.md, document-specialist.md
 
 ## Deduped Findings (sorted by severity then signal)
 
-### AGG-1: PATCH invitation route missing NaN guard for expiryDate — incomplete cycle 35 fix [MEDIUM/HIGH]
+### AGG-1: quick-create route lacks NaN guard for Date construction — inconsistent defense-in-depth [MEDIUM/HIGH]
 
-**Flagged by:** code-reviewer (CR-1), security-reviewer (SEC-1), critic (CRI-1), verifier (V-1), debugger (DBG-1), tracer (TR-1), test-engineer (TE-1), document-specialist (DOC-1)
+**Flagged by:** code-reviewer (CR-2), security-reviewer (SEC-1), critic (CRI-1), verifier (V-1), debugger (DBG-1), tracer (TR-1), test-engineer (TE-1), document-specialist (DOC-1)
 **Signal strength:** 8 of 11 review perspectives
 
-**File:** `src/app/api/v1/contests/[assignmentId]/recruiting-invitations/[invitationId]/route.ts:114`
+**File:** `src/app/api/v1/contests/quick-create/route.ts:31-34`
 
-**Description:** The PATCH route constructs `expiresAtUpdate = new Date(\`${body.expiryDate}T23:59:59Z\`)` without the `Number.isFinite()` defense-in-depth check. The two POST routes (single and bulk) received this guard in cycle 35 as AGG-2, but the PATCH route was missed. If `body.expiryDate` contains a time component, the Date construction produces `Invalid Date`, and all subsequent numeric comparisons with NaN return false, bypassing both "date in past" and "too far future" validation checks.
+**Description:** The quick-create route constructs `new Date(body.startsAt)` and `new Date(body.deadline)` from client-provided strings without the `Number.isFinite()` defense-in-depth check. All recruiting invitation routes (single, bulk, PATCH) received this guard in cycles 35-36, but the quick-create route was missed. If `body.startsAt` or `body.deadline` produces `Invalid Date`, the comparison `startsAt.getTime() >= deadline.getTime()` evaluates to false (NaN comparisons), bypassing the schedule validation check.
 
-**Concrete failure scenario:** An attacker sends a PATCH request with `expiryDate: "2026-01-01T00:00:00Z"`. The constructed Date is invalid, but validation checks are bypassed. The invitation's expiry is set to an invalid/null value, effectively making it never-expiring.
+**Concrete failure scenario:** If Zod validation is ever loosened or the schema reused without the `.datetime()` guard, an attacker sends `startsAt: "garbage"`. The comparison `NaN >= number` evaluates to false, so the "startsAt >= deadline" check passes (the check returns error only when true). The contest is created with corrupted timestamps, potentially allowing submissions outside the intended time window.
 
-**Fix:** Add the NaN guard after the Date construction:
+**Fix:** Add NaN guards after Date construction:
 ```typescript
-expiresAtUpdate = new Date(`${body.expiryDate}T23:59:59Z`);
-if (!Number.isFinite(expiresAtUpdate.getTime())) {
-  return apiError("invalidExpiryDate", 400);
-}
+const startsAt = body.startsAt ? new Date(body.startsAt) : now;
+if (!Number.isFinite(startsAt.getTime())) return apiError("invalidStartsAt", 400);
+const deadline = body.deadline ? new Date(body.deadline) : new Date(now.getTime() + 30 * 24 * 3600000);
+if (!Number.isFinite(deadline.getTime())) return apiError("invalidDeadline", 400);
 ```
 
 ---
 
-### AGG-2: Password rehash logic still duplicated in 4 files — incomplete DRY consolidation from cycle 34 [MEDIUM/MEDIUM]
+### AGG-2: MAX_EXPIRY_MS constant duplicated across 3 invitation route files — DRY violation [LOW/MEDIUM]
 
-**Flagged by:** code-reviewer (CR-2), security-reviewer (implied), architect (ARCH-1), critic (CRI-2), verifier (V-2), tracer (TR-2)
-**Signal strength:** 6 of 11 review perspectives
+**Flagged by:** architect (ARCH-1), critic (CRI-2)
+**Signal strength:** 2 of 11 review perspectives
 
-**Files:** `src/app/api/v1/admin/backup/route.ts:63-82`, `src/app/api/v1/admin/migrate/export/route.ts:57-74`, `src/lib/auth/config.ts:268-291`, `src/lib/assignments/recruiting-invitations.ts:387-402`
+**Files:** `src/app/api/v1/contests/[assignmentId]/recruiting-invitations/route.ts:69`, `[invitationId]/route.ts:110`, `bulk/route.ts:30`
 
-**Description:** The `verifyAndRehashPassword` utility was extracted in cycle 34 but only used in import/route.ts and restore/route.ts. Four other locations still use the inline `verifyPassword` + manual rehash + `db.update` pattern. The centralized utility includes `logger.info` for audit logging of rehash events, but the inline versions do not, creating an audit trail gap. This was identified as CR-3/AGG-5 in cycles 33-34 but only partially fixed.
+**Description:** The `MAX_EXPIRY_MS = 10 * 365.25 * 24 * 60 * 60 * 1000` constant is defined identically in 3 separate invitation route files. If the maximum expiry policy changes, all 3 must be updated in lockstep. This is a minor DRY violation that could lead to inconsistent expiry limits.
 
-**Concrete failure scenario:** A security auditor asks "how many passwords were transparently rehashed from bcrypt to argon2id?" — only the import/restore rehashes appear in logs, while backup, export, login, and recruiting-invitation rehashes are invisible.
+**Concrete failure scenario:** A policy change increases the maximum expiry from 10 years to 15 years. The developer updates 2 of the 3 route files but misses the bulk route. Bulk-created invitations now have a different maximum than single-created ones.
 
-**Fix:** Replace all inline rehash blocks with `verifyAndRehashPassword`:
-- `backup/route.ts:63-82` — straightforward replacement
-- `migrate/export/route.ts:57-74` — straightforward replacement
-- `recruiting-invitations.ts:387-402` — can be called inside the existing transaction
-- `auth/config.ts:268-291` — may need special handling due to NextAuth callback context
+**Fix:** Extract to a shared constant in `src/lib/assignments/recruiting-constants.ts`.
 
 ---
 
-### AGG-3: buildGroupMemberScopeFilter uses raw string interpolation in SQL LIKE without escaping [LOW/MEDIUM]
+### AGG-3: SSE realtime-coordination LIKE queries missing ESCAPE clause — inconsistent defense-in-depth [LOW/LOW]
 
-**Flagged by:** code-reviewer (CR-3), security-reviewer (SEC-2), critic (CRI-3), tracer (TR-3)
-**Signal strength:** 4 of 11 review perspectives
+**Flagged by:** code-reviewer (CR-1), security-reviewer (SEC-2), critic (CRI-3)
+**Signal strength:** 3 of 11 review perspectives
 
-**File:** `src/app/(dashboard)/dashboard/admin/audit-logs/page.tsx:150`
+**File:** `src/lib/realtime/realtime-coordination.ts:94, 107`
 
-**Description:** The LIKE pattern `%"groupId":"${groupId}"%` uses raw string interpolation without `escapeLikePattern()`. While `groupId` values originate from a server-side DB query (nanoid-generated, alphanumeric only), this bypasses the codebase-standard `escapeLikePattern` utility. The pattern is inconsistent with all other LIKE queries and fragile against future data changes.
+**Description:** The `getSsePrefixPattern()` returns `realtime:sse:user:%` used in LIKE queries without `ESCAPE '\\'`. Every other LIKE query in the codebase uses the ESCAPE clause consistently. The prefix is server-controlled and contains no wildcards, so this is not a security vulnerability. However, the inconsistency could lead a developer to copy the pattern for user-input queries without the ESCAPE clause.
 
-**Concrete failure scenario:** A new code path creates group IDs with underscore characters (e.g., `group_test_1`). The LIKE `%group_test_1%` matches `groupXtestY1` since `_` is a single-character wildcard.
-
-**Fix:** Use `escapeLikePattern(groupId)` in the LIKE pattern, or use PostgreSQL JSON operators instead of LIKE for JSON field matching.
+**Fix:** Add `ESCAPE '\\'` to both LIKE queries for consistency.
 
 ---
 
-### AGG-4: Chat widget textarea lacks explicit aria-label [LOW/LOW]
+### AGG-4: Chat widget minimized button badge lacks ARIA announcement for message count [LOW/LOW]
 
-**Flagged by:** code-reviewer (CR-4), debugger (DBG-2), designer (DES-1), test-engineer (TE-3)
-**Signal strength:** 4 of 11 review perspectives
+**Flagged by:** designer (DES-1)
+**Signal strength:** 1 of 11 review perspectives
 
-**File:** `src/lib/plugins/chat-widget/chat-widget.tsx:363`
+**File:** `src/lib/plugins/chat-widget/chat-widget.tsx:284-288`
 
-**Description:** The textarea has `placeholder={t("placeholder")}` but no `aria-label`. WCAG 2.2 SC 1.3.1 recommends programmatic labels over placeholder text. This is a carry-over from prior cycles (DES-2). The placeholder provides some context but is not consistently announced by screen readers.
+**Description:** The minimized chat button shows a visual badge with the count of assistant messages but has no ARIA indication of the count. Screen reader users hear only "Chat" when the widget is minimized, without knowing how many messages are waiting.
 
-**Fix:** Add `aria-label={t("placeholder")}` to the textarea element.
+**Fix:** Add an `aria-label` to the button that includes the message count.
 
 ---
 
 ## Carry-Over Items (Still Unfixed from Prior Cycles)
 
 - **Prior AGG-5:** Console.error in client components instead of structured logging (deferred)
-- **Prior AGG-6:** SSE O(n) eviction scan (deferred)
+- **Prior AGG-6:** SSE O(n) eviction scan (deferred — bounded by 1000 cap)
 - **Prior AGG-7:** Manual routes duplicate createApiHandler boilerplate (deferred)
 - **Prior AGG-8:** Global timer HMR pattern duplication (deferred)
 - **Prior SEC-3:** Anti-cheat copies user text content (deferred)
 - **Prior SEC-4:** Docker build error leaks paths (deferred)
-- **CR-4 (carry-over):** Chat widget entry animation not using motion-safe prefix (globals.css override is functional)
+- **Prior DOC-1:** SSE route ADR (deferred)
+- **Prior DOC-2:** Docker client dual-path behavior documentation (deferred)
+
+## Verified Fixes This Cycle
+
+All major findings from cycles 35-36 have been verified as fixed:
+1. PATCH invitation NaN guard (AGG-1 from cycle 36)
+2. Password rehash consolidation (AGG-2 from cycle 36)
+3. LIKE pattern escaping (AGG-3 from cycle 36)
+4. Chat textarea aria-label (AGG-4 from cycle 36)
+5. isStreaming ref in sendMessage (CR-1 from cycle 34)
+6. TABLE_MAP derived from TABLE_ORDER (CR-2/ARCH-1 from cycle 34)
+7. SSE stale threshold caching (PERF-1 from cycle 34)
+8. Import JSON body deprecation with Sunset header
+9. TABLE_MAP/TABLE_ORDER consistency test
 
 ## Deferred Items
 
 | Finding | File+Line | Severity/Confidence | Reason for Deferral | Exit Criterion |
 |---------|-----------|-------------------|--------------------|---------------|
-| SEC-3: Import route JSON body path with password | migrate/import/route.ts:113-191 | MEDIUM/MEDIUM | Deprecated with Sunset header; functional for backward compatibility | Sunset date reached (Nov 2026) or API clients migrated |
-| PERF-1: Chat widget scrollToBottom effect runs on every messages change | chat-widget.tsx:107-115 | LOW/LOW | rAF deduplication catches redundant calls; micro-optimization | Performance profiling shows bottleneck |
-| DOC-1: PATCH route lacks JSDoc for expiryDate | [invitationId]/route.ts | LOW/LOW | Documentation-only; inline comment present | Next documentation cycle |
-| DOC-2: Import route dual-path deprecation not in README | migrate/import/route.ts | LOW/LOW | Documentation-only | Next documentation cycle |
+| PERF-1: Shared poll timer reads config on restart | events/route.ts:161 | LOW/LOW | Timer only restarts on first subscriber after quiet period; infrequent | Performance profiling shows bottleneck |
+| PERF-2: SSE connection eviction linear search | events/route.ts:44-55 | LOW/LOW | Bounded by 1000-entry cap; O(n) is acceptable | Cap is raised significantly |
+| DOC-1: quick-create route JSDoc | quick-create/route.ts | LOW/LOW | Documentation-only | Next documentation cycle |
+| DOC-2: SSE route ADR | events/route.ts | LOW/LOW | Documentation-only | Next documentation cycle |
+| DOC-3: Docker client dual-path docs | docker/client.ts | LOW/LOW | Documentation-only | Next documentation cycle |

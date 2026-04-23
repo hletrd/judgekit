@@ -1,54 +1,41 @@
-# Architecture Review — RPF Cycle 34
+# Architecture Review — RPF Cycle 37
 
 **Date:** 2026-04-23
 **Reviewer:** architect
-**Base commit:** 16cf7ecf
+**Base commit:** 3d729cee
 
 ## Inventory of Files Reviewed
 
-- `src/lib/db/import.ts` — Import engine
+- `src/lib/db/import.ts` — Import engine (verified TABLE_MAP derivation from TABLE_ORDER)
 - `src/lib/db/export.ts` — Export engine
 - `src/lib/realtime/realtime-coordination.ts` — Realtime coordination
-- `src/lib/security/` — Security modules
-- `src/lib/plugins/chat-widget/` — Chat widget (component + tools + route)
+- `src/lib/security/` — Security modules (verified rehash consolidation)
+- `src/lib/plugins/chat-widget/` — Chat widget
 - `src/app/api/v1/` — API route structure
 - `src/lib/docker/client.ts` — Docker client dual-path
+- `src/app/api/v1/contests/quick-create/route.ts` — Quick-create contest
+- `src/app/api/v1/contests/[assignmentId]/stats/route.ts` — Contest stats
 
-## Findings
+## Previously Fixed Items (Verified)
 
-### ARCH-1: Import engine `TABLE_MAP` and export `TABLE_ORDER` are independently maintained lists — schema drift risk [MEDIUM/MEDIUM]
+- ARCH-1 (TABLE_MAP/TABLE_ORDER drift): Fixed — TABLE_MAP derived from TABLE_ORDER at lines 19-22
+- ARCH-2 (Password rehash DRY violation): Fixed — `verifyAndRehashPassword` utility consolidated
+- AGG-4 (createApiHandler for files route): Fixed
 
-**File:** `src/lib/db/import.ts:15-55`, `src/lib/db/export.ts:156-202`
+## New Findings
 
-**Description:** The import engine uses `TABLE_MAP` (a `Record<string, any>`) and the export engine uses `TABLE_ORDER` (an ordered array with `name`, `table`, `orderColumns`). These are independently maintained lists that must stay in sync with each other and with the schema. If a table is added to the schema but only to one of these lists, either exports will include it but imports will skip it, or vice versa. This was identified as AGG-6 in cycle 33 but remains unfixed.
+### ARCH-1: MAX_EXPIRY_MS constant duplicated across 4 invitation routes — DRY violation [LOW/MEDIUM]
 
-**Concrete failure scenario:** A developer adds a `contestAnnouncements` table to the schema and adds it to `TABLE_ORDER` for export but forgets `TABLE_MAP` for import. An export includes the table, but an import silently skips it. The imported database is missing all announcement data.
+**File:** `src/app/api/v1/contests/[assignmentId]/recruiting-invitations/route.ts:69`, `src/app/api/v1/contests/[assignmentId]/recruiting-invitations/[invitationId]/route.ts:110`, `src/app/api/v1/contests/[assignmentId]/recruiting-invitations/bulk/route.ts:30`, and implicitly in API keys routes
 
-**Fix:** Derive `TABLE_MAP` from `TABLE_ORDER` to ensure they are always in sync:
+**Description:** The `MAX_EXPIRY_MS = 10 * 365.25 * 24 * 60 * 60 * 1000` constant is defined identically in 3 separate invitation route files. If the maximum expiry policy changes, all 3 must be updated in lockstep. This is a minor DRY violation that could lead to inconsistent expiry limits.
+
+**Concrete failure scenario:** A policy change increases the maximum expiry from 10 years to 15 years. The developer updates 2 of the 3 route files but misses the bulk route. Bulk-created invitations now have a different maximum than single-created ones.
+
+**Fix:** Extract to a shared constant:
 ```typescript
-// In import.ts
-import { TABLE_ORDER } from "./export";
-
-const TABLE_MAP: Record<string, any> = {};
-for (const { name, table } of TABLE_ORDER) {
-  TABLE_MAP[name] = table;
-}
+// src/lib/assignments/recruiting-constants.ts
+export const MAX_EXPIRY_MS = 10 * 365.25 * 24 * 60 * 60 * 1000; // ~10 years
 ```
 
-**Confidence:** High
-
----
-
-### ARCH-2: Duplicate password rehash logic across three locations — DRY violation [LOW/MEDIUM]
-
-**File:** `src/app/api/v1/admin/migrate/import/route.ts:64-74, 164-174`, `src/app/api/v1/admin/restore/route.ts:63-73`
-
-**Description:** The exact same password verification + rehash logic is duplicated three times. This creates maintenance risk and inconsistent audit coverage. See CR-3 in code-reviewer review for the same finding with proposed fix.
-
-**Confidence:** High
-
----
-
-### Previously Fixed Items
-
-- AGG-4 (files route POST bypasses createApiHandler): Fixed in commit 9e277929
+**Confidence:** Medium
