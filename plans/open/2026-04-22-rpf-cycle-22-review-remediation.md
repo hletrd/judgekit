@@ -30,7 +30,7 @@ No cycle-22 review finding is silently dropped. No new refactor-only work is add
   3. These are warnings, not blockers — the user can still proceed with the null value after seeing the notification
   4. Optionally add a comment on the string state variables explaining the design choice (DOC-1)
   5. Verify all gates pass
-- **Status:** Pending
+- **Status:** DONE
 
 ---
 
@@ -100,3 +100,4 @@ No cycle-22 review finding is silently dropped. No new refactor-only work is add
 ## Progress log
 
 - 2026-04-22: Plan created from RPF cycle 22 aggregate review. 1 task (L1). 7 deferred items.
+- 2026-04-22: L1 implemented (toast.warning for invalid numeric inputs + comments on string state). 2 commits pushed. All gates pass (eslint, next build, vitest unit).
