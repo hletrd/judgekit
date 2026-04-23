@@ -1,64 +1,66 @@
-# RPF Cycle 44 — Aggregate Review
+# RPF Cycle 45 — Aggregate Review
 
 **Date:** 2026-04-23
-**Base commit:** e2043115
+**Base commit:** d96a984f
 **Review artifacts:** code-reviewer.md, perf-reviewer.md, security-reviewer.md, architect.md, critic.md, verifier.md, debugger.md, test-engineer.md, tracer.md, designer.md, document-specialist.md
 
 ## Deduped Findings (sorted by severity then signal)
 
-### AGG-1: `validateAssignmentSubmission` uses `Date.now()` for deadline enforcement — clock-skew bypass [MEDIUM/MEDIUM]
+### AGG-1: Non-null assertions on `Map.get()` and optional relations in client components — 5 remaining instances [MEDIUM/MEDIUM]
 
-**Flagged by:** code-reviewer (CR-1), security-reviewer (SEC-1), architect (ARCH-1), critic (CRI-1), verifier (V-1), debugger (DBG-1), test-engineer (TE-1), tracer (TR-1), document-specialist (DOC-1)
-**Signal strength:** 9 of 11 review perspectives
-
-**File:** `src/lib/assignments/submissions.ts:208,220,268`
-
-**Description:** The `validateAssignmentSubmission` function computes `now = Date.now()` using the app server's clock at line 208, then compares it against DB-stored assignment timestamps (`startsAt`, `deadline`, `lateDeadline`) at lines 212 and 220, and against `examSession.personalDeadline` at line 268. The codebase has consistently converged on using `getDbNowUncached()` for all schedule comparisons involving DB data to avoid clock skew. This is the last remaining server-side access-control function that uses `Date.now()` for comparisons against DB-stored timestamps.
-
-**Concrete failure scenario:** App server clock is 60 seconds behind DB server clock. A contest deadline is 10:00:00 (DB time). At 10:00:30 DB time, the app server thinks it's 9:59:30 and allows a submission that is past the deadline. Users gain 60 extra seconds to submit solutions. Conversely, if the app server clock is ahead, users are blocked before the actual deadline.
-
-**Fix:** Replace `Date.now()` with `getDbNowUncached()` for the deadline comparisons:
-```typescript
-// Use DB server time for deadline checks to avoid clock skew
-// between app and DB servers, consistent with other schedule checks.
-const now = (await getDbNowUncached()).getTime();
-```
-Also replace the inline `Date.now()` at line 268 with the same `now` variable.
-
----
-
-### AGG-2: `computeLeaderboard` uses `Date.now()` for freeze check — display-only clock skew [LOW/LOW]
-
-**Flagged by:** code-reviewer (CR-3), security-reviewer (SEC-2)
-**Signal strength:** 2 of 11 review perspectives
-
-**File:** `src/lib/assignments/leaderboard.ts:52-53`
-
-**Description:** The `computeLeaderboard` function computes `nowMs = Date.now()` and compares it against the DB-stored `freezeLeaderboardAt` timestamp to decide whether the leaderboard is frozen. Under clock skew, the freeze boundary is slightly inaccurate (seconds). This is a display-only concern — the frozen leaderboard data itself is correct.
-
-**Fix:** Use `getDbNowUncached()` for consistency if the function is refactored. Low priority.
-
----
-
-### AGG-3: Non-null assertions on `Map.get()` after `has()` guard — three locations [LOW/LOW]
-
-**Flagged by:** code-reviewer (CR-2), test-engineer (TE-2)
-**Signal strength:** 2 of 11 review perspectives
+**Flagged by:** code-reviewer (CR-1, CR-2), critic (CRI-1), debugger (DBG-1), tracer (TR-1), designer (DES-2), test-engineer (TE-3)
+**Signal strength:** 7 of 11 review perspectives
 
 **Files:**
-- `src/lib/assignments/contest-scoring.ts:243`
-- `src/lib/assignments/submissions.ts:365`
-- `src/lib/assignments/contest-analytics.ts:259`
+1. `src/app/(dashboard)/dashboard/groups/[id]/assignments/[assignmentId]/student/[userId]/page.tsx:131` — `submissionsByProblem.get(sub.problemId)!.push(sub)`
+2. `src/app/(dashboard)/dashboard/submissions/[id]/submission-detail-client.tsx:85` — `submission.problem!.id`
+3. `src/app/(dashboard)/dashboard/contests/page.tsx:214` — `(contest.personalDeadline ?? contest.deadline)!.getTime()`
+4. `src/app/(dashboard)/dashboard/problem-sets/_components/problem-set-form.tsx:200` — `problemSet!.id`
+5. `src/app/(dashboard)/dashboard/admin/roles/role-editor-dialog.tsx:76` — `role!.id`
 
-**Description:** These locations use the `!.get()` pattern after a `has()` guard. While technically safe due to the guard, this pattern was removed from other files in recent cycles (e.g., the anti-cheat route in cycle 41). The codebase is converging on explicit null-guard patterns.
+**Description:** Cycles 43-44 removed non-null assertions from server-side assignment code. Five instances remain in client components. Items 1-2 are the most risky: (1) a `Map.get()` assertion that could throw if the map is concurrently modified, (2) `submission.problem!.id` that throws if the problem has been deleted. Items 3-5 are guarded by surrounding conditionals but are fragile.
 
-**Fix:** Replace with explicit null-guard pattern for consistency.
+**Concrete failure scenario (item 2):** An instructor deletes a problem. A student opens their submission detail for that problem and clicks "resubmit." `submission.problem!.id` throws `TypeError: Cannot read properties of null`, and the resubmit button silently fails with no user feedback.
+
+**Fix:** Replace with explicit null guards or optional chaining with fallbacks.
+
+---
+
+### AGG-2: API rate-limiting module uses `Date.now()` for DB-timestamp comparisons — architectural inconsistency [MEDIUM/MEDIUM]
+
+**Flagged by:** security-reviewer (SEC-1), architect (ARCH-1), critic (CRI-2)
+**Signal strength:** 3 of 11 review perspectives
+
+**Files:**
+- `src/lib/security/api-rate-limit.ts:54,86,90`
+- `src/lib/security/rate-limit.ts:39,77`
+
+**Description:** The `atomicConsumeRateLimit` function uses `Date.now()` to compare against DB-stored `rateLimits` columns (`windowStartedAt`, `blockedUntil`, `lastAttempt`). This is the same clock-skew class of issue fixed in submissions, assignments, and anti-cheat routes. The codebase has converged on `getDbNowUncached()` for DB-timestamp comparisons.
+
+However, rate-limit windows are measured in minutes (not seconds), and adding a DB query to every rate-limited request would increase latency on the hot path. The in-memory rate limiter (`in-memory-rate-limit.ts`) is purely process-local and `Date.now()` is appropriate there.
+
+**Concrete failure scenario:** App server clock is 60 seconds behind DB clock. A user whose rate-limit window has expired (per DB time) is still blocked for 60 extra seconds. Or conversely, if the app clock is ahead, a user could make requests slightly before the window resets.
+
+**Fix:** For `api-rate-limit.ts` (DB-backed path), cache `getDbNowUncached()` at the start of the transaction. For `in-memory-rate-limit.ts` and `rate-limit.ts`, `Date.now()` is appropriate. This may be deferred given the performance trade-off.
+
+---
+
+### AGG-3: Contest analytics student progression fetches all submissions without LIMIT — memory pressure on large contests [MEDIUM/LOW]
+
+**Flagged by:** perf-reviewer (PERF-1), critic (CRI-3)
+**Signal strength:** 2 of 11 review perspectives
+
+**File:** `src/lib/assignments/contest-analytics.ts:242-250`
+
+**Description:** The `includeTimeline` path fetches ALL submissions for a contest into memory. For large contests (200+ students, 10+ problems, 50+ attempts each), this could be 100K+ rows. The analytics cache (5-minute TTL) limits the frequency, but the query itself is unbounded.
+
+**Fix:** Add a LIMIT clause or compute the progression using SQL window functions instead of fetching all rows.
 
 ---
 
 ## Carry-Over Items (Still Unfixed from Prior Cycles)
 
-- **Prior AGG-2:** Audit logs LIKE-based JSON search (deferred, LOW/LOW)
+- **Prior AGG-2:** Leaderboard freeze uses Date.now() (deferred, LOW/LOW)
 - **Prior AGG-5:** Console.error in client components (deferred, LOW/MEDIUM)
 - **Prior AGG-6:** SSE O(n) eviction scan (deferred, LOW/LOW)
 - **Prior AGG-7:** Manual routes duplicate createApiHandler boilerplate (deferred, MEDIUM/MEDIUM)
@@ -74,7 +76,7 @@ Also replace the inline `Date.now()` at line 268 with the same `now` variable.
 
 ## Verified Fixes This Cycle (From Prior Cycles)
 
-All fixes from cycles 37-43 remain intact:
+All fixes from cycles 37-44 remain intact:
 1. `"redeemed"` removed from PATCH route state machine
 2. `Date.now()` replaced with `getDbNowUnc()` in assignment PATCH
 3. Non-null assertions removed from anti-cheat heartbeat gap detection
@@ -91,23 +93,25 @@ All fixes from cycles 37-43 remain intact:
 14. Redundant non-null assertion removed from userId
 15. Submission rate-limit uses `getDbNowUncached()` for clock-skew consistency
 16. Contest join route has explicit `auth: true`
+17. `validateAssignmentSubmission` uses `getDbNowUncached()` for deadline enforcement
+18. Map.get() non-null assertions replaced in contest-scoring, submissions, contest-analytics
 
 ## Deferred Items
 
 | Finding | File+Line | Severity/Confidence | Reason for Deferral | Exit Criterion |
 |---------|-----------|-------------------|--------------------|---------------|
-| AGG-2: Leaderboard freeze uses Date.now() | leaderboard.ts:52 | LOW/LOW | Display-only inaccuracy; seconds-level | Leaderboard freeze timing becomes a user-facing issue |
-| AGG-3: Non-null assertions on Map.get() | contest-scoring.ts:243, submissions.ts:365, contest-analytics.ts:259 | LOW/LOW | Technically safe; cosmetic consistency | Codebase lint rules enforce no non-null assertions |
-| Prior AGG-2: Audit logs LIKE-based JSON search | audit-logs/page.tsx:150 | LOW/LOW | Works today; robustness improvement | JSON serialization changes or PostgreSQL upgrade |
-| Prior PERF-3: Anti-cheat heartbeat gap query transfers up to 5000 rows | anti-cheat/route.ts:195-204 | MEDIUM/MEDIUM | Could use SQL window function; currently bounded by limit | Long contest with many heartbeats causes slow API response |
+| AGG-2: Rate-limiting Date.now() for DB timestamps | api-rate-limit.ts:54 | MEDIUM/MEDIUM | Adding DB query to hot path increases latency; rate-limit windows are minutes-level | Clock skew observed in production affecting rate limiting |
+| AGG-3: Analytics progression unbounded query | contest-analytics.ts:242 | MEDIUM/LOW | Bounded by 5-min cache; typical contest sizes are manageable | Contest with >500 students causes slow analytics response |
+| Prior AGG-2: Leaderboard freeze uses Date.now() | leaderboard.ts:52 | LOW/LOW | Display-only inaccuracy; seconds-level | Leaderboard freeze timing becomes a user-facing issue |
 | Prior AGG-5: Console.error in client components | discussions/*.tsx, groups/*.tsx | LOW/MEDIUM | Requires architectural decision; no data loss | Client error reporting feature request |
 | Prior AGG-6: SSE O(n) eviction scan | events/route.ts:44-55 | LOW/LOW | Bounded by 1000-entry cap | Performance profiling shows bottleneck |
 | Prior AGG-7: Manual routes duplicate createApiHandler | migrate/import, restore routes | MEDIUM/MEDIUM | Requires extending createApiHandler to support multipart | Next API framework iteration |
 | Prior AGG-8: Global timer HMR pattern duplication | 4 modules | LOW/MEDIUM | DRY concern; each module works correctly | Module refactoring cycle |
 | Prior SEC-3: Anti-cheat copies text content | anti-cheat-monitor.tsx:206 | LOW/LOW | 80-char limit; privacy notice accepted | Privacy audit or user complaint |
 | Prior SEC-4: Docker build error leaks paths | docker/client.ts:169 | LOW/LOW | Admin-only; Docker output expected | Admin permission review |
+| Prior PERF-3: Anti-cheat heartbeat gap query transfers up to 5000 rows | anti-cheat/route.ts:195-204 | MEDIUM/MEDIUM | Could use SQL window function; currently bounded by limit | Long contest with many heartbeats causes slow API response |
+| Prior DES-1: Chat widget button badge lacks ARIA announcement | chat-widget.tsx:284-288 | LOW/LOW | Screen reader edge case; badge is visual-only | Accessibility audit or user complaint |
 | Prior DOC-1: SSE route ADR | events/route.ts | LOW/LOW | Documentation-only | Next documentation cycle |
 | Prior DOC-2: Docker client dual-path docs | docker/client.ts | LOW/LOW | Documentation-only | Next documentation cycle |
 | Prior ARCH-2: Stale-while-revalidate cache pattern duplication | contest-scoring.ts, analytics/route.ts | LOW/LOW | DRY concern; both modules work correctly | Module refactoring cycle |
-| Prior DES-1: Chat widget button badge lacks ARIA announcement | chat-widget.tsx:284-288 | LOW/LOW | Screen reader edge case; badge is visual-only | Accessibility audit or user complaint |
 | Prior SEC-2: Anti-cheat heartbeat dedup Date.now() | anti-cheat/route.ts:92 | LOW/LOW | Approximate by design; LRU cache is inherently imprecise | Performance profiling shows missed dedup |
