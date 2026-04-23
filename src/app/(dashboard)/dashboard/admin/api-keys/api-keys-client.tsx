@@ -108,6 +108,17 @@ export function ApiKeysClient({ roleOptions }: { roleOptions?: RoleOption[] }) {
     }
   }, []);
 
+  // Auto-dismiss the raw-key dialog after 5 minutes so the plaintext
+  // key does not remain visible indefinitely if the admin walks away.
+  useEffect(() => {
+    if (!createdKey) return;
+    const timer = setTimeout(() => {
+      setCreatedKey(null);
+      setCreatedKeyCopied(false);
+    }, 5 * 60 * 1000);
+    return () => clearTimeout(timer);
+  }, [createdKey]);
+
   // Create dialog state
   const [createOpen, setCreateOpen] = useState(false);
   const [createName, setCreateName] = useState("");
