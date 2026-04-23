@@ -1691,6 +1691,7 @@
       "createError": "Failed to create API key",
       "keyCreatedTitle": "API Key Created",
       "keyCreatedDescription": "Copy this key now. It will not be shown again.",
+      "autoDismissCountdown": "This key will be hidden in {seconds, plural, =1 {# second} other {# seconds}}",
       "copyKey": "Copy Key",
       "copyMaskedKeyPreview": "Copy masked key preview",
       "copied": "Copied!",

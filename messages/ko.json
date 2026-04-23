@@ -1691,6 +1691,7 @@
       "createError": "API 키를 만들지 못했습니다",
       "keyCreatedTitle": "API 키 완료",
       "keyCreatedDescription": "지금 이 키를 복사하세요. 다시 표시되지 않습니다.",
+      "autoDismissCountdown": "이 키는 {seconds}초 후에 숨겨집니다",
       "copyKey": "키 복사",
       "copyMaskedKeyPreview": "마스킹된 키 미리보기 복사",
       "copied": "복사됨!",

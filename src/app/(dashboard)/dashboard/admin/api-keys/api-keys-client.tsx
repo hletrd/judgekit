@@ -96,6 +96,7 @@ export function ApiKeysClient({ roleOptions }: { roleOptions?: RoleOption[] }) {
   const [createdKey, setCreatedKey] = useState<CreatedKey | null>(null);
   const [createdKeyCopied, setCreatedKeyCopied] = useState(false);
   const [copiedKeyId, setCopiedKeyId] = useState<string | null>(null);
+  const [keyDismissCountdown, setKeyDismissCountdown] = useState<number | null>(null);
   const createdKeyCopiedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const copiedKeyIdTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -110,13 +111,29 @@ export function ApiKeysClient({ roleOptions }: { roleOptions?: RoleOption[] }) {
 
   // Auto-dismiss the raw-key dialog after 5 minutes so the plaintext
   // key does not remain visible indefinitely if the admin walks away.
+  // A visible countdown informs the admin how much time remains.
   useEffect(() => {
-    if (!createdKey) return;
-    const timer = setTimeout(() => {
-      setCreatedKey(null);
-      setCreatedKeyCopied(false);
-    }, 5 * 60 * 1000);
-    return () => clearTimeout(timer);
+    if (!createdKey) {
+      setKeyDismissCountdown(null);
+      return;
+    }
+    const DISMISS_MS = 5 * 60 * 1000;
+    const startedAt = Date.now();
+    setKeyDismissCountdown(DISMISS_MS);
+
+    const interval = setInterval(() => {
+      const elapsed = Date.now() - startedAt;
+      const remaining = DISMISS_MS - elapsed;
+      if (remaining <= 0) {
+        setCreatedKey(null);
+        setCreatedKeyCopied(false);
+        setKeyDismissCountdown(null);
+      } else {
+        setKeyDismissCountdown(remaining);
+      }
+    }, 1000);
+
+    return () => clearInterval(interval);
   }, [createdKey]);
 
   // Create dialog state
@@ -317,6 +334,11 @@ export function ApiKeysClient({ roleOptions }: { roleOptions?: RoleOption[] }) {
               <div className="text-xs text-muted-foreground">
                 {createdKey ? buildMaskedApiKeyPreview(createdKey.keyPrefix) : ""}
               </div>
+              {keyDismissCountdown !== null && (
+                <div className="text-xs text-muted-foreground">
+                  {t("autoDismissCountdown", { seconds: Math.ceil(keyDismissCountdown / 1000) })}
+                </div>
+              )}
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={copyCreatedKey}>
