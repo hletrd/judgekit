@@ -1,34 +1,33 @@
-# RPF Cycle 30 — Aggregate Review
+# RPF Cycle 31 — Aggregate Review
 
 **Date:** 2026-04-23
-**Base commit:** 31afd19b
+**Base commit:** 198e6a63
 **Review artifacts:** code-reviewer.md, perf-reviewer.md, security-reviewer.md, architect.md, critic.md, verifier.md, debugger.md, test-engineer.md, tracer.md, designer.md, document-specialist.md
 
 ## Previously Fixed Items (Verified in Current Code)
 
 All prior cycle aggregate findings have been addressed:
-- AGG-1 (clarification i18n): Fixed in commit 7e0b3bb8
-- AGG-2 (provider error sanitization): Fixed in commit 93beb49d
-- AGG-3 (useVisibilityPolling setTimeout): Fixed in commit 60f24288
-- AGG-4 (progress bar aria-label): Fixed in commit 3530a989
+- AGG-1 (countdown timer setInterval): Fixed in commit 19de5cf6
+- AGG-2 (rate-limiter .catch() guard): Fixed in commit 7ae57906
+- AGG-3 (chat widget sendMessage stabilization): Fixed in commit ce9aa4fa
 - All other prior findings verified as fixed
 
 ## Deduped Findings (sorted by severity then signal)
 
-### AGG-1: Exam countdown timer uses `setInterval` — last remaining client-side timer with old pattern [MEDIUM/MEDIUM]
+### AGG-1: ActiveTimedAssignmentSidebarPanel uses `setInterval` — last remaining client-side timer with old pattern [MEDIUM/MEDIUM]
 
-**Flagged by:** code-reviewer (CR-1), perf-reviewer (PERF-1), architect (ARCH-1), critic (CRI-1), verifier (V-1), debugger (DBG-1), tracer (TR-1), designer (DES-1), test-engineer (TE-1)
-**Signal strength:** 9 of 11 review perspectives
+**Flagged by:** code-reviewer (CR-1), perf-reviewer (PERF-1), architect (ARCH-1), critic (CRI-1), verifier (V-1), debugger (DBG-1), tracer (TR-1), designer (DES-1), test-engineer (TE-1), document-specialist (DOC-1)
+**Signal strength:** 10 of 11 review perspectives
 
-**File:** `src/components/exam/countdown-timer.tsx:117`
+**File:** `src/components/layout/active-timed-assignment-sidebar-panel.tsx:63`
 
-**Description:** The exam countdown timer uses `setInterval(recalculate, 1000)` on line 117. The codebase has established recursive `setTimeout` as the standard pattern for all timer-based effects. The `useVisibilityPolling` hook was migrated in cycle 29, and the contest-replay component in cycle 28. The countdown timer is now the only remaining client-side timer using `setInterval`.
+**Description:** The sidebar panel uses `window.setInterval(() => {...}, 1000)` on line 63. The codebase has established recursive `setTimeout` as the standard pattern for all timer-based effects. The countdown timer was migrated in cycle 30, the visibility polling hook in cycle 29, and the contest replay in cycle 28. This component is the last remaining client-side timer using `setInterval`.
 
-This is particularly significant because the countdown timer is the most important timer in the application — students rely on accurate time remaining during proctored exams. While the `visibilitychange` handler (line 122) mitigates most drift, `setInterval` can still cause catch-up behavior during the brief window between interval firing and visibility change handler running.
+The comment on line 78-79 says "This matches the pattern in countdown-timer.tsx" but it doesn't — countdown-timer now uses recursive `setTimeout`. This is clearly an oversight.
 
-**Concrete failure scenario:** A student switches to another tab during an exam. When they return, throttled `setInterval` callbacks may fire in rapid succession before the `visibilitychange` handler runs, causing a momentary flash of incorrect time remaining.
+**Concrete failure scenario:** A student switches tabs during an active assignment. Throttled `setInterval` callbacks fire in rapid succession when the tab becomes visible, causing a burst of `setNowMs()` calls and re-renders. The progress bar (which has a CSS transition) stutters. The `visibilitychange` handler already provides the correct immediate update, making the catch-up interval callbacks redundant.
 
-**Fix:** Migrate to recursive `setTimeout` pattern:
+**Fix:** Migrate to recursive `setTimeout` with `cancelled` flag, matching the pattern in countdown-timer.tsx:
 ```typescript
 let timerId: ReturnType<typeof setTimeout> | null = null;
 let cancelled = false;
@@ -36,14 +35,18 @@ let cancelled = false;
 function scheduleNext() {
   timerId = setTimeout(() => {
     if (cancelled) return;
-    recalculate();
-    scheduleNext();
+    const now = Date.now();
+    setNowMs(now);
+    const allExpired = assignments.every(
+      (assignment) => new Date(assignment.deadline).getTime() <= now
+    );
+    if (!allExpired) scheduleNext();
   }, 1000);
 }
 
 function handleVisibilityChange() {
   if (document.visibilityState === "visible") {
-    recalculate();
+    setNowMs(Date.now());
   }
 }
 
@@ -52,100 +55,79 @@ document.addEventListener("visibilitychange", handleVisibilityChange);
 
 return () => {
   cancelled = true;
-  if (timerId) clearTimeout(timerId);
+  if (timerId !== null) clearTimeout(timerId);
   document.removeEventListener("visibilitychange", handleVisibilityChange);
 };
 ```
 
 ---
 
-### AGG-2: `rate-limiter-client.ts` has unguarded `.json()` on success path — circuit breaker trips on parse errors [LOW/MEDIUM]
+### AGG-2: Chat widget route leaks raw `err.message` from tool execution to LLM context [MEDIUM/HIGH]
 
-**Flagged by:** security-reviewer (SEC-1), verifier (V-2), debugger (DBG-2), tracer (TR-2)
-**Signal strength:** 4 of 11 review perspectives
+**Flagged by:** security-reviewer (SEC-1), critic (CRI-2), verifier (V-2), debugger (DBG-2), tracer (TR-2), test-engineer (TE-2)
+**Signal strength:** 6 of 11 review perspectives
 
-**File:** `src/lib/security/rate-limiter-client.ts:79`
+**File:** `src/app/api/v1/plugins/chat-widget/chat/route.ts:431`
 
-**Description:** The `callRateLimiter` function calls `response.json()` without a `.catch()` guard on line 79. If the rate-limiter sidecar returns a non-JSON body (e.g., an HTML error page from a misconfigured reverse proxy returning a 200 status), the `SyntaxError` is caught by the outer try/catch which increments `consecutiveFailures` and opens the circuit breaker. This treats a parse error the same as a network failure, which is incorrect behavior.
+**Description:** When a tool execution fails, the catch block constructs: `Error executing tool "${call.name}": ${err instanceof Error ? err.message : "unknown error"}`. This raw `err.message` is sent to the LLM as a tool result. The LLM may relay internal error details to the user in its response.
 
-This is the same class of issue tracked as DEFER-38 (unguarded `.json()` on success paths). While this is server-side code calling an internal sidecar (lower risk than client-side), it produces incorrect circuit-breaker behavior.
+Internal error messages can contain database connection strings, file system paths, stack traces, and internal service names. The tool execution can fail for many reasons (database query errors, permission errors, file I/O errors), and all would have their raw messages exposed through the LLM.
 
-**Concrete failure scenario:** The rate-limiter sidecar is behind nginx. nginx temporarily returns a 200 HTML page instead of proxying correctly. The `response.json()` throws `SyntaxError`. The circuit breaker opens for 30 seconds, causing all rate-limit checks to fall through to the DB-backed limiter.
+**Concrete failure scenario:** The `get_submission_detail` tool fails with a database connection error: `connect ECONNREFUSED 127.0.0.1:5432`. The error message contains the database host and port. The LLM receives this as a tool result and may mention it to the user.
 
-**Fix:** Add `.catch()` to the `.json()` call and handle parse errors separately:
+**Fix:** Sanitize the error message before passing it to the LLM:
 ```typescript
-const data = (await response.json().catch(() => null)) as T | null;
-if (data === null) {
-  consecutiveFailures++;
-  circuitOpenUntil = Date.now() + RECOVERY_WINDOW_MS;
-  return null;
-}
+toolResult = `Error executing tool "${call.name}" — please try again`;
+logger.warn({ err, toolName: call.name }, "[chat] Tool execution failed");
 ```
 
 ---
 
-### AGG-3: Chat widget `sendMessage` has unstable `messages` dependency causing unnecessary re-renders [LOW/LOW]
+### AGG-3: Inconsistent `.json()` error handling on three server-side sidecar success paths [LOW/MEDIUM]
 
-**Flagged by:** code-reviewer (CR-2), architect (ARCH-2), critic (CRI-2)
+**Flagged by:** code-reviewer (CR-3, CR-4, CR-5), verifier (V-3), architect (ARCH-2), security-reviewer (SEC-3)
+**Signal strength:** 6 of 11 review perspectives
+
+**Files:**
+- `src/lib/assignments/code-similarity-client.ts:49`
+- `src/lib/compiler/execute.ts:533`
+- `src/lib/security/hcaptcha.ts:76`
+
+**Description:** Three server-side sidecar/external API clients call `response.json()` without `.catch()` on success paths. The rate-limiter-client.ts was fixed in cycle 30 with a `.catch(() => null)` pattern, establishing it as the canonical approach. These three clients don't follow the pattern.
+
+1. **code-similarity-client.ts:49** — `response.json()` without `.catch()`. If the sidecar returns 200 with a non-JSON body, the `SyntaxError` propagates to the outer catch, returning `null` (fail-open). The error is logged as "unreachable" which is misleading.
+
+2. **compiler/execute.ts:533** — `response.json()` without `.catch()`. Same class of issue. The error is logged as "Rust runner unavailable" when the runner was actually reachable but returned invalid data.
+
+3. **hcaptcha.ts:76** — `response.json()` without `.catch()`. If hcaptcha returns 200 with a non-JSON body, the `SyntaxError` is unhandled and propagates as an unhandled promise rejection.
+
+**Fix:** Apply `.catch()` guards consistently:
+1. code-similarity-client: `const data = (await response.json().catch(() => null)) as RustComputeResponse | null; if (!data) return null;`
+2. compiler/execute.ts: `const data = (await response.json().catch(() => null)) as CompilerRunResult | null; if (!data) { logger.warn(..., "[compiler] Rust runner returned invalid JSON"); return null; }`
+3. hcaptcha.ts: `const payload = await response.json().catch(() => ({ success: false, "error-codes": ["parse-error"] })) as {...};`
+
+---
+
+### AGG-4: Edit-group-dialog triple `Array.find()` in SelectValue render [LOW/LOW]
+
+**Flagged by:** code-reviewer (CR-2), perf-reviewer (PERF-2), designer (DES-2)
 **Signal strength:** 3 of 11 review perspectives
 
-**File:** `src/lib/plugins/chat-widget/chat-widget.tsx:215`
+**File:** `src/app/(dashboard)/dashboard/groups/edit-group-dialog.tsx:141-143`
 
-**Description:** The `sendMessage` useCallback includes `messages` in its dependency array (line 215). Since `messages` is a state array that changes on every sent/received message, the callback is recreated on every message change. This causes downstream `handleSend` and `handleKeyDown` callbacks to also be recreated, triggering unnecessary re-renders.
+**Description:** The `SelectValue` render calls `group.availableInstructors.find((instructor) => instructor.id === instructorId)` three times in the same expression. Each lookup iterates the array. While the array is typically small (a few instructors), this is unnecessary work on every render.
 
-**Fix:** Use a ref for messages within the callback to stabilize the dependency array:
-```typescript
-const messagesRef = useRef(messages);
-useEffect(() => { messagesRef.current = messages; }, [messages]);
-// Then use messagesRef.current in sendMessage instead of messages
-```
+**Fix:** Extract the found instructor into a variable before the JSX expression.
 
 ---
 
-### AGG-4: `active-timed-assignment-sidebar-panel.tsx` uses `setInterval` for countdown [LOW/LOW]
+### AGG-5: Docker client leaks `err.message` in build error responses [LOW/MEDIUM]
 
-**Flagged by:** perf-reviewer (PERF-2)
+**Flagged by:** security-reviewer (SEC-2)
 **Signal strength:** 1 of 11 review perspectives
 
-**File:** `src/components/layout/active-timed-assignment-sidebar-panel.tsx:63`
+**File:** `src/lib/docker/client.ts:174`
 
-**Description:** This component uses `window.setInterval` for its countdown. This was noted in cycle 29 (PERF-2) and is lower severity because:
-1. It has a `visibilitychange` handler that corrects drift on tab switch
-2. The sidebar timer is informational, not safety-critical like exam countdown
-3. The interval self-terminates when all assignments expire
+**Description:** `resolve({ success: false, error: err.message })` on line 174 passes raw Node.js error messages in the response. Docker build errors may contain host file paths, container IDs, or other infrastructure details. This endpoint is admin-only, reducing risk.
 
-**Fix:** Could be migrated to recursive `setTimeout` for consistency, but low priority.
-
----
-
-## Performance Findings (carried/deferred)
-
-### PERF-CARRIED-1: sidebar interval re-entry — LOW/LOW, deferred from cycle 26
-### PERF-CARRIED-2: Unbounded analytics query — carried from DEFER-31
-### PERF-CARRIED-3: Scoring full-table scan — carried from DEFER-31
-
-## Security Findings (carried)
-
-### SEC-CARRIED-1: `window.location.origin` for URL construction — covered by DEFER-24
-### SEC-CARRIED-2: Encryption plaintext fallback — MEDIUM/MEDIUM, carried from DEFER-39
-### SEC-CARRIED-3: `AUTH_CACHE_TTL_MS` has no upper bound — LOW/MEDIUM, carried from DEFER-40
-### SEC-CARRIED-4: Anti-cheat localStorage persistence — LOW/LOW, carried from DEFER-48
-### SEC-CARRIED-5: `sanitizeHtml` root-relative img src — LOW/LOW, carried from DEFER-49
-
-## Previously Deferred Items (Carried Forward)
-
-All previously deferred items from prior cycle plans remain in effect:
-- DEFER-1 through DEFER-13 (from cycle 23)
-- DEFER-14 (centralized error handling / useApiFetch hook, from cycle 24)
-- DEFER-15 (window.confirm replacement, from cycle 25)
-- DEFER-16 (ContestAnnouncements polling, from cycle 25)
-- DEFER-17 (Inconsistent createApiHandler, from cycle 27)
-- DEFER-18 (Contest layout forced navigation, from cycle 27)
-- DEFER-19 (use-source-draft JSON.parse validation, from cycle 27)
-- DEFER-20 (Contest clarifications show userId — requires backend change)
-- DEFER-21 (Duplicated visibility-aware polling pattern)
-- DEFER-29 through DEFER-41 (from April-22 cycle 28 plan)
-
-## Agent Failures
-
-None. All 11 review perspectives completed successfully.
+**Fix:** Log the full error and return a sanitized message.

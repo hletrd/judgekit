@@ -1,41 +1,27 @@
-# UI/UX Review — RPF Cycle 30
+# UI/UX Review — RPF Cycle 31
 
 **Date:** 2026-04-23
 **Reviewer:** designer
-**Base commit:** 31afd19b
+**Base commit:** 198e6a63
 
-## Previously Fixed Items (Verified)
+## Findings
 
-- Clarification i18n (quick-answer text): Fixed (commit 7e0b3bb8). Verified Korean translations.
-- Progress bar aria-label: Fixed (commit 3530a989). Verified `aria-label={tNav("progress")}`.
-- Korean letter-spacing compliance: Maintained across codebase. Verified conditional tracking only applied when `locale !== "ko"`.
+### DES-1: ActiveTimedAssignmentSidebarPanel `setInterval` causes visual glitch on tab switch [MEDIUM/MEDIUM]
 
-## DES-1: Exam countdown timer `setInterval` may cause momentary display glitch on tab switch [MEDIUM/MEDIUM]
+**File:** `src/components/layout/active-timed-assignment-sidebar-panel.tsx:63`
 
-**File:** `src/components/exam/countdown-timer.tsx:117`
+**Description:** When a user switches back to a tab showing the active assignment panel, the throttled `setInterval` can fire multiple callbacks in rapid succession. Each callback triggers `setNowMs(Date.now())` causing a re-render. The `visibilitychange` handler also fires. This creates a brief visual flicker as the "remaining time" and "progress" values update multiple times in rapid succession.
 
-**UX impact:** During an exam, the countdown timer is the most critical UI element. If a student switches tabs and returns, the `setInterval` catch-up behavior may cause the timer display to briefly show an incorrect value before correcting. While the correction happens quickly, seeing the time "jump" can cause anxiety during a high-stakes exam.
+This is particularly noticeable on the progress bar (line 172-179) which has a CSS transition (`transition-[width] duration-1000 ease-linear`). Multiple rapid state updates can cause the progress bar to "stutter" as it tries to animate to intermediate positions.
 
-**Accessibility concern:** The `aria-live` region on line 145-146 announces threshold warnings. If the `setInterval` catch-up causes the `remaining` state to briefly cross a threshold boundary (e.g., from 5:01 to 4:59), the threshold announcement and toast may fire prematurely or incorrectly before the correct value is recalculated.
-
-The countdown timer's `role="timer"` (line 139) means screen readers may also announce the incorrect intermediate value.
-
-**Fix:** Migrate to recursive `setTimeout` to prevent catch-up behavior entirely, ensuring the timer display is always accurate.
+**Fix:** Migrate to recursive `setTimeout` to prevent catch-up behavior. The `visibilitychange` handler already provides the correct immediate update.
 
 ---
 
-## DES-2: Chat widget minimized state does not show notification for new assistant messages [LOW/LOW]
+### DES-2: Edit-group-dialog SelectValue triple-find causes unnecessary render work [LOW/LOW]
 
-**File:** `src/lib/plugins/chat-widget/chat-widget.tsx:245-260`
+**File:** `src/app/(dashboard)/dashboard/groups/edit-group-dialog.tsx:141-143`
 
-When the chat widget is minimized (line 245-260), it shows a badge with the count of assistant messages. However, when a new message arrives while minimized, there is no visual animation or notification beyond the count badge updating. Users who are not watching the minimized widget may not notice new responses.
+**Description:** The `SelectValue` render does three `Array.find()` calls on the same array with the same predicate. Minor unnecessary render computation.
 
-This is a minor UX improvement — not a functional bug.
-
-**Fix:** Could add a brief pulse animation on the minimized button when a new message arrives.
-
----
-
-## Designer Findings (carried/deferred)
-
-### DES-CARRIED-1: Dialog semantics for submission overview — carried from DEFER-41
+**Fix:** Extract found instructor to a variable.

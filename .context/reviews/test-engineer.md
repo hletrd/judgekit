@@ -1,47 +1,25 @@
-# Test Engineer Review — RPF Cycle 30
+# Test Engineer Review — RPF Cycle 31
 
 **Date:** 2026-04-23
 **Reviewer:** test-engineer
-**Base commit:** 31afd19b
+**Base commit:** 198e6a63
 
-## Previously Fixed Items (Verified)
+## Findings
 
-- All prior cycle test findings remain as deferred items (DEFER-36, DEFER-37)
+### TE-1: ActiveTimedAssignmentSidebarPanel `setInterval` — no test coverage for timer behavior [MEDIUM/LOW]
 
-## TE-1: No test coverage for countdown timer timer mechanism [LOW/MEDIUM]
+**File:** `src/components/layout/active-timed-assignment-sidebar-panel.tsx:63`
 
-**File:** `src/components/exam/countdown-timer.tsx`
+**Description:** No unit or component test exists for this component's timer behavior. The timer self-stops when all deadlines pass (line 72-74) and handles visibility changes (line 80-84). Neither path is tested. When migrating to `setTimeout`, the new pattern should be verified.
 
-The countdown timer component has no tests verifying:
-1. The timer mechanism correctly counts down
-2. The `visibilitychange` handler corrects drift
-3. The `handleExpired` callback fires when time reaches zero
-4. Threshold warnings (15min, 5min, 1min) fire correctly
-
-If the timer is migrated from `setInterval` to recursive `setTimeout` (as recommended by other reviewers), tests should verify the new mechanism works correctly, especially:
-- Timer pauses when tab is hidden
-- Timer resumes when tab becomes visible
-- Timer self-corrects on tab switch
-
-**Fix:** Add component tests for the countdown timer covering these scenarios.
+**Fix:** Migrate to recursive `setTimeout` and add a component test for the timer lifecycle.
 
 ---
 
-## TE-2: No test coverage for rate-limiter client circuit breaker behavior [LOW/LOW]
+### TE-2: Chat widget tool error sanitization is untested [MEDIUM/MEDIUM]
 
-**File:** `src/lib/security/rate-limiter-client.ts`
+**File:** `src/app/api/v1/plugins/chat-widget/chat/route.ts:431`
 
-The rate-limiter client's circuit breaker has no tests verifying:
-1. Circuit opens after 3 consecutive failures
-2. Circuit closes after recovery window (30 seconds)
-3. Non-JSON responses are handled gracefully (currently they trip the circuit breaker)
+**Description:** There is no test verifying that tool execution error messages are sanitized before being sent to the LLM. This is a security-critical path. A test should verify that raw error messages are not passed through.
 
-**Fix:** Add unit tests for circuit breaker behavior.
-
----
-
-## Test Engineer Findings (carried/deferred)
-
-### TE-CARRIED-1: Security module test coverage gaps — carried from DEFER-36
-### TE-CARRIED-2: Hook test coverage gaps — carried from DEFER-37
-### TE-CARRIED-3: Unguarded `.json()` on success paths — carried from DEFER-38
+**Fix:** Add a test that verifies sanitized error messages in tool execution failures.

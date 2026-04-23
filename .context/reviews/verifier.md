@@ -1,46 +1,41 @@
-# Verifier Review — RPF Cycle 30
+# Verifier Review — RPF Cycle 31
 
 **Date:** 2026-04-23
 **Reviewer:** verifier
-**Base commit:** 31afd19b
+**Base commit:** 198e6a63
 
-## Previously Fixed Items (Verified)
+## Previously Fixed Items (Verified in Current Code)
 
-- AGG-1 (clarification i18n, commit 7e0b3bb8): Verified. Lines 290, 293, 296 now use `t("quickYesAnswer")`, `t("quickNoAnswer")`, `t("quickNoCommentAnswer")`. English and Korean translations confirmed in `messages/en.json` (lines 2356-2358) and `messages/ko.json` (lines 2356-2358).
-- AGG-2 (provider error sanitization, commit 93beb49d): Verified. All 6 provider error sites in `providers.ts` now throw `new Error(`...API error ${status}`)` without response body. Full body logged via `logger.warn()` at lines 102, 137, 206, 259, 340, 402.
-- AGG-3 (useVisibilityPolling setTimeout, commit 60f24288): Verified. `use-visibility-polling.ts` uses recursive `setTimeout` with `cancelled` flag pattern.
-- AGG-4 (progress bar aria-label, commit 3530a989): Verified. `active-timed-assignment-sidebar-panel.tsx:172` has `aria-label={tNav("progress")}`.
+- AGG-1 (countdown timer setInterval): Fixed in commit 19de5cf6 — verified recursive setTimeout pattern
+- AGG-2 (rate-limiter .catch() guard): Fixed in commit 7ae57906 — verified `.catch(() => null)` and null check
+- AGG-3 (chat widget sendMessage stabilization): Fixed in commit ce9aa4fa — verified messagesRef pattern
 
-## V-1: `countdown-timer.tsx` uses `setInterval` — evidence-based verification of inconsistency [MEDIUM/MEDIUM]
+## Findings
 
-**File:** `src/components/exam/countdown-timer.tsx:117`
+### V-1: ActiveTimedAssignmentSidebarPanel still uses `setInterval` — contradicts established pattern [MEDIUM/MEDIUM]
 
-**Evidence:** Line 117 contains `const interval = setInterval(recalculate, 1000)`. This is the only client-side timer still using `setInterval`. All others have been migrated:
+**File:** `src/components/layout/active-timed-assignment-sidebar-panel.tsx:63`
 
-| Component | Pattern | Migration |
-|-----------|---------|-----------|
-| useVisibilityPolling | recursive setTimeout | commit 60f24288 |
-| contest-replay | recursive setTimeout | commit 9cc30d51 |
-| anti-cheat heartbeat | recursive setTimeout | already correct |
-| countdown-timer | setInterval | **NOT migrated** |
-| active-timed-assignment-sidebar | setInterval | deferred (LOW/LOW) |
+**Evidence:** Line 63: `const interval = window.setInterval(() => {`, line 78-79 comment says "This matches the pattern in countdown-timer.tsx" but the implementation does NOT match — countdown-timer uses recursive setTimeout. The comment is misleading.
 
-**Verification of stated behavior:** The `visibilitychange` handler on line 122-127 calls `recalculate()` when the tab becomes visible. This corrects the displayed time after tab switches. However, it does NOT prevent `setInterval` catch-up behavior — pending interval callbacks can still fire before the visibility change handler runs.
-
-**Fix:** Migrate to recursive `setTimeout` to eliminate the catch-up window.
+**Fix:** Migrate to recursive `setTimeout`.
 
 ---
 
-## V-2: `rate-limiter-client.ts` unguarded `.json()` on success path [LOW/MEDIUM]
+### V-2: Chat widget route exposes raw error messages to LLM [MEDIUM/HIGH]
 
-**File:** `src/lib/security/rate-limiter-client.ts:79`
+**File:** `src/app/api/v1/plugins/chat-widget/chat/route.ts:431`
 
-**Evidence:** Line 79 contains `const data = (await response.json()) as T;` without a `.catch()` guard. If the sidecar returns a non-JSON body (e.g., HTML from a proxy), this throws `SyntaxError`. The outer try/catch catches it but incorrectly increments the circuit breaker, treating a parse error the same as a network failure.
+**Evidence:** Line 431: `toolResult = \`Error executing tool "${call.name}": ${err instanceof Error ? err.message : "unknown error"}\``. This raw error message becomes part of the LLM conversation context. The LLM system prompt does not instruct it to suppress internal details.
 
-**Fix:** Add `.catch()` to the `.json()` call and handle parse errors separately from network errors.
+**Fix:** Sanitize error messages before passing to LLM.
 
 ---
 
-## Verifier Findings (carried/deferred)
+### V-3: Unguarded `.json()` on three server-side sidecar success paths [LOW/MEDIUM]
 
-### V-CARRIED-1: Encryption plaintext fallback — MEDIUM/MEDIUM, carried from DEFER-39
+**Files:** `src/lib/assignments/code-similarity-client.ts:49`, `src/lib/compiler/execute.ts:533`, `src/lib/security/hcaptcha.ts:76`
+
+**Evidence:** All three call `response.json()` after `!response.ok` check without `.catch()`. The rate-limiter-client.ts was fixed with this pattern in cycle 30.
+
+**Fix:** Add `.catch()` guards.

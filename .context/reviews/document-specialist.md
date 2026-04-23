@@ -1,45 +1,23 @@
-# Document Specialist Review — RPF Cycle 30
+# Document Specialist Review — RPF Cycle 31
 
 **Date:** 2026-04-23
 **Reviewer:** document-specialist
-**Base commit:** 31afd19b
+**Base commit:** 198e6a63
 
-## Previously Fixed Items (Verified)
+## Findings
 
-- useVisibilityPolling doc comment: Updated (commit 60f24288). Now correctly states "Uses recursive `setTimeout` instead of `setInterval`"
-- Clarification i18n: Fixed (commit 7e0b3bb8)
-- Provider error sanitization: Fixed (commit 93beb49d)
+### DOC-1: ActiveTimedAssignmentSidebarPanel comment says "matches the pattern in countdown-timer.tsx" but it doesn't [LOW/MEDIUM]
 
-## DOC-1: `countdown-timer.tsx` comment says "browser throttling of setInterval" but does not note the architectural inconsistency [LOW/LOW]
+**File:** `src/components/layout/active-timed-assignment-sidebar-panel.tsx:78-79`
 
-**File:** `src/components/exam/countdown-timer.tsx:119-121`
+**Description:** The comment says "stale timer values caused by browser throttling of setInterval in background tabs. This matches the pattern in countdown-timer.tsx." However, the countdown timer was migrated to recursive `setTimeout` in cycle 30. The comment is now misleading — it implies the patterns match when they don't.
 
-The comments on lines 119-121 say:
-```
-// timer drift caused by browser throttling of setInterval in
-// background tabs. Students rely on accurate countdown during exams.
-```
-
-This acknowledges the `setInterval` issue but does not note that the rest of the codebase has migrated to recursive `setTimeout`. A future developer reading this code might not realize the timer is the last holdout.
-
-**Fix:** Minor doc improvement — note that this timer should be migrated to `setTimeout` for consistency.
+**Fix:** Migrate to recursive `setTimeout` to actually match the countdown-timer pattern, or update the comment to clarify the difference.
 
 ---
 
-## DOC-2: `apiFetchJson` JSDoc is excellent — no changes needed [NO ISSUE]
+### DOC-2: No documentation for the established timer pattern convention [LOW/LOW]
 
-**File:** `src/lib/api/client.ts:88-101`
+**Description:** The codebase has converged on recursive `setTimeout` as the standard pattern for client-side timers, but this convention is not documented anywhere. New developers may inadvertently use `setInterval` for new components.
 
-The JSDoc for `apiFetchJson` thoroughly documents the `.json()` safety pattern, including:
-- Always check `response.ok` before calling `.json()`
-- Use `.catch()` on `.json()` calls
-- Never call `.json()` twice on the same response
-
-This is well-documented and no changes are needed.
-
----
-
-## Document Specialist Findings (carried/deferred)
-
-### DOC-CARRIED-1: SubmissionStatus type split — carried from DEFER-32
-### DOC-CARRIED-2: CSRF documentation mismatch — carried from DEFER-35
+**Fix:** Add a note to the project's coding conventions about the timer pattern.

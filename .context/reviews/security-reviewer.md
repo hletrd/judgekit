@@ -1,47 +1,47 @@
-# Security Review — RPF Cycle 30
+# Security Review — RPF Cycle 31
 
 **Date:** 2026-04-23
 **Reviewer:** security-reviewer
-**Base commit:** 31afd19b
+**Base commit:** 198e6a63
 
 ## Previously Fixed Items (Verified)
 
-- Chat widget provider error sanitization (commit 93beb49d): Verified. All 6 provider error sites now use `throw new Error(`...API error ${response.status}`)` without `${text}`. Full response body logged server-side via `logger.warn()`.
-- console.error gating (14 components): Verified
-- bulk-create raw err.message truncation: Verified
-- SSRF via test-connection endpoint: Mitigated (uses stored keys, model validation)
-- `sanitizeHtml` root-relative img src: Deferred (LOW/LOW)
+Rate-limiter-client .catch() guard added (7ae57906). Provider error sanitization (93beb49d). All prior security findings addressed.
 
-## SEC-1: `rate-limiter-client.ts` has unguarded `.json()` on success path [LOW/MEDIUM]
+## Findings
 
-**File:** `src/lib/security/rate-limiter-client.ts:79`
+### SEC-1: Chat widget route leaks raw `err.message` from tool execution to LLM context [MEDIUM/HIGH]
 
-The `callRateLimiter` function calls `response.json()` without a `.catch()` guard on line 79:
+**File:** `src/app/api/v1/plugins/chat-widget/chat/route.ts:431`
 
-```typescript
-const data = (await response.json()) as T;
-```
+**Description:** When a tool execution fails, the catch block constructs a result string: `Error executing tool "${call.name}": ${err instanceof Error ? err.message : "unknown error"}`. This raw `err.message` is sent to the LLM as a tool result. The LLM may then relay this information to the user in its response. Internal error messages can contain:
+- Database connection strings
+- File system paths
+- Stack traces
+- Internal service names
 
-If the rate-limiter sidecar returns a non-JSON body (e.g., an HTML error page from a reverse proxy), this will throw a `SyntaxError`. The surrounding try/catch (line 63-89) catches this, but it increments `consecutiveFailures` and opens the circuit breaker as a result. A transient proxy error (returning HTML) would trip the circuit breaker, degrading the rate limiter for 30 seconds.
+The tool execution can fail for many reasons — database query errors, permission errors, file I/O errors. All of these would have their raw messages exposed.
 
-This is the same class of issue tracked as DEFER-38 (unguarded `.json()` on success paths). The server-side API route handlers in `createApiHandler` already wrap `req.json()` in try/catch. The rate-limiter client is server-side code calling an internal sidecar, so the risk is lower than client-side `.json()` calls, but it still produces incorrect circuit-breaker behavior.
+**Concrete failure scenario:** The `get_submission_detail` tool fails because of a database connection error: `connect ECONNREFUSED 127.0.0.1:5432`. The error message contains the database host and port. The LLM receives this as a tool result and may mention it to the user: "I couldn't fetch your submission because the database at 127.0.0.1:5432 is not responding."
 
-**Fix:** Add `.catch()` to the `.json()` call:
-```typescript
-const data = (await response.json().catch(() => null)) as T | null;
-if (data === null) {
-  consecutiveFailures++;
-  circuitOpenUntil = Date.now() + RECOVERY_WINDOW_MS;
-  return null;
-}
-```
+**Fix:** Sanitize the error message before passing it to the LLM. Use a generic error message like `Tool "${call.name}" failed — please try again` for the LLM, and log the real error server-side only.
 
 ---
 
-## Security Findings (carried/deferred)
+### SEC-2: Docker client leaks `err.message` in build error responses [LOW/MEDIUM]
 
-### SEC-CARRIED-1: `window.location.origin` for URL construction — covered by DEFER-24
-### SEC-CARRIED-2: Encryption plaintext fallback — MEDIUM/MEDIUM, carried from DEFER-39
-### SEC-CARRIED-3: `AUTH_CACHE_TTL_MS` has no upper bound — LOW/MEDIUM, carried from DEFER-40
-### SEC-CARRIED-4: Anti-cheat localStorage persistence — LOW/LOW, carried from DEFER-48
-### SEC-CARRIED-5: `sanitizeHtml` root-relative img src — LOW/LOW, carried from DEFER-49
+**File:** `src/lib/docker/client.ts:174`
+
+**Description:** `resolve({ success: false, error: err.message })` on line 174 passes raw Node.js error messages back in the response. Docker build errors may contain host file paths, container IDs, or other infrastructure details. This endpoint is admin-only, reducing risk, but the pattern is still undesirable.
+
+**Fix:** Log the full error and return a sanitized message to the client.
+
+---
+
+### SEC-3: Unguarded `.json()` on hcaptcha success path could cause unhandled rejection [LOW/MEDIUM]
+
+**File:** `src/lib/security/hcaptcha.ts:76`
+
+**Description:** If the hcaptcha API returns a 200 with a non-JSON body, the `SyntaxError` from `response.json()` is unhandled and will cause an unhandled promise rejection in the calling context. While this is unlikely given hcaptcha's stable API, it follows the same pattern as the rate-limiter-client.ts fix from cycle 30.
+
+**Fix:** Add `.catch()` guard returning a safe default.

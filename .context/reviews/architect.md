@@ -1,43 +1,29 @@
-# Architecture Review — RPF Cycle 30
+# Architecture Review — RPF Cycle 31
 
 **Date:** 2026-04-23
 **Reviewer:** architect
-**Base commit:** 31afd19b
+**Base commit:** 198e6a63
 
-## Previously Fixed Items (Verified)
+## Findings
 
-- Clarification i18n: Fixed (commit 7e0b3bb8)
-- Provider error sanitization: Fixed (commit 93beb49d)
-- useVisibilityPolling setTimeout: Fixed (commit 60f24288)
-- Progress bar aria-label: Fixed (commit 3530a989)
+### ARCH-1: ActiveTimedAssignmentSidebarPanel `setInterval` — last client-side timer violating established pattern [MEDIUM/MEDIUM]
 
-## ARCH-1: `countdown-timer.tsx` is the last client-side timer using `setInterval` — architectural inconsistency [MEDIUM/MEDIUM]
+**File:** `src/components/layout/active-timed-assignment-sidebar-panel.tsx:63`
 
-**File:** `src/components/exam/countdown-timer.tsx:117`
+**Description:** The codebase has converged on recursive `setTimeout` as the canonical pattern for all client-side timers. Three components have been migrated in the last three cycles. This component is the last holdout. It even references the countdown-timer pattern in a comment (line 78-79) but doesn't implement it.
 
-The codebase has converged on recursive `setTimeout` as the architectural standard for all timer-based effects. The `useVisibilityPolling` hook was migrated in cycle 29, and the contest-replay component in cycle 28. The countdown timer is now the only remaining client-side timer using `setInterval`.
+This is an architectural consistency issue — developers reading this code may think `setInterval` is acceptable for new code because they see it in this component.
 
-This is an exam countdown timer — arguably the most important timer in the application from a user impact perspective. Students rely on accurate time remaining during proctored exams. The architectural inconsistency is more concerning here than in the polling hook because:
-
-1. The countdown timer's accuracy directly affects student experience during high-stakes assessments
-2. `setInterval` catch-up behavior in background tabs can cause momentary incorrect display
-3. The `visibilitychange` handler provides a safety net but is reactive, not preventive
-
-**Fix:** Migrate to recursive `setTimeout` to complete the architectural convergence on this timer pattern.
+**Fix:** Migrate to recursive `setTimeout`.
 
 ---
 
-## ARCH-2: Chat widget `sendMessage` has unstable `messages` dependency causing callback churn [LOW/LOW]
+### ARCH-2: Inconsistent `.json()` error handling across server-side sidecar clients [LOW/MEDIUM]
 
-**File:** `src/lib/plugins/chat-widget/chat-widget.tsx:215`
+**Files:** `src/lib/assignments/code-similarity-client.ts:49`, `src/lib/compiler/execute.ts:533`, `src/lib/security/hcaptcha.ts:76`
 
-The `sendMessage` useCallback includes `messages` in its dependency array. Since `messages` state changes on every sent/received message, the callback is recreated frequently, causing downstream `handleSend` and `handleKeyDown` to also be recreated. This is a minor architectural concern about unnecessary re-renders, not a functional bug.
+**Description:** Three server-side sidecar/external API clients call `response.json()` without `.catch()` on success paths. The rate-limiter-client.ts was fixed in cycle 30 with a `.catch(() => null)` pattern, establishing it as the canonical approach. The code-similarity-client, compiler runner, and hcaptcha clients don't follow this pattern.
 
-**Fix:** Use a ref for messages within the callback to stabilize the dependency array.
+While these are all server-side (less risky than client-side), the inconsistency creates maintenance burden and confusion about the expected pattern.
 
----
-
-## Architectural Findings (carried/deferred)
-
-### ARCH-CARRIED-1: Inconsistent createApiHandler usage — carried from DEFER-17
-### ARCH-CARRIED-2: Duplicated visibility-aware polling pattern — carried from DEFER-21
+**Fix:** Apply the `.catch()` pattern consistently to all server-side `response.json()` calls on success paths.
