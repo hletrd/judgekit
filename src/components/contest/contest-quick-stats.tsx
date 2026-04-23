@@ -61,11 +61,12 @@ export function ContestQuickStats({
         { data: undefined }
       );
       if (ok && data.data && typeof data.data === "object") {
+        const d = data.data;
         setStats((prev) => ({
-          participantCount: typeof data.data!.participantCount === "number" && Number.isFinite(data.data!.participantCount) ? data.data!.participantCount : prev.participantCount,
-          submittedCount: typeof data.data!.submittedCount === "number" && Number.isFinite(data.data!.submittedCount) ? data.data!.submittedCount : prev.submittedCount,
-          avgScore: data.data!.avgScore !== null && data.data!.avgScore !== undefined && typeof data.data!.avgScore === "number" && Number.isFinite(data.data!.avgScore) ? data.data!.avgScore : null,
-          problemsSolvedCount: typeof data.data!.problemsSolvedCount === "number" && Number.isFinite(data.data!.problemsSolvedCount) ? data.data!.problemsSolvedCount : prev.problemsSolvedCount,
+          participantCount: typeof d.participantCount === "number" && Number.isFinite(d.participantCount) ? d.participantCount : prev.participantCount,
+          submittedCount: typeof d.submittedCount === "number" && Number.isFinite(d.submittedCount) ? d.submittedCount : prev.submittedCount,
+          avgScore: d.avgScore !== null && d.avgScore !== undefined && typeof d.avgScore === "number" && Number.isFinite(d.avgScore) ? d.avgScore : null,
+          problemsSolvedCount: typeof d.problemsSolvedCount === "number" && Number.isFinite(d.problemsSolvedCount) ? d.problemsSolvedCount : prev.problemsSolvedCount,
         }));
       }
     } catch (err) {
