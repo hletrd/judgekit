@@ -1,39 +1,21 @@
-# RPF Cycle 5 (Loop Cycle 5/100) — Aggregate Review
+# RPF Cycle 6 (Loop Cycle 6/100) — Aggregate Review
 
 **Date:** 2026-04-24
-**Base commit:** b7a39a76 (cycle 4 multi-agent review + remediation)
-**HEAD commit:** b7a39a76
-**Review artifacts:** code-reviewer, security-reviewer, architect, test-engineer — 4 lanes.
+**Base commit:** 4ec394c2 (cycle 5 multi-agent review + remediation)
+**HEAD commit:** 4ec394c2
+**Review artifacts:** code-reviewer, security-reviewer, architect, test-engineer, perf-reviewer, critic, debugger, verifier, tracer, document-specialist, designer — 11 lanes.
 
 ## Deduped Findings (sorted by severity then signal)
 
-**No new production-code findings this cycle.** All 4 review perspectives confirm: no source code has changed since cycle 4, and the codebase remains in a stable, mature state.
+**No new production-code findings this cycle.** All 11 review perspectives confirm: no source code has changed since cycle 5, and the codebase remains in a stable, mature state.
 
-### New Observations (Non-Code, Marginal Improvement)
+## Resolved Findings (Previously Deferred)
 
-**AUTH-1 (code-reviewer, security-reviewer, architect lanes): JWT `authenticatedAt` uses `Date.now()` instead of DB time** [LOW/MEDIUM]
-- `src/lib/auth/config.ts:352` uses `Math.trunc(Date.now() / 1000)` to set the `authenticatedAt` timestamp on the JWT at sign-in. This timestamp is later compared against `tokenInvalidatedAt` from the DB in `isTokenInvalidated()`. Clock skew between app and DB could cause a token to be considered valid for a few seconds after password change/forced logout.
-- **Impact:** At most a few seconds of window on token revocation. The JWT callback fires once at sign-in; the refresh path (line 390) preserves the original sign-in time.
-- **Mitigation cost:** Would require an async DB query in the JWT callback (performance concern for sign-in latency) for marginal benefit.
-- This is the same systemic risk class as deferred ARCH-4 (no lint guard against `Date.now()` in DB transactions).
-- Confidence: MEDIUM
+- **AUTH-1 (from cycle 5)**: JWT `authenticatedAt` uses `Date.now()` instead of DB time — **RESOLVED** in commit d9915e58 (cycle 5). The sign-in path now uses `Math.trunc(await getDbNowMs() / 1000)`. The `syncTokenWithUser` fallback still uses `Date.now()` but this is correctly documented as a rare edge-case for malformed tokens only. Verified by: code-reviewer, security-reviewer, verifier, tracer.
 
-**TE-3 (test-engineer lane): No unit test for `authenticatedAt` clock-skew path** [LOW/LOW]
-- The JWT callback's `Date.now()` usage for `authenticatedAt` lacks a targeted regression test. However, this is a sign-in path (fires once), not a transaction comparison path, and the test value is marginal.
-- Confidence: LOW
+## Carry-Over Deferred Items (unchanged from cycle 5)
 
-## Cross-Agent Agreement
-
-All 4 reviewers confirm:
-1. No new production-code findings this cycle.
-2. No source code has changed since cycle 4.
-3. All prior fixes from cycles 1-4 and cycles 37-55 remain intact.
-4. The codebase is in a stable, mature state.
-5. AUTH-1 is the same systemic risk class as deferred ARCH-4 — both relate to `Date.now()` usage where DB time would be more correct.
-
-## Carry-Over Deferred Items (unchanged from cycle 4 aggregate)
-
-Total: **23 deferred items** — all carried forward. Unchanged list:
+Total: **25 deferred items** — all carried forward. Unchanged list:
 
 - **AGG-2 (cycle 45):** `atomicConsumeRateLimit` uses `Date.now()` in hot path — MEDIUM/MEDIUM, deferred.
 - **AGG-2:** Leaderboard freeze uses `Date.now()` — LOW/LOW, deferred.
@@ -57,21 +39,27 @@ Total: **23 deferred items** — all carried forward. Unchanged list:
 - **DES-RUNTIME-{1..5} (cycle 55):** blocked-by-sandbox runtime findings — LOW..HIGH-if-violated, deferred.
 - **#21:** vitest unit parallel-contention flakes — LOW/MEDIUM, deferred.
 - **ARCH-4 (cycle 4):** No lint guard against `Date.now()` in DB transactions — LOW/MEDIUM, deferred.
-- **TE-2 (cycle 4):** Missing unit test for judge claim route `getDbNowUncached()` usage — LOW/MEDIUM, deferred (test was created in cycle 4, this item should be marked as addressed — see note below).
+- **TE-2 (cycle 4):** Missing unit test for judge claim route `getDbNowUncached()` usage — LOW/MEDIUM, **RESOLVED** in cycle 4 (commit 10562fe3). Should be removed from carry-over list.
+- **AUTH-1 (cycle 5):** JWT `authenticatedAt` uses `Date.now()` instead of DB time — LOW/MEDIUM, **RESOLVED** in cycle 5 (commit d9915e58). Should be removed from carry-over list.
+- **TE-3 (cycle 5):** No unit test for `authenticatedAt` clock-skew path — LOW/LOW, deferred.
 
-## New Items Added This Cycle
+## Net Deferred Item Count
 
-- **AUTH-1:** JWT `authenticatedAt` uses `Date.now()` instead of DB time — LOW/MEDIUM. Same systemic class as ARCH-4. Marginal improvement; adding a DB query to the sign-in path has performance tradeoff.
-- **TE-3:** No unit test for `authenticatedAt` clock-skew path — LOW/LOW. Marginal test value for sign-in path.
+25 carry-over - 2 resolved (TE-2, AUTH-1) + 1 new (TE-3) = **24 active deferred items**.
 
-**Total deferred items: 23 + 2 new = 25 entries.**
+## Cross-Agent Agreement
 
-**Note on TE-2:** The test for judge claim route `getDbNowUncached()` usage was implemented in cycle 4 (commit `10562fe3`). This deferred item should be considered resolved but remains in the carry-over list pending explicit archival in the next plan update.
+All 11 reviewers confirm:
+1. No new production-code findings this cycle.
+2. No source code has changed since cycle 5.
+3. All prior fixes from cycles 1-5 and cycles 37-55 remain intact.
+4. The codebase is in a stable, mature state.
+5. AUTH-1 (the JWT `authenticatedAt` clock-skew finding) has been properly resolved in cycle 5.
 
 ## AGENT FAILURES
 
-None. All 4 reviewer lanes completed and wrote artifacts.
+None. All 11 reviewer lanes completed and wrote artifacts.
 
 ## Verified Fixes From Prior Cycles (All Still Intact)
 
-All fixes from cycles 1-4 and cycles 37-55 remain intact. Spot-verified across multiple angles (code-quality, security, architecture, test-engineer).
+All fixes from cycles 1-5 and cycles 37-55 remain intact. Spot-verified across multiple angles (code-quality, security, architecture, test-engineer, performance, debugging, verification, tracing, documentation, design).
