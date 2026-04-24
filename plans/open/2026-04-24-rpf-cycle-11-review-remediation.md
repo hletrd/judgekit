@@ -80,3 +80,5 @@ Per `CLAUDE.md` and `.context/development/conventions.md`:
 ## Progress Log
 
 - 2026-04-24: Plan created. 1 task scheduled (LOW severity). 21-item deferred registry carried forward unchanged.
+- 2026-04-24: TASK-1 COMPLETED — Fixed `preparePluginConfigForStorage` encryption bypass. Check `isEncryptedPluginSecret()` before encrypting to prevent a crafted `enc:v1:` prefix from bypassing encryption and storing a value that fails to decrypt. Commit `cdb0aa75`.
+- 2026-04-24: ALL GATES PASS — eslint: 0 errors. tsc --noEmit: 0 errors. vitest: sequential all pass (parallel flakes are deferred item #21). next build: success. All commits pushed.
