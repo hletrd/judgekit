@@ -13,6 +13,7 @@ import {
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { eq, sql } from "drizzle-orm";
+import { getDbNowMs } from "@/lib/db-time";
 import {
   clearRateLimitMulti,
   consumeRateLimitAttemptMulti,
@@ -113,14 +114,21 @@ export function createSuccessfulLoginResponse(
 function syncTokenWithUser(
   token: JWT,
   user: AuthUserInput,
-  authenticatedAtSeconds = getTokenAuthenticatedAtSeconds(token) ?? Math.trunc(Date.now() / 1000)
+  authenticatedAtSeconds?: number
 ) {
   const fields = mapUserToAuthFields(user);
   // Spread all auth fields onto the token in one step so new preference
   // fields are automatically included without a separate manual assignment.
   Object.assign(token, fields);
   token.sub = fields.id;
-  token.authenticatedAt = authenticatedAtSeconds;
+  // Preserve the existing authenticatedAt from the token when not explicitly
+  // provided (JWT refresh path). On sign-in, the caller passes the DB-server
+  // time explicitly. The fallback to Math.trunc(Date.now() / 1000) should only
+  // fire for malformed tokens missing both authenticatedAt and iat — a rare
+  // edge case that should not occur in normal operation.
+  token.authenticatedAt = authenticatedAtSeconds
+    ?? getTokenAuthenticatedAtSeconds(token)
+    ?? Math.trunc(Date.now() / 1000);
 
   return token;
 }
@@ -349,7 +357,11 @@ export const authConfig: NextAuthConfig = {
     },
     async jwt({ token, user }) {
       if (user) {
-        const authenticatedAtSeconds = Math.trunc(Date.now() / 1000);
+        // Use DB server time for the sign-in timestamp so that
+        // isTokenInvalidated() comparisons against tokenInvalidatedAt
+        // are consistent with the DB's NOW() — avoids clock skew
+        // between app server and database.
+        const authenticatedAtSeconds = Math.trunc(await getDbNowMs() / 1000);
 
         const updatedToken = syncTokenWithUser(
           token,
