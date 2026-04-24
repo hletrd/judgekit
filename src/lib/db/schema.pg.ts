@@ -415,7 +415,8 @@ export const judgeWorkers = pgTable(
     hostname: text("hostname").notNull(),
     alias: text("alias"),
     ipAddress: text("ip_address"),
-    secretToken: text("secret_token"),
+    // Plaintext secretToken removed: workers receive the plaintext once on
+    // registration; DB persistence relies on secretTokenHash alone.
     secretTokenHash: varchar("secret_token_hash", { length: 64 }),
     concurrency: integer("concurrency").notNull().default(1),
     activeTasks: integer("active_tasks").notNull().default(0),

@@ -51,9 +51,8 @@ export async function POST(request: NextRequest) {
         architecture: architecture ?? null,
         labels: labels ?? [],
         status: "online",
-        // plaintext secretToken is deprecated — only the hash is persisted;
-        // the worker receives the plaintext once in the response below.
-        secretToken: null,
+        // Only the hash is persisted; the worker receives the plaintext
+        // once in the response below.
         secretTokenHash: hashToken(workerSecret),
       })
       .returning({ id: judgeWorkers.id });

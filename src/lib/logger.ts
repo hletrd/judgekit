@@ -14,7 +14,6 @@ const REDACT_PATHS = [
   "recruitAccountPassword",
   "recruitToken",
   "workerSecret",
-  "secretToken",
   "judgeClaimToken",
   "sessionToken",
   "access_token",
