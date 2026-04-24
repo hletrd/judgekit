@@ -152,20 +152,20 @@ function mapTokenToSession(token: JWT, session: Session) {
     session.user.email = token.email;
   }
 
-  // Preference fields — assigned directly to the typed session.user.
-  // When adding a new preference field: add it to AUTH_PREFERENCE_FIELDS,
-  // AuthUserRecord, next-auth.d.ts (Session["user"] and JWT), AND here.
-  session.user.preferredLanguage = token.preferredLanguage ?? null;
-  session.user.preferredTheme = token.preferredTheme ?? null;
-  // shareAcceptedSolutions defaults to true (opt-out model)
-  session.user.shareAcceptedSolutions = token.shareAcceptedSolutions ?? true;
-  session.user.acceptedSolutionsAnonymous = token.acceptedSolutionsAnonymous ?? false;
-  session.user.editorTheme = token.editorTheme ?? null;
-  session.user.editorFontSize = token.editorFontSize ?? null;
-  session.user.editorFontFamily = token.editorFontFamily ?? null;
-  session.user.lectureMode = token.lectureMode ?? null;
-  session.user.lectureFontScale = token.lectureFontScale ?? null;
-  session.user.lectureColorScheme = token.lectureColorScheme ?? null;
+  // Preference fields — assigned programmatically from AUTH_PREFERENCE_FIELDS
+  // so that new preference fields are automatically included. When adding a
+  // new preference field, add it to AUTH_PREFERENCE_FIELDS, AuthUserRecord,
+  // and next-auth.d.ts (Session["user"] and JWT) — this loop picks it up.
+  // Default values must stay aligned with mapUserToAuthFields().
+  const PREFERENCE_DEFAULTS: Record<string, unknown> = {
+    shareAcceptedSolutions: true,   // opt-out model
+    acceptedSolutionsAnonymous: false,
+  };
+  for (const field of AUTH_PREFERENCE_FIELDS) {
+    const tokenValue = token[field as keyof typeof token];
+    const defaultValue = PREFERENCE_DEFAULTS[field] ?? null;
+    (session.user as Record<string, unknown>)[field] = tokenValue ?? defaultValue;
+  }
 }
 
 validateAuthUrl();
