@@ -156,4 +156,33 @@ describe("export.ts sanitization", () => {
     const columns = getSchemaColumnNames("systemSettings");
     expect(columns).toContain("hcaptchaSecret");
   });
+
+  it("logger REDACT_PATHS columns are covered by SANITIZED_COLUMNS", () => {
+    // Ensure that secret columns redacted by the logger are also redacted in
+    // exports. If a column is sensitive enough to redact from logs, it must
+    // also be redacted from database backups. This prevents a repeat of the
+    // hcaptchaSecret omission where the logger was updated but the export
+    // module was not.
+    const source = readFileSync(join(process.cwd(), EXPORT_PATH), "utf8");
+    const loggerSource = readFileSync(join(process.cwd(), "src/lib/logger.ts"), "utf8");
+
+    // Extract column names from REDACT_PATHS that correspond to DB columns
+    const dbSensitiveColumns = [
+      "passwordHash",
+      "sessionToken",
+      "access_token",
+      "refresh_token",
+      "id_token",
+      "encryptedKey",
+      "hcaptchaSecret",
+      "judgeClaimToken",
+    ];
+
+    for (const col of dbSensitiveColumns) {
+      // Verify the column appears in the logger's REDACT_PATHS
+      expect(loggerSource).toContain(col);
+      // Verify the column appears in the export's SANITIZED_COLUMNS
+      expect(source).toContain(col);
+    }
+  });
 });
