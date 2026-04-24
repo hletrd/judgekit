@@ -1,22 +1,39 @@
-# RPF Cycle 10 Aggregate Review — JudgeKit (Loop 10/100)
+# RPF Cycle 11 Aggregate Review — JudgeKit (Loop 11/100)
 
 **Date:** 2026-04-24
-**HEAD commit:** b6151c2a (cycle 9 — no new findings)
-**Reviewers:** code-reviewer, security-reviewer, perf-reviewer, architect, critic, debugger, verifier, test-engineer, tracer, designer
+**HEAD commit:** 8c923275 (cycle 10 — no new findings)
+**Reviewers:** code-reviewer, security-reviewer, perf-reviewer, architect, critic, debugger, verifier, test-engineer, tracer, designer, document-specialist
 
 ## Summary
 
-**No new findings this cycle.** All 10 review perspectives found no new issues. No source code has changed since cycle 9. The codebase remains in a stable, mature state.
+**1 new finding this cycle.** A logic defect in `preparePluginConfigForStorage` where an admin-supplied value starting with the `enc:v1:` prefix bypasses encryption and is stored as plaintext, causing a decrypt failure on read. Severity: LOW. Security impact: LOW (admin-only, no exfiltration path, graceful degradation).
 
-### Refinement to Deferred Item #1
+### New Finding
 
-Code-reviewer identified that `atomicConsumeRateLimit()` in `src/lib/security/api-rate-limit.ts` uses `Date.now()` (line 56) while `checkServerActionRateLimit()` in the same file uses `getDbNowUncached()` (line 223). This cross-function time source inconsistency means rate limit rows written by one function could be misinterpreted by the other if app-server and DB-server clocks diverge. This refines the existing deferred item #1 (which noted `Date.now()` in the hot path) by making the impact more concrete — it is not just clock skew vs DB round-trip, but also internal consistency within the module. No change to severity (MEDIUM) or recommended fix (use `getDbNowUncached()`).
+| ID | Finding | File+Line | Severity / Confidence | Reviewers Agreeing |
+|----|---------|-----------|----------------------|-------------------|
+| CR11-1 | `preparePluginConfigForStorage` encryption bypass via `enc:v1:` prefix | `src/lib/plugins/secrets.ts:132-136` | LOW / MEDIUM | code-reviewer, security-reviewer, critic, debugger, tracer |
+
+**Description:** When `preparePluginConfigForStorage` receives a secret value starting with `enc:v1:`, the function first encrypts it (line 132), then checks the original input with `isEncryptedPluginSecret()` (line 133). Since the input starts with `enc:v1:`, the encrypted result is discarded and the original (non-encrypted) value is stored. When `decryptPluginSecret` later processes this row, it fails the GCM authentication check and throws. The plugin falls back to an empty string for the secret key.
+
+**Fix:** Check `isEncryptedPluginSecret(incomingValue)` before encrypting, and skip the encryption call for already-encrypted values:
+
+```typescript
+if (isEncryptedPluginSecret(incomingValue)) {
+  prepared[key] = incomingValue;
+} else {
+  const encrypted = encryptPluginSecret(incomingValue);
+  prepared[key] = encrypted ?? incomingValue;
+}
+```
 
 ### Cross-Agent Agreement
 
-No finding was flagged by multiple agents this cycle.
+CR11-1 was flagged by 5 out of 11 reviewers (code-reviewer, security-reviewer, critic, debugger, tracer), all with consistent severity assessment (LOW) and confidence (MEDIUM).
 
 ## Verified Prior Fixes
+
+All 5 prior fixes from cycles 7-9 remain present and verified:
 
 | ID | Finding | Status | Evidence |
 |----|---------|--------|----------|
@@ -32,4 +49,4 @@ The 21-item deferred registry from cycle 4 is carried forward intact. No additio
 
 ## Agent Failures
 
-None. All 10 review agents completed successfully.
+None. All 11 review agents completed successfully.

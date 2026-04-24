@@ -1,0 +1,82 @@
+# RPF Cycle 11 (Loop Cycle 11/100) — Review Remediation Plan
+
+**Date:** 2026-04-24
+**Cycle:** 11/100 (current RPF loop)
+**Base commit:** 8c923275 (cycle 10 — no new findings)
+**HEAD commit:** 8c923275
+
+## Findings to Address
+
+This cycle found **1 new finding** across 11 review agents. The finding is LOW severity but represents a real correctness defect that should be fixed.
+
+## Scheduled Implementation Tasks
+
+### TASK-1: Fix `preparePluginConfigForStorage` encryption bypass via `enc:v1:` prefix [LOW]
+
+**Source:** CR11-1 / CR11-CR1 / CR11-SR1 (flagged by 5 agents: code-reviewer, security-reviewer, critic, debugger, tracer)
+**File:** `src/lib/plugins/secrets.ts`, lines 132-136
+
+**Current behavior:** When a secret value starting with `enc:v1:` is passed to `preparePluginConfigForStorage`, the function first encrypts it (line 132), then checks the original input with `isEncryptedPluginSecret()` (line 133). Since the input starts with `enc:v1:`, the encrypted result is discarded and the original (non-encrypted) value is stored. When `decryptPluginSecret` later processes this row, it fails the GCM authentication check.
+
+**Expected behavior:** Check `isEncryptedPluginSecret()` before encrypting. If the value is already encrypted, keep it as-is. Otherwise, encrypt and store.
+
+**Implementation:**
+1. In `preparePluginConfigForStorage` (`src/lib/plugins/secrets.ts`), replace lines 132-136:
+   ```typescript
+   // BEFORE:
+   const encrypted = encryptPluginSecret(incomingValue);
+   prepared[key] = isEncryptedPluginSecret(incomingValue)
+     ? incomingValue
+     : (encrypted ?? incomingValue);
+
+   // AFTER:
+   if (isEncryptedPluginSecret(incomingValue)) {
+     prepared[key] = incomingValue;
+   } else {
+     const encrypted = encryptPluginSecret(incomingValue);
+     prepared[key] = encrypted ?? incomingValue;
+   }
+   ```
+2. This avoids unnecessary encryption work when the value is already encrypted, and makes the intent clearer.
+3. No test changes needed — existing tests should continue to pass.
+
+## Deferred Items (carried from cycle 4 — UNCHANGED)
+
+All deferred-fix rules obeyed: file+line citation, original severity/confidence preserved (no downgrade), concrete reason, and exit criterion recorded. No security, correctness, or data-loss findings are in the deferred list — all are performance/UX/cosmetic/doc items explicitly allowed under `CLAUDE.md` and `.context/development/conventions.md`.
+
+| # | Finding | File+Line | Severity / Confidence | Reason for Deferral | Exit Criterion |
+|---|---------|-----------|-----------------------|---------------------|----------------|
+| 1 | `atomicConsumeRateLimit` uses `Date.now()` in hot path | `src/lib/security/rate-limit.ts` (AGG-2 cycle 45) | MEDIUM / MEDIUM | DB round-trip per API request is costlier than clock-skew risk | Architecture review for rate-limit strategy |
+| 2 | Leaderboard freeze uses `Date.now()` | `src/lib/assignments/leaderboard.ts:52` | LOW / LOW | Sub-second inaccuracy only | Module refactoring cycle |
+| 3 | `console.error` in client components | multiple client files | LOW / MEDIUM | Client-side only; no security/correctness impact | Module refactoring cycle |
+| 4 | SSE O(n) eviction scan | `src/app/api/v1/submissions/[id]/events/route.ts:44-55` | LOW / LOW | Bounded at 1000 entries | Performance optimization cycle |
+| 5 | Manual routes duplicate `createApiHandler` boilerplate | SSE route, judge routes (AGG-7 / ARCH-2) | MEDIUM / MEDIUM | Stable pattern; refactor risk exceeds benefit | API framework redesign |
+| 6 | Global timer HMR pattern duplication | multiple route files (AGG-8) | LOW / MEDIUM | Works correctly; cosmetic improvement | Module refactoring cycle |
+| 7 | Anti-cheat copies user text content | `src/components/exam/anti-cheat-monitor.tsx:206-209` (SEC-3) | LOW / LOW | Captures <=80 chars; privacy notice acknowledged | Privacy review cycle |
+| 8 | Docker build error leaks paths | Docker client (SEC-4) | LOW / LOW | Only visible to admin-level users | Infrastructure hardening cycle |
+| 9 | Anti-cheat heartbeat gap query transfers up to 5000 rows | `src/app/api/v1/submissions/[id]/anti-cheat/route.ts:195-204` (PERF-3) | MEDIUM / MEDIUM | Currently functional | Performance optimization cycle |
+| 10 | Chat widget button badge lacks ARIA announcement | chat widget (DES-1) | LOW / LOW | Screen reader may not announce badge count | Accessibility audit cycle |
+| 11 | Contests page badge hardcoded colors | contests page (DES-1 cycle 46) | LOW / LOW | Visual only | Design system migration |
+| 12 | SSE route ADR | documentation (DOC-1) | LOW / LOW | Useful but not urgent | Documentation cycle |
+| 13 | Docker client dual-path docs | documentation (DOC-2) | LOW / LOW | Useful but not urgent | Documentation cycle |
+| 14 | Stale-while-revalidate cache pattern duplication | `contest-scoring.ts`, `analytics/route.ts` (ARCH-3) | LOW / LOW | Stable, well-documented duplication | Module refactoring cycle |
+| 15 | Anti-cheat heartbeat dedup uses `Date.now()` for LRU cache | `src/app/api/v1/submissions/[id]/anti-cheat/route.ts:92` (SEC-2) | LOW / LOW | In-memory only | Module refactoring cycle |
+| 16 | Practice page unsafe type assertion | `src/app/(dashboard)/dashboard/practice/page.tsx:420` (AGG-3 cycle 48) | LOW / LOW | Runtime-validated | Module refactoring cycle |
+| 17 | Anti-cheat privacy notice accessibility | `src/components/exam/anti-cheat-monitor.tsx:261` (DES-1 cycle 48) | LOW / LOW | Requires manual keyboard testing | Manual a11y audit |
+| 18 | Missing integration test for concurrent recruiting token redemption | `src/lib/assignments/recruiting-invitations.ts:304-543` (TE-1 cycle 51) | LOW / MEDIUM | Atomic SQL UPDATE well-tested in production | Test coverage cycle |
+| 19 | `messages/ja.json` referenced but absent | `messages/ja.json` | LOW / LOW | Aspirational; needs PM scoping | PM scoping decision |
+| 20 | DES-RUNTIME-{1..5} sandbox-blocked runtime UI checks | (runtime UI / a11y) | LOW..HIGH-if-violated / LOW | Sandbox has no Docker/Postgres | Sandbox with Docker or Postgres sidecar |
+| 21 | Unit-suite `submissions.route.test.ts` fails under parallel vitest workers | `tests/unit/api/submissions.route.test.ts:212-228` (cycle 4) | LOW / MEDIUM | Not a code regression; sandbox CPU/IO contention | Tune vitest pool or higher-CPU sandbox |
+
+**Total:** 21 entries.
+
+### Deferral Policy Compliance
+
+Per `CLAUDE.md` and `.context/development/conventions.md`:
+- No security, correctness, or data-loss findings are deferred.
+- All deferred items have file+line citation, original severity preserved, concrete reason, and exit criterion.
+- No `--no-verify`, `--no-gpg-sign`, `Co-Authored-By`, or force-push anticipated.
+
+## Progress Log
+
+- 2026-04-24: Plan created. 1 task scheduled (LOW severity). 21-item deferred registry carried forward unchanged.
