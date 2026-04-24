@@ -1,107 +1,107 @@
-# Aggregate Review — Cycle 16
+# Aggregate Review — Cycle 17
 
 ## Meta
 - Reviewers: code-reviewer, security-reviewer, perf-reviewer, architect, test-engineer, debugger, verifier, critic
 - Date: 2026-04-24
-- Total findings: 15 (deduplicated to 6)
+- Total findings: 17 (deduplicated to 6)
 
 ---
 
 ## Deduplicated Findings (sorted by severity)
 
-### AGG-1: [HIGH] Stale Column References in Export Sanitization — Schema-Export Drift
-**Sources:** CR-1, CR-2, S-1, S-2, A-1, D-1, D-2, V-2 | **Confidence:** High
-**Cross-agent signal:** 8 of 8 review perspectives
+### AGG-1: [MEDIUM] `hcaptchaSecret` Missing from Logger REDACT_PATHS
+**Sources:** CR-1, S-1, A-1, D-1, V-1, C-1 | **Confidence:** High
+**Cross-agent signal:** 6 of 8 review perspectives
 
-Two entries in `SANITIZED_COLUMNS` (`src/lib/db/export.ts:251-252`) reference columns that no longer exist:
+The pino logger's `REDACT_PATHS` array in `src/lib/logger.ts:5-25` does not include `hcaptchaSecret`. The system settings server action (`src/lib/actions/system-settings.ts:91`) and admin API route (`src/app/api/v1/admin/settings/route.ts:44`) both handle the hCaptcha secret in plaintext before encrypting it for storage. If either code path logs the settings object at error level (e.g., during a DB write failure), the encrypted ciphertext — or in a race, the plaintext before encryption — would appear unredacted in the log output.
 
-1. `recruitingInvitations.token` — dropped in cycle 15 (commit `7cd2c983`) but the export sanitization was not updated
-2. `contestAccessTokens.token` — this column never existed in the current schema
+The inconsistency is clear: `encryptedKey` is in `REDACT_PATHS` but `hcaptchaSecret` is not, despite both being encrypted-at-rest secrets. The systemic risk is that any new secret column must be manually added to `REDACT_PATHS`, and there is no automated test to catch omissions.
 
-The root cause is that `SANITIZED_COLUMNS` is manually maintained and not validated against the schema, creating a systemic drift risk with every migration.
-
-**Concrete failure scenario:** An operator runs a sanitized export expecting sensitive columns to be redacted. The column names don't match any actual column, so `indexOf()` returns -1 and redaction is silently skipped. If a future migration re-adds a column with the same name, the redaction would resume without anyone noticing the gap.
+**Concrete failure scenario:** Admin saves hCaptcha settings. The DB write fails due to a constraint violation. The error handler logs the full settings object at error level. Pino does not redact `hcaptchaSecret` because it is not in `REDACT_PATHS`. The hCaptcha secret (plaintext or encrypted) is now in the application log.
 
 **Fix:**
-1. Remove `"token"` from the `recruitingInvitations` entry in `SANITIZED_COLUMNS`
-2. Remove the entire `contestAccessTokens` entry (the table has no sensitive columns)
-3. Add a unit test that validates `SANITIZED_COLUMNS` entries against actual schema columns
-4. Long-term: derive `SANITIZED_COLUMNS` from Drizzle schema types for compile-time safety
+1. Add `"hcaptchaSecret"` and `"body.hcaptchaSecret"` to `REDACT_PATHS` in `src/lib/logger.ts`
+2. Add a test that validates `REDACT_PATHS` includes entries for all columns in `SANITIZED_COLUMNS` and `ALWAYS_REDACT` from `export.ts`
 
 ---
 
-### AGG-2: [MEDIUM] `judgeWorkers.secretToken` Column Still Exists in Schema
-**Sources:** CR-3, S-3, C-2 | **Confidence:** High
+### AGG-2: [LOW] Duplicate Audit Event Pruning Systems
+**Sources:** A-2, D-2, V-2 | **Confidence:** High
 **Cross-agent signal:** 3 of 8 review perspectives
 
-The `judgeWorkers.secretToken` column (schema.pg.ts:418) still exists despite being deprecated in favor of `secretTokenHash`. New registrations set it to `null` (register/route.ts:56), and auth rejects workers without `secretTokenHash` (judge/auth.ts:76-81). The column is listed in `SANITIZED_COLUMNS` and `ALWAYS_REDACT` (export.ts:250, 258), indicating awareness of the risk.
+Two independent systems prune from the `auditEvents` table:
+1. `pruneOldAuditEvents()` in `src/lib/audit/events.ts:229-250` — runs on its own 24-hour timer via `startAuditEventPruning()`
+2. `pruneSensitiveOperationalData()` in `src/lib/data-retention-maintenance.ts:80-95` — also runs on a 24-hour timer via `startSensitiveDataPruning()` and includes audit event pruning via `batchedDelete`
 
-Legacy rows with plaintext tokens are exposed in a DB compromise. This is tracked as DEFER-66 but re-escalated due to the same pattern as the successfully-dropped `recruitingInvitations.token` in cycle 15.
+Both use the same `DATA_RETENTION_DAYS.auditEvents` retention window and the same batched-DELETE pattern. Running both means audit events are pruned twice per day (wasteful but not harmful). The maintenance risk is that if the retention policy changes, both systems must be updated in lockstep.
 
-**Fix:**
-1. Drop `secretToken` column from schema
-2. Create a Drizzle migration
-3. Remove from `SANITIZED_COLUMNS` and `ALWAYS_REDACT` in export.ts
-4. Remove from logger `REDACT_PATHS` in logger.ts
+**Fix:** Consolidate audit event pruning into `pruneSensitiveOperationalData()` in `data-retention-maintenance.ts` (the more comprehensive one that prunes multiple entity types) and remove the duplicate in `events.ts`. Keep `startAuditEventPruning()` as a no-op or remove its audit-event-specific pruning logic.
 
 ---
 
-### AGG-3: [LOW] Audit Event `claimTokenPresent: true` is Always True
-**Sources:** CR-4, D-3 | **Confidence:** High
+### AGG-3: [LOW] `truncateObject` Double Serialization in Array Branch
+**Sources:** CR-3, P-1 | **Confidence:** High
 **Cross-agent signal:** 2 of 8 review perspectives
 
-In `src/app/api/v1/judge/poll/route.ts:118`, the audit event includes `claimTokenPresent: true`. This field is always `true` because the code path is only reached after the claim token is validated. Not a bug or security issue — just a misleading audit trail entry.
+In the array branch of `truncateObject()` (`src/lib/audit/events.ts:66-70`), each item is processed twice:
+1. `JSON.stringify(truncateObject(item, remaining - 1))` — for budget check
+2. `truncateObject(item, remaining - 1)` — for the actual push
 
-**Fix:** Remove the `claimTokenPresent` field from the audit details.
+For complex objects, this doubles the CPU cost. The fix is to compute the truncated item once, serialize it for budget, and push the already-computed value.
 
----
-
-### AGG-4: [LOW] DRY Violation — Duplicated `isExpired` SQL Expression
-**Sources:** CR-5, A-4, C-3 | **Confidence:** High
-**Cross-agent signal:** 3 of 8 review perspectives
-
-The `isExpired` SQL expression appears verbatim 4 times in `src/lib/assignments/recruiting-invitations.ts` (lines 128, 153, 177, 284). If the business logic changes, all 4 must be updated in lockstep.
-
-**Fix:** Extract into a shared Drizzle SQL fragment.
+**Impact:** Low — `truncateObject` is only called during audit event serialization with a 4000-byte budget, so objects are small.
 
 ---
 
-### AGG-5: [LOW] No Test for Export Sanitization Column Validity
-**Sources:** T-1 | **Confidence:** High
-**Cross-agent signal:** 1 of 8 review perspectives
+### AGG-4: [LOW] No Test for Logger REDACT_PATHS Coverage
+**Sources:** T-1, C-4 | **Confidence:** High
+**Cross-agent signal:** 2 of 8 review perspectives
 
-There is no automated test that validates `SANITIZED_COLUMNS` entries against actual schema columns. This is how AGG-1 went undetected.
+There is no automated test that validates the logger's `REDACT_PATHS` array covers all known secret columns in the schema. This is the same systemic gap that existed for `SANITIZED_COLUMNS` (fixed in cycle 16 with AGG-5). If a new secret column is added to the schema, it must be manually added to `REDACT_PATHS`, and there is no test to catch omissions.
 
-**Fix:** Add a test that imports the schema and `SANITIZED_COLUMNS`, then asserts every listed column exists in the corresponding schema table.
+**Fix:** Add a test that validates `REDACT_PATHS` includes entries for all columns in `SANITIZED_COLUMNS` and `ALWAYS_REDACT` from `export.ts`, plus known secret fields like `hcaptchaSecret`.
 
 ---
 
-### AGG-6: [LOW] Missing Boundary Tests for `truncateObject`
+### AGG-5: [LOW] Access Code Stored in Plaintext in `assignments` Table
+**Sources:** S-2, C-3 | **Confidence:** Medium
+**Cross-agent signal:** 2 of 8 review perspectives
+
+The `assignments.accessCode` column stores access codes as plaintext. A DB compromise would expose all active access codes, allowing unauthorized contest entry. Unlike API keys and recruiting tokens (which are hashed), access codes are stored verbatim.
+
+This is a known design tradeoff: access codes need to be displayed to instructors and compared during redemption, making hashing less straightforward. The codes are also short-lived (tied to contest deadlines) and provide limited access (contest participation only, not account takeover). Noted for the record but not requiring immediate action.
+
+---
+
+### AGG-6: [LOW] `sanitizeMarkdown` Has No Unit Test for Control Character Stripping
 **Sources:** T-2 | **Confidence:** Medium
 **Cross-agent signal:** 1 of 8 review perspectives
 
-The `truncateObject` function (added in cycle 15) has 7 unit tests but is missing boundary conditions: nested objects that individually fit but together exceed budget, empty arrays/objects, non-ASCII strings, `undefined` values in arrays.
+The `sanitizeMarkdown` function strips control characters but has no dedicated unit test. While the function is simple, null byte injection can be a security concern in downstream systems.
 
-**Fix:** Add boundary case tests.
+**Fix:** Add a unit test for `sanitizeMarkdown` that verifies: null bytes are stripped, other control characters are stripped, newlines/tabs/carriage returns are preserved, normal text passes through unchanged.
 
 ---
 
 ## Deferred Items (by policy — security/correctness findings are NOT deferrable)
 
-All findings above are High, Medium, or Low severity. The High finding (AGG-1) should be implemented this cycle. The Medium finding (AGG-2) is a carry-over from DEFER-66 but re-escalated; implementing it is recommended. The Low findings can be addressed incrementally.
+All findings above are Medium or Low severity. The Medium finding (AGG-1) should be implemented this cycle. The Low findings can be addressed incrementally.
 
 Carry-forward deferrals from prior cycles: DEFER-61 through DEFER-70 remain unchanged.
 
 ## Positive Observations
 
 The codebase continues to demonstrate strong engineering practices:
-- Cycle 15 fixes were correctly implemented and verified
-- Timing-safe comparison used consistently
-- Atomic SQL claims prevent TOCTOU races
-- DOMPurify with strict allowlist for HTML sanitization
-- Proper AES-256-GCM encryption with auth tags
-- DB server time used for temporal consistency
-- Comprehensive audit logging with redaction
+- All cycle 16 fixes are correctly implemented and verified
+- Timing-safe comparison used consistently for all token comparisons
+- Atomic SQL with advisory locks prevents TOCTOU races in submissions, recruiting, and access code redemption
+- DOMPurify with strict allowlist and `ALLOWED_URI_REGEXP` for HTML sanitization
+- AES-256-GCM with auth tags for encryption, HKDF for key derivation
+- CSP with nonces, CSRF with Origin + Sec-Fetch-Site + X-Requested-With
+- DB server time used consistently across all temporal comparisons
+- Comprehensive audit logging with truncation and redaction
+- Properly sanitized JSON-in-script-tag for structured data (json-ld.tsx)
+- Argon2id password hashing with transparent bcrypt migration
 
 ## No Agent Failures
 
