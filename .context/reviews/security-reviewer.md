@@ -1,74 +1,73 @@
-# Security Review — RPF Cycle 48
+# Security Review - Cycle 15
 
-**Date:** 2026-04-23
-**Reviewer:** security-reviewer
-**Base commit:** 6831c05e
-
-## Inventory of Reviewed Files
-
-- `src/lib/security/api-rate-limit.ts`
-- `src/lib/security/rate-limit.ts`
-- `src/lib/security/rate-limiter-client.ts`
-- `src/lib/security/in-memory-rate-limit.ts`
-- `src/lib/security/ip.ts`
-- `src/proxy.ts`
-- `src/lib/assignments/recruiting-invitations.ts`
-- `src/app/api/v1/contests/[assignmentId]/anti-cheat/route.ts`
-- `src/app/api/v1/judge/claim/route.ts` (partial)
-- `src/lib/realtime/realtime-coordination.ts`
-- `src/lib/auth/config.ts` (partial)
-- `src/components/exam/anti-cheat-monitor.tsx`
-- `src/lib/data-retention.ts`
-
-## Findings
-
-### SEC-1: Judge claim route `Date.now()` for `claimCreatedAt` — stale claim manipulation risk [MEDIUM/MEDIUM]
-
-**File:** `src/app/api/v1/judge/claim/route.ts:122`
-
-**Description:** The judge claim route uses `Date.now()` to set `judge_claimed_at` in the database. The stale claim detection compares this against `NOW()`. If an attacker can influence the app server's clock (via NTP spoofing on a shared network) or if there's natural clock drift, submissions could be prematurely re-claimed, leading to:
-1. Duplicate judging of the same submission (wasting resources)
-2. Potential race condition if the first worker's result arrives after the second worker starts
-
-While `FOR UPDATE SKIP LOCKED` prevents actual data corruption, the security concern is that a clock-skew attack could amplify resource consumption by causing repeated claim/judge cycles for the same submissions.
-
-**Fix:** Use `getDbNowUncached()` inside the transaction for `claimCreatedAt`.
+## Summary
+Comprehensive security review of the judgekit platform. The codebase demonstrates strong security posture overall: CSP headers, CSRF protection, encrypted secrets, timing-safe comparisons, input validation, and Docker sandboxing. Found a few issues and areas for hardening.
 
 ---
 
-### SEC-2: Anti-cheat heartbeat dedup uses `Date.now()` for LRU cache in single-instance mode [LOW/LOW] (carry-over)
+## Finding S1: Plaintext recruitingInvitations.token Column (Data-at-Rest)
+**File:** `src/lib/db/schema.pg.ts:940-941, 961`
+**Severity:** Medium | **Confidence:** High
 
-**File:** `src/app/api/v1/contests/[assignmentId]/anti-cheat/route.ts:92`
+The `recruitingInvitations` table has both `token` (plaintext, nullable) and `tokenHash` (varchar(64)). The unique index `ri_token_idx` is on the plaintext `token` column. If a database backup or read-only compromise occurs, all active recruiting tokens are exposed in cleartext.
 
-**Description:** When `usesSharedRealtimeCoordination()` is false, the heartbeat dedup uses `Date.now()` for the LRU cache timestamp. Under clock skew (e.g., NTP step correction), the dedup window could be shortened or extended. The impact is limited: a shortened window means extra DB inserts (more heartbeat rows); an extended window means fewer inserts (missed heartbeat records).
+**Concrete scenario:** An SQL injection in a different part of the application (or a compromised DB replica) exposes `recruitingInvitations.token` values. An attacker can use these tokens to impersonate recruiting candidates.
 
-**Fix:** When shared coordination is available, this path is not used. For single-instance mode, the impact is minimal. Defer.
-
----
-
-### SEC-3: Anti-cheat client copies user text content [LOW/LOW] (carry-over)
-
-**File:** `src/components/exam/anti-cheat-monitor.tsx:206-209`
-
-**Description:** The `describeElement` function captures up to 80 characters of `el.textContent` and sends it to the server in the anti-cheat event details. This could inadvertently capture sensitive data (passwords, personal information) from text content near copy/paste events.
-
-**Fix suggestion:** Strip or truncate the text content, or only send the element tag/class without the text.
+**Fix:** Drop the `token` column and `ri_token_idx` index. The `tokenHash` column and `ri_token_hash_idx` already support all lookup operations. Before dropping, ensure no code path reads `token` from the DB.
 
 ---
 
-### SEC-4: Docker build error leaks paths [LOW/LOW] (carry-over)
+## Finding S2: RUNNER_AUTH_TOKEN Falls Back to JUDGE_AUTH_TOKEN
+**File:** `src/lib/docker/client.ts:8`
+**Severity:** Low | **Confidence:** High
 
-**Description:** Docker build errors in the judge worker may leak internal filesystem paths in error messages returned to the API.
+`const RUNNER_AUTH_TOKEN = process.env.RUNNER_AUTH_TOKEN || process.env.JUDGE_AUTH_TOKEN || "";`
 
-## Security Positive Observations
+This fallback means if `RUNNER_AUTH_TOKEN` is not set, the judge auth token is used for the runner endpoint. While both are internal services, this violates the principle of unique credentials per service. A compromise of the runner endpoint would also compromise judge worker authentication.
 
-1. `checkServerActionRateLimit` now uses `getDbNowUncached()` (fixed in cycle 47)
-2. `realtime-coordination.ts` uses `getDbNowUncached()` consistently (fixed in cycle 46)
-3. All SQL queries use parameterized inputs via Drizzle ORM or `rawQueryOne`/`rawQueryAll`
-4. `escapeLikePattern` is used consistently for LIKE queries
-5. CSP headers are properly set with nonce-based script-src
-6. HSTS is properly configured
-7. Recruiting tokens are stored as SHA-256 hashes, not plaintext
-8. API key bearer auth bypasses session-level checks correctly
-9. Rate limiting has both sidecar and DB-backed fallback paths
-10. Proxy correctly clears session cookies on auth failure
+**Fix:** Remove the fallback. Require `RUNNER_AUTH_TOKEN` explicitly when `COMPILER_RUNNER_URL` is set (already partially enforced in execute.ts lines 58-63, but the fallback in client.ts undermines it).
+
+---
+
+## Finding S3: Dev Encryption Key Hardcoded in Source
+**File:** `src/lib/security/encryption.ts:14-17`
+**Severity:** Low | **Confidence:** High
+
+The `DEV_ENCRYPTION_KEY` is hardcoded as `000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f`. While only used in development, if someone accidentally runs the app with `NODE_ENV` not set to `production` and `NODE_ENCRYPTION_KEY` unset, all encrypted data uses this known key.
+
+**Fix:** Generate a random dev key on first use and store it in a local file, or require explicit opt-in via an env var like `ALLOW_DEV_ENCRYPTION_KEY=1`.
+
+---
+
+## Finding S4: Legacy Plaintext secretToken Still Present in judgeWorkers Schema
+**File:** `src/lib/db/schema.pg.ts:419`
+**Severity:** Low | **Confidence:** Medium
+
+`judgeWorkers.secretToken` is still defined in the schema (though `secretTokenHash` is the preferred column). The auth logic in `isJudgeAuthorizedForWorker` (auth.ts:76-81) already rejects workers that have no `secretTokenHash`, logging a migration warning. But the column still exists and could be read if someone adds a query that includes it.
+
+**Fix:** Drop the `secretToken` column from the schema once all workers have been migrated to `secretTokenHash`.
+
+---
+
+## Finding S5: SEC-FETCH-SITE "none" Allowed in CSRF Check
+**File:** `src/lib/security/csrf.ts:49-51`
+**Severity:** Low | **Confidence:** Medium
+
+The CSRF check allows `sec-fetch-site: none`, which browsers send for top-level navigations (e.g., clicking a link). While the `X-Requested-With: XMLHttpRequest` check prevents cross-origin form submissions, the combination of `sec-fetch-site: none` + `X-Requested-With: XMLHttpRequest` is unusual (browsers don't normally send this header on top-level navigations). This is technically safe but reduces the defense-in-depth value of the sec-fetch-site check.
+
+**Fix:** Consider removing the `sec-fetch-site === "none"` exception, or document why it is needed (likely for compatibility with certain browser extensions or APIs that set X-Requested-With).
+
+---
+
+## Positive Security Observations
+- Strong CSP with nonce-based scripts (proxy.ts:192-204)
+- Comprehensive Docker sandboxing: --network=none, --cap-drop=ALL, --read-only, --pids-limit, seccomp (execute.ts:332-363)
+- Shell command validation with denylist matching Rust worker (execute.ts:159-163)
+- Timing-safe token comparisons throughout (timing.ts)
+- User enumeration prevention with dummy password hash (config.ts:51-52)
+- Proper Argon2id password hashing with rehash on login
+- DB-backed rate limiting with exponential backoff
+- Anti-cheat user-agent hashing for session binding
+- Path traversal protection in file storage (storage.ts:19-26)
+- HTML sanitization with DOMPurify and strict allowlists
+- Encryption at rest with AES-256-GCM

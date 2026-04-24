@@ -1,49 +1,60 @@
-# Architecture Review — RPF Cycle 48
+# Architecture Review - Cycle 15
 
-**Date:** 2026-04-23
-**Reviewer:** architect
-**Base commit:** 6831c05e
-
-## Inventory of Reviewed Files
-
-- `src/lib/security/api-rate-limit.ts`
-- `src/lib/security/rate-limit.ts`
-- `src/lib/security/in-memory-rate-limit.ts`
-- `src/lib/security/rate-limiter-client.ts`
-- `src/lib/realtime/realtime-coordination.ts`
-- `src/lib/assignments/leaderboard.ts`
-- `src/lib/assignments/contest-scoring.ts`
-- `src/lib/assignments/participant-status.ts`
-- `src/app/api/v1/submissions/[id]/events/route.ts`
-- `src/app/api/v1/judge/claim/route.ts` (partial)
-- `src/proxy.ts`
-- `src/lib/data-retention.ts`
-- `src/lib/db-time.ts`
-
-## Findings
-
-### ARCH-1: Judge claim route clock-skew — same pattern class as prior fixes [MEDIUM/MEDIUM]
-
-**File:** `src/app/api/v1/judge/claim/route.ts:122`
-
-**Description:** The judge claim route is the latest instance of the `Date.now()`-inside-DB-transaction pattern that has been systematically fixed across the codebase (cycles 40-47). This represents a gap in the clock-skew remediation strategy. The codebase has an established pattern: use `getDbNowUncached()` for all temporal comparisons that interact with DB-stored timestamps. The judge claim route should follow the same pattern.
-
-**Architectural observation:** The `Date.now()` clock-skew class of bugs keeps recurring because there is no linting or compile-time guard against it. A custom ESLint rule or a wrapper function that enforces DB time would prevent future regressions.
-
-**Fix:** Use `getDbNowUncached()` inside the transaction. Consider adding a `no-Date-now-in-transaction` lint rule.
+## Summary
+Architectural review of the judgekit platform. The codebase follows solid Next.js App Router conventions with clear separation of concerns. Found several architectural observations.
 
 ---
 
-### ARCH-2: Stale-while-revalidate cache pattern duplication [LOW/LOW] (carry-over)
+## Finding A1: Dual Rate Limiting Systems (In-Memory + DB) Without Unified Interface
+**Files:** `src/lib/security/in-memory-rate-limit.ts`, `src/lib/security/rate-limit.ts`, `src/lib/security/api-rate-limit.ts`
+**Severity:** Medium | **Confidence:** Medium
 
-**Description:** The same stale-while-revalidate cache pattern is duplicated across `contest-scoring.ts` and `contests/[assignmentId]/analytics/route.ts`. A shared utility would reduce duplication.
+The codebase has two independent rate limiting systems:
+1. **DB-backed** (`rate-limit.ts`): PostgreSQL-backed, used for login auth
+2. **In-memory** (`in-memory-rate-limit.ts`): Map-based, used for API rate limiting
+
+They have different APIs, different eviction strategies, and different key formats. This creates confusion about which rate limiter to use where and makes it harder to reason about rate limiting behavior globally.
+
+**Fix:** Create a unified `RateLimiter` interface with pluggable backends (in-memory for dev/fast paths, DB for persistent/critical paths). This would also make it easier to add a Redis backend later.
 
 ---
 
-### ARCH-3: Manual routes duplicate createApiHandler boilerplate [MEDIUM/MEDIUM] (carry-over)
+## Finding A2: Proxy (middleware.ts) Mixing Auth, CSP, Locale, and Caching Logic
+**File:** `src/proxy.ts`
+**Severity:** Medium | **Confidence:** Medium
 
-**Description:** Several routes that cannot use `createApiHandler` (SSE streaming, custom response types) duplicate the auth/rate-limit/error-handling boilerplate.
+The `proxy` function (Next.js middleware) handles:
+1. Authentication and session validation
+2. CSP header generation
+3. Locale resolution and cookie setting
+4. API response caching headers
+5. User-agent mismatch auditing
+6. HSTS header management
 
-## Carry-Over Confirmations
+This is a single 340-line function with mixed concerns. While it works, any change to one concern (e.g., CSP) requires careful review to avoid breaking auth or locale logic.
 
-All prior carry-over items remain valid and unfixed.
+**Fix:** Split into composable middleware functions: `withAuth`, `withSecurityHeaders`, `withLocale`, `withCaching`. The main `proxy` function would chain them. This also makes each piece independently testable.
+
+---
+
+## Finding A3: Encryption Key Management Spread Across Multiple Files
+**Files:** `src/lib/security/encryption.ts`, `src/lib/security/derive-key.ts`
+**Severity:** Low | **Confidence:** Medium
+
+Two separate encryption key derivation mechanisms exist:
+1. `encryption.ts`: Uses `NODE_ENCRYPTION_KEY` directly (or dev key) for AES-256-GCM
+2. `derive-key.ts`: Uses HKDF from `PLUGIN_CONFIG_ENCRYPTION_KEY` for domain-separated keys
+
+They read from different env vars and use different derivation strategies. If both are needed (which they are -- one for general encryption, one for plugin secrets), they should share a common key management module to avoid confusion.
+
+**Fix:** Consolidate into a single key management module that reads from a single env var (or clearly documents why two separate keys are needed) and provides domain-separated derivation via HKDF for all use cases.
+
+---
+
+## Finding A4: Schema Exports Through Re-export Barrel
+**File:** `src/lib/db/schema.ts`
+**Severity:** Low | **Confidence:** Low
+
+`schema.ts` re-exports everything from `schema.pg.ts`. This is fine now but could become a maintenance issue. The barrel file is now an unnecessary indirection.
+
+**Fix:** Rename `schema.pg.ts` to `schema.ts` directly, or at minimum add a comment explaining why the indirection is kept (presumably for backwards compatibility with imports).

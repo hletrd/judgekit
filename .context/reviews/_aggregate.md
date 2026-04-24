@@ -1,70 +1,155 @@
-# RPF Cycle 14 Aggregate Review — JudgeKit (Loop 14/100)
+# Aggregate Review - Cycle 15
 
-**Date:** 2026-04-24
-**HEAD commit:** ca6b7d84
-**Reviewers:** code-reviewer, security-reviewer, perf-reviewer, architect, critic, verifier, test-engineer, debugger, tracer, designer, document-specialist
+## Meta
+- Reviewers: code-reviewer, security-reviewer, perf-reviewer, architect
+- Date: 2026-04-24
+- Total findings: 16 (deduplicated to 14)
 
-## Summary
+---
 
-**3 new actionable findings this cycle.** The primary theme is clock-source inconsistency in `rate-limit.ts`: `getEntry()` and `evictStaleEntries()` use `Date.now()` while the same table is also written by `api-rate-limit.ts` functions that use DB server time — creating mixed timestamps in shared rows. A secondary finding is that `mapTokenToSession` still uses manual field assignments despite `syncTokenWithUser` being automated with `Object.assign` in cycle 13, leaving the same class of bug that caused the `shareAcceptedSolutions` incident.
+## Deduplicated Findings (sorted by severity)
 
-### New Findings
+### AGG-1: [MEDIUM] Plaintext recruitingInvitations.token Column (Data-at-Rest)
+**Sources:** CR-3, S-1 | **Confidence:** High
 
-| ID | Finding | File+Line | Severity / Confidence | Reviewers Agreeing |
-|----|---------|-----------|----------------------|-------------------|
-| AGG-1 | `mapTokenToSession` still uses manual per-field assignment — same bug class that caused `shareAcceptedSolutions` incident in cycle 10. `syncTokenWithUser` was fixed with `Object.assign` but `mapTokenToSession` was not, creating an architectural inconsistency | `src/lib/auth/config.ts:142-168` | MEDIUM / HIGH | code-reviewer, architect, critic, verifier, debugger, tracer, test-engineer (7 of 11) |
-| AGG-2 | `rate-limit.ts` `getEntry()` and `evictStaleEntries()` use `Date.now()` for comparisons against DB-stored timestamps, while `api-rate-limit.ts` writes to the same `rateLimits` table using DB server time — mixed clock sources in shared rows enable premature eviction and rate-limit bypass under clock skew | `src/lib/security/rate-limit.ts:39,77` | MEDIUM / HIGH | code-reviewer, security-reviewer, architect, critic, verifier, tracer (6 of 11) |
-| AGG-3 | `ContestsLayout` click handler uses blocklist (`javascript:`, `data:`) instead of allowlist for URL scheme validation — `blob:` and other schemes bypass the check | `src/app/(dashboard)/dashboard/contests/layout.tsx:33` | LOW / MEDIUM | code-reviewer, security-reviewer, tracer (3 of 11) |
+The `recruitingInvitations` table retains both `token` (plaintext) and `tokenHash` columns. The unique index on `token` is still active. A DB compromise exposes all active recruiting tokens in cleartext.
 
-### Deferred-This-Cycle Findings
+**Fix:** Drop the `token` column and `ri_token_idx` index after confirming no code path reads `token` from the DB.
 
-| ID | Finding | File+Line | Severity / Confidence | Reason for Deferral |
-|----|---------|-----------|----------------------|-------------------|
-| CR14-D1 | `in-memory-rate-limit.ts` FIFO eviction sorts entire map on overflow — O(n log n) for 10K+ entries | `src/lib/security/in-memory-rate-limit.ts:41-47` | LOW / MEDIUM | Performance optimization only fires when all 10K+ entries are non-stale — extremely rare in practice. The eviction already has a first-pass stale entry cleanup. |
-| CR14-D2 | `leaderboard.ts` uses `Date.now()` for freeze-time comparison | `src/lib/assignments/leaderboard.ts:52` | LOW / MEDIUM | Carried from CR13-D3. Contest freeze times are set well in advance. Seconds of clock skew have minimal practical impact. |
-| CR14-D3 | `recruiting-invitations-panel.tsx` uses `window.location.origin` for invitation URLs | `src/components/contest/recruiting-invitations-panel.tsx:99` | LOW / HIGH | Overlaps with DEFER-24 and DEFER-49 from prior cycles. Same fix — use server-provided appUrl. |
-| CR14-D4 | `mapTokenToSession` comment says "add it HERE" but `syncTokenWithUser` no longer requires manual addition — misleading documentation | `src/lib/auth/config.ts:157` | LOW / HIGH | Documentation issue. If AGG-1 is fixed, this comment becomes obsolete. |
-| CR14-D5 | `rate-limit.ts` has no JSDoc documenting clock source assumption | `src/lib/security/rate-limit.ts` | LOW / MEDIUM | Documentation improvement. If AGG-2 is fixed, all rate-limit code uses DB time and the assumption is self-documenting. |
-| CR14-D6 | No test for `mapTokenToSession` field completeness | `tests/` | LOW / MEDIUM | Test coverage gap. If AGG-1 is fixed with programmatic iteration, a test for `AUTH_PREFERENCE_FIELDS` coverage becomes straightforward to add. |
-| CR14-D7 | No test for rate-limit clock source consistency | `tests/` | LOW / MEDIUM | Test coverage gap. If AGG-2 is fixed with DB time everywhere, this test verifies no regressions. |
+---
 
-### Cross-Agent Agreement
+### AGG-2: [MEDIUM] Audit Buffer Data Loss on Process Crash
+**Sources:** CR-1 | **Confidence:** High
 
-- **AGG-1**: Flagged by 7 of 11 reviewers. The highest signal finding this cycle. The bug class is well-documented (shareAcceptedSolutions incident) and the fix is low-risk.
-- **AGG-2**: Flagged by 6 of 11 reviewers. High signal. This is an extension of the clock-skew theme from cycles 12-13 — the `api-rate-limit.ts` functions were migrated to DB time but the older `rate-limit.ts` functions were not.
-- **AGG-3**: Flagged by 3 of 11 reviewers. Low risk — DOMPurify and React's JSX rendering provide defense-in-depth. The `data-full-navigate` attribute must be explicitly added by a developer.
+The audit event buffer accumulates events in memory and flushes every 5s/50 events. Hard process crashes (OOM, kill -9) lose buffered events, creating audit trail gaps.
 
-### Verified Prior Fixes
+**Fix:** Reduce flush interval for high-priority events, or add write-ahead logging.
 
-All 6 prior fixes from cycles 7-12 remain present and verified:
+---
 
-| ID | Finding | Status | Evidence |
-|----|---------|--------|----------|
-| F1 | `json_extract()` SQLite function in PostgreSQL path | FIXED | Grep returns no matches |
-| F2 | `DELETE ... LIMIT` invalid PostgreSQL syntax | FIXED | All use `ctid IN (SELECT ctid ... LIMIT)` |
-| CR9-CR1 | Auth field mapping duplication across 3 locations | FIXED | `mapUserToAuthFields()` centralizes |
-| CR9-SR1 | SSE re-auth race — fire-and-forget allows one more event | FIXED | Re-auth awaits before processing |
-| CR9-SR3 | Tags route lacks rate limiting | FIXED | Uses `createApiHandler` with `rateLimit: "tags:read"` |
-| CR11-1 | `preparePluginConfigForStorage` encryption bypass via `enc:v1:` prefix | FIXED | Checks `isValidEncryptedPluginSecret` before encrypting |
+### AGG-3: [MEDIUM] In-Memory Rate Limiter FIFO Eviction is O(n log n)
+**Sources:** P-1 | **Confidence:** Medium
 
-Cycle 13 fixes also verified present:
+When over capacity, eviction sorts all entries to find the oldest. This is O(n log n) and allocates on every call that exceeds capacity.
 
-| ID | Finding | Status | Evidence |
-|----|---------|--------|----------|
-| CR13-1 | `atomicConsumeRateLimit` uses `Date.now()` | FIXED | Now uses `getDbNowMs()` at line 59 |
-| CR13-2 | ZIP bomb validation decompresses fully | FIXED | Per-entry size cap at line 44, check at line 72-73 |
+**Fix:** Replace the sorted eviction with simple FIFO eviction from Map's insertion order (O(1)).
 
-### Gate Status
+---
 
-- eslint: Not yet run this cycle
-- tsc --noEmit: Not yet run this cycle
-- vitest run: Not yet run this cycle
-- next build: Not yet run this cycle
+### AGG-4: [MEDIUM] Dual Rate Limiting Systems Without Unified Interface
+**Sources:** A-1 | **Confidence:** Medium
 
-### Deferred Items Carried Forward
+Two independent rate limiting systems (DB-backed and in-memory) with different APIs and key formats make it hard to reason about rate limiting behavior globally.
 
-The 21-item deferred registry from cycle 4 is carried forward intact, plus CR12-D1 through CR12-D16, CR13-D1 through CR13-D5, and CR14-D1 through CR14-D7 this cycle. No additions, no removals, no severity downgrades.
+**Fix:** Create a unified `RateLimiter` interface with pluggable backends.
 
-## Agent Failures
+---
 
-None. All 11 review agents completed successfully.
+### AGG-5: [MEDIUM] Proxy Mixing Auth, CSP, Locale, and Caching Logic
+**Sources:** A-2 | **Confidence:** Medium
+
+The 340-line `proxy` function handles 6 different concerns. Changes to one concern risk breaking others.
+
+**Fix:** Split into composable middleware functions (`withAuth`, `withSecurityHeaders`, `withLocale`, `withCaching`).
+
+---
+
+### AGG-6: [LOW] RUNNER_AUTH_TOKEN Falls Back to JUDGE_AUTH_TOKEN
+**Sources:** S-2 | **Confidence:** High
+
+Fallback in `docker/client.ts` violates unique-credentials-per-service principle.
+
+**Fix:** Remove the fallback, require `RUNNER_AUTH_TOKEN` explicitly when `COMPILER_RUNNER_URL` is set.
+
+---
+
+### AGG-7: [LOW] Dev Encryption Key Hardcoded in Source
+**Sources:** S-3 | **Confidence:** High
+
+Hardcoded dev encryption key in `encryption.ts` could be used accidentally in non-production.
+
+**Fix:** Generate random dev key on first use and store locally, or require explicit opt-in env var.
+
+---
+
+### AGG-8: [LOW] Legacy secretToken Column in judgeWorkers Schema
+**Sources:** S-4 | **Confidence:** Medium
+
+`judgeWorkers.secretToken` column still exists alongside `secretTokenHash`.
+
+**Fix:** Drop `secretToken` column after all workers are migrated.
+
+---
+
+### AGG-9: [LOW] SEC-FETCH-SITE "none" Allowed in CSRF Check
+**Sources:** S-5 | **Confidence:** Medium
+
+CSRF check allows `sec-fetch-site: none`, reducing defense-in-depth value.
+
+**Fix:** Remove the exception or document the rationale.
+
+---
+
+### AGG-10: [LOW] Audit Event Serialization Truncates JSON String
+**Sources:** CR-4, P-5 | **Confidence:** High
+
+`JSON.stringify(details).slice(0, 4000)` can produce invalid JSON.
+
+**Fix:** Truncate the input object before serialization, not the serialized string.
+
+---
+
+### AGG-11: [LOW] Module-Level Side Effects in authConfig
+**Sources:** CR-5 | **Confidence:** High
+
+`validateAuthUrl()` and `getValidatedAuthSecret()` called at module scope with no build-phase guard.
+
+**Fix:** Add build-phase guard or move validation into the NextAuth config factory.
+
+---
+
+### AGG-12: [LOW] In-Memory Rate Limiter TOCTOU Design Fragility
+**Sources:** CR-2 | **Confidence:** Medium
+
+`isRateLimitedInMemory` + `recordAttemptInMemory` are separate calls; API could lead to future race conditions.
+
+**Fix:** Create a combined `checkAndRecord` atomic function.
+
+---
+
+### AGG-13: [LOW] Encryption Key Management Spread Across Multiple Files
+**Sources:** A-3 | **Confidence:** Medium
+
+Two separate key derivation mechanisms with different env vars.
+
+**Fix:** Consolidate key management, or document why two keys are needed.
+
+---
+
+### AGG-14: [LOW] Auth User Cache Lacks TTL-Based Eviction
+**Sources:** P-2 | **Confidence:** Medium
+
+Expired entries only removed on read; cache could fill with stale entries under low traffic.
+
+**Fix:** Add periodic sweep for expired entries.
+
+---
+
+## Deferred Items (by policy -- security/correctness findings are NOT deferrable)
+
+All findings above are Low or Medium severity. No High/Critical findings were discovered this cycle. The Medium findings (AGG-1 through AGG-5) should be scheduled for implementation. The Low findings can be addressed incrementally.
+
+## Positive Observations
+
+The codebase demonstrates strong engineering practices:
+- Comprehensive security posture (CSP, CSRF, encryption, sandboxing)
+- Well-structured DB schema with proper indexes and constraints
+- Consistent error handling and audit logging
+- Type-safe database queries via Drizzle ORM
+- Proper auth flow with timing-safe comparisons and user enumeration prevention
+- Data retention with legal hold support
+- Defense-in-depth approach to Docker sandboxing
+
+## No Agent Failures
+
+All review agents completed successfully.

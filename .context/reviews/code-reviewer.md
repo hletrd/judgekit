@@ -1,75 +1,56 @@
-# Code Review — RPF Cycle 48
+# Code Quality Review - Cycle 15
 
-**Date:** 2026-04-23
-**Reviewer:** code-reviewer
-**Base commit:** 6831c05e
-
-## Inventory of Reviewed Files
-
-- `src/lib/security/api-rate-limit.ts` (full)
-- `src/lib/security/rate-limit.ts` (full)
-- `src/lib/security/rate-limiter-client.ts` (full)
-- `src/lib/security/in-memory-rate-limit.ts` (full)
-- `src/lib/assignments/leaderboard.ts` (full)
-- `src/lib/assignments/contest-scoring.ts` (full)
-- `src/lib/assignments/participant-status.ts` (full)
-- `src/lib/assignments/recruiting-invitations.ts` (partial)
-- `src/lib/assignments/exam-sessions.ts` (partial)
-- `src/app/api/v1/submissions/[id]/events/route.ts` (full)
-- `src/app/api/v1/contests/[assignmentId]/anti-cheat/route.ts` (full)
-- `src/app/api/v1/judge/claim/route.ts` (partial)
-- `src/lib/realtime/realtime-coordination.ts` (full)
-- `src/proxy.ts` (full)
-- `src/lib/data-retention.ts` (full)
-- `src/components/exam/anti-cheat-monitor.tsx` (full)
-- `src/app/(public)/practice/page.tsx` (partial)
-- `src/lib/db-time.ts` (reference)
-- All server action files referencing `checkServerActionRateLimit`
-
-## Findings
-
-### CR-1: Judge claim route uses `Date.now()` for `claimCreatedAt` — clock-skew in stale claim detection [MEDIUM/MEDIUM]
-
-**File:** `src/app/api/v1/judge/claim/route.ts:122`
-
-**Description:** The judge claim route captures `const claimCreatedAt = Date.now()` and uses it in the SQL query `to_timestamp(@claimCreatedAt::double precision / 1000)` to set `judge_claimed_at`. The stale claim detection then uses `s.judge_claimed_at < NOW() - interval` — comparing the app-time-based timestamp against DB `NOW()`. This is the same clock-skew class fixed in `realtime-coordination.ts` (cycle 46), `validateAssignmentSubmission` (cycle 45), the assignment PATCH route (cycle 40), and `checkServerActionRateLimit` (cycle 47).
-
-**Concrete failure scenario (premature stale detection):** App clock 30 seconds behind DB. A worker claims a submission at app time 10:00:00 (DB time 10:00:30). `judge_claimed_at` is stored as 10:00:00. The stale timeout is 5 minutes. After 4m30s of DB time, `NOW()` returns 10:05:00, and `10:00:00 < 10:05:00 - 5min` = `10:00:00 < 10:00:00` = false (barely not stale yet). After 4m31s, the claim is marked stale — 30 seconds earlier than intended. With larger clock drift, the window shrinks further. In extreme cases (e.g., NTP correction), a freshly claimed submission could be immediately eligible for re-claim by another worker, causing duplicate judging.
-
-**Fix:** Use `getDbNowUncached()` inside the transaction:
-```typescript
-const now = (await getDbNowUncached()).getTime();
-const claimCreatedAt = now;
-```
+## Summary
+Deep code quality review of judgekit. The codebase is well-structured overall with strong TypeScript types, consistent patterns, and thorough error handling. Found several issues ranging from moderate to low severity.
 
 ---
 
-### CR-2: `rateLimitedResponse` uses `Date.now()` for `X-RateLimit-Reset` header [LOW/LOW]
+## Finding 1: Audit Buffer Data Loss on Process Crash
+**File:** `src/lib/audit/events.ts:105-128`
+**Severity:** Medium | **Confidence:** High
 
-**File:** `src/lib/security/api-rate-limit.ts:125`
+The audit event buffer (`_auditBuffer`) accumulates events and flushes them in batches (every 5 seconds or 50 events). If the process crashes between flushes, buffered events are lost. While there is a graceful shutdown handler, OOM kills or hard crashes bypass it.
 
-**Description:** The `rateLimitedResponse` function computes the `X-RateLimit-Reset` header as `Math.ceil((Date.now() + windowMs) / 1000)`. Under clock skew, this could give clients an incorrect reset timestamp. The actual DB-stored `windowStartedAt + windowMs` may differ from `Date.now() + windowMs`.
+**Concrete scenario:** A Node.js OOM kill or `kill -9` drops all buffered audit events. For a security-critical system, this creates gaps in the audit trail.
 
-**Concrete failure scenario:** App clock 5 seconds ahead of DB. A client is rate-limited at DB time 10:00:00 with a 60s window. The header says reset at 10:01:05 (app time), but the actual DB reset is at 10:01:00. The client waits 5 extra seconds before retrying. Not harmful but inaccurate.
-
-**Fix:** Use the `windowStartedAt` value from the DB transaction to compute the reset time, or use `getDbNowUncached()` for consistency.
+**Fix:** Consider write-ahead logging to a temporary file, or reduce the flush interval/buffer size for higher-priority audit events (e.g., auth failures).
 
 ---
 
-### CR-3: Practice page `resolvedSearchParams?.sort as SortOption` — unsafe type assertion (carried from cycle 47) [LOW/LOW]
+## Finding 2: In-Memory Rate Limiter TOCTOU Between isRateLimitedInMemory and recordAttemptInMemory
+**File:** `src/lib/security/in-memory-rate-limit.ts:51-92`
+**Severity:** Low | **Confidence:** Medium
 
-**File:** `src/app/(public)/practice/page.tsx:128-129`
+`consumeInMemoryRateLimit` calls `isRateLimitedInMemory` first and then `recordAttemptInMemory` separately. Since these are synchronous operations in a single-threaded Node.js event loop, there is no TOCTOU race in practice. However, the API design is fragile -- a future refactor that adds async operations between the check and record could introduce a race.
 
-**Description:** The code casts `resolvedSearchParams?.sort` as `SortOption` before the `includes` check validates it. The `includes` check does validate the runtime value, so this is safe in practice, but the type assertion is misleading.
+**Fix:** Consider a single atomic `checkAndRecord` function that combines both operations, matching the pattern in the DB-backed `consumeRateLimitAttemptMulti`.
 
-**Fix:** Cosmetic — use a more type-safe approach: `const currentSort = (SORT_VALUES as readonly string[]).includes(resolvedSearchParams?.sort ?? '') ? (resolvedSearchParams?.sort as SortOption) : "number_asc";`
+---
 
-## Carry-Over Confirmations
+## Finding 3: recruitingInvitations.token Column Still Exists as Plaintext
+**File:** `src/lib/db/schema.pg.ts:940-941`
+**Severity:** Low | **Confidence:** High
 
-All previously identified carry-over items remain unfixed and are still valid:
-- Leaderboard freeze uses `Date.now()` (LOW/LOW)
-- Console.error in client components (LOW/MEDIUM)
-- SSE O(n) eviction scan (LOW/LOW)
-- Manual routes duplicate boilerplate (MEDIUM/MEDIUM)
-- Global timer HMR pattern duplication (LOW/MEDIUM)
-- Stale-while-revalidate cache pattern duplication (LOW/LOW)
+The `recruitingInvitations` table still has a `token` column (plaintext) alongside `tokenHash`. The schema comment says "Plaintext token is deprecated" and the unique index on `token` is still active. This means if an attacker gains DB read access, they can see unhashed recruiting tokens.
+
+**Fix:** Complete the migration by dropping the `token` column and its unique index, keeping only `tokenHash`.
+
+---
+
+## Finding 4: Audit Event Serialization Truncates JSON String, Not Object
+**File:** `src/lib/audit/events.ts:49-59`
+**Severity:** Low | **Confidence:** Medium
+
+`serializeDetails` truncates the JSON string at 4000 characters (`JSON.stringify(details).slice(0, MAX_JSON_LENGTH)`). This can produce invalid JSON (cutting in the middle of a string value). Downstream consumers that try to parse this will get a SyntaxError.
+
+**Fix:** Truncate the input object before serialization. Recursively trim string values within the object to stay under the budget, or use a streaming JSON serializer that respects the length limit.
+
+---
+
+## Finding 5: Module-Level Side Effects in authConfig
+**File:** `src/lib/auth/config.ts:171-175`
+**Severity:** Low | **Confidence:** High
+
+`validateAuthUrl()` and `getValidatedAuthSecret()` are called at module scope (line 171-175). If `AUTH_SECRET` or `AUTH_URL` are misconfigured, the import will throw immediately, potentially preventing the application from starting in edge cases like build time. The build-phase guard in `db/index.ts` handles this for the DB, but auth config has no such guard.
+
+**Fix:** Move validation into the NextAuth config factory or add a build-phase guard similar to `db/index.ts`.

@@ -1,60 +1,38 @@
-# Performance Review — RPF Cycle 48
+# Performance Review - Cycle 15
 
-**Date:** 2026-04-23
-**Reviewer:** perf-reviewer
-**Base commit:** 6831c05e
-
-## Inventory of Reviewed Files
-
-- `src/lib/security/api-rate-limit.ts`
-- `src/lib/security/in-memory-rate-limit.ts`
-- `src/lib/security/rate-limiter-client.ts`
-- `src/lib/assignments/contest-scoring.ts`
-- `src/app/api/v1/submissions/[id]/events/route.ts`
-- `src/lib/assignments/leaderboard.ts`
-- `src/app/api/v1/contests/[assignmentId]/anti-cheat/route.ts`
-- `src/lib/compiler/execute.ts` (partial — container cleanup)
-
-## Findings
-
-### PERF-1: Judge claim route `Date.now()` for `claimCreatedAt` could cause premature re-claims under clock skew [MEDIUM/MEDIUM]
-
-**File:** `src/app/api/v1/judge/claim/route.ts:122`
-
-**Description:** Performance impact of the clock-skew issue: if claims are prematurely detected as stale due to clock drift, multiple workers may attempt to claim and judge the same submission simultaneously, wasting compute resources (container startup, compilation, execution). The `FOR UPDATE SKIP LOCKED` pattern prevents actual duplicate judging, but the wasted container starts are a real performance cost.
-
-**Fix:** Use `getDbNowUncached()` as described in code-reviewer CR-1.
+## Summary
+Performance review of the judgekit platform. The codebase shows good performance awareness with connection pooling, concurrency limits, and batched audit writes. Found several areas for improvement.
 
 ---
 
-### PERF-2: Anti-cheat heartbeat gap query still transfers up to 5000 rows [MEDIUM/MEDIUM] (carry-over)
+## Finding P1: In-Memory Rate Limiter FIFO Eviction is O(n log n)
+**File:** `src/lib/security/in-memory-rate-limit.ts:41-47`
+**Severity:** Medium | **Confidence:** Medium
 
-**File:** `src/app/api/v1/contests/[assignmentId]/anti-cheat/route.ts:195-204`
+When `store.size > MAX_ENTRIES`, the eviction code creates a sorted copy of all entries:
+```ts
+const sorted = [...store.entries()].sort((a, b) => a[1].lastAttempt - b[1].lastAttempt);
+```
+This is O(n log n) and allocates a new array. Under load with 10,000 entries, this runs on every `recordFailureInMemory` call that exceeds capacity.
 
-**Description:** The heartbeat gap detection fetches up to 5000 rows in application memory and iterates them sequentially. For long-running contests, this is expensive and delays the API response. This is a carry-over from prior cycles.
-
-**Fix suggestion:** Move gap detection into a SQL window function to compute gaps server-side, reducing the transferred data to only the gap records.
-
----
-
-### PERF-3: SSE connection tracking linear scan for oldest entry [LOW/LOW] (carry-over)
-
-**File:** `src/app/api/v1/submissions/[id]/events/route.ts:44-49`
-
-**Description:** The `addConnection` function does an O(n) linear scan through `connectionInfoMap` to find the oldest entry when over capacity. This is triggered when `MAX_TRACKED_CONNECTIONS` (1000) is reached. In practice, this is rare and the map is bounded.
-
-**Fix suggestion:** Maintain a sorted structure or use `Map` insertion-order properties for FIFO eviction.
+**Fix:** Use an LRU map or a doubly-linked list for O(1) eviction. Alternatively, since `Map` preserves insertion order and entries are naturally ordered by creation time, simply evicting the first N entries (FIFO) would be O(1) and sufficient for rate limiting.
 
 ---
 
-### PERF-4: In-memory rate limiter FIFO eviction is O(n log n) [LOW/LOW] (carry-over)
+## Finding P2: Auth User Cache Lacks TTL-Based Eviction
+**File:** `src/proxy.ts:23-71`
+**Severity:** Low | **Confidence:** Medium
 
-**File:** `src/lib/security/in-memory-rate-limit.ts:42`
+The `authUserCache` uses FIFO eviction based on max size (500 entries) but does not proactively evict expired entries. Expired entries are only removed on read (`getCachedAuthUser`). Under low traffic with many unique users, the cache could fill with expired entries that are never cleaned up until new entries push them out.
 
-**Description:** The `maybeEvict` function sorts all entries by `lastAttempt` when evicting excess entries. This is O(n log n) where n is up to `MAX_ENTRIES` (10000). Acceptable for periodic cleanup but not optimal.
+**Fix:** Add a periodic sweep (similar to the rate limiter's `maybeEvict`) that removes expired entries, or use a dedicated cache library with TTL support.
 
-## Carry-Over Confirmations
+---
 
-- Anti-cheat heartbeat gap query (MEDIUM/MEDIUM)
-- SSE O(n) eviction scan (LOW/LOW)
-- `atomicConsumeRateLimit` uses `Date.now()` in hot path (MEDIUM/MEDIUM) — deferred for performance reasons
+## Finding P3: Rate Limit Eviction Timer Uses setInterval Without Drift Protection
+**File:** `src/lib/security/rate-limit.ts:64-78`
+**Severity:** Low | **Confidence:** Low
+
+`startRateLimitEviction` uses `setInterval` for periodic stale entry cleanup. Under heavy event loop load, `setInterval` can drift significantly, causing eviction to run less frequently than intended. This is a minor concern since stale entries are also cleaned up on access.
+
+**Fix:** Consider using a timestamp check within the eviction function (similar to `maybeEvict` in the in-memory rate limiter) as a defense against timer drift.
