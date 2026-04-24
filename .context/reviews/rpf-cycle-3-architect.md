@@ -1,54 +1,41 @@
 # RPF Cycle 3 — Architect
 
-**Date:** 2026-04-22
-**Base commit:** 678f7d7d
+**Date:** 2026-04-24
+**Scope:** Full repository architecture, coupling, layering
 
-## Findings
+## Changed-File Review
 
-### ARCH-1: `SubmissionListAutoRefresh` uses `router.refresh()` which cannot detect errors — architectural mismatch [MEDIUM/HIGH]
+### `src/lib/judge/sync-language-configs.ts` — SKIP_INSTRUMENTATION_SYNC
 
-**File:** `src/components/submission-list-auto-refresh.tsx:38-44`
-**Confidence:** HIGH
+The flag is an appropriate escape hatch for environments without a DB. It sits at the entry point of a startup-only function and does not alter the runtime architecture. The strict-literal check and loud warning prevent accidental production use. No architectural concern.
 
-The component was designed with error backoff in mind (exponential backoff, max backoff cap), but `router.refresh()` is a fire-and-forget API that never throws. This is an architectural mismatch: the component's error-handling design cannot be realized with the chosen primitive.
+**Verdict:** Clean.
 
-**Fix:** Replace `router.refresh()` with `fetch('/api/v1/submissions?...')` + `router.refresh()` pattern: use the fetch to detect errors and apply backoff, then use `router.refresh()` to actually update the UI only on success.
+## Full-Repository Architecture Sweep
 
----
+### Layering & Coupling
 
-### ARCH-2: 22 raw API route handlers still not using `createApiHandler` — inconsistent auth/CSRF/error handling [MEDIUM/MEDIUM] (carried forward, tracked as DEFER-1)
+1. **API handler factory** (`src/lib/api/handler.ts`): Centralizes auth, CSRF, rate-limit, body parsing, and Zod validation. All API routes use `createApiHandler`. Consistent pattern, no drift. **Good.**
 
-**File:** `src/app/api/v1/` (22 route files)
-**Confidence:** HIGH
+2. **Permission model** (`src/lib/auth/permissions.ts`): Three-tier check — capability-based first, then role-based, then enrollment-based. Clean separation. **Good.**
 
-The `createApiHandler` wrapper provides consistent auth, CSRF, rate limiting, Zod validation, error handling, and cache headers. 22 raw route handlers manually implement these concerns with varying levels of completeness. This is a known deferred item but worth re-confirming.
+3. **Capability system** (`src/lib/capabilities/`): Cache-backed resolution with DB fallback. Custom roles supported. **Good.**
 
-**Status:** Carried forward. The raw handlers that were spot-checked (files, judge/poll, recruiting/validate) all implement auth and CSRF correctly. No security regression.
+4. **SSE connection management** (`events/route.ts`): Module-level in-memory state with `globalThis` timer pattern. This is the standard Next.js approach for module-level timers in App Router. Acceptable for single-instance deployments. For multi-instance, the `realtime-coordination.ts` shared-Redis path exists. **Good.**
 
----
+### Previously Identified (Carry-Forward)
 
-### ARCH-3: `contest-clarifications.tsx` mixes data fetching, polling, and UI in a single component — cohesion issue [LOW/LOW]
+- **AGG-7 / ARCH-2:** Manual routes duplicate `createApiHandler` boilerplate — MEDIUM/MEDIUM, deferred
+- **ARCH-3:** Stale-while-revalidate cache pattern duplication — LOW/LOW, deferred
 
-**File:** `src/components/contest/contest-clarifications.tsx`
-**Confidence:** LOW
+### New Observations
 
-The component handles API fetching, polling with visibility-based intervals, form submission, answer management, and rendering. It would benefit from extracting the data fetching/polling logic into a custom hook (similar to `useSubmissionPolling`). This is a maintainability suggestion, not a bug.
+1. The SSE route (`events/route.ts`) is explicitly documented as "not migrated to createApiHandler due to streaming response" — this is a justified architectural decision. No issue.
 
----
+2. The recruiting context cache via `withRecruitingContextCache` (handler.ts line 109) wraps every API handler call. This is a clean use of AsyncLocalStorage for per-request deduplication. **Good.**
 
-### ARCH-4: Dynamic `import()` for clipboard utility used in multiple components — should be static import [LOW/MEDIUM]
+## Summary
 
-**File:** `src/components/contest/recruiting-invitations-panel.tsx:183,208,310`
-**Confidence:** HIGH
+**New findings this cycle: 0**
 
-The `recruiting-invitations-panel.tsx` uses dynamic `import("@/lib/clipboard")` in three places. The clipboard utility is a tiny module (37 lines, no side effects) that will be bundled with the page anyway. Dynamic imports are useful for code splitting large modules, but here they just add unnecessary async overhead and make the code harder to read.
-
-**Fix:** Convert to static import at the top of the file.
-
----
-
-## Verified Safe
-
-- `contest-layout.tsx` properly uses opt-in `data-full-navigate` pattern
-- `createApiHandler` provides robust middleware layer for migrated routes
-- SSE route correctly documents why it can't use `createApiHandler` (streaming response)
+No new architectural issues. The `SKIP_INSTRUMENTATION_SYNC` flag is architecturally sound. All prior architectural findings remain deferred.

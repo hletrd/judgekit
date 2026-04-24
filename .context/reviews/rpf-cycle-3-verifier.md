@@ -1,58 +1,34 @@
-# RPF Cycle 3 — Verifier
+# RPF Cycle 3 — Verifier (Evidence-Based Correctness Check)
 
-**Date:** 2026-04-22
-**Base commit:** 678f7d7d
+**Date:** 2026-04-24
+**Scope:** Full repository — correctness against stated behavior
 
-## Findings
+## Changed-File Verification
 
-### V-1: `SubmissionListAutoRefresh` error backoff is not actually functional — verified by reading Next.js `router.refresh()` API [MEDIUM/HIGH]
+### `src/lib/judge/sync-language-configs.ts` — SKIP_INSTRUMENTATION_SYNC
 
-**File:** `src/components/submission-list-auto-refresh.tsx:38-44`
-**Confidence:** HIGH
+**Claim:** The flag skips language-config startup sync and should not be used in production.
 
-Verified: `useRouter().refresh()` from `next/navigation` triggers a server component revalidation. It does NOT return a promise that rejects on HTTP errors, and it does NOT throw when the server is unreachable. The try/catch on lines 38-44 will never enter the catch branch for network/server errors. The `errorCountRef` will always be 0.
+**Evidence:**
+- Line 76: `process.env.SKIP_INSTRUMENTATION_SYNC === "1"` — strict-literal comparison. Verified: `undefined`, `""`, `"0"`, `"true"`, `"yes"` all evaluate to `false`. Only `"1"` triggers the bypass. **Verified.**
+- Line 77-80: `logger.warn(...)` with "DO NOT use this in production" message. **Verified.**
+- Line 81: `return;` exits the function before any DB interaction. **Verified.**
+- Lines 83-100: The normal sync path (retry loop with exponential backoff) is unchanged. **Verified.**
 
-This means the documented behavior ("When router.refresh() throws or the page is unreachable, increment error count for exponential backoff") on lines 32-34 is incorrect — the described behavior cannot occur.
+**Post-condition:** When `SKIP_INSTRUMENTATION_SYNC !== "1"`, the function behaves identically to the pre-change version. **Verified.**
 
-**Fix:** Replace with `fetch()` + `router.refresh()` pattern, or remove the dead backoff code and document that no backoff is possible with `router.refresh()`.
+**Verdict:** The change is correct and matches its stated behavior.
 
----
+## Cross-System Correctness Verification
 
-### V-2: `contest-clarifications.tsx` `loadClarifications` dependency array includes `t` — may cause unnecessary re-fetches [LOW/LOW]
+1. **Rate-limit consistency:** `atomicConsumeRateLimit` uses `Date.now()` (line 56), `checkServerActionRateLimit` uses `getDbNowUncached()` (line 223). This inconsistency is known (AGG-2) and deferred. The practical impact is that `X-RateLimit-Reset` headers may be off by a few ms if the DB clock differs from the app clock. **Not a correctness bug for the rate-limit itself** since the DB transaction uses the app-server timestamp consistently within its own logic.
 
-**File:** `src/components/contest/clarifications.tsx:92`
-**Confidence:** LOW
+2. **JWT refresh correctness:** The `jwt` callback in `config.ts` refreshes user data from DB, checks `isActive` and `tokenInvalidatedAt`. The `syncTokenWithUser` function spreads all auth fields including preference fields. **Verified correct.**
 
-The `useTranslations` hook returns a stable reference in `next-intl` v4, so `t` should not cause re-fetches in practice. However, if the i18n library updates the reference on locale change, it would restart polling. This is actually desired behavior (re-fetch in new locale), so this is acceptable.
+3. **Permission propagation:** `canAccessSubmission` checks capabilities first, then ownership, then instructor relationship via `canViewAssignmentSubmissions`. The security note about null `assignmentId` (non-assignment submissions) correctly restricts access to owner + admin only. **Verified.**
 
----
+## Summary
 
-### V-3: `recruiting-invitations-panel.tsx` `fetchData` dependency includes `stats` — verified potential for extra re-fetches [MEDIUM/MEDIUM]
+**New findings this cycle: 0**
 
-**File:** `src/components/contest/recruiting-invitations-panel.tsx:110-134`
-**Confidence:** HIGH (same as CR-4, DBG-3)
-
-Verified: `stats` is in the dependency array of `fetchData` (line 134). Inside `fetchData`, `stats` is used as a fallback: `setStats(json.data ?? stats)`. When `fetchData` runs and updates `stats`, the `useCallback` reference changes (because `stats` changed), which triggers the `useEffect` on line 136 to run again. In practice, React's `useState` bailout prevents an infinite loop when the new value equals the old value, but if the API returns an object with different reference identity on each call, this would loop.
-
-**Fix:** Use functional state update pattern to avoid needing `stats` in the dependency array.
-
----
-
-### V-4: SSE `queryFullSubmission` includes `sourceCode` in SSE events — verified unnecessary data transfer [LOW/MEDIUM]
-
-**File:** `src/app/api/v1/submissions/[id]/events/route.ts:463-488`
-**Confidence:** HIGH (same as PERF-5)
-
-Verified: The `queryFullSubmission` function does not exclude `sourceCode` from its select. The SSE "result" event therefore includes the full source code. The client (`use-submission-polling.ts`) already has the source code from the initial page load and uses `normalized.sourceCode || prev.sourceCode` to preserve it. So the source code in the SSE event is always overwritten by the fallback, making the transfer wasteful.
-
-**Fix:** Add `sourceCode: false` to the columns selection in `queryFullSubmission`.
-
----
-
-## Verified Safe
-
-- `clipboard.ts` correctly implements the Clipboard API -> execCommand fallback pattern
-- `contest-layout.tsx` correctly only intercepts `data-full-navigate` links
-- `formatScore` is used correctly in `submission-detail-client.tsx`
-- `compiler-client.tsx` keyboard shortcut correctly excludes textarea/input active elements
-- All cycle 2 fixes have been properly applied and are working as documented
+All verified. The single code change is correct. No new correctness issues found.

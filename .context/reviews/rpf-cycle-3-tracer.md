@@ -1,70 +1,60 @@
-# RPF Cycle 3 — Tracer
+# RPF Cycle 3 — Tracer (Causal Tracing of Suspicious Flows)
 
-**Date:** 2026-04-22
-**Base commit:** 678f7d7d
+**Date:** 2026-04-24
+**Scope:** Full repository — causal tracing of data flows, competing hypotheses
 
-## Causal Traces
+## Changed-File Tracing
 
-### TR-1: Trace: `router.refresh()` error path — confirmed dead code [MEDIUM/HIGH]
+### `src/lib/judge/sync-language-configs.ts` — SKIP_INSTRUMENTATION_SYNC
 
-**Hypothesis 1:** `router.refresh()` throws on network error, causing backoff.
-**Hypothesis 2:** `router.refresh()` never throws, making backoff dead code.
+**Trace 1: Flag activation path**
+1. `process.env.SKIP_INSTRUMENTATION_SYNC === "1"` → true
+2. `logger.warn(...)` fires
+3. Function returns `undefined` (implicit)
+4. Caller (`instrumentation.ts` or startup) continues normally
+5. No language configs are synced — they remain as-is from prior runs
 
-**Trace:**
-1. `SubmissionListAutoRefresh` useEffect sets up polling (line 24)
-2. `tick()` calls `router.refresh()` (line 39)
-3. `router.refresh()` comes from `useRouter()` from `next/navigation`
-4. In Next.js App Router, `router.refresh()` calls `cache.invalidate()` internally and re-fetches server components
-5. It uses `fetch()` internally but wraps it in a way that errors are swallowed (not propagated to caller)
-6. The catch block on line 43 is unreachable for network errors
+**Hypothesis:** Could this leave the DB in an inconsistent state if language configs are missing?
+**Disproof:** The flag is only used in environments where DB is unavailable (local dev, sandboxed review). In production, the DB is available and the flag is not set. Language configs are seeded during initial deployment. **No risk.**
 
-**Conclusion:** Hypothesis 2 is correct. The backoff is dead code.
+**Trace 2: Flag NOT set (normal production path)**
+1. Condition is false
+2. Retry loop begins (line 87)
+3. `doSync()` runs: queries existing configs, inserts/updates as needed
+4. On success: function returns
+5. On failure: exponential backoff, retry up to 10 times
+6. After max retries: throws Error
 
-**Fix:** Replace `router.refresh()` with `fetch()` + `router.refresh()`.
+**Hypothesis:** Could the retry loop hang forever?
+**Disproof:** The loop has a hard cap of `MAX_SYNC_RETRIES = 10` iterations. The `attempt >= MAX_SYNC_RETRIES` check on line 92 throws after the last retry. **No hang risk.**
 
----
+**Verdict:** Both paths are safe. No causal issues.
 
-### TR-2: Trace: `fetchData` -> `stats` -> `fetchData` potential loop [MEDIUM/MEDIUM]
+## Cross-System Flow Tracing
 
-**Hypothesis 1:** `fetchData` updating `stats` causes infinite re-fetch loop.
-**Hypothesis 2:** React's bailout optimization prevents the loop.
+### Auth flow (login → session → API request)
 
-**Trace:**
-1. `fetchData` is called by `useEffect` on line 136
-2. `fetchData` calls `setStats(json.data ?? stats)` on line 128
-3. `stats` changes, which is in `fetchData`'s dependency array (line 134)
-4. `fetchData` is recreated with new closure
-5. `useEffect` on line 136 has `fetchData` as dependency, so it re-runs
-6. `fetchData` is called again
-7. API returns same data -> `setStats(sameValue)` -> React bails out (no re-render)
+1. `authorize()` in config.ts: validates credentials, checks `isActive`, verifies password with Argon2id, records login event
+2. `jwt` callback: syncs token with user fields, sets `authenticatedAt`
+3. `session` callback: maps token fields to session.user
+4. API request: `getApiUser()` → `getToken()` → `getActiveAuthUserById()` → checks `tokenInvalidatedAt`
+5. `createApiHandler()`: runs auth, CSRF, rate-limit, then handler
 
-**Conclusion:** Both hypotheses have merit. In practice, React's bailout prevents infinite loops when the API returns identical data. But if the API returns different timestamps or IDs on each call, the loop would be triggered. The dependency is semantically incorrect even if it works in practice.
+**Hypothesis:** Could a deactivated user still access an API endpoint between deactivation and the next JWT refresh?
+**Analysis:** The `getActiveAuthUserById` checks `isActive` and `tokenInvalidatedAt` on every API request. The JWT callback also checks these on every token refresh. The gap window is the JWT refresh interval, which is controlled by `sessionMaxAgeSeconds`. For API requests (not page loads), `getApiUser` always queries the DB directly. **No access-after-deactivation gap for API routes.**
 
-**Fix:** Use functional update form `setStats(prev => json.data ?? prev)`.
+### SSE re-auth flow
 
----
+1. SSE connection established
+2. Every 30 seconds (`AUTH_RECHECK_INTERVAL_MS`): `getApiUser(request)` is called
+3. If re-auth fails → connection closed
+4. Between re-auth checks: status events are emitted
 
-### TR-3: Trace: `syncVisibility` interval leak on rapid tab switches [MEDIUM/MEDIUM]
+**Hypothesis:** Could a deactivated user receive up to 30 seconds of SSE events after deactivation?
+**Analysis:** Yes, this is a known and accepted tradeoff. The 30-second window is documented. Reducing it would increase DB load proportionally. **Acceptable risk.**
 
-**Trace:**
-1. User switches to tab -> `visibilitychange` fires with `"visible"`
-2. `syncVisibility()` runs: `interval` is null, creates new `setInterval`
-3. User quickly switches away and back -> `visibilitychange` fires twice rapidly
-4. First `"hidden"` event: `clearInterval(interval)`, sets `interval = null`
-5. Second `"visible"` event: `if (!interval)` passes, creates new `setInterval`
-6. This works correctly for the sequential case
+## Summary
 
-**However:**
-1. If two `"visible"` events fire before any `"hidden"` event:
-2. First `"visible"`: creates interval, assigns to `interval`
-3. Second `"visible"`: `if (!interval)` is FALSE (interval is truthy), skips creation
-4. Result: Only one interval exists — correct
+**New findings this cycle: 0**
 
-**Revised conclusion:** The race condition is less severe than initially thought. The local `interval` variable is set synchronously before the next event can fire. However, the code is fragile and depends on JavaScript's single-threaded event loop. Using a `useRef` would be more robust.
-
----
-
-## Verified Safe
-
-- Clipboard utility trace: `copyToClipboard()` -> navigator.clipboard -> execCommand fallback -> returns boolean — works correctly
-- Contest layout trace: Click handler checks `data-full-navigate` attribute -> only hard-navigates for marked links — works correctly
+All traced flows are safe and match expected behavior. The 30-second SSE re-auth window is a known, accepted tradeoff.

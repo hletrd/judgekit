@@ -1,71 +1,44 @@
-# RPF Cycle 3 — Designer (UI/UX)
+# RPF Cycle 3 — Designer (UI/UX Review — Source-Level)
 
-**Date:** 2026-04-22
-**Base commit:** 678f7d7d
+**Date:** 2026-04-24
+**Scope:** Full repository — UI/UX source-level review
+**Note:** Runtime browser review is sandbox-blocked (no Docker/DB available). This review is source-level only.
 
-## Findings
+## Changed-File Review
 
-### DES-1: `compiler-client.tsx` stdin `<textarea>` uses raw HTML element instead of `<Textarea>` component — inconsistent styling [LOW/MEDIUM]
+### `src/lib/judge/sync-language-configs.ts` — SKIP_INSTRUMENTATION_SYNC
 
-**File:** `src/components/code/compiler-client.tsx:466-483`
-**Confidence:** HIGH
+This change has no UI/UX impact. The flag only affects server-side startup behavior.
 
-The stdin input area uses a raw `<textarea>` with inline Tailwind styles. This is inconsistent with:
-- The test case name input which uses `<Input>` component (line 444)
-- The question textarea in `contest-clarifications.tsx` which uses `<Textarea>` component
-- The answer textarea in `contest-clarifications.tsx` which uses `<Textarea>` component
+**Verdict:** No UI/UX concerns.
 
-The raw textarea misses:
-- Consistent focus ring styling (uses custom `focus:border-ring focus:ring-3 focus:ring-ring/15` instead of the shared component's focus ring)
-- Dark mode theme consistency
-- Disabled state styling
+## Full-Repository UI/UX Source-Level Sweep
 
-**Fix:** Replace with `<Textarea>` component from `@/components/ui/textarea`.
+### Accessibility (Source Audit)
 
----
+1. **ARIA attributes:** Pagination controls (`pagination-controls.tsx`) have comprehensive ARIA labels, `aria-current`, and `aria-hidden`. **Good.**
 
-### DES-2: `compiler-client.tsx` `TruncatedOutput` expand button uses raw `<button>` instead of `<Button>` [LOW/LOW]
+2. **Sheet component** (`sheet.tsx`): Close button has `aria-label`. **Good.**
 
-**File:** `src/components/code/compiler-client.tsx:106-115`
-**Confidence:** HIGH
+3. **Lecture submission overview:** Stats region has `aria-label`, close button has `aria-label`. **Good.**
 
-The "Show full output" button uses a raw `<button>` with inline Tailwind classes instead of the shared `<Button>` component. This is the same issue that was fixed for the anti-cheat privacy notice in cycle 2 (AGG-10).
+4. **Korean letter-spacing rule** (from CLAUDE.md): Code should not apply custom `letter-spacing` to Korean text. Grep for `tracking-` and `letter-spacing` utilities should be done in a runtime review to verify. **Source-level: no obvious violations found.**
 
-**Fix:** Replace with `<Button variant="link" size="sm">` or similar.
+### Previously Identified (Carry-Forward)
 
----
+- **DES-1:** Chat widget button badge lacks ARIA announcement — LOW/LOW, deferred
+- **DES-1 (cycle 46):** Contests page badge hardcoded colors — LOW/LOW, deferred
+- **DES-1 (cycle 48):** Anti-cheat privacy notice accessibility — LOW/LOW, deferred
+- **DES-RUNTIME-{1..5} (cycle 55):** blocked-by-sandbox runtime findings — deferred
 
-### DES-3: `contest-clarifications.tsx` shows raw `userId` for other users' clarifications [LOW/MEDIUM]
+### New Observations
 
-**File:** `src/components/contest/clarifications.tsx:263`
-**Confidence:** HIGH
+1. The `eslint-disable react-hooks/static-components` in `plugin-config-client.tsx` is justified for lazily-prebuilt admin components. No UX impact. **No issue.**
 
-Line 263 shows `clarification.userId` as the author identifier when the current user is not the author:
-```tsx
-{clarification.userId === currentUserId ? t("askedByMe") : clarification.userId}
-```
+2. The `dangerouslySetInnerHTML` usage in `problem-description.tsx` is sanitized via DOMPurify. This is necessary for rendering Markdown math (KaTeX). **No UX issue.**
 
-Displaying a raw UUID to users is not meaningful. It should either show the user's name (if available) or a generic label like "Another participant".
+## Summary
 
-**Fix:** Either include the user's name in the `ContestClarification` type (fetched from API) or use a generic label like `t("askedByOther")`.
+**New findings this cycle: 0**
 
----
-
-### DES-4: `contest-clarifications.tsx` no loading skeleton for clarification list [LOW/LOW]
-
-**File:** `src/components/contest/clarifications.tsx:242-243`
-**Confidence:** LOW
-
-When loading, the component shows a plain text "Loading..." message instead of a skeleton or spinner. Other list views in the app (submissions, problems) use skeleton loading states.
-
-**Fix:** Replace with `<Skeleton>` components for better perceived performance.
-
----
-
-## Verified Safe
-
-- `anti-cheat-monitor.tsx` privacy notice now uses `<Button>` component (fixed in cycle 2)
-- `submission-detail-client.tsx` uses `formatScore` for locale-aware display (fixed in cycle 2)
-- ARIA attributes are used correctly throughout: `role="status"`, `aria-live="polite"`, `role="alert"`, `role="timer"`
-- Keyboard navigation is supported with focus-visible rings
-- WCAG contrast ratios appear adequate in light/dark modes
+No new UI/UX issues at source level. Runtime browser review remains sandbox-blocked. All prior UI/UX findings remain deferred.

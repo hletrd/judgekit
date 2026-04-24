@@ -1,41 +1,41 @@
-# RPF Cycle 3 — Document Specialist
+# RPF Cycle 3 — Document Specialist (Doc/Code Mismatches)
 
-**Date:** 2026-04-22
-**Base commit:** 678f7d7d
+**Date:** 2026-04-24
+**Scope:** Full repository — documentation-code alignment
 
-## Findings
+## Changed-File Review
 
-### DOC-1: `SubmissionListAutoRefresh` comments describe non-functional backoff behavior [MEDIUM/HIGH]
+### `src/lib/judge/sync-language-configs.ts` — SKIP_INSTRUMENTATION_SYNC
 
-**File:** `src/components/submission-list-auto-refresh.tsx:32-34`
-**Confidence:** HIGH
+**Doc-code alignment check:**
 
-The comment on lines 32-34 states:
-```
-// Use router.refresh() wrapped in startTransition to detect errors.
-// When router.refresh() throws or the page is unreachable, increment
-// error count for exponential backoff. Reset on success.
-```
+1. The comment (lines 69-75) references `plans/open/2026-04-23-rpf-cycle-55-review-remediation.md` — this file exists in the plans directory. **Aligned.**
 
-This is factually incorrect. `router.refresh()` does not throw on network errors and does not detect unreachable states. The documented behavior cannot occur with the current implementation. This is not just a documentation issue — it's a code-comment mismatch that could mislead future developers.
+2. The comment references `.context/reviews/designer-runtime-cycle-3.md` — this file may or may not exist (it was referenced from a prior cycle's designer review). If it doesn't exist, the reference is stale. **Low-risk doc issue — review artifacts are archival.**
 
-**Fix:** Either fix the code to match the comment (replace `router.refresh()` with `fetch()`), or update the comment to accurately describe the current (non-functional) behavior.
+3. The `logger.warn` message ("DO NOT use this in production") matches the code comment's intent. **Aligned.**
 
----
+4. The `README.md` does not mention the `SKIP_INSTRUMENTATION_SYNC` flag. Since this is a dev/sandbox-only flag, README documentation is not expected. **No mismatch.**
 
-### DOC-2: `contest-layout.tsx` comment references upstream Next.js bug but provides no issue number [LOW/LOW]
+**Verdict:** No significant doc-code mismatches.
 
-**File:** `src/app/(dashboard)/dashboard/contests/layout.tsx:14-18`
-**Confidence:** LOW
+## Full-Repository Doc Sweep
 
-The TODO comment says "Track: https://github.com/vercel/next.js/issues (search for RSC streaming corruption with proxy headers). If no issue exists, one should be filed." This is a placeholder, not an actual tracking reference.
+### Previously Identified (Carry-Forward)
 
-**Fix:** Either file the issue and update the comment with the issue number, or remove the speculative text.
+- **DOC-1:** SSE route ADR — LOW/LOW, deferred
+- **DOC-2:** Docker client dual-path docs — LOW/LOW, deferred
 
----
+### New Observations
 
-## Verified Safe
+1. The `README.md` at the project root is minimal. The project uses `.context/` directory for detailed documentation. **No mismatch — this is a documented convention.**
 
-- `clipboard.ts` JSDoc is accurate and matches the implementation
-- `use-source-draft.ts` has no code-comment mismatches
-- `anti-cheat-monitor.tsx` comments accurately describe the event persistence and retry logic
+2. The `CLAUDE.md` correctly documents the production architecture (algo.xylolabs.com vs worker-0) and the Korean letter-spacing rule. **Aligned with code.**
+
+3. API route handlers have JSDoc comments where needed. The `createApiHandler` factory has comprehensive documentation. **No mismatches.**
+
+## Summary
+
+**New findings this cycle: 0**
+
+No new doc-code mismatches. The single code change has well-documented comments and aligned cross-references.

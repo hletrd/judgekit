@@ -1,72 +1,68 @@
 # RPF Cycle 3 — Security Reviewer
 
-**Date:** 2026-04-22
-**Base commit:** 678f7d7d
+**Date:** 2026-04-24
+**Scope:** Full repository — OWASP top 10, secrets, unsafe patterns, auth/authz
 
-## Findings
+## Changed-File Review
 
-### SEC-1: `SubmissionListAutoRefresh` `router.refresh()` backoff is non-functional — no DDoS protection on polling [MEDIUM/HIGH]
+### `src/lib/judge/sync-language-configs.ts` — SKIP_INSTRUMENTATION_SYNC
 
-**File:** `src/components/submission-list-auto-refresh.tsx:38-44`
-**Confidence:** HIGH
+**Security assessment of the new flag:**
 
-Same root cause as CR-1 but from a security perspective. `router.refresh()` never throws, so the exponential backoff logic (lines 27-29) is dead code. During a server outage or overload, all 3 pages that use this component (`submissions/page.tsx`, `admin/submissions/page.tsx`, `public/submissions/page.tsx`) will keep polling at full rate with no backoff, acting as a self-inflicted DDoS.
+- Strict-literal `=== "1"` check prevents accidental truthy coercion (e.g., `"true"`, `"yes"`, empty string). **Good.**
+- Loud `logger.warn` fires when the flag is active. **Good.**
+- The flag only skips the language-config startup sync; it does NOT bypass any auth, rate-limit, or data-access control. **No security boundary crossed.**
+- Production `.env.deploy.algo` and `docker-compose.production.yml` do not set this variable. Verified in prior cycles. **Good.**
+- Comment explicitly states "DO NOT use this in production." **Good.**
 
-**Fix:** Use a real `fetch()` call instead of `router.refresh()` so errors are catchable, or add a visibility-based rate limiter independent of error detection.
+**Verdict:** No security issue with the change.
 
----
+## Full-Repository Security Sweep
 
-### SEC-2: `recruiting-invitations-panel.tsx` `handleCopyLink` and create-dialog clipboard calls use dynamic `import()` — potential for timing-based CSP bypass discussion [LOW/LOW]
+### Authentication & Authorization
 
-**File:** `src/components/contest/recruiting-invitations-panel.tsx:183,208,310`
-**Confidence:** LOW
+1. **Auth handler** (`src/lib/api/auth.ts`): Dual auth path (session cookie + API key) is correctly implemented. Session user lookup validates `isActive` and `tokenInvalidatedAt`. **No issue.**
 
-The dynamic `await import("@/lib/clipboard")` calls work but add unnecessary async overhead. In a strict CSP environment, dynamic imports could be blocked. Since the component is always client-side and the clipboard utility is small, a static import is preferred.
+2. **JWT callback** (`src/lib/auth/config.ts` line 377-388): Refreshes user from DB on every JWT refresh, checks `isActive` and `tokenInvalidatedAt`. **No issue.**
 
-**Fix:** Replace `const { copyToClipboard } = await import("@/lib/clipboard")` with a static `import { copyToClipboard } from "@/lib/clipboard"` at the top of the file.
+3. **Token invalidation** (`session-security.ts` line 65): Sets `authenticatedAt = 0` instead of deleting, preventing fallback to `iat` which could bypass revocation. **Good fix from prior cycles.**
 
----
+4. **CSRF protection** (`handler.ts` lines 140-148): Correctly skipped for API-key-authenticated requests (no cookies involved). Mutation methods require CSRF by default. **No issue.**
 
-### SEC-3: `contest-clarifications.tsx` admin answer draft and toggle-public have no CSRF token validation on the client side [MEDIUM/MEDIUM]
+5. **Capability-based auth** (`handler.ts` lines 129-135): Supports both `requireAllCapabilities: true` (default) and `false` (any). **No issue.**
 
-**File:** `src/components/contest/contest-clarifications.tsx:147-168,170-184`
-**Confidence:** MEDIUM
+6. **DUMMY_PASSWORD_HASH** (`config.ts` line 50-51): Pre-computed Argon2id hash for timing-safe comparison when user doesn't exist, preventing user-enumeration via timing. **Good.**
 
-The `handleAnswer` and `handleTogglePublic` functions send PATCH requests via `apiFetch`. The server-side routes may validate CSRF (if using `createApiHandler`), but since `contest-clarifications.tsx` is a client component that uses `apiFetch`, the CSRF header must be included. Need to verify that `apiFetch` automatically includes the CSRF header. If it does, this is a non-issue.
+### SQL Injection
 
-**Status:** Needs manual verification — check if `apiFetch` in `src/lib/api/client.ts` includes CSRF headers by default for mutation requests.
+Grep for raw SQL templates found only parameterized queries using Drizzle's `sql` tagged template with bound parameters. No string interpolation into SQL. **No injection risk.**
 
----
+Examples:
+- `sql\`lower(${users.username}) = lower(${identifier})\`` — parameterized, safe
+- `sql\`DELETE FROM ${table} WHERE ctid IN (...)\`` — parameterized via Drizzle, safe
 
-### SEC-4: `anti-cheat-monitor.tsx` stores events in localStorage without integrity check [LOW/LOW]
+### XSS
 
-**File:** `src/components/exam/anti-cheat-monitor.tsx:28-47`
-**Confidence:** LOW
+1. **dangerouslySetInnerHTML** — only 2 usages found:
+   - `json-ld.tsx` line 21: uses `safeJsonForScript()` sanitizer — safe
+   - `problem-description.tsx` line 51: uses `sanitizeHtml()` from DOMPurify — safe
 
-Pending anti-cheat events are stored in localStorage and later flushed to the server. A determined user could modify localStorage to inject false events, suppress real events, or alter event details. Since anti-cheat data is advisory (not used for automatic disqualification), this is low risk.
+2. No `innerHTML` assignments found. **No XSS risk.**
 
-**Fix:** Consider adding a simple HMAC or signed payload for stored events if integrity becomes important.
+### Secrets & Credentials
 
----
+- `process.env` references are all for configuration (DB URL, auth secret, runner URL). No hardcoded secrets.
+- `RUNNER_AUTH_TOKEN` validation at module level (execute.ts lines 58-66) throws in production if missing. **Good.**
+- `PLUGIN_CONFIG_ENCRYPTION_KEY` used for encryption at rest. **Good.**
 
-### SEC-5: `compiler-client.tsx` stdin textarea allows arbitrary input size — no client-side length limit [LOW/LOW]
+### Previously Identified (Carry-Forward)
 
-**File:** `src/components/code/compiler-client.tsx:466-483`
-**Confidence:** LOW
+- **SEC-2 (cycle 43):** Anti-cheat heartbeat dedup uses `Date.now()` for LRU cache — LOW/LOW, deferred
+- **SEC-3:** Anti-cheat copies user text content — LOW/LOW, deferred
+- **SEC-4:** Docker build error leaks paths — LOW/LOW, deferred
 
-The stdin textarea has no `maxLength` attribute. A user could paste megabytes of stdin data, which would be sent to the `/api/v1/compiler/run` endpoint. Server-side validation should catch this, but a client-side limit provides better UX.
+## Summary
 
-**Fix:** Add a reasonable `maxLength` (e.g., 1MB) to the stdin textarea, or add a client-side size check before sending.
+**New findings this cycle: 0**
 
----
-
-## Verified Safe
-
-- `clipboard.ts` properly sanitizes the textarea element (created/removed per operation)
-- `contest-layout.tsx` navigation filter correctly blocks `javascript:` and `data:` scheme URLs
-- `dangerouslySetInnerHTML` uses are protected with DOMPurify (`problem-description.tsx`) or JSON encoding (`json-ld.tsx`)
-- No `as any` or `@ts-ignore` in production code
-- No hardcoded secrets or API keys in client code
-- `recruiting/validate/route.ts` uses constant-time comparison pattern (returns same response for all failure cases)
-- Auth flow uses Argon2id with rate limiting
-- API routes using `createApiHandler` have consistent auth, CSRF, and rate limiting
+No new security issues. The `SKIP_INSTRUMENTATION_SYNC` flag is production-safe. All prior security findings remain deferred and unchanged.

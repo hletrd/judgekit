@@ -1,57 +1,34 @@
-# RPF Cycle 3 — Critic
+# RPF Cycle 3 — Critic (Multi-Perspective Critique)
 
-**Date:** 2026-04-22
-**Base commit:** 678f7d7d
+**Date:** 2026-04-24
+**Scope:** Full change surface and cross-cutting concerns
 
-## Multi-Perspective Critique
+## Changed-File Review
 
-### CRI-1: `SubmissionListAutoRefresh` was designed for backoff but the implementation makes it impossible [MEDIUM/HIGH]
+### `src/lib/judge/sync-language-configs.ts` — SKIP_INSTRUMENTATION_SYNC
 
-This is the highest-signal finding this cycle, flagged by code-reviewer, security-reviewer, perf-reviewer, architect, debugger, verifier, and test-engineer (7 perspectives).
+**Critique angles:**
 
-The component has:
-- `MAX_BACKOFF_MS`, `BACKOFF_MULTIPLIER` constants
-- `errorCountRef` with increment/reset logic
-- `getBackoffInterval()` function
-- Detailed comments about how backoff works
+1. **Correctness:** The flag short-circuits the sync function before any DB interaction. When the flag is not set, the sync proceeds normally. No path is broken. **No issue.**
 
-But `router.refresh()` never throws, so none of this code ever executes. This is a "implementation contradicts design" issue. The code looks correct at first glance, but the design intent (backoff on failure) is fundamentally impossible with the chosen API primitive.
+2. **Operational safety:** The flag name is descriptive and the strict-literal check prevents accidental activation. The warning log provides clear audit trail. **No issue.**
 
-**Severity adjustment:** What would be a simple bug is elevated because the dead code gives a false sense of robustness. A developer reading this code would believe backoff is working, and wouldn't add real error handling.
+3. **Feature-flag hygiene:** This is not a feature flag in the traditional sense — it's a startup bypass for environments without DB. It's appropriately scoped. **No issue.**
 
----
+4. **Documentation-code alignment:** The comment references `plans/open/2026-04-23-rpf-cycle-55-review-remediation.md` and `.context/reviews/designer-runtime-cycle-3.md`. These cross-references should remain valid as long as those files exist. **Low risk of stale references, but acceptable for review artifacts.**
 
-### CRI-2: `recruiting-invitations-panel.tsx` uses dynamic `import()` where static import is appropriate [LOW/MEDIUM]
+**Verdict:** No issues from the critic's perspective.
 
-Three separate locations use `const { copyToClipboard } = await import("@/lib/clipboard")`. This pattern was likely used during migration (copy-paste from different files) but is unnecessary for a 37-line utility that will be bundled anyway. The dynamic import adds:
-- Unnecessary async overhead on every click
-- Less readable code
-- Potential CSP issues in strict environments
+## Multi-Perspective Observations
 
-**Fix:** Simple static import at the top of the file.
+1. **Deferred-item accumulation:** The codebase has 19+1 deferred items across multiple cycles. While each deferral has documented rationale and exit criteria, the growing backlog could become a maintenance burden. This is a process observation, not a code issue.
 
----
+2. **Test flake (#21):** The vitest parallel-contention flake remains. The exit criterion (tune pool or use higher-CPU sandbox) is clear but not yet met. **No new information this cycle.**
 
-### CRI-3: `contest-clarifications.tsx` polling architecture could benefit from a reusable hook [LOW/LOW]
+3. **SSE connection tracking** remains in-memory only for non-shared-coordination mode. In production with shared coordination (Redis-backed), this is mitigated. **No issue.**
 
-The component implements its own visibility-based polling with interval management. This is the same pattern used by `SubmissionListAutoRefresh` and `useSubmissionPolling`. A shared `usePollingWithVisibility` hook could reduce duplication.
+## Summary
 
-This is a maintainability suggestion, not a bug.
+**New findings this cycle: 0**
 
----
-
-### CRI-4: SSE `queryFullSubmission` fetches `sourceCode` but client always ignores it [LOW/MEDIUM]
-
-The `sendTerminalResult` function in the SSE route fetches the full submission including `sourceCode`. The client (`use-submission-polling.ts`) always uses `normalized.sourceCode || prev.sourceCode` — preferring the already-loaded source code. So the source code in the SSE event is always discarded by the client. This wastes bandwidth and adds latency to every SSE completion event.
-
-**Fix:** Exclude `sourceCode` from the `queryFullSubmission` query.
-
----
-
-## Positive Observations
-
-- Cycle 2 fixes are all properly applied and working
-- `clipboard.ts` shared utility is well-designed with proper fallback pattern
-- `contest-layout.tsx` opt-in navigation pattern is clean and minimal
-- `formatScore` adoption is consistent
-- Code quality overall is high — no `as any`, no `@ts-ignore`, minimal `eslint-disable`
+No new issues from any critical perspective. The single code change is clean and well-guarded.
