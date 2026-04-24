@@ -2,7 +2,7 @@
 
 **Date:** 2026-04-24
 **Source:** `.context/reviews/rpf-cycle-20-aggregate.md`
-**Status:** In Progress
+**Status:** Done
 
 ## Scope
 
@@ -27,7 +27,7 @@ No review finding is silently dropped. No new refactor-only work is added under 
 - **Plan:**
   1. Change line 73 from `toast.error((data as { error?: string }).error ?? t("addInstructorFailed"))` to `console.error(data); toast.error(t("addInstructorFailed"))`
   2. Verify gate passes
-- **Status:** Pending
+- **Status:** DONE
 
 ---
 
@@ -42,7 +42,7 @@ No review finding is silently dropped. No new refactor-only work is added under 
   2. Line 160: Change `toast.error(data.error ?? t("toast.removeError"))` to `console.error(data.error); toast.error(t("toast.removeError"))`
   3. Line 187: Change `toast.error(data.error ?? t("toast.pruneError"))` to `console.error(data.error); toast.error(t("toast.pruneError"))`
   4. Verify gate passes
-- **Status:** Pending
+- **Status:** DONE
 
 ---
 
@@ -55,7 +55,7 @@ No review finding is silently dropped. No new refactor-only work is added under 
 - **Plan:**
   1. Change line 146 from `toast.error(t((data as { error?: string }).error ?? "restoreFailed"))` to `console.error(data); toast.error(t("restoreFailed"))`
   2. Verify gate passes
-- **Status:** Pending
+- **Status:** DONE
 
 ---
 
@@ -68,7 +68,7 @@ No review finding is silently dropped. No new refactor-only work is added under 
 - **Plan:**
   1. Change line 38 from `toast.error((err as { error?: string }).error ?? t("importFailed"))` to `console.error(err); toast.error(t("importFailed"))`
   2. Verify gate passes
-- **Status:** Pending
+- **Status:** DONE
 
 ---
 
@@ -82,7 +82,7 @@ No review finding is silently dropped. No new refactor-only work is added under 
   1. After line 42, add guard: `const problemId = result.data?.id;`
   2. Change line 44 to: `if (problemId) { router.push(`/dashboard/problems/${problemId}`); } else { router.push("/dashboard/problems"); }`
   3. Verify gate passes
-- **Status:** Pending
+- **Status:** DONE
 
 ---
 
@@ -139,3 +139,4 @@ No review finding is silently dropped. No new refactor-only work is added under 
 - 2026-04-22: Plan created from RPF cycle 20 aggregate review. 8 tasks (M1-M4, L1-L4). 4 deferred items. All findings from the aggregate review are either scheduled for implementation or explicitly deferred.
 - 2026-04-22: All 8 tasks implemented (M1-M4, L1-L4). All gates pass (eslint, next build, vitest unit). 6 commits pushed.
 - 2026-04-24: Fresh review conducted. 2 new deduped findings (AGG-1: raw server error leaks in 4 files/6 locations, AGG-2: undefined navigation crash in problem-import-button). Plan updated with 5 new implementation tasks (M1-M5). DEFER-5 added for throw-statement error codes.
+- 2026-04-24: All 5 tasks implemented (M1-M5). All gates pass (eslint, tsc, vitest, next build). 4 commits pushed.
