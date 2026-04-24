@@ -1,9 +1,21 @@
+/**
+ * Login/auth rate limiting backed by PostgreSQL.
+ *
+ * All timestamp comparisons use DB server time (getDbNowMs / getDbNowUncached)
+ * to avoid clock skew between the app server and the database server. This
+ * ensures consistency with api-rate-limit.ts, which writes to the same
+ * rateLimits table using DB time.
+ *
+ * The in-memory rate limiter (in-memory-rate-limit.ts) uses Date.now() by
+ * design since it is a single-process store with no DB dependency.
+ */
 import { db, execTransaction, type TransactionClient } from "@/lib/db";
 import { rateLimits } from "@/lib/db/schema";
 import { extractClientIp } from "@/lib/security/ip";
 import { getConfiguredSettings } from "@/lib/system-settings-config";
 import { eq, lt } from "drizzle-orm";
 import { logger } from "@/lib/logger";
+import { getDbNowMs } from "@/lib/db-time";
 
 function getRateLimitConfig() {
   const s = getConfiguredSettings();
@@ -36,7 +48,9 @@ export function getUsernameRateLimitKey(action: string, username: string) {
 }
 
 async function evictStaleEntries() {
-  const cutoff = Date.now() - RATE_LIMIT_EVICTION_AGE_MS;
+  // Use DB server time for cutoff to stay consistent with rate-limit writes
+  // that use DB time (atomicConsumeRateLimit, checkServerActionRateLimit).
+  const cutoff = await getDbNowMs() - RATE_LIMIT_EVICTION_AGE_MS;
   try {
     await db.delete(rateLimits).where(lt(rateLimits.lastAttempt, cutoff));
   } catch (err) {
@@ -72,9 +86,14 @@ export function stopRateLimitEviction() {
 
 async function getEntry(
   key: string,
-  queryDb: Pick<typeof db, "select"> | Pick<TransactionClient, "select"> = db
+  queryDb: Pick<typeof db, "select"> | Pick<TransactionClient, "select"> = db,
+  nowMs?: number,
 ) {
-  const now = Date.now();
+  // Use DB server time for window/blocked-until comparisons to stay consistent
+  // with rate-limit writes that use DB time (atomicConsumeRateLimit,
+  // checkServerActionRateLimit). Callers that already have DB time should pass
+  // it via nowMs to avoid an extra query.
+  const now = nowMs ?? await getDbNowMs();
   const [existing] = await queryDb.select({
     attempts: rateLimits.attempts,
     windowStartedAt: rateLimits.windowStartedAt,
@@ -125,7 +144,8 @@ async function getEntry(
  */
 export async function isRateLimited(key: string) {
   return execTransaction(async (tx) => {
-    const { now, entry } = await getEntry(key, tx);
+    const nowMs = await getDbNowMs();
+    const { now, entry } = await getEntry(key, tx, nowMs);
     return entry.blockedUntil > now;
   });
 }
@@ -139,8 +159,9 @@ export async function isRateLimited(key: string) {
  */
 export async function isAnyKeyRateLimited(...keys: string[]) {
   return execTransaction(async (tx) => {
+    const nowMs = await getDbNowMs();
     const results = await Promise.all(keys.map(async (key) => {
-      const { now, entry } = await getEntry(key, tx);
+      const { now, entry } = await getEntry(key, tx, nowMs);
       return entry.blockedUntil > now;
     }));
     return results.some(Boolean);
@@ -159,9 +180,11 @@ export async function isAnyKeyRateLimited(...keys: string[]) {
 export async function consumeRateLimitAttemptMulti(...keys: string[]) {
   return execTransaction(async (tx) => {
     const config = getRateLimitConfig();
+    // Fetch DB time once for all keys in this transaction to ensure consistency
+    const nowMs = await getDbNowMs();
     const entries = await Promise.all(keys.map(async (key) => ({
       key,
-      ...(await getEntry(key, tx)),
+      ...(await getEntry(key, tx, nowMs)),
     })));
 
     const hasActiveBlock = entries.some(({ now, entry }) => entry.blockedUntil > now);
@@ -216,7 +239,8 @@ export async function consumeRateLimitAttemptMulti(...keys: string[]) {
  */
 export async function recordRateLimitFailure(key: string) {
   await execTransaction(async (tx) => {
-    const { now, entry, exists } = await getEntry(key, tx);
+    const nowMs = await getDbNowMs();
+    const { now, entry, exists } = await getEntry(key, tx, nowMs);
     const attempts = entry.attempts + 1;
 
     let blockedUntil = entry.blockedUntil;
@@ -255,8 +279,9 @@ export async function recordRateLimitFailure(key: string) {
 
 export async function recordRateLimitFailureMulti(...keys: string[]) {
   await execTransaction(async (tx) => {
+    const nowMs = await getDbNowMs();
     for (const key of keys) {
-      const { now, entry, exists } = await getEntry(key, tx);
+      const { now, entry, exists } = await getEntry(key, tx, nowMs);
       const config = getRateLimitConfig();
       const newAttempts = entry.attempts + 1;
       let blockedUntil = entry.blockedUntil;

@@ -50,6 +50,13 @@ vi.mock("@/lib/db", () => ({
   execTransaction: execTransactionMock,
 }));
 
+// Mock getDbNowMs to return a controlled timestamp.
+// Tests control the mock via dbNowMock variable below.
+const dbNowMock = vi.fn(() => Promise.resolve(1000));
+vi.mock("@/lib/db-time", () => ({
+  getDbNowMs: () => dbNowMock(),
+}));
+
 function readRow(predicate: Predicate) {
   if (predicate.op !== "eq") {
     return undefined;
@@ -62,6 +69,8 @@ beforeEach(() => {
   rows.clear();
   execTransactionMock.mockClear();
   extractClientIpMock.mockClear();
+  dbNowMock.mockClear();
+  dbNowMock.mockResolvedValue(1000);
   dbMock.select.mockImplementation(() => ({
     from: vi.fn(() => ({
       where: vi.fn((predicate: Predicate) => ({
@@ -129,7 +138,6 @@ async function importRateLimitModule() {
 
 describe("rate-limit helpers", () => {
   it("blocks after the configured threshold and escalates repeat blocks", async () => {
-    const nowSpy = vi.spyOn(Date, "now");
     const {
       consumeRateLimitAttemptMulti,
       isAnyKeyRateLimited,
@@ -138,36 +146,36 @@ describe("rate-limit helpers", () => {
       recordRateLimitFailureMulti,
     } = await importRateLimitModule();
 
-    nowSpy.mockReturnValue(1000);
+    dbNowMock.mockResolvedValue(1000);
     await recordRateLimitFailure("login:198.51.100.8");
     expect(rows.get("login:198.51.100.8")?.attempts).toBe(1);
     await expect(isRateLimited("login:198.51.100.8")).resolves.toBe(false);
 
-    nowSpy.mockReturnValue(1050);
+    dbNowMock.mockResolvedValue(1050);
     await recordRateLimitFailure("login:198.51.100.8");
     expect(rows.get("login:198.51.100.8")?.blockedUntil).toBe(2050);
     expect(rows.get("login:198.51.100.8")?.consecutiveBlocks).toBe(1);
     await expect(isAnyKeyRateLimited("login:other", "login:198.51.100.8")).resolves.toBe(true);
 
-    nowSpy.mockReturnValue(2200);
+    dbNowMock.mockResolvedValue(2200);
     await recordRateLimitFailureMulti("login:198.51.100.8");
     expect(rows.get("login:198.51.100.8")?.attempts).toBe(1);
 
-    nowSpy.mockReturnValue(2250);
+    dbNowMock.mockResolvedValue(2250);
     await recordRateLimitFailure("login:198.51.100.8");
     expect(rows.get("login:198.51.100.8")?.blockedUntil).toBe(4250);
     expect(rows.get("login:198.51.100.8")?.consecutiveBlocks).toBe(2);
 
-    nowSpy.mockReturnValue(5000);
+    dbNowMock.mockResolvedValue(5000);
     await expect(consumeRateLimitAttemptMulti("login:consume")).resolves.toBe(false);
     expect(rows.get("login:consume")?.attempts).toBe(1);
 
-    nowSpy.mockReturnValue(5050);
+    dbNowMock.mockResolvedValue(5050);
     await expect(consumeRateLimitAttemptMulti("login:consume")).resolves.toBe(true);
     expect(rows.get("login:consume")?.attempts).toBe(2);
     expect(rows.get("login:consume")?.blockedUntil).toBe(6050);
 
-    nowSpy.mockReturnValue(5060);
+    dbNowMock.mockResolvedValue(5060);
     await expect(consumeRateLimitAttemptMulti("login:consume")).resolves.toBe(true);
     expect(rows.get("login:consume")?.attempts).toBe(2);
   });
@@ -176,7 +184,7 @@ describe("rate-limit helpers", () => {
     const { clearRateLimit, clearRateLimitMulti, recordRateLimitFailureMulti } =
       await importRateLimitModule();
 
-    vi.spyOn(Date, "now").mockReturnValue(3000);
+    dbNowMock.mockResolvedValue(3000);
     await recordRateLimitFailureMulti("login:a", "login:b", "login:c");
 
     await clearRateLimit("login:a");
@@ -201,7 +209,7 @@ describe("rate-limit helpers", () => {
       lastAttempt: 0,
     });
 
-    vi.spyOn(Date, "now").mockReturnValue(24 * 60 * 60 * 1000 + 1000);
+    dbNowMock.mockResolvedValue(24 * 60 * 60 * 1000 + 1000);
     await recordRateLimitFailure("login:fresh");
 
     // Fresh entry is recorded
