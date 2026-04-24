@@ -2,7 +2,7 @@
 
 **Date:** 2026-04-24
 **Source:** `.context/reviews/_aggregate.md` (cycle 19)
-**Status:** In Progress
+**Status:** Complete
 
 ---
 
@@ -25,7 +25,7 @@ Cycle 19 deep review produced 3 deduplicated findings plus 8 carried-forward ite
 2. Add `systemSettings: new Set(["hcaptchaSecret"])` to `ALWAYS_REDACT` in `src/lib/db/export.ts`
 3. Add a test that validates `ALWAYS_REDACT` and `SANITIZED_COLUMNS` include entries for known secret columns (`passwordHash`, `encryptedKey`, `hcaptchaSecret`)
 
-**Progress:** [ ] Not started
+**Progress:** [x] Committed as `5469aa0d`, pushed
 
 ---
 
@@ -42,7 +42,7 @@ Cycle 19 deep review produced 3 deduplicated findings plus 8 carried-forward ite
 2. The function is already async, so this is a drop-in replacement
 3. Verify existing tests still pass
 
-**Progress:** [ ] Not started
+**Progress:** [x] Committed as `7460f74c`, pushed
 
 ---
 
@@ -59,7 +59,7 @@ Cycle 19 deep review produced 3 deduplicated findings plus 8 carried-forward ite
 2. `getCachedAuthUser` already deletes expired entries on read, so expired entries that are accessed will be cleaned up naturally
 3. Verify the cache still stays bounded under the 500-entry limit
 
-**Progress:** [ ] Not started
+**Progress:** [x] Committed as `060c58f8`, pushed
 
 ---
 
