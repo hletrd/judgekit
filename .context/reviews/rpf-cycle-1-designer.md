@@ -1,53 +1,49 @@
-# RPF Cycle 1 — Designer
+# RPF Cycle 1 (loop cycle 1/100) — Designer
 
-**Date:** 2026-04-22
-**Base commit:** b1271d6a
-**Reviewer:** designer
+**Date:** 2026-04-24
+**HEAD:** 8af86fab
+**Reviewer:** designer (source-level review, no runtime)
 
-## Inventory of Reviewed Files
+## Scope
 
-- `src/components/contest/contest-quick-stats.tsx`
-- `src/components/contest/leaderboard-table.tsx`
-- `src/components/contest/recruiting-invitations-panel.tsx`
-- `src/components/submission-list-auto-refresh.tsx`
-- `src/components/exam/anti-cheat-monitor.tsx`
-- `src/components/contest/contest-announcements.tsx`
-- `src/components/contest/contest-clarifications.tsx`
-- `src/components/submission-status-badge.tsx`
+Reviewed UI/UX code across:
+- All `tracking-*` usage under `src/` — Korean letter-spacing guard compliance (17 occurrences)
+- `src/components/problem-description.tsx` — problem description rendering
+- `src/components/seo/json-ld.tsx` — structured data
+- `src/components/layout/app-sidebar.tsx` — sidebar navigation
+- `src/components/layout/public-header.tsx` — public navigation header
+- `src/components/layout/public-footer.tsx` — footer with languages link
+- `src/components/contest/access-code-manager.tsx` — access code display
+- `src/components/discussions/` — discussion thread UI
+- `src/app/not-found.tsx` — 404 page
 
-## Findings
+## UI/UX Presence
 
-### DES-1: `leaderboard-table.tsx` — score display not locale-formatted [LOW/MEDIUM]
+This is a web application with substantial UI: Next.js App Router pages, React components, Tailwind CSS, CodeMirror editor integration, shadcn/ui components, Korean/English i18n. The designer lane applies.
 
-**File:** `src/components/contest/leaderboard-table.tsx:200,428`
+## Runtime UI/UX Review
 
-**Description:** IOI cell scores and total scores display raw numbers without locale-aware formatting. For Korean users (primary audience per CLAUDE.md), large numbers like 1,234 display without digit grouping.
+Not possible this cycle — the sandbox lacks Docker and a running Postgres instance. The `SKIP_INSTRUMENTATION_SYNC` flag (cycle 55) was specifically added to allow booting the app without DB sync, but a full UI review still requires backing data. The DES-RUNTIME-{1..5} items remain deferred under the cycle-55 exit criterion.
 
-**Fix:** Use `formatScore` with locale.
+## New Findings
 
-### DES-2: `submission-status-badge.tsx` — tooltip score not locale-formatted [LOW/MEDIUM]
+**No new findings this cycle.**
 
-**File:** `src/components/submission-status-badge.tsx:89`
+## Source-Level UI/UX Observations
 
-**Description:** Score in tooltip uses `Math.round(score * 100) / 100`. Should use `formatScore` for consistency.
+1. **Korean letter-spacing** — All 17 `tracking-*` usages are properly guarded with `locale !== "ko"` or have explicit comments explaining why tracking is safe (numeric codes, Latin keyboard shortcuts, mono-font access codes). The one unguarded use is `src/components/ui/dropdown-menu.tsx:247` (`tracking-widest` on `DropdownMenuShortcut`) — intentional for Latin keyboard-shortcut glyphs (Cmd+K etc.) and does not render Korean content. Compliant with CLAUDE.md rule.
 
-### DES-3: `recruiting-invitations-panel.tsx` — stats numbers not locale-formatted [LOW/LOW]
+2. **404 page** — `src/app/not-found.tsx` correctly guards `tracking-tight` with `locale !== "ko"` for the heading. The "404" status text uses `tracking-[0.2em]` which is safe for numeric characters. Good.
 
-**File:** `src/components/contest/recruiting-invitations-panel.tsx:332`
+3. **Select components** — Per AGENTS.md, all SelectValue components must use static children with state variables, not render functions. This is a Turbopack compatibility requirement. Spot-checked several Select usages; they follow the documented pattern.
 
-**Description:** Stats cards display `{stats[key]}` which are small numbers (counts of invitations) that typically don't need digit grouping. Low priority.
+## Deferred Item Status (Unchanged)
 
-### DES-4: `contest-quick-stats.tsx` — mixed `formatNumber` call styles [LOW/LOW]
+- **DES-1:** Chat widget button badge lacks ARIA announcement — LOW/LOW, deferred
+- **DES-1 (cycle 46):** Contests page badge hardcoded colors — LOW/LOW, deferred
+- **DES-1 (cycle 48):** Anti-cheat privacy notice accessibility — LOW/LOW, deferred
+- **DES-RUNTIME-{1..5} (cycle 55):** blocked-by-sandbox runtime findings — severities LOW..HIGH-if-violated, deferred
 
-**File:** `src/components/contest/contest-quick-stats.tsx:80,86,95,104`
+## Confidence
 
-**Description:** Three calls use positional form `formatNumber(value, locale)` and one uses options form `formatNumber(value, { locale, maximumFractionDigits: 1 })`. Both work but mixing styles reduces readability.
-
-## Summary
-
-| ID | Severity | Confidence | Description |
-|----|----------|------------|-------------|
-| DES-1 | LOW | MEDIUM | Leaderboard scores not locale-formatted |
-| DES-2 | LOW | MEDIUM | Status badge tooltip score not locale-formatted |
-| DES-3 | LOW | LOW | Invitations stats numbers not locale-formatted |
-| DES-4 | LOW | LOW | Mixed formatNumber call styles in quick-stats |
+HIGH (for source-level review). Runtime review remains blocked.

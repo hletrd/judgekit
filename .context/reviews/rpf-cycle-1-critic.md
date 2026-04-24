@@ -1,49 +1,25 @@
-# RPF Cycle 1 — Critic
+# RPF Cycle 1 (loop cycle 1/100) — Critic
 
-**Date:** 2026-04-22
-**Base commit:** b1271d6a
+**Date:** 2026-04-24
+**HEAD:** 8af86fab
 **Reviewer:** critic
 
-## Inventory of Reviewed Files
+## Observations
 
-- All files in working tree diff
-- `src/components/contest/contest-quick-stats.tsx`
-- `src/components/submission-list-auto-refresh.tsx`
-- `src/components/contest/recruiting-invitations-panel.tsx`
-- `src/app/api/v1/contests/[assignmentId]/stats/route.ts`
-- `src/hooks/use-visibility-polling.ts`
-- `src/components/exam/anti-cheat-monitor.tsx`
-- `src/components/contest/leaderboard-table.tsx`
+Five consecutive cycles (51-55) plus cycle 4 all reported "no new findings" because the only commits between them are review documentation artifacts. The current cycle 1 (new RPF loop) starts from the same base state. The deferred-items list (19 items + #21 vitest flakes) has grown across cycles but is not being retired.
 
-## Findings
+## Critique
 
-### CRI-1: Working tree changes are solid but several AGG items from the plan remain unimplemented [MEDIUM/HIGH]
+1. **Deferred item accumulation** — The 19+1 deferred items have been carried forward across many cycles without retirement criteria. LOW/LOW items specifically lack actionable exit criteria that would trigger resolution absent deliberate work. If the loop is to keep running for 100 cycles without a user-injected directive, consider a cycle-budget threshold after which deferred LOW/LOW items are explicitly retired or rolled up into a single "minor-backlog" bucket.
 
-**Description:** The plan in `plans/open/2026-04-22-rpf-cycle-1-review-remediation.md` lists 9 tasks. Working tree implements TASK-1, TASK-2, TASK-3, TASK-5. Remaining unimplemented:
-- TASK-4: leaderboard-table formatScore (LOW)
-- TASK-6: useVisibilityPolling jitter (MEDIUM)
-- TASK-7: anti-cheat setInterval (LOW)
-- TASK-8: json-ld.tsx escape (LOW)
-- TASK-9: recruiting-invitations split fetchData (LOW)
+2. **Review quality ceiling** — The self-referential steady state (reviews producing only review artifacts, which become the next cycle's input) limits the review's ability to find new issues. The codebase has been thoroughly reviewed across 55+ cycles. New findings are unlikely unless production code changes.
 
-The HIGH-priority items (1, 2, 3) are done. TASK-6 is MEDIUM priority and should be addressed this cycle.
+3. **Positive observation** — The repo's review discipline is strong. Prior fixes (cycles 41-49) are all intact. The codebase is genuinely in a mature, stable state. This is a positive critique of existing stability, not a bug.
 
-### CRI-2: `formatScore` / `formatNumber` inconsistency is a systemic issue [MEDIUM/MEDIUM]
+## New Findings
 
-**Description:** The codebase has `formatScore` and `formatNumber` in `src/lib/formatting.ts`, but 6+ locations still use `Math.round(score * 100) / 100`. This suggests the utility was added after the initial code was written, and there was no sweep to update existing call sites. The working tree fixes for `contest-quick-stats.tsx` correctly use `formatNumber`, but the broader inconsistency remains.
+**None** beyond what is already tracked as deferred.
 
-**Fix:** Do a one-time sweep of all `Math.round(.*\* 100\)` patterns in components and replace with `formatScore`.
+## Confidence
 
-### CRI-3: Inconsistent polling error handling pattern [MEDIUM/MEDIUM]
-
-**Description:** Three of the four polling components now use `initialLoadDoneRef` (announcements, clarifications, quick-stats). Leaderboard uses a different pattern (error state + retry button). This inconsistency means new polling components have no single pattern to follow.
-
-**Fix:** Consolidate into the `useVisibilityPolling` hook.
-
-## Summary
-
-| ID | Severity | Confidence | Description |
-|----|----------|------------|-------------|
-| CRI-1 | MEDIUM | HIGH | 5 plan tasks remain unimplemented (TASK-4,6,7,8,9) |
-| CRI-2 | MEDIUM | MEDIUM | formatScore/formatNumber inconsistency is systemic (6+ locations) |
-| CRI-3 | MEDIUM | MEDIUM | Inconsistent polling error handling across components |
+HIGH

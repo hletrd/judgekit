@@ -1,43 +1,40 @@
-# RPF Cycle 1 — Document Specialist
+# RPF Cycle 1 (loop cycle 1/100) — Document Specialist
 
-**Date:** 2026-04-22
-**Base commit:** b1271d6a
+**Date:** 2026-04-24
+**HEAD:** 8af86fab
 **Reviewer:** document-specialist
 
-## Inventory of Reviewed Files
+## Scope
 
-- `src/lib/api/client.ts` (JSDoc)
-- `src/lib/formatting.ts` (JSDoc)
-- `src/hooks/use-visibility-polling.ts` (JSDoc)
-- `src/components/submission-list-auto-refresh.tsx` (comments)
-- `src/app/api/v1/contests/[assignmentId]/stats/route.ts` (no docs)
-- `src/components/contest/contest-quick-stats.tsx` (comments)
+Reviewed documentation-code alignment across:
+- `AGENTS.md` — authoritative project documentation
+- `CLAUDE.md` — project rules and deployment constraints
+- `src/lib/judge/languages.ts` — language definitions vs AGENTS.md table
+- `src/lib/judge/sync-language-configs.ts` — SKIP_INSTRUMENTATION_SYNC vs docs
+- `src/lib/db/schema.pg.ts` — schema vs documentation claims
+- `docs/` — language docs, architecture docs
 
-## Findings
+## New Findings
 
-### DOC-1: Stats API route has no JSDoc or endpoint documentation [LOW/MEDIUM]
+**No new findings this cycle.**
 
-**File:** `src/app/api/v1/contests/[assignmentId]/stats/route.ts`
+## Documentation-Code Alignment Check
 
-**Description:** The new stats endpoint has no JSDoc comment describing the response shape, access control requirements, or rate limit. Other routes like the leaderboard have inline comments. This route should document:
-- Response shape: `{ data: { participantCount, submittedCount, avgScore, problemsSolvedCount } }`
-- Access control: same as leaderboard
-- Rate limit: "leaderboard"
+1. **AGENTS.md language table** — The table lists 125 language variants (IDs 1-124 plus 6b, 8b, etc.). The authoritative source is `src/lib/judge/languages.ts` + `docs/languages.md`. AGENTS.md correctly notes this and instructs readers to treat the code as source of truth when the table drifts.
 
-**Fix:** Add a JSDoc comment at the top of the file.
+2. **SKIP_INSTRUMENTATION_SYNC** — Documented in `sync-language-configs.ts` comments (lines 69-81), the cycle-55 plan, and `designer-runtime-cycle-3.md`. The comment in the code explicitly warns "DO NOT use this in production" and references the plan document. Aligned.
 
-### DOC-2: `SubmissionListAutoRefresh` comment references unauthenticated endpoint [LOW/LOW]
+3. **CSRF header name** — AGENTS.md explicitly states: "This is the correct header name — do not use `x-csrf-token`." The code in `src/lib/security/csrf.ts` correctly uses `X-Requested-With`. Aligned.
 
-**File:** `src/components/submission-list-auto-refresh.tsx:44-47`
+4. **Password validation** — AGENTS.md states "exactly 8 characters minimum, no other rules." The code in `src/lib/security/password.ts` uses `FIXED_MIN_PASSWORD_LENGTH = 8` and only checks `password.length < 8`. Aligned.
 
-**Description:** The comment says "Note: /api/v1/time is unauthenticated, so this backoff only activates for network/server errors, not session expiry." This is accurate and helpful. The comment was correctly updated when switching from `fetch` to `apiFetch` (the X-Requested-With header doesn't affect authentication). No fix needed.
+5. **Select component pattern** — AGENTS.md documents the SelectValue static-children pattern. The code follows this pattern. Aligned.
 
-### DOC-3: `contest-quick-stats.tsx` removed the TODO about stats endpoint [CONFIRMED]
+## Deferred Item Status (Unchanged)
 
-**Description:** The previous code had a TODO: "Replace full leaderboard fetch with a dedicated /stats endpoint for efficiency." The working tree refactor removes this TODO because the stats endpoint now exists. Correct.
+- **DOC-1:** SSE route ADR — LOW/LOW, deferred
+- **DOC-2:** Docker client dual-path docs — LOW/LOW, deferred
 
-## Summary
+## Confidence
 
-| ID | Severity | Confidence | Description |
-|----|----------|------------|-------------|
-| DOC-1 | LOW | MEDIUM | Stats API route has no documentation |
+HIGH — documentation and code are well-aligned.

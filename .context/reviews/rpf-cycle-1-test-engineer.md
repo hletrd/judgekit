@@ -1,55 +1,41 @@
-# RPF Cycle 1 — Test Engineer
+# RPF Cycle 1 (loop cycle 1/100) — Test Engineer
 
-**Date:** 2026-04-22
-**Base commit:** b1271d6a
+**Date:** 2026-04-24
+**HEAD:** 8af86fab
 **Reviewer:** test-engineer
 
-## Inventory of Reviewed Files
+## Scope
 
-- `src/components/contest/contest-quick-stats.tsx`
-- `src/components/submission-list-auto-refresh.tsx`
-- `src/hooks/use-visibility-polling.ts`
-- `src/components/exam/anti-cheat-monitor.tsx`
-- `src/app/api/v1/contests/[assignmentId]/stats/route.ts`
-- All test files in the project
+Reviewed test infrastructure and coverage across:
+- `tests/unit/` — Vitest unit tests (2107 passing per cycle 55)
+- `tests/integration/` — Vitest integration tests (37/37 skipped in sandbox)
+- `tests/e2e/` — Playwright E2E tests (not run in sandbox)
+- `vitest.config.ts` — test configuration
+- `vitest.config.component.ts` — component test configuration
+- `vitest.config.integration.ts` — integration test configuration
+- Test coverage for `src/lib/judge/sync-language-configs.ts` — new test file added in cycle 55
 
-## Findings
+## New Findings
 
-### TE-1: No unit tests for `useVisibilityPolling` [MEDIUM/MEDIUM]
+**No new findings this cycle.**
 
-**File:** `src/hooks/use-visibility-polling.ts`
+## Test Coverage Observations
 
-**Description:** This shared hook is used by 4 components but has no unit tests. Any regression would affect all dependent components. The hook manages visibility state, interval creation/cleanup, and callback stabilization.
+1. **Unit tests** — 2107 passing (cycle 55 count). The 9 timing-out tests are all 5000ms timeouts under parallel worker contention — same profile as cycles 51-54. Tests pass cleanly in isolation with `--no-file-parallelism`. This is a sandbox resource issue, not a code bug.
 
-**Fix:** Add unit tests covering: initial tick, interval creation, cleanup on unmount, visibility transitions (visible->hidden->visible), callback update without re-triggering effect.
+2. **SKIP_INSTRUMENTATION_SYNC test** — `tests/unit/judge/sync-language-configs-skip-instrumentation.test.ts` (124 lines) was added in cycle 55. Tests the short-circuit behavior: verifies that when `SKIP_INSTRUMENTATION_SYNC=1`, the sync function returns early without touching the DB, and that other env values (truthy but not "1") do NOT trigger the skip. Good test coverage for the new feature.
 
-### TE-2: No unit tests for `SubmissionListAutoRefresh` [MEDIUM/MEDIUM]
+3. **Component tests** — 170/170 passing. The known-flaky `candidate-dashboard.test.tsx` assertion (6.2s timer-drift test) has been flaky across cycles. This is tracked as TE-1 in the aggregate.
 
-**File:** `src/components/submission-list-auto-refresh.tsx`
+4. **Integration tests** — 37/37 SKIPPED in sandbox (no DB). Expected. These require a running Postgres instance.
 
-**Description:** This component has complex backoff behavior with concurrent tick guards, visibility checks, and error counting. No unit tests exist.
+5. **E2E tests** — Not run in sandbox (no Docker for webServer bootstrap). Expected.
 
-**Fix:** Add unit tests covering: initial tick and scheduling, backoff escalation on errors, reset on success, visibility-aware behavior, concurrent tick guard.
+## Deferred Item Status (Unchanged)
 
-### TE-3: No unit tests for new stats API endpoint [MEDIUM/MEDIUM]
+- **TE-1 (cycle 51):** Missing integration test for concurrent recruiting token redemption — LOW/MEDIUM, deferred (requires DB)
+- **#21 (cycle 4):** vitest unit parallel-contention flakes — LOW/MEDIUM, deferred (sandbox resource issue)
 
-**File:** `src/app/api/v1/contests/[assignmentId]/stats/route.ts`
+## Confidence
 
-**Description:** The new stats endpoint has no API route tests. It involves complex SQL queries with CTEs, access control checks, and multiple query paths. This is a new file that should have test coverage.
-
-**Fix:** Add API route tests covering: authenticated access, instructor access, enrolled student access, unauthenticated denial, response shape validation.
-
-### TE-4: No integration test for `contest-quick-stats` with the stats endpoint [LOW/MEDIUM]
-
-**File:** `src/components/contest/contest-quick-stats.tsx`
-
-**Description:** The component was refactored to use a new `/stats` endpoint instead of the leaderboard. No test verifies the integration works end-to-end.
-
-## Summary
-
-| ID | Severity | Confidence | Description |
-|----|----------|------------|-------------|
-| TE-1 | MEDIUM | MEDIUM | No unit tests for useVisibilityPolling |
-| TE-2 | MEDIUM | MEDIUM | No unit tests for SubmissionListAutoRefresh |
-| TE-3 | MEDIUM | MEDIUM | No unit tests for new stats API endpoint |
-| TE-4 | LOW | MEDIUM | No integration test for contest-quick-stats with stats endpoint |
+HIGH — test coverage is adequate. Known flaky tests are well-characterized.

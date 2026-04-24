@@ -1,72 +1,49 @@
-# RPF Cycle 1 — Tracer
+# RPF Cycle 1 (loop cycle 1/100) — Tracer
 
-**Date:** 2026-04-22
-**Base commit:** b1271d6a
+**Date:** 2026-04-24
+**HEAD:** 8af86fab
 **Reviewer:** tracer
 
-## Inventory of Reviewed Files
+## Scope
 
-- `src/components/contest/contest-quick-stats.tsx` (working tree)
-- `src/components/submission-list-auto-refresh.tsx` (working tree)
-- `src/app/api/v1/contests/[assignmentId]/stats/route.ts`
-- `src/hooks/use-visibility-polling.ts`
-- `src/components/exam/anti-cheat-monitor.tsx`
+Traced suspicious data flows and causal chains across:
+- Rate limit check-then-act flows (CSRF -> auth -> rate limit -> handler)
+- Judge claim flow (submission -> claim -> poll -> result)
+- SSE connection lifecycle (acquire slot -> heartbeat -> eviction)
+- Anti-cheat heartbeat gap detection
+- Recruiting token redemption flow
+- Docker container lifecycle (create -> compile -> run -> cleanup)
 
-## Traced Flows
+## Causal Traces
 
-### Flow 1: Contest quick-stats polling cycle (working tree)
+### Trace 1: Rate Limit TOCTOU (Known Deferred AGG-2)
 
-1. Component mounts -> `useVisibilityPolling` effect runs -> `syncVisibility()` -> `tick()` -> `fetchStats()`
-2. `fetchStats()` -> `apiFetch(/api/v1/contests/${assignmentId}/stats)` -> response -> `setStats()`
-3. `syncVisibility()` -> `setInterval(tick, 15000)`
-4. Tab switches away -> `visibilitychange` fires -> `clearPollingInterval()`
-5. Tab switches back -> `visibilitychange` fires -> `tick()` + new `setInterval()`
-6. If fetch fails on initial load -> toast.error. If fails on poll -> silent.
+Flow: `isRateLimited()` (read-only, inside transaction) -> separate `recordRateLimitFailure()` (write, separate transaction)
 
-**Tracing verdict:** Flow is correct. The `initialLoadDoneRef` correctly suppresses polling-error toasts.
+The `consumeRateLimitAttemptMulti` function was specifically designed to close this TOCTOU race by performing check+increment in a single transaction with `FOR UPDATE` row locks. However, `isRateLimited()` and `recordRateLimitFailure()` still exist as separate functions with explicit JSDoc warnings not to use them for gating write operations. This is a known deferred item (AGG-2, MEDIUM/MEDIUM).
 
-### Flow 2: SubmissionListAutoRefresh tick scheduling (working tree)
+**Hypothesis:** A future developer might ignore the JSDoc warning and use `isRateLimited()` to gate a write, creating a TOCTOU race. **Likelihood:** Low — the warning is clear and the atomic alternative exists.
 
-1. Effect runs -> `void start()` -> `await tick()` -> `scheduleNext()`
-2. `tick()`: check `isRunningRef` -> set true -> check visibility -> `apiFetch(/api/v1/time)` -> if ok, `router.refresh()` -> reset errorCount -> set false in finally
-3. `scheduleNext()`: `setTimeout(async () => { await tick(); scheduleNext(); }, getBackoffInterval())`
-4. If tick fails: errorCountRef++ -> next interval multiplied
+### Trace 2: SKIP_INSTRUMENTATION_SYNC Bypass
 
-**Tracing verdict:** The `isRunningRef` guard prevents concurrent ticks. The `async start()` pattern ensures the initial tick completes before scheduling. The backoff is correct. One subtlety: the `visibilityState === "hidden"` check returns early from tick, but `isRunningRef` is reset in `finally`, so the guard is properly maintained.
+Flow: `syncLanguageConfigsOnStartup()` -> checks `process.env.SKIP_INSTRUMENTATION_SYNC === "1"` -> returns early
 
-### Flow 3: Stats API PostgreSQL numeric type serialization
+If a developer sets `SKIP_INSTRUMENTATION_SYNC=1` in production (e.g., to speed up startup), language configs won't be synced to the DB. This would cause the judge to use stale DB config for compile/run commands. The strict-literal `"1"` check prevents accidental activation via truthy coercion, and the loud `logger.warn` makes it visible in logs. Not present in `.env.deploy.algo` or `docker-compose.production.yml`.
 
-1. SQL `ROUND(AVG(ut.total_score), 1)` returns PostgreSQL `numeric` type
-2. Node.js pg driver serializes `numeric` as string by default (not number)
-3. JSON response: `{ data: { avgScore: "85.5" } }` (string, not number)
-4. Frontend: `typeof json.data.avgScore === "number"` -> false -> falls back to `prev.avgScore`
-5. avgScore never updates from initial 0
+**Hypothesis:** An operator adds this to production .env to "fix" a slow startup. **Likelihood:** Very low — the warning message is explicit and the flag is not documented as a production tool.
 
-**Tracing verdict:** This is a potential bug. The `::float` cast is needed in SQL, or `Number()` conversion is needed on the frontend.
+### Trace 3: SSE O(n) Eviction (Known Deferred AGG-6)
 
-## Findings
+Flow: `acquireSharedSseConnectionSlot()` -> `tx.delete(rateLimits).where(...)` with LIKE pattern
 
-### TR-1: Stats API `avgScore` may serialize as string due to PostgreSQL `numeric` type [MEDIUM/MEDIUM]
+The SSE connection slot acquisition deletes all expired SSE keys before inserting a new one. Under high concurrency with many SSE connections, this becomes an O(n) scan where n = total SSE entries in the rate_limits table. This is the known deferred item (AGG-6, LOW/LOW).
 
-**File:** `src/app/api/v1/contests/[assignmentId]/stats/route.ts:91`
+**Hypothesis:** Under 1000+ concurrent SSE connections with frequent connect/disconnect, the eviction scan could cause DB latency spikes. **Likelihood:** Low for current deployment scale.
 
-**Description:** PostgreSQL `ROUND()` returns `numeric` type, which the pg driver serializes as a string. The frontend `typeof === "number"` check would fail, causing avgScore to never update.
+## New Findings
 
-**Fix:** Add `::float` cast in SQL: `COALESCE(ROUND(AVG(ut.total_score), 1), 0)::float`.
+**No new findings this cycle.** All traced flows behave as expected. Known deferred items remain the open causal risks.
 
-**Confidence:** Medium — depends on pg driver configuration.
+## Confidence
 
-### TR-2: `useVisibilityPolling` fires all callbacks simultaneously on tab switch [MEDIUM/MEDIUM]
-
-**File:** `src/hooks/use-visibility-polling.ts:40-44`
-
-**Description:** When the tab becomes visible, all 4 consumers fire their callbacks at the same instant. This creates a request burst.
-
-**Fix:** Add random jitter (0-500ms) to the initial tick.
-
-## Summary
-
-| ID | Severity | Confidence | Description |
-|----|----------|------------|-------------|
-| TR-1 | MEDIUM | MEDIUM | Stats API avgScore may serialize as string from PG numeric type |
-| TR-2 | MEDIUM | MEDIUM | Visibility polling fires all callbacks simultaneously |
+HIGH — causal chains are well-understood. The TOCTOU risk in rate limiting is the most impactful open item, but it is mitigated by the existence of the atomic alternative (`consumeRateLimitAttemptMulti`).

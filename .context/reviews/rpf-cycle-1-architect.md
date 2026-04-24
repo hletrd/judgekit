@@ -1,47 +1,43 @@
-# RPF Cycle 1 — Architect
+# RPF Cycle 1 (loop cycle 1/100) — Architect
 
-**Date:** 2026-04-22
-**Base commit:** b1271d6a
+**Date:** 2026-04-24
+**HEAD:** 8af86fab
 **Reviewer:** architect
 
-## Inventory of Reviewed Files
+## Scope
 
-- `src/components/contest/contest-quick-stats.tsx`
-- `src/components/submission-list-auto-refresh.tsx`
-- `src/hooks/use-visibility-polling.ts`
-- `src/components/contest/contest-announcements.tsx`
-- `src/components/contest/contest-clarifications.tsx`
-- `src/components/contest/leaderboard-table.tsx`
-- `src/app/api/v1/contests/[assignmentId]/stats/route.ts`
-- `src/lib/formatting.ts`
+Reviewed architectural patterns, coupling, and layering across:
+- `src/lib/api/handler.ts` — createApiHandler factory pattern
+- `src/lib/db/schema.pg.ts` — schema design, table relationships
+- `src/lib/db/queries.ts` — query patterns
+- `src/lib/auth/` — auth layer architecture
+- `src/lib/security/` — security layer architecture
+- `src/lib/realtime/` — SSE coordination architecture
+- `src/lib/compiler/` — Docker execution architecture
+- `src/app/api/v1/` — API route structure
+- `judge-worker-rs/` — Rust worker architecture
 
-## Findings
+## New Findings
 
-### ARCH-1: Inconsistent error handling across polling components [MEDIUM/MEDIUM]
+**No new findings this cycle.**
 
-**File:** Multiple: `contest-announcements.tsx`, `contest-clarifications.tsx`, `contest-quick-stats.tsx`, `leaderboard-table.tsx`, `use-visibility-polling.ts`
+## Architectural Assessment
 
-**Description:** Four components, four different error-handling strategies for polling errors:
-- Announcements: `initialLoadDoneRef` pattern (toast only on initial load)
-- Clarifications: `initialLoadDoneRef` pattern (toast only on initial load)
-- Quick-stats: `initialLoadDoneRef` pattern (now fixed in working tree)
-- Leaderboard: silently swallow errors during refresh, show error state on initial load
+1. **API handler factory** — `createApiHandler` is a well-designed middleware pipeline: rate-limit -> auth -> CSRF -> body parsing -> handler. The factory pattern eliminates boilerplate across 60+ API routes. The capability-based authorization (`capabilities` + `requireAllCapabilities`) is a good pattern for fine-grained access control.
 
-The `initialLoadDoneRef` pattern is duplicated in 3 components. The hook itself doesn't know about error handling.
+2. **Database schema** — Comprehensive schema with proper FK constraints, cascading deletes where appropriate (`enrollments`, `assignment_problems`), `SET NULL` for soft disassociation (`submissions.assignmentId`), and defensive check constraints. The `users_lower_username_idx` for case-insensitive lookups is a good optimization. Index coverage is thorough.
 
-**Fix:** Extend `useVisibilityPolling` to accept an `onError` callback with `isInitialLoad` parameter. Update all consumers.
+3. **Security layering** — CSRF, rate limiting, and auth are properly layered. The `createApiHandler` factory ensures consistent application across routes. The separation of `validateCsrf()` (reusable) from the handler factory is clean.
 
-### ARCH-2: `Math.round` vs `formatScore` inconsistency across the codebase [LOW/MEDIUM]
+4. **SSE coordination** — The `pg_advisory_xact_lock` pattern for distributed SSE slot acquisition is architecturally sound. It avoids the need for a separate coordination service while providing distributed consistency.
 
-**Files:** `leaderboard-table.tsx:200,428`, `submission-status-badge.tsx:89`, `practice/problems/[id]/page.tsx:523`, `contests/[id]/page.tsx:229,266`
+5. **Docker architecture** — The separation of concerns (Next.js app on algo.xylolabs.com, judge worker on worker-0) is correct. The `docker-proxy` sidecar pattern for Docker socket access is a good security practice.
 
-**Description:** The `formatScore` utility exists in `src/lib/formatting.ts` but is not used consistently. 6 locations still use `Math.round(score * 100) / 100`. This is a code architecture issue: the utility exists but there's no linter rule or convention enforcing its use.
+## Deferred Item Status (Unchanged)
 
-**Fix:** Replace all 6 occurrences with `formatScore`. Consider adding a code comment or ESLint rule to prevent raw score rounding.
+- **AGG-7 / ARCH-2:** Manual routes duplicate `createApiHandler` boilerplate — MEDIUM/MEDIUM, deferred
+- **ARCH-3:** Stale-while-revalidate cache pattern duplication — LOW/LOW, deferred
 
-## Summary
+## Confidence
 
-| ID | Severity | Confidence | Description |
-|----|----------|------------|-------------|
-| ARCH-1 | MEDIUM | MEDIUM | Inconsistent error handling in polling components |
-| ARCH-2 | LOW | MEDIUM | Math.round vs formatScore inconsistency (6 locations) |
+HIGH — the architecture is well-structured with proper separation of concerns.

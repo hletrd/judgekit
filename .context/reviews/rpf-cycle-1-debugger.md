@@ -1,45 +1,35 @@
-# RPF Cycle 1 — Debugger
+# RPF Cycle 1 (loop cycle 1/100) — Debugger
 
-**Date:** 2026-04-22
-**Base commit:** b1271d6a
+**Date:** 2026-04-24
+**HEAD:** 8af86fab
 **Reviewer:** debugger
 
-## Inventory of Reviewed Files
+## Scope
 
-- `src/components/submission-list-auto-refresh.tsx`
-- `src/components/contest/contest-quick-stats.tsx`
-- `src/components/exam/anti-cheat-monitor.tsx`
-- `src/hooks/use-visibility-polling.ts`
-- `src/app/api/v1/contests/[assignmentId]/stats/route.ts`
+Analyzed latent bug surface and failure modes across:
+- `src/lib/security/rate-limit.ts` — race conditions, overflow, negative values
+- `src/lib/compiler/execute.ts` — Docker container lifecycle, timeout handling
+- `src/lib/judge/sync-language-configs.ts` — retry loop, SKIP_INSTRUMENTATION_SYNC
+- `src/lib/realtime/realtime-coordination.ts` — SSE connection slot acquisition
+- `src/lib/db/schema.pg.ts` — constraint violations, FK integrity
+- `src/lib/api/handler.ts` — error handling, auth bypass edge cases
 
-## Findings
+## New Findings
 
-### DBG-1: `SubmissionListAutoRefresh` — `start()` function awaits tick but void-start pattern leaves no error propagation [LOW/LOW]
+**No new findings this cycle.**
 
-**File:** `src/components/submission-list-auto-refresh.tsx:60-62,74`
+## Latent Bug Surface Analysis
 
-**Description:** The `start()` function correctly awaits `tick()` before calling `scheduleNext()`. However, `void start()` on line 74 means any unhandled rejection from `start()` would be an unhandled promise rejection. In practice, `tick()` has a try/catch/finally that swallows errors, so this is safe. But if someone removes the catch block, the unhandled rejection would be silent.
+1. **Rate limit `Date.now()` vs DB time** — The known deferred item (AGG-2). In a deployment where the app server clock drifts relative to the DB server, rate limit windows could be miscalculated. The `X-RateLimit-Reset` header was fixed to use DB time (cycle 48), but the internal `getEntry()` and `consumeRateLimitAttemptMulti` still use `Date.now()` for window calculation. This is the most impactful deferred item.
 
-**Fix:** No fix needed — current error handling in `tick()` is sufficient. Noting for awareness.
+2. **Rate limit negative counter** — The `rateLimits.attempts` column is an integer without a CHECK constraint. A logic bug in `consumeRateLimitAttemptMulti` or `recordRateLimitFailure` could theoretically produce negative attempts. However, the code only increments (`attempts + 1`), never decrements, so this is theoretical. The `judge_workers.active_tasks` column correctly has a `>= 0` check constraint.
 
-### DBG-2: `anti-cheat-monitor.tsx` — setInterval with void async callback [LOW/MEDIUM]
+3. **Sync retry loop** — `syncLanguageConfigsOnStartup()` has a retry loop with exponential backoff (max 10 retries, max 30s). The off-by-one: the loop condition is `attempt <= MAX_SYNC_RETRIES` (0..10 = 11 attempts, not 10). This is a minor discrepancy between the constant name and actual behavior. Not a bug in practice since the retry exists for startup resilience.
 
-**File:** `src/components/exam/anti-cheat-monitor.tsx:144-148`
+4. **SSE connection slot** — `acquireSharedSseConnectionSlot` uses `pg_advisory_xact_lock` which releases at transaction end. If the advisory lock is acquired but the subsequent DB operations fail, the lock is correctly released. No leak risk.
 
-**Description:** The heartbeat uses `setInterval(() => { void reportEvent("heartbeat"); }, HEARTBEAT_INTERVAL_MS)`. If `reportEvent` takes longer than 30s, multiple invocations stack up. The `MIN_INTERVAL_MS` guard prevents rapid-fire within 1s but doesn't prevent concurrent in-flight requests.
+5. **Compiler Docker container cleanup** — The `execute.ts` code uses try/finally to remove containers. The `MAX_CONTAINER_AGE_MS` (1 hour) safety check provides a fallback for orphaned containers. Good defensive design.
 
-**Fix:** Replace `setInterval` with recursive `setTimeout` after `reportEvent` resolves.
+## Confidence
 
-### DBG-3: Stats API route — `avgScore` uses `ROUND(AVG(...), 1)` which rounds in SQL [LOW/LOW]
-
-**File:** `src/app/api/v1/contests/[assignmentId]/stats/route.ts:91`
-
-**Description:** `COALESCE(ROUND(AVG(ut.total_score), 1), 0)` rounds to 1 decimal place in SQL. The frontend then passes this through `formatNumber` with `maximumFractionDigits: 1`. If the SQL rounding and the JS formatting rules ever diverge, the display would be inconsistent. Currently they're aligned.
-
-**Fix:** No fix needed — currently aligned.
-
-## Summary
-
-| ID | Severity | Confidence | Description |
-|----|----------|------------|-------------|
-| DBG-2 | LOW | MEDIUM | Anti-cheat setInterval with async callback — stacking possible |
+HIGH — no new latent bugs found. The known deferred items (AGG-2 Date.now(), PERF-3 5000-row fetch) remain the most impactful open items.

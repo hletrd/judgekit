@@ -1,51 +1,38 @@
-# RPF Cycle 1 — Verifier
+# RPF Cycle 1 (loop cycle 1/100) — Verifier
 
-**Date:** 2026-04-22
-**Base commit:** b1271d6a
+**Date:** 2026-04-24
+**HEAD:** 8af86fab
 **Reviewer:** verifier
 
-## Inventory of Reviewed Files
+## Scope
 
-- `src/components/contest/contest-quick-stats.tsx` (working tree)
-- `src/components/submission-list-auto-refresh.tsx` (working tree)
-- `src/components/contest/recruiting-invitations-panel.tsx` (working tree)
-- `src/app/api/v1/contests/[assignmentId]/stats/route.ts` (new)
-- `messages/en.json` (working tree)
-- `src/hooks/use-visibility-polling.ts`
-- `src/lib/formatting.ts`
+Evidence-based correctness verification against stated behavior:
+- `src/lib/security/csrf.ts` — CSRF validation claims vs actual behavior
+- `src/lib/security/rate-limit.ts` — rate limiting claims vs actual behavior
+- `src/lib/security/sanitize-html.ts` — sanitization claims vs actual behavior
+- `src/lib/api/handler.ts` — createApiHandler middleware ordering claims
+- `src/lib/judge/sync-language-configs.ts` — SKIP_INSTRUMENTATION_SYNC behavior claims
+- `src/lib/db/schema.pg.ts` — constraint claims vs actual constraints
+- Korean letter-spacing compliance — CLAUDE.md rule vs actual code
 
-## Findings
+## Verification Results
 
-### V-1: Working tree fixes for AGG-1, AGG-2, AGG-3, AGG-6 are correctly implemented [CONFIRMED]
+1. **CSRF** — CLAIM: "Requires X-Requested-With header on mutation methods." VERIFIED: `validateCsrf()` checks `xRequestedWith !== "XMLHttpRequest"` on non-safe methods. API key auth bypasses CSRF. Claim matches behavior.
 
-**Description:** Verified against the plan in `plans/open/2026-04-22-rpf-cycle-1-review-remediation.md`:
-- TASK-1 (AGG-1): `SubmissionListAutoRefresh` now uses `isRunningRef` guard and `async start()` pattern. Correct.
-- TASK-2 (AGG-2): `contest-quick-stats.tsx` now uses `/stats` endpoint, `initialLoadDoneRef`, and `formatNumber`. Correct.
-- TASK-3 (AGG-3): `recruiting-invitations-panel.tsx` now shows error toasts for revoke/delete. i18n keys added. Correct.
-- TASK-5 (AGG-6): `SubmissionListAutoRefresh` now uses `apiFetch` instead of raw `fetch`. Correct.
+2. **Rate limiting atomicity** — CLAIM: "consumeRateLimitAttemptMulti closes the check-then-record race." VERIFIED: The function performs check+increment inside `execTransaction` with `FOR UPDATE` row locks. Claim matches behavior. However, `isRateLimited()` and `recordRateLimitFailure()` still exist as non-atomic alternatives with explicit JSDoc warnings.
 
-### V-2: `contest-quick-stats.tsx` — `formatNumber` called with positional locale string uses legacy API path [LOW/LOW]
+3. **HTML sanitization** — CLAIM: "Narrow allowlist, no data attributes, URI regex restricts to https/mailto/root-relative." VERIFIED: `ALLOWED_TAGS` is 23 tags, `ALLOW_DATA_ATTR: false`, `ALLOWED_URI_REGEXP: /^(?:(?:https?|mailto):|\/(?!\/))/i`. Hook adds `rel=noopener noreferrer` and strips non-root-relative image sources. Claim matches behavior.
 
-**File:** `src/components/contest/contest-quick-stats.tsx:80,86,104`
+4. **SKIP_INSTRUMENTATION_SYNC** — CLAIM: "Requires literal string '1' to avoid accidentally skipping in production." VERIFIED: `process.env.SKIP_INSTRUMENTATION_SYNC === "1"` is strict equality. Truthy values like `"true"`, `"yes"`, or `"on"` will NOT trigger the skip. Claim matches behavior.
 
-**Description:** Three calls use `formatNumber(value, locale)` which hits the legacy positional path in `formatNumber` (line 30 of formatting.ts: `typeof optionsOrLocale === "string"`). The fourth call on line 95 uses the options object form `formatNumber(stats.avgScore, { locale, maximumFractionDigits: 1 })`. Both paths work correctly but mixing them is slightly inconsistent.
+5. **Korean letter-spacing** — CLAIM: "Keep Korean text at browser/font default letter spacing." VERIFIED: All 17 `tracking-*` usages are guarded with `locale !== "ko"` or have explicit comments for Latin-only content. The one unguarded use (`dropdown-menu.tsx` keyboard shortcut) does not render Korean. Claim matches behavior.
 
-**Fix:** Use the options object form consistently: `formatNumber(value, { locale })`.
+6. **Schema constraints** — CLAIM: "judge_workers.active_tasks >= 0 CHECK constraint." VERIFIED: `check("judge_workers_active_tasks_nonneg", sql\`active_tasks >= 0\`)` exists. CLAIM: "assignments.late_penalty >= 0 CHECK constraint." VERIFIED: `check("assignments_late_penalty_nonneg", sql\`${table.latePenalty} >= 0\`)` exists. Claims match behavior.
 
-### V-3: Stats API route returns `avgScore` as string when COALESCE is used [MEDIUM/MEDIUM]
+## New Findings
 
-**File:** `src/app/api/v1/contests/[assignmentId]/stats/route.ts:91`
+**No new findings this cycle.** All verified claims match actual behavior.
 
-**Description:** `COALESCE(ROUND(AVG(ut.total_score), 1), 0)` in PostgreSQL returns a `numeric` type. When this is serialized to JSON via the Node.js pg driver, `ROUND()` returns a string representation, not a JavaScript number. This means `json.data.avgScore` could be the string `"85.5"` instead of the number `85.5`. The frontend check `typeof json.data.avgScore === "number"` would then fall back to `prev.avgScore`, which could show stale data.
+## Confidence
 
-**Concrete failure scenario:** A contest with submissions where avgScore is non-integer (e.g., 85.5). The pg driver serializes `ROUND(AVG(...), 1)` as `"85.5"` (string). Frontend `typeof "85.5" === "number"` is false, so it falls back to the previous value. The avg score never updates from initial 0.
-
-**Fix:** Cast the SQL result: `COALESCE(ROUND(AVG(ut.total_score), 1), 0)::float` or use `::int` for the count fields, or validate with `Number()` conversion on the frontend.
-
-**Confidence:** Medium — depends on the pg driver version and configuration. Some drivers/configs return numbers for `numeric` type.
-
-## Summary
-
-| ID | Severity | Confidence | Description |
-|----|----------|------------|-------------|
-| V-3 | MEDIUM | MEDIUM | Stats API avgScore may serialize as string from PostgreSQL ROUND() |
+HIGH — all checked claims are verified.

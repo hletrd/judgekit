@@ -1,77 +1,47 @@
-# RPF Cycle 1 — Code Reviewer
+# RPF Cycle 1 (loop cycle 1/100) — Code Reviewer
 
-**Date:** 2026-04-22
-**Base commit:** b1271d6a
+**Date:** 2026-04-24
+**Base commit:** 8af86fab (cycle 4 gate results + deferred finding #21)
+**HEAD commit:** 8af86fab
 **Reviewer:** code-reviewer
 
-## Inventory of Reviewed Files
+## Scope
 
-- `src/components/contest/contest-quick-stats.tsx` (working tree: major refactor)
-- `src/components/submission-list-auto-refresh.tsx` (working tree: concurrency fix)
-- `src/components/contest/recruiting-invitations-panel.tsx` (working tree: error toast fix)
-- `src/components/contest/leaderboard-table.tsx`
-- `src/components/contest/contest-announcements.tsx`
-- `src/components/contest/contest-clarifications.tsx`
-- `src/components/exam/anti-cheat-monitor.tsx`
-- `src/components/seo/json-ld.tsx`
-- `src/components/submission-status-badge.tsx`
-- `src/hooks/use-visibility-polling.ts`
-- `src/hooks/use-source-draft.ts`
-- `src/lib/formatting.ts`
-- `src/lib/api/client.ts`
-- `src/lib/submissions/status.ts`
-- `src/app/api/v1/contests/[assignmentId]/stats/route.ts` (new file)
-- `src/app/(public)/practice/problems/[id]/page.tsx`
-- `src/app/(public)/contests/[id]/page.tsx`
-- `src/app/(dashboard)/dashboard/submissions/[id]/submission-detail-client.tsx`
-- `messages/en.json`
+Reviewed the full `src/**` tree plus generator scripts in the repo root and `scripts/**`. Specifically examined:
 
-## Findings
+- `src/lib/judge/sync-language-configs.ts` — the `SKIP_INSTRUMENTATION_SYNC` short-circuit (only production code change since cycle 55)
+- `src/lib/db/schema.pg.ts` — full schema integrity, indexes, constraints, foreign keys
+- `src/lib/security/rate-limit.ts` — rate limiting logic, `Date.now()` usage (deferred AGG-2)
+- `src/lib/security/csrf.ts` — CSRF validation, origin checking
+- `src/lib/api/handler.ts` — `createApiHandler` factory, middleware pipeline
+- `src/lib/auth/index.ts` — NextAuth + DrizzleAdapter setup
+- `src/lib/security/sanitize-html.ts` — DOMPurify sanitization with allowed tags/attributes
+- `src/lib/realtime/realtime-coordination.ts` — SSE coordination, pg_advisory_lock
+- All `tracking-*` usage under `src/` — Korean letter-spacing guard compliance
+- All `console.error/warn` in client components — (deferred AGG-5)
+- All `process.env` reads in production paths — no secrets leaked
+- `eslint-disable` / `@ts-ignore` usage — only one legitimate eslint-disable (plugin config)
 
-### CR-1: `contest-quick-stats.tsx` — stats response validation allows NaN [MEDIUM/MEDIUM]
+## New Findings
 
-**File:** `src/components/contest/contest-quick-stats.tsx:53-58`
+**No new findings this cycle.** The diff from cycle 55 HEAD (`64522fe9`) to current HEAD (`8af86fab`) contains only docs (cycle 4 gate results + plan + user-injected cleanup) plus the `SKIP_INSTRUMENTATION_SYNC` short-circuit which was already reviewed and confirmed safe in cycle 55.
 
-**Description:** The response validation checks `typeof json.data.participantCount === "number"` for each field, but `NaN` has type `"number"` in JS. If the backend returns NaN, it passes the check and "NaN" is displayed.
+## Code Quality Observations
 
-**Fix:** Use `Number.isFinite()` instead of `typeof === "number"`.
+1. **`createApiHandler` pattern** — well-structured factory with proper middleware ordering: rate-limit -> auth -> CSRF -> body parsing -> handler. Error handling wraps everything. Good.
+2. **Schema design** — comprehensive indexing strategy. The `submissions` table has 9 indexes including composite ones for leaderboard queries and data retention. Check constraints on `judge_workers.active_tasks >= 0` and `assignments.late_penalty >= 0` are good defensive measures.
+3. **CSRF protection** — multi-layered: `X-Requested-With` header check, `Sec-Fetch-Site` validation, origin/host verification. API key auth correctly skips CSRF. Well-designed.
+4. **HTML sanitization** — DOMPurify with narrow allowlist, `ALLOW_DATA_ATTR: false`, URI regex restricting to https/mailto/root-relative. Hook adds `rel=noopener noreferrer` and strips non-root-relative image sources. Solid.
+5. **Rate limiting** — proper use of `FOR UPDATE` row locks in `getEntry()`, exponential backoff for blocks, `consumeRateLimitAttemptMulti` for atomic check+increment. The `Date.now()` usage is the known deferred item (AGG-2).
 
-### CR-2: `leaderboard-table.tsx` uses Math.round instead of formatScore (2 locations) [LOW/MEDIUM]
+## Verification of Prior Fixes (All Still Intact)
 
-**File:** `src/components/contest/leaderboard-table.tsx:200,428`
+- `src/lib/leaderboard/icpc.ts` deterministic userId tie-breaker — intact (cycle 49)
+- `src/lib/leaderboard/ioi.ts` deterministic tie-breaker — intact (cycle 46)
+- `src/app/api/v1/judge/claim/route.ts` DB-time for claim — intact (cycle 47)
+- `src/lib/recruiting/token.ts` `computeExpiryFromDays` — intact (cycle 41)
+- `src/lib/judge/sync-language-configs.ts` SKIP_INSTRUMENTATION_SYNC — safe (strict-literal `"1"`)
 
-**Description:** Two locations use `Math.round(score * 100) / 100` instead of `formatScore(score, locale)`. Bypasses locale-aware digit grouping.
+## Confidence
 
-**Fix:** Import `useLocale` and `formatScore`, replace both occurrences.
-
-### CR-3: `submission-status-badge.tsx` uses Math.round instead of formatScore [LOW/MEDIUM]
-
-**File:** `src/components/submission-status-badge.tsx:89`
-
-**Description:** Tooltip body displays score using `Math.round(score * 100) / 100` instead of `formatScore(score, locale)`. Component already has `locale` prop and `formatNumber` imported.
-
-**Fix:** Replace with `formatScore(score, locale)`.
-
-### CR-4: Public pages use Math.round instead of formatScore (3 locations) [LOW/MEDIUM]
-
-**File:** `src/app/(public)/practice/problems/[id]/page.tsx:523`, `src/app/(public)/contests/[id]/page.tsx:229,266`
-
-**Description:** Multiple public pages use `Math.round(score * 100) / 100` instead of `formatScore`. These pages have `locale` available.
-
-**Fix:** Import `formatScore` and use it with locale.
-
-### CR-5: Stats API route SQL string interpolation of status list [LOW/LOW]
-
-**File:** `src/app/api/v1/contests/[assignmentId]/stats/route.ts:79,102`
-
-**Description:** `TERMINAL_SUBMISSION_STATUSES_SQL_LIST` is interpolated into SQL. Currently safe (hardcoded `as const` array). Defense-in-depth note only.
-
-## Summary
-
-| ID | Severity | Confidence | Description |
-|----|----------|------------|-------------|
-| CR-1 | MEDIUM | MEDIUM | Stats response validation allows NaN via typeof check |
-| CR-2 | LOW | MEDIUM | leaderboard-table.tsx Math.round vs formatScore (2 locs) |
-| CR-3 | LOW | MEDIUM | submission-status-badge.tsx Math.round vs formatScore |
-| CR-4 | LOW | MEDIUM | Public pages Math.round vs formatScore (3 locs) |
-| CR-5 | LOW | LOW | SQL interpolation of status list safe but fragile |
+HIGH — the codebase is in a mature, stable state. Five consecutive cycles (51-55) plus cycle 4 confirm no new production-code findings.
