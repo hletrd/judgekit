@@ -45,6 +45,7 @@ vi.mock("@/lib/db", () => ({
 
 vi.mock("@/lib/db-time", () => ({
   getDbNowUncached: vi.fn(() => Promise.resolve(new Date("2026-04-20T12:00:00Z"))),
+  getDbNowMs: vi.fn(() => Promise.resolve(MOCK_DB_NOW_MS)),
 }));
 
 vi.mock("@/lib/system-settings-config", () => ({
@@ -115,13 +116,14 @@ describe("consumeApiRateLimit", () => {
   it("returns a 429 response when the request is already rate limited", async () => {
     getRateLimitKeyMock.mockReturnValue("api:groups:198.51.100.8");
     // Simulate an existing entry that is blocked
+    // Use MOCK_DB_NOW_MS for timestamps since atomicConsumeRateLimit now uses DB time
     mockSelectResult({
       key: "api:groups:198.51.100.8",
       attempts: 120,
-      windowStartedAt: Date.now(),
-      blockedUntil: Date.now() + 60000,
+      windowStartedAt: MOCK_DB_NOW_MS,
+      blockedUntil: MOCK_DB_NOW_MS + 60000,
       consecutiveBlocks: 1,
-      lastAttempt: Date.now(),
+      lastAttempt: MOCK_DB_NOW_MS,
     });
 
     const response = await consumeApiRateLimit(createRequest(), "groups");
@@ -131,7 +133,7 @@ describe("consumeApiRateLimit", () => {
     expect(response?.headers.get("X-RateLimit-Limit")).toBe("2");
     expect(response?.headers.get("X-RateLimit-Remaining")).toBe("0");
     expect(Number(response?.headers.get("X-RateLimit-Reset"))).toBeGreaterThan(
-      Math.floor(Date.now() / 1000)
+      Math.floor(MOCK_DB_NOW_MS / 1000)
     );
     await expect(response?.json()).resolves.toEqual({ error: "rateLimited" });
   });
@@ -194,13 +196,14 @@ describe("consumeUserApiRateLimit", () => {
 describe("atomicConsumeRateLimit internal paths", () => {
   it("resets window when existing row has expired window", async () => {
     // Window started 120s ago, windowMs is 60s => expired
+    // Use MOCK_DB_NOW_MS for timestamps since atomicConsumeRateLimit now uses DB time
     mockSelectResult({
       key: "api:groups:198.51.100.8",
       attempts: 5,
-      windowStartedAt: Date.now() - 120_000,
+      windowStartedAt: MOCK_DB_NOW_MS - 120_000,
       blockedUntil: null,
       consecutiveBlocks: 0,
-      lastAttempt: Date.now() - 120_000,
+      lastAttempt: MOCK_DB_NOW_MS - 120_000,
     });
 
     getRateLimitKeyMock.mockReturnValue("api:groups:198.51.100.8");
@@ -214,13 +217,14 @@ describe("atomicConsumeRateLimit internal paths", () => {
 
   it("returns 429 when max attempts reached within window", async () => {
     // apiRateLimitMax is 2, attempts is already 2 (>= max), window still valid
+    // Use MOCK_DB_NOW_MS for timestamps since atomicConsumeRateLimit now uses DB time
     mockSelectResult({
       key: "api:groups:198.51.100.8",
       attempts: 2,
-      windowStartedAt: Date.now(),
+      windowStartedAt: MOCK_DB_NOW_MS,
       blockedUntil: null,
       consecutiveBlocks: 0,
-      lastAttempt: Date.now(),
+      lastAttempt: MOCK_DB_NOW_MS,
     });
 
     getRateLimitKeyMock.mockReturnValue("api:groups:198.51.100.8");
@@ -231,13 +235,14 @@ describe("atomicConsumeRateLimit internal paths", () => {
 
   it("sets blockedUntil when newAttempts reaches apiMax (increment with block)", async () => {
     // apiRateLimitMax is 2, attempts is 1, so newAttempts=2 >= apiMax => blockedUntil is set
+    // Use MOCK_DB_NOW_MS for timestamps since atomicConsumeRateLimit now uses DB time
     mockSelectResult({
       key: "api:groups:198.51.100.8",
       attempts: 1,
-      windowStartedAt: Date.now(),
+      windowStartedAt: MOCK_DB_NOW_MS,
       blockedUntil: null,
       consecutiveBlocks: 0,
-      lastAttempt: Date.now(),
+      lastAttempt: MOCK_DB_NOW_MS,
     });
 
     // Capture what .set() is called with
@@ -254,7 +259,8 @@ describe("atomicConsumeRateLimit internal paths", () => {
     const setArgs = (setFn.mock as unknown as { calls: Array<[Record<string, unknown>]> }).calls[0][0];
     expect(setArgs.attempts).toBe(2);
     expect(setArgs.blockedUntil).toBeTypeOf("number");
-    expect(setArgs.blockedUntil).toBeGreaterThan(Date.now() - 1000);
+    // blockedUntil is based on DB time (MOCK_DB_NOW_MS + window), not Date.now()
+    expect(setArgs.blockedUntil).toBeGreaterThan(MOCK_DB_NOW_MS);
   });
 });
 
@@ -401,13 +407,14 @@ describe("sidecar fast-path integration", () => {
   it("falls back to the DB path when the sidecar returns null (unreachable)", async () => {
     sidecarCheckMock.mockResolvedValueOnce(null);
     getRateLimitKeyMock.mockReturnValue("api:groups:198.51.100.8");
+    // Use MOCK_DB_NOW_MS for timestamps since atomicConsumeRateLimit now uses DB time
     mockSelectResult({
       key: "api:groups:198.51.100.8",
       attempts: 2,
-      windowStartedAt: Date.now(),
-      blockedUntil: Date.now() + 60_000,
+      windowStartedAt: MOCK_DB_NOW_MS,
+      blockedUntil: MOCK_DB_NOW_MS + 60_000,
       consecutiveBlocks: 1,
-      lastAttempt: Date.now(),
+      lastAttempt: MOCK_DB_NOW_MS,
     });
 
     const response = await consumeApiRateLimit(createRequest(), "groups");

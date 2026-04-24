@@ -3,7 +3,7 @@ import { getRateLimitKey } from "./rate-limit";
 import { checkRateLimit as sidecarCheck } from "./rate-limiter-client";
 import { execTransaction } from "@/lib/db";
 import { rateLimits } from "@/lib/db/schema";
-import { getDbNowUncached } from "@/lib/db-time";
+import { getDbNowMs, getDbNowUncached } from "@/lib/db-time";
 import { getConfiguredSettings } from "@/lib/system-settings-config";
 import { eq } from "drizzle-orm";
 
@@ -53,7 +53,10 @@ function hasConsumedRequestKey(request: NextRequest, key: string) {
  * nowMs is the app-server timestamp used for the window computation.
  */
 async function atomicConsumeRateLimit(key: string): Promise<{ limited: boolean; nowMs: number }> {
-  const now = Date.now();
+  // Use DB server time for rate-limit window comparisons to avoid clock skew
+  // between app and DB servers, consistent with checkServerActionRateLimit
+  // and other rate-limit checks (realtime-coordination.ts, submissions.ts).
+  const now = await getDbNowMs();
   const { max: apiMax, windowMs } = getApiRateLimitConfig();
 
   const limited = await execTransaction(async (tx) => {
