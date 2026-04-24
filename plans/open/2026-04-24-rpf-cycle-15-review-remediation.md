@@ -2,7 +2,7 @@
 
 **Date:** 2026-04-24
 **Source:** `.context/reviews/_aggregate.md`
-**Status:** In Progress
+**Status:** In Progress (H1-H3, L1 done)
 
 ## Scope
 
@@ -35,7 +35,7 @@ No cycle-15 review finding is silently dropped. No new refactor-only work is add
   4. Create a Drizzle migration for the column/index drop
   5. Update any code that references `token` field on the table type
   6. Verify all gates pass
-- **Status:** Pending
+- **Status:** DONE — Commit `7cd2c983`
 
 ### H2: Fix audit event JSON truncation to produce valid output (AGG-10)
 
@@ -50,7 +50,7 @@ No cycle-15 review finding is silently dropped. No new refactor-only work is add
   3. If the truncated object still exceeds the budget after string trimming, fall back to `{"_truncated":true}`
   4. Add a unit test verifying that `serializeDetails` always produces valid JSON
   5. Verify all gates pass
-- **Status:** Pending
+- **Status:** DONE — Commit `35613021`
 
 ### H3: Fix in-memory rate limiter eviction to O(1) FIFO (AGG-3 / DEFER-54)
 
@@ -65,7 +65,7 @@ No cycle-15 review finding is silently dropped. No new refactor-only work is add
   3. Remove the `sorted` allocation entirely
   4. Add a unit test verifying that eviction works correctly under capacity pressure
   5. Verify all gates pass
-- **Status:** Pending
+- **Status:** DONE — Commit `88c721a8`
 
 ### L1: Add build-phase guard to auth config (AGG-11)
 
@@ -77,7 +77,7 @@ No cycle-15 review finding is silently dropped. No new refactor-only work is add
   1. Add a `isBuildPhase` check (similar to `db/index.ts`) before calling the validation functions
   2. If in build phase, use placeholder values instead of throwing
   3. Verify all gates pass
-- **Status:** Pending
+- **Status:** DONE — Commit `6e32ee89`
 
 ---
 
@@ -172,3 +172,4 @@ All DEFER-1 through DEFER-56 from prior cycle plans carry forward unchanged. DEF
 ## Progress log
 
 - 2026-04-24: Plan created from RPF cycle 15 aggregate review. 4 new tasks (H1, H2, H3, L1). 10 new deferred items (DEFER-61 through DEFER-70). All findings from the aggregate review are either scheduled for implementation or explicitly deferred.
+- 2026-04-24: H1 DONE (7cd2c983 — drop plaintext recruitingInvitations.token column + Drizzle migration), H2 DONE (35613021 — recursive truncateObject for audit details + 7 unit tests), H3 DONE (88c721a8 — O(1) FIFO eviction in in-memory rate limiter, resolves DEFER-54), L1 DONE (6e32ee89 — build-phase guard in auth config). All gates pass: eslint (0 errors), tsc (0 errors), vitest (298/298 files, 2130/2130 tests), next build (success).

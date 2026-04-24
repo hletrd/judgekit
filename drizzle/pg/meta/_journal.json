@@ -134,6 +134,13 @@
       "when": 1776545738004,
       "tag": "0018_add_late_penalty_check",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1777008821807,
+      "tag": "0019_familiar_mikhail_rasputin",
+      "breakpoints": true
     }
   ]
 }
