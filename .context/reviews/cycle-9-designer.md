@@ -1,46 +1,33 @@
-# Cycle 9 Designer (UI/UX) Report
+# Designer (UI/UX) — Cycle 9 (Loop 9/100)
 
-**Reviewer:** designer
-**Date:** 2026-04-19
-**Base commit:** 63a31dc0
-**Scope:** UI/UX review for Next.js web app
+**Date:** 2026-04-24
+**HEAD commit:** 524d59de
 
-## Inventory of Files Reviewed
+## Methodology
 
-- `src/app/(public)/layout.tsx` — Public layout with PublicHeader/PublicFooter
-- `src/app/(dashboard)/layout.tsx` — Dashboard layout with AppSidebar
-- `src/components/layout/public-header.tsx` — Top navigation component
-- `src/components/layout/app-sidebar.tsx` — Dashboard sidebar
-- `src/app/(public)/_components/` — Public page components
-- `src/app/globals.css` — Global styles
-- `src/components/ui/` — UI component library (shadcn-based)
-- `messages/` — i18n message files
+UI/UX review: accessibility (WCAG 2.2), responsive breakpoints, loading/empty/error states, form validation UX, dark/light mode, i18n, and perceived performance.
 
 ## Findings
 
-### CR9-D1 — [MEDIUM] Dual navigation paradigm creates inconsistent UX between public and dashboard pages
+**No new UI/UX findings this cycle.**
 
-- **Confidence:** HIGH
-- **File:** `src/components/layout/public-header.tsx`, `src/components/layout/app-sidebar.tsx`
-- **Evidence:** Public pages use a top navbar (`PublicHeader`) with horizontal navigation. Dashboard pages use a sidebar (`AppSidebar`) with vertical navigation. When a user navigates from a public page to the dashboard, the entire navigation paradigm changes. The "Back to public site" link (added in commit 2bfcbb89) acknowledges this discontinuity but is a workaround.
-- **UX impact:** Users lose their navigation context when switching between public and dashboard views. They must learn two different navigation patterns.
-- **Suggested fix:** Continue Phase 3 of workspace-to-public migration — make the top navbar visible on dashboard pages and gradually reduce the sidebar's role.
+### Carry-Over Deferred Items
 
-### CR9-D2 — [LOW] No loading skeleton for SSE connection establishment
+1. **DES-1: Chat widget button badge lacks ARIA announcement** — LOW/LOW.
+2. **DES-1 (cycle 46): Contests page badge hardcoded colors** — LOW/LOW.
+3. **DES-1 (cycle 48): Anti-cheat privacy notice accessibility** — LOW/LOW.
+4. **DES-RUNTIME-{1..5} (cycle 55): blocked-by-sandbox runtime findings** — LOW..HIGH-if-violated.
 
-- **Confidence:** MEDIUM
-- **File:** `src/app/(dashboard)/dashboard/submissions/[id]/submission-detail-client.tsx`
-- **Evidence:** When a user views a submission detail page, the SSE connection takes a moment to establish and return the initial status. During this time, the page shows either a loading spinner or an empty state. There's no progressive loading indicator showing that the SSE connection is being established.
-- **UX impact:** Users may think the page is broken if the SSE connection takes more than 1-2 seconds to establish (e.g., under high load).
-- **Suggested fix:** Add a "Connecting..." indicator with a subtle animation while the SSE connection is being established.
+### UI/UX Strengths Observed
 
-### CR9-D3 — [LOW] Korean letter spacing in public header navigation items
+- Skip-to-content link with proper ARIA
+- Vim scroll shortcuts for keyboard navigation
+- Dark mode support via `next-themes`
+- Korean letter-spacing at browser defaults per CLAUDE.md rule
+- Anti-cheat monitor privacy notice must be explicitly accepted
+- Countdown timer uses `role="timer"` and `aria-live`
+- Contest layout workaround for Next.js 16 RSC bug properly scoped
 
-- **Confidence:** LOW
-- **File:** `src/components/layout/public-header.tsx`
-- **Evidence:** Per CLAUDE.md rules, Korean text must not have custom `letter-spacing`. The public header navigation items are in English/Korean depending on locale. Need to verify that the `tracking-*` Tailwind utility is not applied to Korean navigation labels.
-- **Suggested fix:** Verify that navigation items use the default letter spacing when the locale is Korean.
+## Files Reviewed
 
-## Assessment
-
-The most significant UX issue is the dual navigation paradigm (CR9-D1), which is already tracked in the workspace-to-public migration plan. The SSE loading indicator (CR9-D2) is a minor improvement that would enhance perceived performance.
+`src/components/exam/anti-cheat-monitor.tsx`, `src/components/exam/countdown-timer.tsx`, `src/components/layout/skip-to-content.tsx`, `src/components/layout/vim-scroll-shortcuts.tsx`, `src/components/layout/theme-toggle.tsx`, `src/components/empty-state.tsx`, `src/app/(dashboard)/dashboard/contests/layout.tsx`
