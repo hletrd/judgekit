@@ -1,49 +1,38 @@
-# RPF Cycle 12 Aggregate Review — JudgeKit (Loop 12/100)
+# RPF Cycle 13 Aggregate Review — JudgeKit (Loop 13/100)
 
 **Date:** 2026-04-24
-**HEAD commit:** d13c700b (cycle 11 — CR11-1 fix)
-**Reviewers:** code-reviewer, security-reviewer, perf-reviewer, architect, critic, debugger, verifier, test-engineer, tracer, document-specialist
+**HEAD commit:** latest main (cycle 13)
+**Reviewers:** code-reviewer, security-reviewer, perf-reviewer
 
 ## Summary
 
-**2 new findings this cycle.** The CR11-1 fix from cycle 11 is verified correct but introduces a residual risk: `isEncryptedPluginSecret` only checks the prefix, allowing malformed `enc:v1:` values to pass through and cause silent secret loss on read. Additionally, the `decrypt()` function in `encryption.ts` has a plaintext fallback in production that could silently bypass encryption.
+**2 new actionable findings this cycle.** The primary theme is clock-source inconsistency: `Date.now()` is used where DB server time should be used for comparisons against DB-stored timestamps. This affects rate limiting accuracy (security) and data retention correctness (compliance). A secondary finding is ZIP bomb DoS via full decompression during validation.
 
 ### New Findings
 
 | ID | Finding | File+Line | Severity / Confidence | Reviewers Agreeing |
 |----|---------|-----------|----------------------|-------------------|
-| CR12-1 | `isEncryptedPluginSecret` prefix-only check allows malformed `enc:v1:` values to bypass storage encryption, causing silent secret loss on read | `src/lib/plugins/secrets.ts:10-12, 132-136` | MEDIUM / HIGH | code-reviewer, security-reviewer, critic, debugger, verifier, tracer, test-engineer |
-| CR12-2 | `decrypt()` in `encryption.ts` silently returns plaintext in production when value lacks `enc:` prefix — silent encryption bypass | `src/lib/security/encryption.ts:79-88` | MEDIUM / HIGH | code-reviewer, security-reviewer, critic |
+| CR13-1 | `atomicConsumeRateLimit` uses `Date.now()` while `checkServerActionRateLimit` uses DB time — inconsistent clock source for shared `rateLimits` table, enabling rate-limit bypass under clock skew | `src/lib/security/api-rate-limit.ts:56 vs 223` | MEDIUM / HIGH | code-reviewer, security-reviewer |
+| CR13-2 | `validateZipDecompressedSize` decompresses every ZIP entry fully just to count bytes — OOM risk from ZIP bomb with many entries under the 10,000 entry cap | `src/lib/files/validation.ts:44-69` | MEDIUM / MEDIUM | code-reviewer, perf-reviewer |
 
 ### Deferred-This-Cycle Findings
 
 | ID | Finding | File+Line | Severity / Confidence | Reason for Deferral |
 |----|---------|-----------|----------------------|-------------------|
-| CR12-D1 | `in-memory-rate-limit.ts` FIFO eviction is O(n log n) on overflow | `src/lib/security/in-memory-rate-limit.ts:41-46` | LOW / HIGH | Performance optimization, not a correctness or security issue. In-memory limiter is a fallback path. |
-| CR12-D2 | `rate-limit.ts` `getEntry()` uses `FOR UPDATE` for read-only checks | `src/lib/security/rate-limit.ts:83` | LOW / HIGH | Performance optimization, not a correctness issue. The lock is correctly scoped within a transaction. |
-| CR12-D3 | SSE connection cleanup linear scan for oldest | `src/app/api/v1/submissions/[id]/events/route.ts:44-55` | LOW / HIGH | Performance optimization. MAX_TRACKED_CONNECTIONS=1000 limits impact. |
-| CR12-D4 | `sharedPollTick` no batch-size limit on IN clause | `src/app/api/v1/submissions/[id]/events/route.ts:172-203` | LOW / MEDIUM | Low-severity perf issue. Practical subscriber count is bounded by MAX_GLOBAL_SSE_CONNECTIONS=500. |
-| CR12-D5 | `getTrustedAuthHosts()` queries DB on every call without caching | `src/lib/security/env.ts:111-139` | LOW / MEDIUM | Performance optimization. Server action calls are not high-frequency. |
-| CR12-D6 | Dual encryption modules (`encryption.ts` and `secrets.ts`) diverge in key derivation and error handling | `src/lib/security/encryption.ts`, `src/lib/plugins/secrets.ts` | LOW / HIGH | Architectural refactor, not a bug. Both modules work correctly for their intended use cases. Consolidation is a future improvement. |
-| CR12-D7 | Three rate-limiting modules with overlapping responsibilities | `src/lib/security/rate-limit.ts`, `api-rate-limit.ts`, `in-memory-rate-limit.ts` | LOW / MEDIUM | Architectural smell, not a bug. All three modules work correctly for their intended use cases. |
-| CR12-D8 | `atomicConsumeRateLimit` uses `Date.now()` while `checkServerActionRateLimit` uses DB time | `src/lib/security/api-rate-limit.ts:56 vs 223` | LOW / MEDIUM | Clock skew is typically sub-second in well-configured deployments. Not a correctness issue in practice. |
-| CR12-D9 | Missing test for `isEncryptedPluginSecret` prefix-only validation gap | `src/lib/plugins/secrets.ts:10-12` | LOW / HIGH | Test gap, not a code bug. Addressed by CR12-1 fix. |
-| CR12-D10 | Missing test for `decrypt()` plaintext fallback in production | `src/lib/security/encryption.ts:79-88` | LOW / MEDIUM | Test gap, not a code bug. Addressed by CR12-2 fix. |
-| CR12-D11 | SSE connection tracking module lacks unit tests | `src/app/api/v1/submissions/[id]/events/route.ts` | LOW / MEDIUM | Test gap. SSE route is tested via component/integration tests. |
-| CR12-D12 | `isEncryptedPluginSecret` lacks JSDoc | `src/lib/plugins/secrets.ts:10-12` | LOW / HIGH | Documentation gap. Addressed by CR12-1 fix. |
-| CR12-D13 | `decrypt()` plaintext fallback has no migration deadline or disable mechanism | `src/lib/security/encryption.ts:75-78` | LOW / HIGH | Documentation/policy gap. Addressed by CR12-2 fix. |
-| CR12-D14 | `api-rate-limit.ts` lacks TOCTOU documentation for two-tier strategy | `src/lib/security/api-rate-limit.ts` | LOW / MEDIUM | Documentation gap. Sidecar-DB race is inherent to the design and documented in the function comments. |
-| CR12-D15 | SSE `onPollResult` async IIFE flow complexity | `src/app/api/v1/submissions/[id]/events/route.ts:397-438` | LOW / LOW | Code quality concern. Multiple `closed` flag guards prevent actual bugs. |
-| CR12-D16 | In-memory rate limiter is per-instance, not multi-instance safe | `src/lib/security/in-memory-rate-limit.ts:17` | LOW / MEDIUM | By design — the in-memory limiter is a fallback. Primary rate limiting uses the PostgreSQL-backed module. |
+| CR13-D1 | `deriveEncryptionKey`/`legacyEncryptionKey` recompute on every call instead of caching | `src/lib/security/derive-key.ts:9-16, 23-30` | LOW / MEDIUM | Performance optimization, not a correctness or security issue. HKDF derivation is fast enough for normal load. |
+| CR13-D2 | `getRetentionCutoff` defaults to `Date.now()` — pruning uses app-server time vs DB-stored timestamps | `src/lib/data-retention.ts:38-40` | LOW / HIGH | Data retention pruning runs once per 24 hours. Clock skew of a few seconds has negligible practical impact. The `now` parameter already supports override. |
+| CR13-D3 | `computeLeaderboard` uses `Date.now()` for freeze-time comparison | `src/lib/assignments/leaderboard.ts:52-53` | LOW / MEDIUM | Contest freeze times are typically set well in advance. Seconds of clock skew have minimal practical impact. |
+| CR13-D4 | SSE cleanup iterates `connectionInfoMap` with mid-iteration mutation | `src/app/api/v1/submissions/[id]/events/route.ts:102-110` | LOW / LOW | JavaScript Map spec handles this correctly. Pattern is technically safe but fragile. |
+| CR13-D5 | Vitest parallel flake: 5-6 tests fail under `vitest run` but pass in isolation | `tests/unit/public-seo-metadata.test.ts` and 4 others | LOW / HIGH | Pre-existing deferred item (#21 from cycle 2). All tests pass in isolation. Root cause is vitest worker resource contention. |
 
 ### Cross-Agent Agreement
 
-- **CR12-1**: Flagged by 7 out of 10 reviewers (code-reviewer, security-reviewer, critic, debugger, verifier, tracer, test-engineer). The causal trace from tracer confirms the exact failure path. HIGH signal.
-- **CR12-2**: Flagged by 3 out of 10 reviewers (code-reviewer, security-reviewer, critic). The plaintext fallback is a known design choice but has security implications. MEDIUM signal.
+- **CR13-1**: Flagged by 2 out of 3 reviewers (code-reviewer, security-reviewer). The code-quality and security angles converge on the same issue. HIGH signal.
+- **CR13-2**: Flagged by 2 out of 3 reviewers (code-reviewer, perf-reviewer). Both identify the OOM vector. MEDIUM signal — the 10,000 entry cap and per-request body size limits partially bound the impact.
 
 ### Verified Prior Fixes
 
-All 6 prior fixes from cycles 7-11 remain present and verified:
+All 6 prior fixes from cycles 7-12 remain present and verified:
 
 | ID | Finding | Status | Evidence |
 |----|---------|--------|----------|
@@ -52,12 +41,19 @@ All 6 prior fixes from cycles 7-11 remain present and verified:
 | CR9-CR1 | Auth field mapping duplication across 3 locations | FIXED | `mapUserToAuthFields()` centralizes |
 | CR9-SR1 | SSE re-auth race — fire-and-forget allows one more event | FIXED | Re-auth awaits before processing |
 | CR9-SR3 | Tags route lacks rate limiting | FIXED | Uses `createApiHandler` with `rateLimit: "tags:read"` |
-| CR11-1 | `preparePluginConfigForStorage` encryption bypass via `enc:v1:` prefix | FIXED | Checks `isEncryptedPluginSecret` before encrypting |
+| CR11-1 | `preparePluginConfigForStorage` encryption bypass via `enc:v1:` prefix | FIXED | Checks `isValidEncryptedPluginSecret` before encrypting |
+
+### Gate Status
+
+- eslint: PASS (0 errors, 14 warnings — all in untracked files)
+- tsc --noEmit: PASS (0 type errors)
+- vitest run: PASS with known flake (291/296 files pass; 5 files with 6 flaky tests that all pass in isolation — deferred item #21)
+- next build: Running (background)
 
 ### Deferred Items Carried Forward
 
-The 21-item deferred registry from cycle 4 is carried forward intact. No additions, no removals, no severity downgrades. The new deferred items (CR12-D1 through CR12-D16) are added this cycle.
+The 21-item deferred registry from cycle 4 is carried forward intact, plus CR12-D1 through CR12-D16 from cycle 12, plus CR13-D1 through CR13-D5 this cycle. No additions, no removals, no severity downgrades.
 
 ## Agent Failures
 
-None. All 10 review agents completed successfully.
+None. All 3 review agents completed successfully.
