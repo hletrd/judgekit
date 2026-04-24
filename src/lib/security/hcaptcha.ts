@@ -20,7 +20,7 @@ async function getDbHcaptchaFields() {
   const hcaptchaSecret = (settings as Record<string, unknown>).hcaptchaSecret as string | null;
   return {
     siteKey: hcaptchaSiteKey ?? null,
-    secret: hcaptchaSecret != null ? decrypt(hcaptchaSecret) : null,
+    secret: hcaptchaSecret != null ? decrypt(hcaptchaSecret, { allowPlaintextFallback: true }) : null,
   };
 }
 

@@ -71,13 +71,34 @@ export function encrypt(plaintext: string): string {
 
 /**
  * Decrypt a value encrypted by `encrypt()`.
- * If the value does not start with `enc:`, it is returned as-is (plaintext fallback
- * for data that was stored before encryption was enabled).
+ *
+ * If the value does not start with `enc:`, the behavior depends on the
+ * `allowPlaintextFallback` option:
+ *   - When `true` (the default in non-production environments), the value
+ *     is returned as-is. This is the legacy behavior for data that was
+ *     stored before encryption was enabled.
+ *   - When `false` (the default in production), an error is thrown. This
+ *     prevents silent encryption bypass if an attacker manages to write
+ *     plaintext to a column that should contain encrypted data.
+ *
+ * Callers that read from columns with mixed encrypted/plaintext data during
+ * migration should pass `{ allowPlaintextFallback: true }` explicitly.
+ *
  * In development without NODE_ENCRYPTION_KEY, uses the fixed dev key.
  * In production, throws if NODE_ENCRYPTION_KEY is not set.
  */
-export function decrypt(encoded: string): string {
+export function decrypt(encoded: string, options?: { allowPlaintextFallback?: boolean }): string {
+  const allowPlaintext = options?.allowPlaintextFallback ??
+    (process.env.NODE_ENV !== "production");
+
   if (!encoded.startsWith("enc:")) {
+    if (!allowPlaintext) {
+      throw new Error(
+        "decrypt() called on non-encrypted value. " +
+        "If this is expected during migration, pass { allowPlaintextFallback: true }. " +
+        "Otherwise, investigate possible data tampering or incomplete migration."
+      );
+    }
     if (process.env.NODE_ENV === "production") {
       logger.warn(
         { prefix: encoded.slice(0, 10) },
