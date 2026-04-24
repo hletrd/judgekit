@@ -89,7 +89,11 @@ export const POST = createApiHandler({
         shouldRecord = await shouldRecordSharedHeartbeat({ assignmentId, userId: user.id });
       } else {
         const heartbeatKey = `${assignmentId}:${user.id}`;
-        const nowMs = Date.now();
+        // Use DB server time for dedup to stay consistent with the `createdAt`
+        // timestamp (line ~110) and contest boundary checks above (lines 63-73).
+        // Using Date.now() would cause clock-skew mismatches between the
+        // in-memory dedup state and the authoritative DB timestamps.
+        const nowMs = now.getTime();
         const last = lastHeartbeatTime.get(heartbeatKey) ?? 0;
         if (nowMs - last >= 60_000) {
           lastHeartbeatTime.set(heartbeatKey, nowMs);
