@@ -46,13 +46,63 @@ let auditEventWriteFailures = 0;
 let consecutiveAuditFailures = 0;
 let lastAuditEventWriteFailureAt: string | null = null;
 
+/**
+ * Recursively truncate string values within a JSON-compatible object
+ * so that the serialized form stays within `budget` bytes.
+ * Produces valid JSON at every level — never cuts mid-string.
+ */
+function truncateObject(obj: JsonValue, budget: number): JsonValue {
+  if (obj === null || obj === undefined) return obj;
+  if (typeof obj === "number" || typeof obj === "boolean") return obj;
+  if (typeof obj === "string") {
+    // Reserve 2 bytes for surrounding quotes
+    const maxLen = Math.max(0, budget - 2);
+    return obj.length <= maxLen ? obj : obj.slice(0, maxLen);
+  }
+  if (Array.isArray(obj)) {
+    const result: JsonValue[] = [];
+    let remaining = budget - 2; // [ ]
+    for (const item of obj) {
+      const serialized = JSON.stringify(truncateObject(item, remaining - 1));
+      if (!serialized) break;
+      if (remaining - serialized.length - 1 < 0) break;
+      result.push(truncateObject(item, remaining - 1));
+      remaining -= serialized.length + 1; // +1 for comma
+    }
+    return result;
+  }
+  if (typeof obj === "object") {
+    const result: Record<string, JsonValue> = {};
+    let remaining = budget - 2; // { }
+    for (const [key, value] of Object.entries(obj)) {
+      const keyCost = JSON.stringify(key).length + 2; // key + ":" + ","
+      if (remaining - keyCost <= 0) break;
+      remaining -= keyCost;
+      const truncated = truncateObject(value, remaining);
+      const valCost = JSON.stringify(truncated).length + 1;
+      if (remaining - valCost < 0) break;
+      result[key] = truncated;
+      remaining -= valCost;
+    }
+    return result;
+  }
+  return obj;
+}
+
 function serializeDetails(details: JsonValue | null | undefined) {
   if (details == null) {
     return null;
   }
 
   try {
-    return JSON.stringify(details).slice(0, MAX_JSON_LENGTH);
+    const truncated = truncateObject(details, MAX_JSON_LENGTH);
+    const serialized = JSON.stringify(truncated);
+    // Final safety: if still over budget (edge case from array/object overhead),
+    // truncate to a safe sentinel that is valid JSON.
+    if (serialized.length > MAX_JSON_LENGTH) {
+      return JSON.stringify({ _truncated: true });
+    }
+    return serialized;
   } catch {
     return null;
   }
