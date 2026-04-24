@@ -1,134 +1,88 @@
-# RPF Cycle 20 — Review Remediation Plan
+# RPF Cycle 20 — Review Remediation Plan (Updated)
 
-**Date:** 2026-04-22
+**Date:** 2026-04-24
 **Source:** `.context/reviews/rpf-cycle-20-aggregate.md`
-**Status:** Done
+**Status:** In Progress
 
 ## Scope
 
-This cycle addresses NEW findings from the RPF cycle 20 aggregate review:
-- AGG-1: Unguarded `.json()` + undefined navigation crash in create-group-dialog
-- AGG-2: Unguarded `.json()` in admin-config test-connection
-- AGG-3: Unguarded `.json()` in all three AI provider chatWithTools
-- AGG-4: Unguarded `.json()` in comment-section GET fetch
-- AGG-5: `Number()` NaN risk in admin-config maxTokens/rateLimitPerMinute
-- AGG-6: `Number()` NaN risk in assignment-form-dialog exam duration
-- AGG-7: `apiFetchJson` JSDoc missing success-path `.catch()` mention
-- AGG-8: Test connection result not announced to screen readers
+This cycle addresses NEW findings from the fresh RPF cycle 20 aggregate review:
+- AGG-1: Raw server error leaked to users via `toast.error()` — 4 files, 6 locations
+- AGG-2: `problem-import-button.tsx` navigates to `/dashboard/problems/undefined` when JSON parse fallback fires
 
-No cycle-20 review finding is silently dropped. No new refactor-only work is added under deferred.
+Previous cycle 20 findings (AGG-1 through AGG-8 from the prior review) are all confirmed FIXED in the current codebase.
+
+No review finding is silently dropped. No new refactor-only work is added under deferred.
 
 ---
 
 ## Implementation lanes
 
-### M1: Add `.catch()` guard + undefined navigation guard in create-group-dialog (AGG-1)
+### M1: Stop leaking raw server errors to users via `toast.error()` in `group-instructors-manager.tsx` (AGG-1)
 
-- **Source:** AGG-1
+- **Source:** AGG-1 (partial)
 - **Severity / confidence:** MEDIUM / HIGH
-- **Citations:** `src/app/(dashboard)/dashboard/groups/create-group-dialog.tsx:74,78`
-- **Problem:** Line 74 calls `response.json()` without `.catch()` on the success path. If `.json()` throws, the group was created but the user cannot navigate. Line 78 accesses `data.data.id` without guarding against undefined.
+- **Citations:** `src/app/(dashboard)/dashboard/groups/[id]/group-instructors-manager.tsx:73`
+- **Problem:** Line 73 passes raw server error to `toast.error()`. Server error could contain SQL constraint names or stack traces.
 - **Plan:**
-  1. Change line 74 to `const data = await response.json().catch(() => ({ data: {} })) as { data?: { id?: string } };`
-  2. Guard line 78: `const groupId = data.data?.id; if (groupId) { router.push(`/dashboard/groups/${groupId}`); }`
-  3. Add `else` branch: `router.push("/dashboard/groups");` so user lands on groups list even if id is missing
-  4. Verify all gates pass
-- **Status:** DONE
+  1. Change line 73 from `toast.error((data as { error?: string }).error ?? t("addInstructorFailed"))` to `console.error(data); toast.error(t("addInstructorFailed"))`
+  2. Verify gate passes
+- **Status:** Pending
 
 ---
 
-### M2: Add `.catch()` guard to admin-config test-connection (AGG-2)
+### M2: Stop leaking raw server errors to users via `toast.error()` in `language-config-table.tsx` (AGG-1)
+
+- **Source:** AGG-1 (partial)
+- **Severity / confidence:** MEDIUM / MEDIUM
+- **Citations:** `src/app/(dashboard)/dashboard/admin/languages/language-config-table.tsx:137,160,187`
+- **Problem:** Three locations pass raw `data.error` to `toast.error()`.
+- **Plan:**
+  1. Line 137: Change `toast.error(data.error ?? t("toast.buildError"))` to `console.error(data.error); toast.error(t("toast.buildError"))`
+  2. Line 160: Change `toast.error(data.error ?? t("toast.removeError"))` to `console.error(data.error); toast.error(t("toast.removeError"))`
+  3. Line 187: Change `toast.error(data.error ?? t("toast.pruneError"))` to `console.error(data.error); toast.error(t("toast.pruneError"))`
+  4. Verify gate passes
+- **Status:** Pending
+
+---
+
+### M3: Stop leaking raw server errors via `t()` key in `database-backup-restore.tsx` (AGG-1)
+
+- **Source:** AGG-1 (partial)
+- **Severity / confidence:** MEDIUM / HIGH
+- **Citations:** `src/app/(dashboard)/dashboard/admin/settings/database-backup-restore.tsx:146`
+- **Problem:** Raw server error used as `t()` translation key. If no matching key, raw string shown verbatim.
+- **Plan:**
+  1. Change line 146 from `toast.error(t((data as { error?: string }).error ?? "restoreFailed"))` to `console.error(data); toast.error(t("restoreFailed"))`
+  2. Verify gate passes
+- **Status:** Pending
+
+---
+
+### M4: Stop leaking raw server errors to users via `toast.error()` in `problem-import-button.tsx` (AGG-1)
+
+- **Source:** AGG-1 (partial)
+- **Severity / confidence:** MEDIUM / MEDIUM
+- **Citations:** `src/app/(dashboard)/dashboard/problems/problem-import-button.tsx:38`
+- **Problem:** Line 38 passes raw server error to `toast.error()`.
+- **Plan:**
+  1. Change line 38 from `toast.error((err as { error?: string }).error ?? t("importFailed"))` to `console.error(err); toast.error(t("importFailed"))`
+  2. Verify gate passes
+- **Status:** Pending
+
+---
+
+### M5: Add undefined-navigation guard in `problem-import-button.tsx` (AGG-2)
 
 - **Source:** AGG-2
 - **Severity / confidence:** MEDIUM / MEDIUM
-- **Citations:** `src/lib/plugins/chat-widget/admin-config.tsx:103`
-- **Problem:** `response.json()` without `.catch()` on the success path in handleTestConnection.
+- **Citations:** `src/app/(dashboard)/dashboard/problems/problem-import-button.tsx:42-44`
+- **Problem:** After `res.ok`, if `.json()` fallback fires, `result.data.id` is `undefined` and user is navigated to `/dashboard/problems/undefined`.
 - **Plan:**
-  1. Change line 103 to `const data = await response.json().catch(() => ({ success: false, error: "parseError" }));`
-  2. Verify all gates pass
-- **Status:** DONE
-
----
-
-### M3: Add `.catch()` guards to all three AI provider chatWithTools (AGG-3)
-
-- **Source:** AGG-3
-- **Severity / confidence:** MEDIUM / MEDIUM
-- **Citations:**
-  - `src/lib/plugins/chat-widget/providers.ts:138` (OpenAI)
-  - `src/lib/plugins/chat-widget/providers.ts:258` (Claude)
-  - `src/lib/plugins/chat-widget/providers.ts:398` (Gemini)
-- **Problem:** All three `chatWithTools` call `response.json()` without `.catch()` after `response.ok`.
-- **Plan:**
-  1. Wrap each `.json()` call in `.catch(() => ({}))` — an empty object is a safe fallback since the code checks for specific fields (choices, content, candidates)
-  2. Verify all gates pass
-- **Status:** DONE
-
----
-
-### M4: Add `.catch()` guard to comment-section GET fetch (AGG-4)
-
-- **Source:** AGG-4
-- **Severity / confidence:** MEDIUM / MEDIUM
-- **Citations:** `src/app/(dashboard)/dashboard/submissions/[id]/_components/comment-section.tsx:45`
-- **Problem:** `response.json()` without `.catch()` on the success path in fetchComments.
-- **Plan:**
-  1. Change line 45 to `const payload = (await response.json().catch(() => ({ data: [] }))) as { data?: CommentView[] };`
-  2. Verify all gates pass
-- **Status:** DONE
-
----
-
-### L1: Fix `Number()` NaN risk in admin-config maxTokens/rateLimitPerMinute (AGG-5)
-
-- **Source:** AGG-5
-- **Severity / confidence:** LOW / MEDIUM
-- **Citations:** `src/lib/plugins/chat-widget/admin-config.tsx:294,305`
-- **Problem:** `Number(e.target.value)` can produce `0` from empty string or `NaN` from invalid text.
-- **Plan:**
-  1. Change line 294: `setMaxTokens(parseInt(e.target.value, 10) || 100)`
-  2. Change line 305: `setRateLimitPerMinute(parseInt(e.target.value, 10) || 10)`
-  3. Verify all gates pass
-- **Status:** DONE
-
----
-
-### L2: Fix `Number()` NaN risk in assignment-form-dialog exam duration (AGG-6)
-
-- **Source:** AGG-6
-- **Severity / confidence:** LOW / MEDIUM
-- **Citations:** `src/app/(dashboard)/dashboard/groups/[id]/assignment-form-dialog.tsx:454`
-- **Problem:** `Number(e.target.value)` for exam duration can produce `NaN` or `0` from invalid/empty input.
-- **Plan:**
-  1. Change line 454: `setExamDurationMinutes(e.target.value ? parseInt(e.target.value, 10) || null : null)`
-  2. Verify all gates pass
-- **Status:** DONE
-
----
-
-### L3: Update `apiFetchJson` JSDoc to mention success-path `.catch()` protection (AGG-7)
-
-- **Source:** AGG-7
-- **Severity / confidence:** LOW / MEDIUM
-- **Citations:** `src/lib/api/client.ts:87-123`
-- **Problem:** JSDoc does not explicitly state that `.catch()` applies to both success and error response parsing.
-- **Plan:**
-  1. Add explicit note to JSDoc about both-path `.catch()` protection
-  2. Verify all gates pass
-- **Status:** DONE
-
----
-
-### L4: Add screen reader announcement for test connection result (AGG-8)
-
-- **Source:** AGG-8
-- **Severity / confidence:** LOW / LOW
-- **Citations:** `src/lib/plugins/chat-widget/admin-config.tsx:240-243`
-- **Problem:** Test connection result is a `<span>` with no `role` or `aria-live`. Screen readers won't announce it.
-- **Plan:**
-  1. Add `role="status"` and `aria-live="polite"` to the result container
-  2. Verify all gates pass
-- **Status:** DONE
+  1. After line 42, add guard: `const problemId = result.data?.id;`
+  2. Change line 44 to: `if (problemId) { router.push(`/dashboard/problems/${problemId}`); } else { router.push("/dashboard/problems"); }`
+  3. Verify gate passes
+- **Status:** Pending
 
 ---
 
@@ -166,9 +120,22 @@ No cycle-20 review finding is silently dropped. No new refactor-only work is add
 - **Reason for deferral:** Test infrastructure for component-level mocking of `apiFetch` needs setup. Large scope.
 - **Exit criterion:** When component test coverage pass is scheduled.
 
+### DEFER-5: Raw server error passed to `Error()` constructor in throw statements (from CR-5)
+
+- **Source:** CR-5 (cycle 20 fresh review)
+- **Severity / confidence:** LOW / MEDIUM
+- **Citations:**
+  - `src/app/(dashboard)/dashboard/groups/edit-group-dialog.tsx:92`
+  - `src/app/(dashboard)/dashboard/groups/[id]/group-members-manager.tsx:222`
+  - `src/components/exam/start-exam-button.tsx:42`
+  - `src/app/(dashboard)/dashboard/problem-sets/_components/problem-set-form.tsx:130,159,181,216`
+- **Reason for deferral:** Most of these have error-message mapping functions (e.g., `getErrorMessage()`) that only match known server error codes and fall back to a generic message. The pattern itself (server error code used as `Error.message` which is then mapped) is a valid design pattern for mapped error handling — only the unmapped catch blocks need auditing.
+- **Exit criterion:** When a comprehensive error-mapping audit is scheduled.
+
 ---
 
 ## Progress log
 
 - 2026-04-22: Plan created from RPF cycle 20 aggregate review. 8 tasks (M1-M4, L1-L4). 4 deferred items. All findings from the aggregate review are either scheduled for implementation or explicitly deferred.
 - 2026-04-22: All 8 tasks implemented (M1-M4, L1-L4). All gates pass (eslint, next build, vitest unit). 6 commits pushed.
+- 2026-04-24: Fresh review conducted. 2 new deduped findings (AGG-1: raw server error leaks in 4 files/6 locations, AGG-2: undefined navigation crash in problem-import-button). Plan updated with 5 new implementation tasks (M1-M5). DEFER-5 added for throw-statement error codes.

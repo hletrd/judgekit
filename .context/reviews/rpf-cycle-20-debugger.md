@@ -1,61 +1,27 @@
-# RPF Cycle 20 — Debugger
+# Debugger Review — RPF Cycle 20 (Fresh)
 
-**Date:** 2026-04-22
-**Base commit:** 4182e529
+**Date:** 2026-04-24
+**Reviewer:** debugger
+**Base commit:** 9bd909a2
 
-## Findings
+## Previous Findings Status
 
-### DBG-1: `create-group-dialog.tsx:74-78` — Unguarded `.json()` + `data.data.id` crash chain [MEDIUM/HIGH]
+All previously identified debug issues confirmed FIXED. The `.json()` `.catch()` pattern, NaN guards, and navigation guards are all in place.
 
-**File:** `src/app/(dashboard)/dashboard/groups/create-group-dialog.tsx:74-78`
+## New Findings
 
-**Description:** Line 74 calls `const data = await response.json()` without `.catch()`. If `.json()` throws SyntaxError, the catch block (line 80) calls `getErrorMessage(error)`. However, if `.json()` succeeds but returns unexpected data (e.g., `{ data: {} }` from a `.catch()` fallback scenario in a future refactor), line 78 accesses `data.data.id` which would be `undefined`. The `router.push` would navigate to `/dashboard/groups/undefined`.
+### DBG-1: `problem-import-button.tsx:44` navigates to `/dashboard/problems/undefined` when JSON parse fallback fires [MEDIUM/HIGH]
 
-**Concrete failure scenario:** A CDN returns `200 OK` with HTML. `.json()` throws SyntaxError. The catch block shows "createError" toast. User is stuck on the dialog — the group was actually created but the client couldn't parse the response. No way to navigate to the new group.
+**File:** `src/app/(dashboard)/dashboard/problems/problem-import-button.tsx:42-44`
 
-**Fix:** Add `.catch(() => ({ data: {} }))` and guard `data.data?.id` before navigating, similar to how `contest-join-client.tsx` guards `assignmentId`.
+**Description:** After `res.ok`, line 42 calls `res.json().catch(() => ({ data: {} }))`. If the `.catch()` fires (non-JSON success body), `result.data.id` is `undefined`. Line 44 then navigates to `/dashboard/problems/undefined`.
 
----
+**Concrete failure scenario:** A reverse proxy returns `200 OK` with an HTML body. `.json()` throws `SyntaxError`, caught by `.catch()`. The user sees "Import success" toast but lands on a broken page.
 
-### DBG-2: `admin-config.tsx:103` — Test connection response parsed without safety net [MEDIUM/MEDIUM]
-
-**File:** `src/lib/plugins/chat-widget/admin-config.tsx:103`
-
-**Description:** The `handleTestConnection` function calls `response.json()` without `.catch()` after `response.ok`. If the test-connection endpoint returns 200 with a non-JSON body, the SyntaxError is caught and `setTestResult({ success: false, error: tCommon("error") })` is set. This is misleading — the test may have actually succeeded, but the result shows failure.
-
-**Fix:** Add `.catch()` to the `.json()` call.
+**Fix:** Add guard: `const problemId = result.data?.id; if (problemId) { router.push(`/dashboard/problems/${problemId}`); } else { router.push("/dashboard/problems"); }`.
 
 ---
 
-### DBG-3: `providers.ts` — AI provider `.json()` without `.catch()` could crash tool-calling loops [MEDIUM/MEDIUM]
+### DBG-2: No other latent crash chains found [INFO/N/A]
 
-**Files:**
-- `src/lib/plugins/chat-widget/providers.ts:138` (OpenAI chatWithTools)
-- `src/lib/plugins/chat-widget/providers.ts:258` (Claude chatWithTools)
-- `src/lib/plugins/chat-widget/providers.ts:398` (Gemini chatWithTools)
-
-**Description:** All three `chatWithTools` implementations call `response.json()` without `.catch()` on the success path. If the API returns a 200 with HTML (e.g., Cloudflare challenge page), the SyntaxError propagates up and terminates the chat tool-calling loop. The user would see a generic error with no actionable feedback.
-
-**Fix:** Wrap `.json()` in `.catch(() => ({}))` and handle the empty fallback.
-
----
-
-### DBG-4: `comment-section.tsx:45` — GET `.json()` without `.catch()` causes unnecessary error toast spam [LOW/MEDIUM]
-
-**File:** `src/app/(dashboard)/dashboard/submissions/[id]/_components/comment-section.tsx:45`
-
-**Description:** The `fetchComments` function is called on mount and whenever `submissionId` changes. If a non-JSON response is returned, the SyntaxError triggers `toast.error(tComments("loadError"))`. This could result in repeated error toasts if the proxy intermittently returns HTML.
-
-**Fix:** Add `.catch(() => ({ data: [] }))` to silently handle parse failures on the success path.
-
----
-
-## Verified Safe (No Issue Found)
-
-- `contest-join-client.tsx` properly guards against `undefined` `assignmentId` after JSON parse failure
-- `bulk-create-dialog.tsx` properly uses `.catch()` on both error and success `.json()` calls
-- `assignment-form-dialog.tsx` properly uses `.catch()` on `.json()` and guards `createdAssignmentId`
-- `use-submission-polling.ts` properly uses `.catch()` on `.json()` and handles missing `payload.data`
-- `problem-submission-form.tsx` properly uses `.catch()` on both run and submit paths
-- Anti-cheat heartbeat uses recursive `setTimeout` (not `setInterval`) — fixed in previous cycle
-- `SubmissionListAutoRefresh` has proper exponential backoff — fixed in previous cycle
+All previously fixed `.json()` anti-patterns remain fixed. The `docker/client.ts` uses `.json()` without `.catch()` but this is server-side code communicating with a trusted internal Docker API, and the `readError` helper already wraps its `.json()` call in try/catch. The `callWorkerJson` returns raw `response.json()` but it's behind `!response.ok` check and any SyntaxError would propagate as a thrown error, which is the desired behavior for internal service calls.

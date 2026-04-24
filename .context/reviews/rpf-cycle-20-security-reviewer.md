@@ -1,73 +1,40 @@
-# RPF Cycle 20 — Security Reviewer
+# Security Review — RPF Cycle 20 (Fresh)
 
-**Date:** 2026-04-22
-**Base commit:** 4182e529
+**Date:** 2026-04-24
+**Reviewer:** security-reviewer
+**Base commit:** 9bd909a2
 
-## Findings
+## Previous Findings Status
 
-### SEC-1: `create-group-dialog.tsx:74` — Unguarded `.json()` allows SyntaxError to bypass error handling [MEDIUM/MEDIUM]
+All previously identified security issues confirmed FIXED. The `.json()` `.catch()` pattern is now consistently applied across client-side code. `hcaptchaSecret` is in both the logger redact paths and export redaction maps.
 
-**File:** `src/app/(dashboard)/dashboard/groups/create-group-dialog.tsx:74`
+## New Findings
 
-**Description:** After `response.ok`, `response.json()` is called without `.catch()`. A non-JSON 200 response throws SyntaxError. While not a direct security vulnerability, the crash can mask an attack where a MITM or compromised CDN injects HTML responses. The code does handle SyntaxError in the catch block (line 44 checks `error instanceof SyntaxError`), but this is fragile — if the error handling changes, the server error string could leak.
-
-**Fix:** Add `.catch()` to the `.json()` call per the codebase convention.
-
----
-
-### SEC-2: `admin-config.tsx:103` — Unguarded `.json()` on test-connection success path [MEDIUM/MEDIUM]
-
-**File:** `src/lib/plugins/chat-widget/admin-config.tsx:103`
-
-**Description:** Same pattern as SEC-1. The test-connection endpoint hits external AI provider APIs. If a proxy returns HTML, the unguarded `.json()` throws. The error message from the catch block may expose partial response content to the admin user.
-
-**Fix:** Add `.catch()` or use `apiFetchJson`.
-
----
-
-### SEC-3: `providers.ts` — AI provider API responses parsed without `.catch()` [LOW/MEDIUM]
+### SEC-1: Information disclosure via raw server errors in toast — 5 locations [MEDIUM/HIGH]
 
 **Files:**
-- `src/lib/plugins/chat-widget/providers.ts:138` (OpenAI)
-- `src/lib/plugins/chat-widget/providers.ts:258` (Claude)
-- `src/lib/plugins/chat-widget/providers.ts:398` (Gemini)
+- `src/app/(dashboard)/dashboard/groups/[id]/group-instructors-manager.tsx:73`
+- `src/app/(dashboard)/dashboard/admin/languages/language-config-table.tsx:137,160,187`
+- `src/app/(dashboard)/dashboard/admin/settings/database-backup-restore.tsx:146`
+- `src/app/(dashboard)/dashboard/problems/problem-import-button.tsx:38`
 
-**Description:** All three AI provider `chatWithTools` implementations parse `response.json()` without `.catch()` after checking `response.ok`. These are server-to-server calls to known AI APIs, so the risk is lower. However, CDN/WAF intermediaries (Cloudflare, etc.) can inject HTML error pages that would cause SyntaxError.
+**Description:** These locations expose raw server error strings to the user. This is OWASP A01:2021 (Broken Access Control) / A05:2021 (Security Misconfiguration). The server error string could contain SQL constraint names, stack traces, file paths, or other internal details.
 
-**Fix:** Wrap in `.catch(() => ({}))`.
+The most dangerous variant is in `database-backup-restore.tsx:146` where the raw error is used as a `t()` translation key — if it doesn't match a key, the raw string is shown verbatim.
 
----
-
-### SEC-4: `comment-section.tsx:45` — GET path `.json()` without `.catch()` [LOW/MEDIUM]
-
-**File:** `src/app/(dashboard)/dashboard/submissions/[id]/_components/comment-section.tsx:45`
-
-**Description:** The comment fetch calls `response.json()` after `response.ok` without `.catch()`. Same anti-pattern as SEC-1/SEC-2 but for a read-only GET. Lower severity since no sensitive data is sent.
-
-**Fix:** Add `.catch(() => ({ data: [] }))`.
+**Fix:** Use `console.error(rawError); toast.error(localizedLabel)` pattern for all locations.
 
 ---
 
-### SEC-5: `invite-participants.tsx:89` — Server error key checked against whitelist, but no logging for unexpected keys [LOW/LOW]
+### SEC-2: No new critical security regressions found [INFO/N/A]
 
-**File:** `src/components/contest/invite-participants.tsx:89`
-
-**Description:** The error handling correctly maps `userNotFound` to a localized label and uses a safe fallback for all other errors. However, unexpected error keys are silently swallowed without logging. This could hide server-side issues during incident response.
-
-**Fix:** Add `console.error("Invite failed:", data.error)` before the toast.
-
----
-
-## Verified Safe (No Issue Found)
-
-- HTML sanitization uses DOMPurify with strict allowlists (LEGACY_HTML_ALLOWED_TAGS, LEGACY_HTML_ALLOWED_ATTR)
-- `safeJsonForScript` properly escapes `</script` and `<!--` sequences for JSON-LD embedding
-- `sanitizeMarkdown` strips null bytes and control characters
-- Image src attributes restricted to root-relative paths only
-- URI regexp in DOMPurify only allows `https:`, `mailto:`, and root-relative paths
-- CSRF protection via `X-Requested-With: XMLHttpRequest` header on all `apiFetch` calls
-- Auth tokens (`RUNNER_AUTH_TOKEN`, `RATE_LIMITER_AUTH_TOKEN`) sent only over server-to-server fetch calls
-- API keys for AI providers are handled via `type="password"` inputs
-- Encryption key is validated in production (`src/lib/security/encryption.ts:33`)
-- No `as any`, `@ts-ignore`, or `@ts-expect-error` usage
-- No raw server error strings leaked to users (previous cycle fixes confirmed working)
+**Description:** Security posture remains strong:
+- HTML sanitization uses DOMPurify with strict allowlists
+- No `as any`, `@ts-ignore`, or `@ts-expect-error`
+- Auth flow robust (Argon2id, timing-safe dummy hash, rate limiting)
+- CSRF protection consistent across mutation routes
+- Proxy middleware correctly enforces must-change-password redirects
+- Cleanup endpoint gated behind ENABLE_CRON_CLEANUP opt-in
+- Judge worker registration uses hashed secrets (plaintext secretToken dropped)
+- Export redaction properly covers passwordHash, encryptedKey, hcaptchaSecret
+- Logger redact paths cover authorization, passwords, tokens, secrets
