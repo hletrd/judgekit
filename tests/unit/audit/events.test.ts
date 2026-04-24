@@ -291,43 +291,27 @@ describe("getAuditEventHealthSnapshot", () => {
 });
 
 describe("startAuditEventPruning / stopAuditEventPruning", () => {
-  it("startAuditEventPruning sets up an interval and runs an initial prune", async () => {
+  it("startAuditEventPruning is a no-op (pruning consolidated into data-retention-maintenance)", async () => {
     const { startAuditEventPruning, stopAuditEventPruning } = await import("@/lib/audit/events");
 
-    stopAuditEventPruning();
+    // Audit event pruning was consolidated into startSensitiveDataPruning()
+    // in src/lib/data-retention-maintenance.ts. These stubs are kept for
+    // backward compatibility with instrumentation.ts.
     mocks.dbExecute.mockResolvedValue({ rowCount: 0 });
     startAuditEventPruning();
     await Promise.resolve();
 
-    expect(mocks.dbExecute).toHaveBeenCalledTimes(1);
+    // Should NOT trigger any DB queries — pruning is now handled elsewhere
+    expect(mocks.dbExecute).toHaveBeenCalledTimes(0);
     expect(() => stopAuditEventPruning()).not.toThrow();
   });
 
-  it("stopAuditEventPruning clears interval", async () => {
+  it("stopAuditEventPruning is a no-op", async () => {
     const { startAuditEventPruning, stopAuditEventPruning } = await import("@/lib/audit/events");
 
-    mocks.dbExecute.mockResolvedValue({ rowCount: 0 });
     startAuditEventPruning();
     stopAuditEventPruning();
 
     expect(() => stopAuditEventPruning()).not.toThrow();
-  });
-
-  it("calling startAuditEventPruning twice does not create duplicate intervals", async () => {
-    const { startAuditEventPruning, stopAuditEventPruning } = await import("@/lib/audit/events");
-
-    stopAuditEventPruning();
-    mocks.dbExecute.mockResolvedValue({ rowCount: 0 });
-    startAuditEventPruning();
-    startAuditEventPruning();
-    await Promise.resolve();
-
-    const initialPruneCalls = mocks.dbExecute.mock.calls.length;
-    expect(initialPruneCalls).toBe(2);
-
-    await vi.advanceTimersByTimeAsync(24 * 60 * 60 * 1000);
-
-    expect(mocks.dbExecute).toHaveBeenCalledTimes(initialPruneCalls + 1);
-    stopAuditEventPruning();
   });
 });
