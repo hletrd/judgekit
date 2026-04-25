@@ -7,9 +7,22 @@ import { getDbNowUncached } from "@/lib/db-time";
 import { computeSimilarityRust } from "./code-similarity-client";
 
 /**
+ * Maximum length (in characters) of a single string literal before the
+ * normalizer truncates it. Prevents CPU waste on pathological inputs
+ * (e.g., a 256 KB base64 blob inside a single string) and bounds the
+ * inner while-loop iterations for unclosed strings.
+ */
+const MAX_STRING_LITERAL_LENGTH = 10_000;
+
+/**
  * Normalize source code for similarity comparison.
  * Strips comments, whitespace, and string literals to reduce false negatives.
  * Preserves C/C++ preprocessor directives (#include, #define, etc.).
+ * Handles double-quoted, single-quoted, and backtick-delimited (template)
+ * strings. Unclosed strings are discarded entirely (opening quote NOT output)
+ * to avoid consuming the rest of the file as string content, which would
+ * cause identifiers after the unclosed string to be skipped by
+ * normalizeIdentifiersForSimilarity().
  */
 export function normalizeSource(source: string): string {
   let result = "";
@@ -48,37 +61,82 @@ export function normalizeSource(source: string): string {
       }
     }
 
+    // Double-quoted strings: output quotes but strip content.
+    // Unclosed strings (no closing quote before end-of-line or end-of-file)
+    // are discarded entirely — the opening quote is NOT output, and the index
+    // is left at the newline (or end-of-file) so subsequent code is processed.
+    // Newline check prevents an unclosed string from consuming the rest of the
+    // file, which would cause identifiers after the unclosed string to be
+    // skipped by normalizeIdentifiersForSimilarity().
     if (current === "\"") {
-      result += "\"";
       index += 1;
-      while (index < source.length && source[index] !== "\"") {
+      let stringLength = 0;
+      while (index < source.length && source[index] !== "\"" && source[index] !== "\n" && stringLength < MAX_STRING_LITERAL_LENGTH) {
         if (source[index] === "\\" && index + 1 < source.length) {
           index += 2;
+          stringLength += 2;
           continue;
         }
         index += 1;
+        stringLength += 1;
       }
-      if (index < source.length) {
-        result += "\"";
+      if (index < source.length && source[index] === "\"") {
+        // Closed string — output opening and closing quotes, strip content
+        result += "\"\"";
         index += 1;
       }
+      // Unclosed string: don't output the opening quote.
+      // If newline terminated the loop, index is at '\n' and the outer loop
+      // will handle it. If end-of-file, the outer loop exits.
       continue;
     }
 
+    // Single-quoted strings: same logic as double-quoted (newline terminates).
     if (current === "'") {
-      result += "'";
       index += 1;
-      while (index < source.length && source[index] !== "'") {
+      let stringLength = 0;
+      while (index < source.length && source[index] !== "'" && source[index] !== "\n" && stringLength < MAX_STRING_LITERAL_LENGTH) {
         if (source[index] === "\\" && index + 1 < source.length) {
           index += 2;
+          stringLength += 2;
           continue;
         }
         index += 1;
+        stringLength += 1;
       }
-      if (index < source.length) {
-        result += "'";
+      if (index < source.length && source[index] === "'") {
+        // Closed string — output opening and closing quotes, strip content
+        result += "''";
         index += 1;
       }
+      // Unclosed string: don't output the opening quote.
+      continue;
+    }
+
+    // Template literals (backtick strings): output backticks but strip content.
+    // Handles both simple template literals (`hello`) and interpolated ones
+    // (`hello ${x}`) by scanning for the closing backtick. Interpolation
+    // markers (${...}) are treated as part of the string content and stripped.
+    // Template literals CAN span lines, so no newline check in the inner loop.
+    // Unclosed template literals: the opening backtick is NOT output.
+    if (current === "`") {
+      index += 1;
+      let stringLength = 0;
+      while (index < source.length && source[index] !== "`" && stringLength < MAX_STRING_LITERAL_LENGTH) {
+        if (source[index] === "\\" && index + 1 < source.length) {
+          index += 2;
+          stringLength += 2;
+          continue;
+        }
+        index += 1;
+        stringLength += 1;
+      }
+      if (index < source.length && source[index] === "`") {
+        // Closed template literal — output delimiters, strip content
+        result += "``";
+        index += 1;
+      }
+      // Unclosed template literal: don't output the opening backtick.
       continue;
     }
 

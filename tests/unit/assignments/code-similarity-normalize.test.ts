@@ -34,6 +34,59 @@ describe("normalizeSource", () => {
 
     expect(normalized).toBe("let Value = 1; Value++;");
   });
+
+  it("strips content from closed double-quoted strings, preserving delimiters", () => {
+    const normalized = normalizeSource('printf("hello world");');
+    expect(normalized).toBe("printf(\"\");");
+  });
+
+  it("strips content from closed single-quoted strings, preserving delimiters", () => {
+    const normalized = normalizeSource("char c = 'x';");
+    expect(normalized).toBe("char c = '';");
+  });
+
+  it("strips content from closed template literals, preserving delimiters", () => {
+    const normalized = normalizeSource("const msg = `hello`; ");
+    expect(normalized).toBe("const msg = ``;");
+  });
+
+  it("strips content from template literals with interpolation", () => {
+    const normalized = normalizeSource("const msg = `hello ${name}!`; ");
+    expect(normalized).toBe("const msg = ``;");
+  });
+
+  it("discards unclosed double-quoted strings entirely (no opening quote output)", () => {
+    const normalized = normalizeSource('"hello');
+    expect(normalized).toBe("");
+  });
+
+  it("discards unclosed single-quoted strings entirely", () => {
+    const normalized = normalizeSource("'hello");
+    expect(normalized).toBe("");
+  });
+
+  it("discards unclosed template literals entirely", () => {
+    const normalized = normalizeSource("`hello");
+    expect(normalized).toBe("");
+  });
+
+  it("does not consume code after an unclosed string as string content", () => {
+    // An unclosed string should NOT cause identifiers on the next line to be lost.
+    // Without a newline, there is no way to distinguish string content from code
+    // within an unclosed string, so we test the newline boundary.
+    const normalized = normalizeSource('"unclosed\nint x = 1;');
+    expect(normalized).toBe("int x = 1;");
+  });
+
+  it("handles multiple closed strings correctly", () => {
+    const normalized = normalizeSource('printf("a" + "b");');
+    expect(normalized).toBe('printf("" + "");');
+  });
+
+  it("handles escape sequences inside strings", () => {
+    const normalized = normalizeSource('printf("hello\\nworld");');
+    expect(normalized).toBe('printf("");');
+  });
 });
 
 describe("normalizeIdentifiersForSimilarity", () => {
