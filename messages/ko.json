@@ -2417,7 +2417,8 @@
         "title": "부정행위 신호 타임라인",
         "noEvents": "이 참가자에 대한 부정행위 신호가 없습니다."
       }
-    }
+    },
+    "backToContestList": "대회 목록으로 돌아가기"
   },
   "compiler": {
     "title": "컴파일러",

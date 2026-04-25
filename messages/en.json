@@ -2417,7 +2417,8 @@
         "title": "Anti-Cheat Signals Timeline",
         "noEvents": "No anti-cheat signals for this participant."
       }
-    }
+    },
+    "backToContestList": "Back to Contests"
   },
   "compiler": {
     "title": "Compiler",
