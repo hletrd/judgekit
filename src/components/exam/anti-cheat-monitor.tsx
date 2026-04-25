@@ -105,6 +105,31 @@ export function AntiCheatMonitor({
       }
     }
     savePendingEvents(assignmentId, remaining);
+
+    // If there are still retriable events after the flush, schedule another
+    // retry with exponential backoff (capped at 30 seconds) so pending events
+    // are not silently dropped when the user closes the tab before the next
+    // visibility change triggers another flush.
+    const hasRetriable = remaining.some((e) => e.retries < MAX_RETRIES);
+    if (hasRetriable && !retryTimerRef.current) {
+      const maxRetry = remaining.reduce((max, e) => Math.max(max, e.retries), 0);
+      const backoffDelay = Math.min(RETRY_BASE_DELAY_MS * Math.pow(2, maxRetry), 30_000);
+      retryTimerRef.current = setTimeout(async () => {
+        retryTimerRef.current = null;
+        // Re-read and flush pending events directly rather than going through
+        // the ref, to avoid a circular dependency that triggers
+        // react-hooks/immutability.
+        const retryPending = loadPendingEvents(assignmentId);
+        const retryRemaining: PendingEvent[] = [];
+        for (const ev of retryPending) {
+          const ok = await sendEvent(ev);
+          if (!ok && ev.retries < MAX_RETRIES) {
+            retryRemaining.push({ ...ev, retries: ev.retries + 1 });
+          }
+        }
+        savePendingEvents(assignmentId, retryRemaining);
+      }, backoffDelay);
+    }
   }, [assignmentId, sendEvent]);
 
   const reportEvent = useCallback(
