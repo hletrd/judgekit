@@ -23,8 +23,22 @@ const addLanguageSchema = z.object({
 export const GET = createApiHandler({
   auth: { capabilities: ["system.settings"] },
   handler: async () => {
+    // Omit dockerfile from the list endpoint — it can be up to 10,000 chars
+    // and is available via the individual language GET route when needed.
     const languages = await db
-      .select()
+      .select({
+        id: languageConfigs.id,
+        language: languageConfigs.language,
+        displayName: languageConfigs.displayName,
+        standard: languageConfigs.standard,
+        extension: languageConfigs.extension,
+        dockerImage: languageConfigs.dockerImage,
+        compiler: languageConfigs.compiler,
+        compileCommand: languageConfigs.compileCommand,
+        runCommand: languageConfigs.runCommand,
+        isEnabled: languageConfigs.isEnabled,
+        updatedAt: languageConfigs.updatedAt,
+      })
       .from(languageConfigs)
       .orderBy(asc(languageConfigs.displayName), asc(languageConfigs.standard));
 
