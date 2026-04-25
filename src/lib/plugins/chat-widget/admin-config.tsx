@@ -292,7 +292,7 @@ export default function ChatWidgetAdminConfig({ config, onSave }: PluginAdminPro
             <Input
               type="number"
               value={maxTokens}
-              onChange={(e) => setMaxTokens(parseInt(e.target.value, 10) || 100)}
+              onChange={(e) => { const v = parseInt(e.target.value, 10); setMaxTokens(Number.isFinite(v) ? v : 100); }}
               min={100}
               max={8192}
             />
@@ -303,7 +303,7 @@ export default function ChatWidgetAdminConfig({ config, onSave }: PluginAdminPro
             <Input
               type="number"
               value={rateLimitPerMinute}
-              onChange={(e) => setRateLimitPerMinute(parseInt(e.target.value, 10) || 10)}
+              onChange={(e) => { const v = parseInt(e.target.value, 10); setRateLimitPerMinute(Number.isFinite(v) ? v : 10); }}
               min={1}
               max={100}
             />
