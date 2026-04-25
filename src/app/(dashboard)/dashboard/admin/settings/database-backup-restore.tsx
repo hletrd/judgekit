@@ -42,7 +42,12 @@ export function DatabaseBackupRestore({ isSuperAdmin }: { isSuperAdmin: boolean 
       );
       if (!response.ok) {
         const data = await response.json().catch(() => ({}));
-        toast.error(t(data.error ?? (isPortableExport ? "portableExportFailed" : "backupFailed")));
+        // Only use known i18n keys — never pass raw API error strings to t()
+        const knownErrors = new Set(["passwordRequired", "invalidPassword", "authenticationFailed", "forbidden"]);
+        const errorKey = typeof data.error === "string" && knownErrors.has(data.error)
+          ? data.error
+          : (isPortableExport ? "portableExportFailed" : "backupFailed");
+        toast.error(t(errorKey));
         return;
       }
       const blob = await response.blob();
