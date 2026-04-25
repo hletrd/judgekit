@@ -49,20 +49,18 @@ export function DiscussionThreadForm({
         body: JSON.stringify({ scopeType, problemId: problemId ?? null, title, content }),
       });
       if (!response.ok) {
-        const errorBody = await response.json().catch(() => ({}));
         if (process.env.NODE_ENV === "development") {
+          const errorBody = await response.json().catch(() => ({}));
           console.error("Discussion thread creation failed:", (errorBody as { error?: string }).error);
         }
-        throw new Error(errorLabel);
+        toast.error(errorLabel);
+        return;
       }
       setTitle("");
       setContent("");
       toast.success(successLabel);
       router.refresh();
-    } catch (error) {
-      if (process.env.NODE_ENV === "development") {
-        console.error("Discussion thread creation failed:", error);
-      }
+    } catch {
       toast.error(errorLabel);
     } finally {
       setIsSubmitting(false);

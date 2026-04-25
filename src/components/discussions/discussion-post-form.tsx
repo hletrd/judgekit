@@ -43,19 +43,17 @@ export function DiscussionPostForm({
         body: JSON.stringify({ content }),
       });
       if (!response.ok) {
-        const errorBody = await response.json().catch(() => ({}));
         if (process.env.NODE_ENV === "development") {
+          const errorBody = await response.json().catch(() => ({}));
           console.error("Discussion post creation failed:", (errorBody as { error?: string }).error);
         }
-        throw new Error(errorLabel);
+        toast.error(errorLabel);
+        return;
       }
       setContent("");
       toast.success(successLabel);
       router.refresh();
-    } catch (error) {
-      if (process.env.NODE_ENV === "development") {
-        console.error("Discussion post creation failed:", error);
-      }
+    } catch {
       toast.error(errorLabel);
     } finally {
       setIsSubmitting(false);
