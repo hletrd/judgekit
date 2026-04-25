@@ -29,7 +29,7 @@ All prior cycle 43 tasks are complete:
 3. If we need to evict N entries, just pop the first N keys from the Map (O(N) instead of O(N * map.size))
 4. Verify all gates pass
 
-**Status:** TODO
+**Status:** DONE — commit 441255d5
 
 ---
 
@@ -48,7 +48,7 @@ All prior cycle 43 tasks are complete:
 3. The fix should be minimal — the goal is to give Docker a window to reflect the OOM state before we read it
 4. Verify all gates pass
 
-**Status:** TODO
+**Status:** DONE — commit 13af6ad2
 
 ---
 
@@ -66,7 +66,7 @@ All prior cycle 43 tasks are complete:
 2. Before calling `reviewLimiter(async () => {...})`, check the pending count using `reviewLimiter.pending` and `reviewLimiter.activeCount`. If `reviewLimiter.pending + reviewLimiter.activeCount >= MAX_REVIEW_QUEUE_SIZE`, skip the review and log a debug message
 3. Verify all gates pass
 
-**Status:** TODO
+**Status:** DONE — commit 33590051
 
 ---
 
@@ -110,3 +110,4 @@ All prior cycle 43 tasks are complete:
 ## Progress log
 
 - 2026-04-26: Plan created with 3 tasks (A, B, C). 2 new deferred items this cycle.
+- 2026-04-26: All 3 tasks implemented. Task A in commit 441255d5, Task B in commit 13af6ad2, Task C in commit 33590051. All gates pass.
