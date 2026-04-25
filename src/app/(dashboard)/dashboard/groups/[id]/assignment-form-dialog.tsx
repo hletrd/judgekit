@@ -407,7 +407,7 @@ export default function AssignmentFormDialog({
                   max={100}
                   step="0.1"
                   value={latePenalty}
-                  onChange={(event) => setLatePenalty(parseFloat(event.target.value) || 0)}
+                  onChange={(event) => { const v = parseFloat(event.target.value); setLatePenalty(Number.isFinite(v) ? v : 0); }}
                   disabled={isLoading}
                 />
               </div>
@@ -454,7 +454,7 @@ export default function AssignmentFormDialog({
                   min={1}
                   max={1440}
                   value={examDurationMinutes ?? ""}
-                  onChange={(e) => setExamDurationMinutes(e.target.value ? parseInt(e.target.value, 10) || null : null)}
+                  onChange={(e) => { const v = parseInt(e.target.value, 10); setExamDurationMinutes(e.target.value && Number.isFinite(v) ? v : null); }}
                   disabled={isLoading}
                 />
                 <p className="text-sm text-muted-foreground">{t("examDurationDescription")}</p>
@@ -650,9 +650,10 @@ export default function AssignmentFormDialog({
                           min={1}
                           max={10000}
                           value={row.points}
-                          onChange={(event) =>
-                            updateProblemRow(index, { points: parseFloat(event.target.value) || 0 })
-                          }
+                          onChange={(event) => {
+                            const v = parseFloat(event.target.value);
+                            updateProblemRow(index, { points: Number.isFinite(v) ? v : 0 });
+                          }}
                           disabled={isLoading || !areProblemsEditable}
                         />
                       </div>
