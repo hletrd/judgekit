@@ -614,6 +614,37 @@ describe("proxy", () => {
   });
 
   // =========================================================================
+  // Security headers (X-Content-Type-Options, Referrer-Policy)
+  // =========================================================================
+  describe("security headers", () => {
+    it("sets X-Content-Type-Options: nosniff on all responses", async () => {
+      const response = await proxy(makeRequest("/login"));
+
+      expect(response.headers.get("X-Content-Type-Options")).toBe("nosniff");
+    });
+
+    it("sets Referrer-Policy: strict-origin-when-cross-origin on all responses", async () => {
+      const response = await proxy(makeRequest("/login"));
+
+      expect(response.headers.get("Referrer-Policy")).toBe("strict-origin-when-cross-origin");
+    });
+
+    it("sets security headers on protected API routes", async () => {
+      const response = await proxy(makeRequest("/api/v1/users"));
+
+      expect(response.headers.get("X-Content-Type-Options")).toBe("nosniff");
+      expect(response.headers.get("Referrer-Policy")).toBe("strict-origin-when-cross-origin");
+    });
+
+    it("sets security headers on public routes", async () => {
+      const response = await proxy(makeRequest("/"));
+
+      expect(response.headers.get("X-Content-Type-Options")).toBe("nosniff");
+      expect(response.headers.get("Referrer-Policy")).toBe("strict-origin-when-cross-origin");
+    });
+  });
+
+  // =========================================================================
   // User-Agent hash mismatch logging
   // =========================================================================
   describe("User-Agent hash mismatch logging", () => {

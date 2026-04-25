@@ -218,6 +218,8 @@ function createSecuredNextResponse(request: NextRequest) {
   ].join("; ");
 
   response.headers.set("Content-Security-Policy", csp);
+  response.headers.set("X-Content-Type-Options", "nosniff");
+  response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
 
   if (!isDev) {
     if (request.headers.get("x-forwarded-proto") === "https") {
