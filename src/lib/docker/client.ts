@@ -39,6 +39,7 @@ async function readError(response: Response): Promise<string> {
 }
 
 async function callWorkerJson<T>(path: string, init?: RequestInit): Promise<T> {
+  if (!JUDGE_WORKER_URL) throw new Error("JUDGE_WORKER_URL is not configured");
   const headers = new Headers(init?.headers);
   headers.set("Content-Type", "application/json");
   headers.set("Authorization", `Bearer ${RUNNER_AUTH_TOKEN}`);
@@ -61,6 +62,7 @@ function getWorkerDockerApiConfigError(): string | null {
 }
 
 async function callWorkerNoContent(path: string, init?: RequestInit): Promise<void> {
+  if (!JUDGE_WORKER_URL) throw new Error("JUDGE_WORKER_URL is not configured");
   const headers = new Headers(init?.headers);
   headers.set("Content-Type", "application/json");
   headers.set("Authorization", `Bearer ${RUNNER_AUTH_TOKEN}`);
@@ -173,7 +175,10 @@ async function buildDockerImageLocal(
       if (code === 0) {
         resolve({ success: true, logs: (stdout + "\n" + stderr).trim() });
       } else {
-        resolve({ success: false, error: stderr.trim() || stdout.trim() });
+        // Do not expose Docker build stderr/stdout in the API response — it may
+        // contain internal paths, env var names, or registry URLs. Full output
+        // is already captured in the stdout/stderr handlers above for logging.
+        resolve({ success: false, error: "Docker build failed" });
       }
     });
 
