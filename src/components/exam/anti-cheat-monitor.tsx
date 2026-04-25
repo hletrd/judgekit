@@ -201,13 +201,13 @@ export function AntiCheatMonitor({
       // Code block in problem
       if (el.closest("pre") || el.closest("code")) return "code-block";
       // Headings, paragraphs, spans in content
+      // Note: text content is intentionally NOT captured to avoid storing
+      // copyrighted exam problem text in the audit log.
       if (["P", "SPAN", "H1", "H2", "H3", "H4", "H5", "H6", "LI", "TD", "TH", "A", "STRONG", "EM"].includes(tag)) {
-        // Try to get a snippet of the content
-        const text = (el.textContent ?? "").trim().slice(0, 80);
         const parent = el.closest("[class]") as HTMLElement | null;
         const parentClass = parent?.className?.split(" ")[0] ?? "";
-        if (parentClass) return `${tag.toLowerCase()} in .${parentClass}${text ? `: "${text}"` : ""}`;
-        return `${tag.toLowerCase()}${text ? `: "${text}"` : ""}`;
+        if (parentClass) return `${tag.toLowerCase()} in .${parentClass}`;
+        return tag.toLowerCase();
       }
       return tag.toLowerCase();
     }
