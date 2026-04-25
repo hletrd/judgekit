@@ -106,7 +106,12 @@ export async function POST(
 
     if (!canManage) return forbidden();
 
-    const body = await request.json();
+    let body: Record<string, unknown>;
+    try {
+      body = await request.json() as Record<string, unknown>;
+    } catch {
+      return apiError("invalidJson", 400);
+    }
     const parsedInput = assignmentMutationSchema.safeParse({
       title: body.title,
       description: body.description,
