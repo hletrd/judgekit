@@ -111,7 +111,7 @@ export default async function StudentDetailPage({
             (s) => s.problemId === ap.problemId
           );
           const bestScore = problemSubs.length > 0
-            ? Math.max(...problemSubs.map((s) => s.score ?? 0))
+            ? problemSubs.map((s) => s.score ?? 0).reduce((max, v) => Math.max(max, v), 0)
             : 0;
           const hasAccepted = problemSubs.some((s) => s.status === "accepted");
 

@@ -74,7 +74,7 @@ function SVGBarChart({
   const chartWidth = width - paddingLeft - paddingRight;
   const chartHeight = height - paddingTop - paddingBottom;
 
-  const maxVal = Math.max(...data.map((d) => d.value), 1);
+  const maxVal = data.map((d) => d.value).reduce((max, v) => Math.max(max, v), 1);
   // Nice round Y axis max
   const yMax = Math.ceil(maxVal / 5) * 5 || 5;
   const gridLines = 5;
@@ -305,7 +305,7 @@ function SolveTimeChart({
 }) {
   if (data.length === 0) return null;
 
-  const maxMinutes = Math.max(...data.flatMap((p) => [p.medianMinutes, p.meanMinutes]), 1);
+  const maxMinutes = data.flatMap((p) => [p.medianMinutes, p.meanMinutes]).reduce((max, v) => Math.max(max, v), 1);
   const rowHeight = 40;
   const labelWidth = 120;
   const barAreaWidth = 260;

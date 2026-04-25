@@ -44,7 +44,7 @@ export function ScoreTimelineChart({
   const width = 420;
   const height = 180;
   const padding = 24;
-  const maxScore = Math.max(...selected.points.map((point) => point.totalScore), 1);
+  const maxScore = selected.points.map((point) => point.totalScore).reduce((max, v) => Math.max(max, v), 1);
   const minTimestamp = selected.points[0]?.timestamp ?? 0;
   const maxTimestamp = selected.points[selected.points.length - 1]?.timestamp ?? minTimestamp + 1;
   const timeRange = Math.max(maxTimestamp - minTimestamp, 1);
