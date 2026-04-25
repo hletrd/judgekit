@@ -4,10 +4,12 @@ type HeaderCarrier = {
   get(name: string): string | null;
 };
 
-const TRUSTED_PROXY_HOPS = Math.max(
-  1,
-  parseInt(process.env.TRUSTED_PROXY_HOPS || "1", 10) || 1
-);
+const TRUSTED_PROXY_HOPS = (() => {
+  const parsed = parseInt(process.env.TRUSTED_PROXY_HOPS ?? "1", 10);
+  // Use ?? so TRUSTED_PROXY_HOPS=0 is respected (means "no trusted proxies").
+  // Fall back to 1 only when the env var is unset or parseInt returns NaN.
+  return Number.isNaN(parsed) ? 1 : Math.max(0, parsed);
+})();
 
 function isValidIp(value: string) {
   const candidate = value.trim();
