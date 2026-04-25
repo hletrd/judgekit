@@ -29,7 +29,7 @@ All cycle 34 tasks are complete:
 3. Verify that entering `0` for float error tolerance is now preserved
 4. Verify all gates pass
 
-**Status:** TODO
+**Status:** DONE (commit b093083d)
 
 ---
 
@@ -49,7 +49,7 @@ All cycle 34 tasks are complete:
 3. Run `drizzle-kit push` to apply the migration (or generate migration)
 4. Verify all gates pass
 
-**Status:** TODO
+**Status:** DONE (commit 83dd46ff)
 
 ---
 
@@ -68,7 +68,7 @@ All cycle 34 tasks are complete:
 3. Verify that unset `SUBMISSION_GLOBAL_QUEUE_LIMIT` still defaults to 100
 4. Verify all gates pass
 
-**Status:** TODO
+**Status:** DONE (commit b9d7fef9)
 
 ---
 
@@ -85,7 +85,7 @@ All cycle 34 tasks are complete:
 1. Replace `console.error(data)` with `console.error("Instructor add failed:", (data as { error?: string }).error)`
 2. Verify all gates pass
 
-**Status:** TODO
+**Status:** DONE (commit 4bf1f515)
 
 ---
 
@@ -104,3 +104,8 @@ See cycle 34 plan for full details. All carry forward unchanged.
 ## Progress log
 
 - 2026-04-25: Plan created with 4 tasks (A-D).
+- 2026-04-25: Task A DONE — fix parseFloat || null in create-problem-form (commit b093083d).
+- 2026-04-25: Task B DONE — add updatedAt column to tags table and PATCH route (commit 83dd46ff).
+- 2026-04-25: Task C DONE — fix SUBMISSION_GLOBAL_QUEUE_LIMIT parsing to respect 0 (commit b9d7fef9).
+- 2026-04-25: Task D DONE — replace raw console.error(data) with structured error message (commit 4bf1f515).
+- 2026-04-25: All gates green (eslint 0, tsc clean, vitest 302/302 pass 2197 tests, next build success).
