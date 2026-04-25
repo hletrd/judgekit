@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 
 type LectureColorScheme = "dark" | "light" | "solarized";
 type LectureFontScale = "1.25" | "1.5" | "1.75" | "2.0" | "2.5" | "3.0" | "3.5" | "4.0";
@@ -116,24 +116,26 @@ export function LectureModeProvider({
     }
   }, []);
 
+  const value = useMemo(() => ({
+    active,
+    toggle,
+    fontScale,
+    setFontScale,
+    colorScheme,
+    setColorScheme,
+    panelLayout,
+    setPanelLayout,
+    statsAvailable,
+    setStatsAvailable: handleSetStatsAvailable,
+    showStats,
+    toggleStats,
+    closeStats,
+  }), [active, toggle, fontScale, setFontScale, colorScheme, setColorScheme,
+    panelLayout, setPanelLayout, statsAvailable, handleSetStatsAvailable,
+    showStats, toggleStats, closeStats]);
+
   return (
-    <LectureModeContext.Provider
-      value={{
-        active,
-        toggle,
-        fontScale,
-        setFontScale,
-        colorScheme,
-        setColorScheme,
-        panelLayout,
-        setPanelLayout,
-        statsAvailable,
-        setStatsAvailable: handleSetStatsAvailable,
-        showStats,
-        toggleStats,
-        closeStats,
-      }}
-    >
+    <LectureModeContext.Provider value={value}>
       {children}
     </LectureModeContext.Provider>
   );
