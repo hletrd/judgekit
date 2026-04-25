@@ -77,6 +77,16 @@ export const GET = createApiHandler({
       if (!hasAccess) {
         return apiError("forbidden", 403);
       }
+
+      // Contest access tokens do not have an expiry column, so users with
+      // only a token (not enrolled) could access stats indefinitely after the
+      // contest ends. Enforce the assignment deadline to prevent this.
+      if (assignment.deadline) {
+        const nowRow = await rawQueryOne<{ now: Date }>("SELECT NOW()::timestamptz AS now");
+        if (nowRow?.now && nowRow.now > assignment.deadline) {
+          return apiError("contestEnded", 403);
+        }
+      }
     }
 
     // Compute all stats in a single query using CTEs to reduce DB round trips.
