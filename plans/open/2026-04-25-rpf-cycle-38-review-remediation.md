@@ -31,7 +31,7 @@ All cycle 37 tasks are complete:
 3. Line 214: Replace `result.errors.push(\`Import failed: ${message}\`)` with `result.errors.push(\`Import failed\`)` and ensure the detailed message is already logged at line 213
 4. Verify all gates pass
 
-**Status:** PENDING
+**Status:** DONE (commit 76f253bb)
 
 ---
 
@@ -59,7 +59,7 @@ All cycle 37 tasks are complete:
 3. Remove the `const text = ...` line and the `text` variable since it's no longer used in this branch
 4. Verify all gates pass
 
-**Status:** PENDING
+**Status:** DONE (commit 66dcad78)
 
 ---
 
@@ -116,3 +116,6 @@ Reason for deferral unchanged. See cycle 34 plan for details.
 ## Progress log
 
 - 2026-04-25: Plan created with 2 tasks (A-B). 4 new findings deferred (DEFER-46 through DEFER-49).
+- 2026-04-25: Task A DONE — sanitize DB error messages in import API responses (commit 76f253bb).
+- 2026-04-25: Task B DONE — remove text content capture from anti-cheat copy/paste events (commit 66dcad78).
+- 2026-04-25: All gates green (eslint 0, tsc clean, vitest 302/302 pass 2197 tests, next build success).
