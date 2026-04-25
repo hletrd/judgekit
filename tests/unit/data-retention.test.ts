@@ -44,3 +44,41 @@ describe("data retention configuration", () => {
     expect(DATA_RETENTION_DAYS.submissions).toBe(365);
   });
 });
+
+describe("getRetentionCutoff", () => {
+  it("computes the correct cutoff date for a given number of days", async () => {
+    const { getRetentionCutoff } = await import("@/lib/data-retention");
+
+    // Fixed timestamp: 2026-01-15T12:00:00.000Z = 1736942400000
+    const nowMs = 1736942400000;
+    const cutoff = getRetentionCutoff(30, nowMs);
+
+    // 30 days before the fixed timestamp
+    const expectedCutoff = new Date(nowMs - 30 * 24 * 60 * 60 * 1000);
+    expect(cutoff.getTime()).toBe(expectedCutoff.getTime());
+  });
+
+  it("uses the provided nowMs parameter instead of Date.now()", async () => {
+    const { getRetentionCutoff } = await import("@/lib/data-retention");
+
+    const customNow = new Date("2025-06-01T00:00:00.000Z").getTime();
+    const cutoff = getRetentionCutoff(90, customNow);
+
+    const expectedCutoff = new Date(customNow - 90 * 24 * 60 * 60 * 1000);
+    expect(cutoff.getTime()).toBe(expectedCutoff.getTime());
+  });
+
+  it("defaults to Date.now() when no nowMs is provided", async () => {
+    const { getRetentionCutoff } = await import("@/lib/data-retention");
+
+    const before = Date.now();
+    const cutoff = getRetentionCutoff(365);
+    const after = Date.now();
+
+    const minCutoff = new Date(after - 365 * 24 * 60 * 60 * 1000);
+    const maxCutoff = new Date(before - 365 * 24 * 60 * 60 * 1000);
+
+    expect(cutoff.getTime()).toBeGreaterThanOrEqual(minCutoff.getTime());
+    expect(cutoff.getTime()).toBeLessThanOrEqual(maxCutoff.getTime());
+  });
+});

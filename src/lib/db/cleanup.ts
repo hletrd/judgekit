@@ -2,6 +2,7 @@ import { db } from "@/lib/db";
 import { auditEvents, loginEvents } from "@/lib/db/schema";
 import { sql } from "drizzle-orm";
 import { DATA_RETENTION_DAYS, DATA_RETENTION_LEGAL_HOLD, getRetentionCutoff } from "@/lib/data-retention";
+import { getDbNowMs } from "@/lib/db-time";
 import { logger } from "@/lib/logger";
 
 const BATCH_SIZE = 5000;
@@ -30,8 +31,12 @@ export async function cleanupOldEvents(): Promise<{
     return { auditDeleted: 0, loginDeleted: 0 };
   }
 
-  const auditCutoff = getRetentionCutoff(DATA_RETENTION_DAYS.auditEvents);
-  const loginCutoff = getRetentionCutoff(DATA_RETENTION_DAYS.loginEvents);
+  // Use DB server time for retention cutoffs to avoid clock skew between
+  // app and DB servers. Data timestamps are stored using DB server time,
+  // so the cutoff must be computed against the same clock.
+  const nowMs = await getDbNowMs();
+  const auditCutoff = getRetentionCutoff(DATA_RETENTION_DAYS.auditEvents, nowMs);
+  const loginCutoff = getRetentionCutoff(DATA_RETENTION_DAYS.loginEvents, nowMs);
 
   let auditDeleted = 0;
   let loginDeleted = 0;

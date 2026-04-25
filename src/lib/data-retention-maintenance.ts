@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { logger } from "@/lib/logger";
 import { antiCheatEvents, chatMessages, loginEvents, recruitingInvitations, submissions } from "@/lib/db/schema";
 import { DATA_RETENTION_DAYS, DATA_RETENTION_LEGAL_HOLD, getRetentionCutoff } from "@/lib/data-retention";
+import { getDbNowMs } from "@/lib/db-time";
 
 const BATCH_SIZE = 5000;
 const BATCH_DELAY_MS = 100;
@@ -31,15 +32,15 @@ async function batchedDelete(
   return totalDeleted;
 }
 
-async function pruneChatMessages() {
-  const cutoff = getRetentionCutoff(DATA_RETENTION_DAYS.chatMessages);
+async function pruneChatMessages(nowMs: number) {
+  const cutoff = getRetentionCutoff(DATA_RETENTION_DAYS.chatMessages, nowMs);
   const deleted = await batchedDelete(chatMessages, lt(chatMessages.createdAt, cutoff));
   logger.debug({ cutoff: cutoff.toISOString(), deleted }, "Pruned expired chat messages");
 }
 
 
-async function pruneRecruitingInvitations() {
-  const cutoff = getRetentionCutoff(DATA_RETENTION_DAYS.recruitingRecords);
+async function pruneRecruitingInvitations(nowMs: number) {
+  const cutoff = getRetentionCutoff(DATA_RETENTION_DAYS.recruitingRecords, nowMs);
   const whereClause = and(
     lt(recruitingInvitations.updatedAt, cutoff),
     or(
@@ -55,8 +56,8 @@ async function pruneRecruitingInvitations() {
 }
 
 
-async function pruneSubmissions() {
-  const cutoff = getRetentionCutoff(DATA_RETENTION_DAYS.submissions);
+async function pruneSubmissions(nowMs: number) {
+  const cutoff = getRetentionCutoff(DATA_RETENTION_DAYS.submissions, nowMs);
   const whereClause = and(
     lt(submissions.submittedAt, cutoff),
     notInArray(submissions.status, ["pending", "queued", "judging"])
@@ -65,14 +66,14 @@ async function pruneSubmissions() {
   logger.debug({ cutoff: cutoff.toISOString(), deleted }, "Pruned expired terminal submissions");
 }
 
-async function pruneAntiCheatEvents() {
-  const cutoff = getRetentionCutoff(DATA_RETENTION_DAYS.antiCheatEvents);
+async function pruneAntiCheatEvents(nowMs: number) {
+  const cutoff = getRetentionCutoff(DATA_RETENTION_DAYS.antiCheatEvents, nowMs);
   const deleted = await batchedDelete(antiCheatEvents, lt(antiCheatEvents.createdAt, cutoff));
   logger.debug({ cutoff: cutoff.toISOString(), deleted }, "Pruned expired anti-cheat events");
 }
 
-async function pruneLoginEvents() {
-  const cutoff = getRetentionCutoff(DATA_RETENTION_DAYS.loginEvents);
+async function pruneLoginEvents(nowMs: number) {
+  const cutoff = getRetentionCutoff(DATA_RETENTION_DAYS.loginEvents, nowMs);
   const deleted = await batchedDelete(loginEvents, lt(loginEvents.createdAt, cutoff));
   logger.debug({ cutoff: cutoff.toISOString(), deleted }, "Pruned expired login events");
 }
@@ -84,11 +85,16 @@ async function pruneSensitiveOperationalData() {
   }
 
   try {
-    await pruneChatMessages();
-    await pruneAntiCheatEvents();
-    await pruneRecruitingInvitations();
-    await pruneSubmissions();
-    await pruneLoginEvents();
+    // Use DB server time for retention cutoffs to avoid clock skew between
+    // app and DB servers. Data timestamps (submittedAt, createdAt, etc.) are
+    // stored using DB server time, so the cutoff must be computed against the
+    // same clock to prevent premature deletion or delayed pruning.
+    const nowMs = await getDbNowMs();
+    await pruneChatMessages(nowMs);
+    await pruneAntiCheatEvents(nowMs);
+    await pruneRecruitingInvitations(nowMs);
+    await pruneSubmissions(nowMs);
+    await pruneLoginEvents(nowMs);
   } catch (error) {
     logger.warn({ err: error }, "Failed to prune sensitive operational data");
   }
