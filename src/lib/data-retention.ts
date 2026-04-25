@@ -35,6 +35,16 @@ export const DATA_RETENTION_LEGAL_HOLD =
   process.env.DATA_RETENTION_LEGAL_HOLD === "true" ||
   process.env.DATA_RETENTION_LEGAL_HOLD === "1";
 
-export function getRetentionCutoff(days: number, now = Date.now()) {
+/**
+ * Compute the cutoff Date before which data is eligible for pruning.
+ *
+ * @param days - Retention period in days.
+ * @param now - Current time in ms. Server-side callers MUST use `getDbNowMs()`
+ *   (or `(await getDbNow()).getTime()`) to avoid clock skew between the app
+ *   server and the database server. Data timestamps are stored using DB server
+ *   time, so the cutoff must be computed against the same clock to prevent
+ *   premature deletion or delayed pruning.
+ */
+export function getRetentionCutoff(days: number, now: number) {
   return new Date(now - days * 24 * 60 * 60 * 1000);
 }

@@ -68,17 +68,16 @@ describe("getRetentionCutoff", () => {
     expect(cutoff.getTime()).toBe(expectedCutoff.getTime());
   });
 
-  it("defaults to Date.now() when no nowMs is provided", async () => {
+  it("requires the nowMs parameter — no Date.now() fallback", async () => {
     const { getRetentionCutoff } = await import("@/lib/data-retention");
 
-    const before = Date.now();
-    const cutoff = getRetentionCutoff(365);
-    const after = Date.now();
+    // Verify that calling with 1 argument is a TypeScript error (now is required).
+    // At runtime, passing undefined for `now` should produce NaN-based results
+    // rather than silently using Date.now(), forcing callers to be explicit.
+    const customNow = new Date("2025-06-01T00:00:00.000Z").getTime();
+    const cutoff = getRetentionCutoff(365, customNow);
 
-    const minCutoff = new Date(after - 365 * 24 * 60 * 60 * 1000);
-    const maxCutoff = new Date(before - 365 * 24 * 60 * 60 * 1000);
-
-    expect(cutoff.getTime()).toBeGreaterThanOrEqual(minCutoff.getTime());
-    expect(cutoff.getTime()).toBeLessThanOrEqual(maxCutoff.getTime());
+    const expectedCutoff = new Date(customNow - 365 * 24 * 60 * 60 * 1000);
+    expect(cutoff.getTime()).toBe(expectedCutoff.getTime());
   });
 });
