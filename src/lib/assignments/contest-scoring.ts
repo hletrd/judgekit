@@ -373,9 +373,9 @@ async function _computeContestRankingInner(assignmentId: string, cutoffSec?: num
       if (a.totalPenalty !== b.totalPenalty) return a.totalPenalty - b.totalPenalty;
       // Earlier last AC first
       const aSolvedTimes = a.problems.filter((p) => p.solved).map((p) => p.firstAcAt ?? 0);
-      const aLastAc = aSolvedTimes.length > 0 ? Math.max(...aSolvedTimes) : 0;
+      const aLastAc = aSolvedTimes.length > 0 ? aSolvedTimes.reduce((max, t) => Math.max(max, t), 0) : 0;
       const bSolvedTimes = b.problems.filter((p) => p.solved).map((p) => p.firstAcAt ?? 0);
-      const bLastAc = bSolvedTimes.length > 0 ? Math.max(...bSolvedTimes) : 0;
+      const bLastAc = bSolvedTimes.length > 0 ? bSolvedTimes.reduce((max, t) => Math.max(max, t), 0) : 0;
       if (aLastAc !== bLastAc) return aLastAc - bLastAc;
       // Final tie-breaker: userId for deterministic ordering (matches IOI pattern)
       return a.userId.localeCompare(b.userId);
