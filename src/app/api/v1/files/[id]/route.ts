@@ -69,7 +69,14 @@ export async function GET(
     const { id } = await params;
 
     const [file] = await db
-      .select()
+      .select({
+        id: files.id,
+        problemId: files.problemId,
+        uploadedBy: files.uploadedBy,
+        storedName: files.storedName,
+        originalName: files.originalName,
+        mimeType: files.mimeType,
+      })
       .from(files)
       .where(eq(files.id, id))
       .limit(1);
