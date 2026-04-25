@@ -6,20 +6,10 @@ const IV_LENGTH = 12; // 96-bit IV recommended for GCM
 const AUTH_TAG_LENGTH = 16; // 128-bit tag
 
 /**
- * Fixed development-only encryption key. NOT secure — only used when
- * NODE_ENCRYPTION_KEY is not set in non-production environments so that
- * the encrypt/decrypt round-trip works consistently in development.
- * Data encrypted with this key must NOT be used in production.
- */
-const DEV_ENCRYPTION_KEY = Buffer.from(
-  "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
-  "hex"
-);
-
-/**
  * Get the 32-byte encryption key from the NODE_ENCRYPTION_KEY env var.
- * Returns the fixed development key if the env var is not set in non-production.
- * Throws in production if the key is missing.
+ * Throws if the key is not set, regardless of NODE_ENV.
+ * Generate a key for development: openssl rand -hex 32
+ * Then add it to .env.local: NODE_ENCRYPTION_KEY=<generated-key>
  *
  * The key is parsed once and cached for the lifetime of the process since
  * env vars do not change at runtime.
@@ -31,13 +21,9 @@ function getKey(): Buffer {
 
   const hex = process.env.NODE_ENCRYPTION_KEY?.trim();
   if (!hex) {
-    if (process.env.NODE_ENV === "production") {
-      throw new Error(
-        "NODE_ENCRYPTION_KEY must be set in production. Generate: openssl rand -hex 32"
-      );
-    }
-    _cachedKey = DEV_ENCRYPTION_KEY;
-    return _cachedKey;
+    throw new Error(
+      "NODE_ENCRYPTION_KEY must be set. Generate: openssl rand -hex 32"
+    );
   }
   const buf = Buffer.from(hex, "hex");
   if (buf.length !== 32) {
@@ -52,8 +38,7 @@ function getKey(): Buffer {
 /**
  * Encrypt a plaintext string using AES-256-GCM.
  * Returns `enc:iv:ciphertext:authTag` as a hex-encoded string.
- * In development without NODE_ENCRYPTION_KEY, uses a fixed dev key.
- * In production, throws if NODE_ENCRYPTION_KEY is not set.
+ * Throws if NODE_ENCRYPTION_KEY is not set.
  */
 export function encrypt(plaintext: string): string {
   const key = getKey();
@@ -84,8 +69,7 @@ export function encrypt(plaintext: string): string {
  * Callers that read from columns with mixed encrypted/plaintext data during
  * migration should pass `{ allowPlaintextFallback: true }` explicitly.
  *
- * In development without NODE_ENCRYPTION_KEY, uses the fixed dev key.
- * In production, throws if NODE_ENCRYPTION_KEY is not set.
+ * Throws if NODE_ENCRYPTION_KEY is not set.
  */
 export function decrypt(encoded: string, options?: { allowPlaintextFallback?: boolean }): string {
   const allowPlaintext = options?.allowPlaintextFallback ??
