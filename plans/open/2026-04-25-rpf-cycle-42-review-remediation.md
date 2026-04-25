@@ -35,7 +35,7 @@ All prior cycle 42 (earlier pass) tasks are complete:
 3. Add a maximum string literal length cap (e.g., 10,000 chars) as a safety measure for both string types.
 4. Verify all gates pass
 
-**Status:** PENDING
+**Status:** DONE — commit 95f14e9f
 
 ---
 
@@ -55,7 +55,7 @@ All prior cycle 42 (earlier pass) tasks are complete:
 4. For template literals with `${...}`, the simplest approach is to scan for the closing backtick, outputting `` ` ` `` — this matches the behavior for regular strings where the content is discarded but the delimiters are preserved for structural matching
 5. Verify all gates pass
 
-**Status:** PENDING
+**Status:** DONE — commit 95f14e9f
 
 ---
 
@@ -98,3 +98,4 @@ Reason for deferral unchanged. See cycle 40 plan for details.
 
 - 2026-04-25: Plan created with 2 tasks (A, B). 1 new deferred item this cycle.
 - 2026-04-25: Archived completed prior cycle 41 and earlier cycle 42 plans.
+- 2026-04-25: Task A and Task B implemented — commit 95f14e9f. All gates pass.
