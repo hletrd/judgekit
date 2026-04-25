@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import {
   isSubmissionLate,
   mapSubmissionPercentageToAssignmentPoints,
@@ -114,5 +116,72 @@ describe("buildIoiLatePenaltyCaseExpr", () => {
   it("returns NULL for NULL scores", () => {
     const expr = buildIoiLatePenaltyCaseExpr();
     expect(expr).toContain("ELSE NULL");
+  });
+});
+
+describe("mapSubmissionPercentageToAssignmentPoints — windowed exam", () => {
+  it("applies late penalty against personalDeadline for windowed exams", () => {
+    const personalDeadline = new Date("2026-03-09T10:00:00.000Z");
+    const globalDeadline = new Date("2026-03-09T12:00:00.000Z");
+
+    // Submitted after personal deadline but before global deadline
+    expect(
+      mapSubmissionPercentageToAssignmentPoints(80, 50, {
+        submittedAt: new Date("2026-03-09T10:30:00.000Z"),
+        deadline: globalDeadline,
+        latePenalty: 25,
+        personalDeadline,
+        examMode: "windowed",
+      })
+    ).toBe(30); // 40 * (1 - 0.25) = 30
+  });
+
+  it("does not apply penalty when submitted before personalDeadline", () => {
+    const personalDeadline = new Date("2026-03-09T10:00:00.000Z");
+    const globalDeadline = new Date("2026-03-09T12:00:00.000Z");
+
+    // Submitted before personal deadline — no penalty
+    expect(
+      mapSubmissionPercentageToAssignmentPoints(80, 50, {
+        submittedAt: new Date("2026-03-09T09:59:59.000Z"),
+        deadline: globalDeadline,
+        latePenalty: 25,
+        personalDeadline,
+        examMode: "windowed",
+      })
+    ).toBe(40); // no penalty
+  });
+
+  it("falls back to global deadline when examMode is not windowed", () => {
+    const personalDeadline = new Date("2026-03-09T10:00:00.000Z");
+    const globalDeadline = new Date("2026-03-09T12:00:00.000Z");
+
+    // Submitted after personal deadline but before global deadline — no penalty
+    // because examMode is not "windowed"
+    expect(
+      mapSubmissionPercentageToAssignmentPoints(80, 50, {
+        submittedAt: new Date("2026-03-09T10:30:00.000Z"),
+        deadline: globalDeadline,
+        latePenalty: 25,
+        personalDeadline,
+        examMode: "scheduled",
+      })
+    ).toBe(40); // no penalty (not past global deadline)
+  });
+});
+
+describe("getAssignmentStatusRows scoring consistency", () => {
+  it("uses buildIoiLatePenaltyCaseExpr in the SQL query (source-grep)", () => {
+    const sourcePath = join(process.cwd(), "src", "lib", "assignments", "submissions.ts");
+    const source = readFileSync(sourcePath, "utf8");
+
+    // Verify the canonical scoring function is used instead of inline CASE
+    expect(source, "getAssignmentStatusRows should use buildIoiLatePenaltyCaseExpr").toContain(
+      "buildIoiLatePenaltyCaseExpr"
+    );
+    // Verify the LEFT JOIN to exam_sessions is present (needed for personal_deadline)
+    expect(source, "getAssignmentStatusRows should JOIN exam_sessions for windowed penalty").toContain(
+      "LEFT JOIN exam_sessions es"
+    );
   });
 });

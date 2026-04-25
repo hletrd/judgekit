@@ -2,6 +2,14 @@ function roundAssignmentScore(value: number) {
   return Math.round(value * 100) / 100;
 }
 
+/**
+ * Map a submission's percentage score to assignment points, applying late penalties.
+ *
+ * NOTE: For SQL-level scoring (leaderboard, stats, assignment status page),
+ * prefer `buildIoiLatePenaltyCaseExpr()` which is the canonical source of truth.
+ * This TypeScript function is provided for contexts where SQL-level computation
+ * is not available (e.g., client-side display logic).
+ */
 export function mapSubmissionPercentageToAssignmentPoints(
   score: number,
   points: number,
@@ -9,18 +17,34 @@ export function mapSubmissionPercentageToAssignmentPoints(
     submittedAt: Date | null;
     deadline: Date | null;
     latePenalty: number;
+    /** Per-user personal deadline for windowed exams. When provided and the
+     *  exam mode is windowed, the late penalty is applied against this deadline
+     *  instead of the global deadline. */
+    personalDeadline?: Date | null;
+    /** Exam mode — when 'windowed', the personalDeadline is used for late checks. */
+    examMode?: string;
   }
 ) {
   const normalizedPercentage = Math.min(Math.max(score, 0), 100);
   let earnedPoints = roundAssignmentScore((normalizedPercentage / 100) * points);
 
-  if (lateContext && lateContext.submittedAt && lateContext.deadline && lateContext.latePenalty > 0) {
+  if (lateContext && lateContext.submittedAt && lateContext.latePenalty > 0) {
     const submittedTime = lateContext.submittedAt.valueOf();
-    const deadlineTime = lateContext.deadline.valueOf();
 
-    if (submittedTime > deadlineTime) {
-      const penaltyFraction = lateContext.latePenalty / 100;
-      earnedPoints = roundAssignmentScore(earnedPoints * (1 - penaltyFraction));
+    // For windowed exams, apply late penalty against the personal deadline
+    if (lateContext.examMode === "windowed" && lateContext.personalDeadline) {
+      const personalDeadlineTime = lateContext.personalDeadline.valueOf();
+      if (submittedTime > personalDeadlineTime) {
+        const penaltyFraction = lateContext.latePenalty / 100;
+        earnedPoints = roundAssignmentScore(earnedPoints * (1 - penaltyFraction));
+      }
+    } else if (lateContext.deadline) {
+      // Non-windowed: apply late penalty against the global deadline
+      const deadlineTime = lateContext.deadline.valueOf();
+      if (submittedTime > deadlineTime) {
+        const penaltyFraction = lateContext.latePenalty / 100;
+        earnedPoints = roundAssignmentScore(earnedPoints * (1 - penaltyFraction));
+      }
     }
   }
 
