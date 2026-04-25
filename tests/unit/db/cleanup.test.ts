@@ -3,7 +3,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   dbExecute: vi.fn(),
   sql: vi.fn((strings: TemplateStringsArray, ...values: unknown[]) => ({ strings, values })),
-  getRetentionCutoff: vi.fn((days: number) => new Date(Date.now() - days * 24 * 60 * 60 * 1000)),
+  getRetentionCutoff: vi.fn((days: number, nowMs?: number) => new Date((nowMs ?? Date.now()) - days * 24 * 60 * 60 * 1000)),
+  getDbNowMs: vi.fn().mockResolvedValue(Date.now()),
 }));
 
 vi.mock("drizzle-orm", async () => {
@@ -32,6 +33,10 @@ vi.mock("@/lib/data-retention", () => ({
   },
   DATA_RETENTION_LEGAL_HOLD: false,
   getRetentionCutoff: mocks.getRetentionCutoff,
+}));
+
+vi.mock("@/lib/db-time", () => ({
+  getDbNowMs: mocks.getDbNowMs,
 }));
 
 vi.mock("@/lib/logger", () => ({
@@ -63,7 +68,9 @@ describe("cleanupOldEvents", () => {
     expect(result).toEqual({ auditDeleted: 3, loginDeleted: 1 });
   });
 
-  it("uses getRetentionCutoff with DATA_RETENTION_DAYS for each event type", async () => {
+  it("uses getRetentionCutoff with DATA_RETENTION_DAYS and DB server time for each event type", async () => {
+    const fakeNowMs = 1736942400000; // Fixed timestamp
+    mocks.getDbNowMs.mockResolvedValue(fakeNowMs);
     mocks.dbExecute
       .mockResolvedValueOnce({ rowCount: 0 })
       .mockResolvedValueOnce({ rowCount: 0 });
@@ -71,9 +78,8 @@ describe("cleanupOldEvents", () => {
     const { cleanupOldEvents } = await import("@/lib/db/cleanup");
     await cleanupOldEvents();
 
-    // getRetentionCutoff should be called once for audit events (90 days)
-    // and once for login events (180 days)
-    expect(mocks.getRetentionCutoff).toHaveBeenCalledWith(90);
-    expect(mocks.getRetentionCutoff).toHaveBeenCalledWith(180);
+    // getRetentionCutoff should be called with DB server time for each event type
+    expect(mocks.getRetentionCutoff).toHaveBeenCalledWith(90, fakeNowMs);
+    expect(mocks.getRetentionCutoff).toHaveBeenCalledWith(180, fakeNowMs);
   });
 });

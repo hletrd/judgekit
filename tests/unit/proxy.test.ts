@@ -630,6 +630,12 @@ describe("proxy", () => {
     });
 
     it("sets security headers on protected API routes", async () => {
+      // Authenticate so the route passes through the proxy
+      getTokenMock.mockResolvedValue(fakeToken());
+      getTokenUserIdMock.mockReturnValue("user-1");
+      getTokenAuthenticatedAtSecondsMock.mockReturnValue(Math.trunc(Date.now() / 1000));
+      getActiveAuthUserByIdMock.mockResolvedValue(activeUser());
+
       const response = await proxy(makeRequest("/api/v1/users"));
 
       expect(response.headers.get("X-Content-Type-Options")).toBe("nosniff");

@@ -4,6 +4,7 @@ const mocks = vi.hoisted(() => ({
   dbExecute: vi.fn<(...args: unknown[]) => Promise<{ rowCount: number }>>(),
   loggerDebug: vi.fn(),
   loggerWarn: vi.fn(),
+  getDbNowMs: vi.fn().mockResolvedValue(Date.now()),
 }));
 
 vi.mock("@/lib/db", () => ({
@@ -27,6 +28,10 @@ vi.mock("@/lib/logger", () => ({
   },
 }));
 
+vi.mock("@/lib/db-time", () => ({
+  getDbNowMs: mocks.getDbNowMs,
+}));
+
 // Stub drizzle-orm operators — real ones require actual Drizzle column objects.
 // These stubs return plain objects that are sufficient for sql template tags.
 vi.mock("drizzle-orm", () => ({
@@ -41,7 +46,7 @@ vi.mock("drizzle-orm", () => ({
   }),
 }));
 
-async function flushMicrotasks(times = 5) {
+async function flushMicrotasks(times = 10) {
   for (let i = 0; i < times; i += 1) {
     await Promise.resolve();
   }
