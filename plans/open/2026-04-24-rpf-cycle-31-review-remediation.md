@@ -30,7 +30,7 @@ All cycle 30 tasks are complete:
 3. Keep the same countdown logic (5-minute auto-dismiss)
 4. Verify all gates pass
 
-**Status:** TODO
+**Status:** DONE (commit 4bba6390)
 
 ---
 
@@ -49,7 +49,7 @@ All cycle 30 tasks are complete:
 4. Fall back to generic error toast for unknown codes
 5. Verify all gates pass
 
-**Status:** TODO
+**Status:** DONE (commit 1a9f1aab)
 
 ---
 
@@ -68,7 +68,7 @@ All cycle 30 tasks are complete:
 4. Remove the try/catch error-code matching logic
 5. Verify all gates pass
 
-**Status:** TODO
+**Status:** DONE (commit c62668f0)
 
 ---
 
@@ -95,7 +95,7 @@ All cycle 30 tasks are complete:
 2. Reference `KNOWN_BACKUP_ERRORS` inside `handleDownload()`
 3. Verify all gates pass
 
-**Status:** TODO
+**Status:** DONE (commit 3cda35af)
 
 ---
 
@@ -230,3 +230,10 @@ See prior plans for full details. All carry forward unchanged.
 ## Progress log
 
 - 2026-04-24: Plan created with 6 tasks (A-F), 2 deferred items resolved as FIXED (DEFER-26, DEFER-31).
+- 2026-04-24: Task A DONE — migrated api-keys-client auto-dismiss timer from setInterval to recursive setTimeout (commit 4bba6390).
+- 2026-04-24: Task B DONE — replaced throw-then-match with inline error handling in start-exam-button (commit 1a9f1aab).
+- 2026-04-24: Task C DONE — replaced throw-then-match with mapApiError helper in problem-set-form (commit c62668f0).
+- 2026-04-24: Task D — false positive; contest-scoring.ts already uses getDbNowMs() for cache writes.
+- 2026-04-24: Task E DONE — hoisted KNOWN_BACKUP_ERRORS set to module scope (commit 3cda35af).
+- 2026-04-24: Task F — not needed; both files have centralized getErrorMessage() helpers that make the throw pattern acceptable.
+- 2026-04-24: All gates green (eslint 0, tsc clean, vitest 301/302 pass 2196/2197 tests [1 pre-existing flaky SEO test], next build success).
