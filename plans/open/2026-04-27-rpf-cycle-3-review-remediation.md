@@ -16,13 +16,20 @@ The cycle-3 review was a steady-state pass. Cycles 1–2 closed the high-impact 
 
 Key observation during planning: AGG3-2 (literal-value test for `getAuthSessionCookieNames`) was flagged by two reviewers (TE3-1, DBG3-4) but is **already covered** in `tests/unit/security/env.test.ts:415-419` (verified). Removed from the task list and noted as a resolved false-positive in the aggregate.
 
+**Implementation status (2026-04-27):**
+- Task A `[x]` commit `56dd6957` — `_lastRefreshFailureAt` bound via `lru-cache` `dispose` hook; new test added (suite 2217 → 2218).
+- Task B `[x]` commit `d0751786` — 76 completed cycle plans archived from `plans/open/` to `plans/done/`; conflicting older cycle-28 duplicate moved to `plans/open/_archive/`; archival convention added to `plans/open/README.md`.
+- Task C `[x]` commit `56dd6957` — inline comments added to `vi.runAllTimersAsync()` calls explaining microtask drain (shipped together with task A).
+
+Gates: lint 0 errors, build green, full unit suite 2218/2218.
+
 ---
 
 ## Tasks
 
 ### Task A — [MEDIUM] Bound `_lastRefreshFailureAt` via `lru-cache` dispose hook (AGG3-1)
 
-**Status:** `[ ]`
+**Status:** `[x]` — done in commit `56dd6957`. Added `dispose` callback to `analyticsCache` LRUCache; added `__test_internals` named export for test-only access; added unit test "evicts cooldown metadata when the cache entry is removed (dispose hook)". Suite 2217 → 2218.
 **Severity:** MEDIUM
 **Reference:** `.context/reviews/_aggregate.md` AGG3-1, `.context/reviews/perf-reviewer.md` PERF3-2
 
@@ -56,7 +63,7 @@ Key observation during planning: AGG3-2 (literal-value test for `getAuthSessionC
 
 ### Task B — [LOW] Archive completed cycle plans from `plans/open/` to `plans/done/` and document convention (AGG3-3)
 
-**Status:** `[ ]`
+**Status:** `[x]` — done in commit `d0751786`. Moved 76 completed cycle plans via `git mv` (history preserved). Conflicting older cycle-28 plan moved to `plans/open/_archive/`. Added "RPF Per-Cycle Plan Convention" section to `plans/open/README.md`.
 **Severity:** LOW
 **Reference:** `.context/reviews/_aggregate.md` AGG3-3, `.context/reviews/critic.md` CRIT3-1, `.context/reviews/document-specialist.md` DOC3-2
 
@@ -81,7 +88,7 @@ Key observation during planning: AGG3-2 (literal-value test for `getAuthSessionC
 
 ### Task C — [LOW] Add comment to cooldown test explaining `vi.runAllTimersAsync` microtask drain (AGG3-4)
 
-**Status:** `[ ]`
+**Status:** `[x]` — shipped together with task A (commit `56dd6957`). Comments added at all four `vi.runAllTimersAsync()` callsites in `tests/unit/api/contests-analytics-route.test.ts`.
 **Severity:** LOW
 **Reference:** `.context/reviews/_aggregate.md` AGG3-4, `.context/reviews/debugger.md` DBG3-2
 
