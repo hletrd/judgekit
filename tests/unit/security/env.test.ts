@@ -407,3 +407,35 @@ describe("getTrustedAuthHosts", () => {
     expect(hosts.has("internal.example.com:8443")).toBe(true);
   });
 });
+
+// ---------------------------------------------------------------------------
+// getAuthSessionCookieNames
+// ---------------------------------------------------------------------------
+describe("getAuthSessionCookieNames", () => {
+  it("returns both the non-secure and secure session cookie names", async () => {
+    const { getAuthSessionCookieNames } = await importEnv();
+    const names = getAuthSessionCookieNames();
+    expect(names.name).toBe("authjs.session-token");
+    expect(names.secureName).toBe("__Secure-authjs.session-token");
+  });
+
+  it("does not depend on AUTH_URL — returns same names regardless of HTTPS context", async () => {
+    setEnv({ AUTH_URL: "http://localhost:3000" });
+    const { getAuthSessionCookieNames: insecure } = await importEnv();
+    const insecureNames = insecure();
+
+    setEnv({ AUTH_URL: "https://example.com" });
+    const { getAuthSessionCookieNames: secure } = await importEnv();
+    const secureNames = secure();
+
+    expect(insecureNames).toEqual(secureNames);
+  });
+
+  it("agrees with getAuthSessionCookieName() for the active context", async () => {
+    setEnv({ AUTH_URL: "https://example.com" });
+    const { getAuthSessionCookieName, getAuthSessionCookieNames } = await importEnv();
+    const active = getAuthSessionCookieName();
+    const both = getAuthSessionCookieNames();
+    expect([both.name, both.secureName]).toContain(active);
+  });
+});
