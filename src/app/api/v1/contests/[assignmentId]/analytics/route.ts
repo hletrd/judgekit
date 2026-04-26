@@ -14,14 +14,37 @@ const CACHE_TTL_MS = 60_000;
 const STALE_AFTER_MS = 30_000;
 
 type CacheEntry = { data: ContestAnalytics; createdAt: number };
-const analyticsCache = new LRUCache<string, CacheEntry>({ max: 100, ttl: CACHE_TTL_MS });
 
 /** Tracks which cache keys currently have a background refresh in progress. */
 const _refreshingKeys = new Set<string>();
 
-/** Per-key cooldown after a background refresh failure. */
+/**
+ * Per-key cooldown after a background refresh failure.
+ *
+ * Bound to the same lifecycle as `analyticsCache` via the `dispose` hook
+ * below: when the cache loses an entry for any reason (capacity eviction,
+ * TTL expire, explicit delete, overwrite), the corresponding cooldown
+ * metadata is cleaned. Without this coupling, `_lastRefreshFailureAt`
+ * would grow unboundedly over the lifetime of an app server that sees
+ * many distinct assignment IDs experiencing refresh failures.
+ */
 const REFRESH_FAILURE_COOLDOWN_MS = 5_000;
 const _lastRefreshFailureAt = new Map<string, number>();
+
+const analyticsCache = new LRUCache<string, CacheEntry>({
+  max: 100,
+  ttl: CACHE_TTL_MS,
+  dispose: (_value, key) => {
+    // Clean up the cooldown metadata whenever the cache loses an entry.
+    // Reasons covered: 'evict' (capacity), 'expire' (TTL), 'delete'
+    // (explicit), 'set' (overwrite). On 'set' the new write replaces the
+    // entry; if it was a successful refresh, the explicit delete in the
+    // try-block already cleared this map, so this is a no-op. If it was
+    // a failure, the catch-block writes a fresh entry to this map *after*
+    // the dispose hook fires, preserving the cooldown signal.
+    _lastRefreshFailureAt.delete(key);
+  },
+});
 
 type AssignmentRow = {
   groupId: string;
@@ -55,6 +78,27 @@ async function refreshAnalyticsCacheInBackground(
     _refreshingKeys.delete(cacheKey);
   }
 }
+
+/**
+ * Test-only accessor that exposes module-private state for unit tests.
+ *
+ * This is not part of the route's public API and should only be imported
+ * from tests. It enables verification of cache + cooldown coupling
+ * (the `dispose` hook on `analyticsCache` clears `_lastRefreshFailureAt`)
+ * without making the maps themselves part of the public surface.
+ *
+ * Production code MUST NOT depend on this export.
+ */
+export const __test_internals = {
+  hasCooldown: (key: string): boolean => _lastRefreshFailureAt.has(key),
+  setCooldown: (key: string, valueMs: number): void => {
+    _lastRefreshFailureAt.set(key, valueMs);
+  },
+  cacheDelete: (key: string): boolean => analyticsCache.delete(key),
+  cacheClear: (): void => {
+    analyticsCache.clear();
+  },
+};
 
 export const GET = createApiHandler({
   rateLimit: "analytics",

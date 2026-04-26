@@ -171,6 +171,7 @@ describe("GET /api/v1/contests/[assignmentId]/analytics — staleness & cooldown
 
     // Resolve to clean up.
     resolveCompute?.({ summary: "fresh" });
+    // drains both timers and pending microtasks so the detached refresh's .catch chain runs
     await vi.runAllTimersAsync();
   });
 
@@ -189,6 +190,7 @@ describe("GET /api/v1/contests/[assignmentId]/analytics — staleness & cooldown
     loggerErrorMock.mockClear();
 
     await GET(makeReq(), makeCtx());
+    // drains both timers and pending microtasks so the detached refresh's .catch chain runs
     await vi.runAllTimersAsync();
 
     // Should log the failure.
@@ -210,6 +212,7 @@ describe("GET /api/v1/contests/[assignmentId]/analytics — staleness & cooldown
     computeContestAnalyticsMock.mockReset();
     computeContestAnalyticsMock.mockRejectedValueOnce(new Error("db down"));
     await GET(makeReq(), makeCtx());
+    // drains both timers and pending microtasks so the detached refresh's .catch chain runs
     await vi.runAllTimersAsync();
     expect(computeContestAnalyticsMock).toHaveBeenCalledTimes(1);
 
@@ -219,7 +222,28 @@ describe("GET /api/v1/contests/[assignmentId]/analytics — staleness & cooldown
 
     // Subsequent stale request should NOT retry compute.
     await GET(makeReq(), makeCtx());
+    // drains both timers and pending microtasks so the detached refresh's .catch chain runs
     await vi.runAllTimersAsync();
     expect(computeContestAnalyticsMock).not.toHaveBeenCalled();
+  });
+
+  it("evicts cooldown metadata when the cache entry is removed (dispose hook)", async () => {
+    // Prime cache so `analyticsCache` has a populated entry to dispose.
+    await callRoute();
+
+    const { __test_internals } = await import(
+      "@/app/api/v1/contests/[assignmentId]/analytics/route"
+    );
+
+    // Plant a cooldown timestamp for the same key (as if a prior refresh failed).
+    __test_internals.setCooldown(ASSIGNMENT_ID, Date.now());
+    expect(__test_internals.hasCooldown(ASSIGNMENT_ID)).toBe(true);
+
+    // Removing the cache entry should fire the LRU `dispose` hook, which
+    // clears `_lastRefreshFailureAt[key]`. This guards against the slow
+    // memory leak where a key whose cache entry is evicted retains its
+    // cooldown metadata forever.
+    expect(__test_internals.cacheDelete(ASSIGNMENT_ID)).toBe(true);
+    expect(__test_internals.hasCooldown(ASSIGNMENT_ID)).toBe(false);
   });
 });
