@@ -72,6 +72,13 @@ async function refreshAnalyticsCacheInBackground(
   } catch (err) {
     // Use Date.now() directly for the cooldown timestamp — no DB call needed,
     // and 1-2s of clock skew is well within the 5s cooldown tolerance.
+    //
+    // IMPORTANT: do NOT call analyticsCache.set() in this branch — the LRU
+    // dispose hook would synchronously delete the cooldown timestamp we are
+    // about to set on the next line, defeating the failure cooldown. The
+    // dispose hook fires for the OLD value before the new value is committed,
+    // and the catch path's _lastRefreshFailureAt.set runs AFTER dispose, so
+    // adding a cache.set here would silently break the cooldown contract.
     _lastRefreshFailureAt.set(cacheKey, Date.now());
     logger.error({ err, assignmentId }, "[analytics] Failed to refresh analytics cache");
   } finally {
@@ -82,23 +89,33 @@ async function refreshAnalyticsCacheInBackground(
 /**
  * Test-only accessor that exposes module-private state for unit tests.
  *
- * This is not part of the route's public API and should only be imported
- * from tests. It enables verification of cache + cooldown coupling
- * (the `dispose` hook on `analyticsCache` clears `_lastRefreshFailureAt`)
- * without making the maps themselves part of the public surface.
+ * This export is `undefined` outside `NODE_ENV === "test"`. It enables
+ * verification of cache + cooldown coupling (the `dispose` hook on
+ * `analyticsCache` clears `_lastRefreshFailureAt`) without making the
+ * maps themselves part of the public surface.
  *
- * Production code MUST NOT depend on this export.
+ * Production code MUST NOT depend on this export. The runtime gate below
+ * makes accidental production access throw `Cannot read properties of
+ * undefined` instead of silently working.
  */
-export const __test_internals = {
-  hasCooldown: (key: string): boolean => _lastRefreshFailureAt.has(key),
-  setCooldown: (key: string, valueMs: number): void => {
-    _lastRefreshFailureAt.set(key, valueMs);
-  },
-  cacheDelete: (key: string): boolean => analyticsCache.delete(key),
-  cacheClear: (): void => {
-    analyticsCache.clear();
-  },
-};
+export const __test_internals =
+  process.env.NODE_ENV === "test"
+    ? {
+        hasCooldown: (key: string): boolean => _lastRefreshFailureAt.has(key),
+        setCooldown: (key: string, valueMs: number): void => {
+          _lastRefreshFailureAt.set(key, valueMs);
+        },
+        cacheDelete: (key: string): boolean => analyticsCache.delete(key),
+        cacheClear: (): void => {
+          analyticsCache.clear();
+        },
+      }
+    : (undefined as unknown as {
+        hasCooldown: (key: string) => boolean;
+        setCooldown: (key: string, valueMs: number) => void;
+        cacheDelete: (key: string) => boolean;
+        cacheClear: () => void;
+      });
 
 export const GET = createApiHandler({
   rateLimit: "analytics",
