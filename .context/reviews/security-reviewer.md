@@ -1,124 +1,87 @@
-# Security Reviewer Review — RPF Cycle 4/100
+# Security Reviewer — RPF Cycle 5/100
 
-**Date:** 2026-04-27
-**Scope:** OWASP top 10 + auth/authz + secrets + unsafe patterns
-**Method:** static review of recently-changed files (analytics, anti-cheat, env, proxy) and adjacent surfaces
-
-## Findings
-
-### SEC4-1: [LOW, deferred] `__Secure-` cookie clear over HTTP is a no-op (carried)
-
-**Severity:** LOW | **Confidence:** MEDIUM | **File:** `src/proxy.ts:94`
-
-Carried from cycle 2 AGG-9 / cycle 3 AGG3-6. `response.cookies.set(secureName, "", { ..., secure: true })` over HTTP is silently dropped by the browser. Production is HTTPS-only, so this is a dev-environment nuisance only.
-
-**Failure scenario:** Developer testing locally over plain HTTP can't clear a stuck `__Secure-` cookie. Workaround: use HTTPS dev cert or clear via DevTools.
-
-**Fix (deferred):** Conditional: `secure: request.nextUrl.protocol === "https:"`. Not pursued this cycle (negligible production impact).
-
-**Exit criterion:** Reopen if a developer reports a stuck `__Secure-` cookie in dev.
+**Date:** 2026-04-26
+**Lens:** OWASP top 10, secrets, unsafe patterns, auth/authz, schema-level data exposure
+**Files inventoried:** Same as architect.md, plus `src/app/api/v1/contests/[assignmentId]/anti-cheat/route.ts`, `src/lib/judge/auth.ts`, `src/app/api/v1/judge/{claim,heartbeat}/route.ts`.
 
 ---
 
-### SEC4-2: [LOW] `__test_internals` exported from production module increases attack surface marginally
+## SEC5-1: [HIGH, actionable, NEW] Dropping `secret_token` column without confirming all rows migrated to `secret_token_hash` risks judge-worker auth lockout
 
-**Severity:** LOW | **Confidence:** MEDIUM | **File:** `src/app/api/v1/contests/[assignmentId]/analytics/route.ts:92-101`
+**Severity:** HIGH (security operations / availability)
+**Confidence:** MEDIUM-HIGH
 
-Same issue as ARCH4-1, CR4-1, CRIT4-1. From a security angle: `__test_internals.cacheClear()` allows arbitrary clearing of the analytics cache; `__test_internals.setCooldown` allows arbitrary cooldown manipulation. These are not user-reachable (the export is only callable from inside server code that imports the route module), but they are an internal-server attack surface that didn't exist before.
+**Evidence:**
+- `src/lib/db/schema.pg.ts:418-420` no longer has plaintext `secretToken`; only `secretTokenHash`.
+- `src/lib/judge/auth.ts:75-79` already documents the migration concern:
+  ```
+  // Worker found but has no secretTokenHash — reject and log migration warning
+  ...
+  "[judge] Worker %s has no secretTokenHash — rejecting auth. Migrate plaintext secretToken to hash."
+  ```
+- `drizzle/pg/0020_drop_judge_workers_secret_token.sql` drops the plaintext column unconditionally.
+- There is no migration script that backfills `secret_token_hash` from `secret_token` BEFORE the drop.
 
-**Concrete risk:** A future SSRF or RCE that lets an attacker execute code in the server process could call `__test_internals.cacheClear()` to denial-of-service the analytics cache. This is multi-step and unlikely, but the export is unnecessary surface.
+**Why it's a problem:** When the destructive migration finally executes (post-fix to ARCH5-1), every judge worker whose plaintext token was never migrated to a hash will be permanently locked out. The auth code (line 75-79) gracefully rejects them, but their secrets are gone, requiring manual re-registration of every affected worker.
 
-**Fix:** Same as ARCH4-1 — gate behind `NODE_ENV === "test"`.
+**Failure scenario:** Operator runs deploy with `--force` (after fixing ARCH5-1's snapshot drift) → migration applies → DB drops `secret_token` → workers that hadn't been touched since the schema-0014 era can't authenticate → judge fleet partially offline → exam in progress fails to grade submissions.
 
-**Exit criterion:** `__test_internals` is undefined in production runtime.
-
----
-
-### SEC4-3: [LOW] `password.ts` enforces dictionary + similarity (over-spec per AGENTS.md, deferred)
-
-**Severity:** LOW | **Confidence:** HIGH | **Files:** `AGENTS.md:516-521`, `src/lib/security/password.ts:45,50,59`
-
-Carried from cycle 3 AGG3-5 / cycle 2 AGG-11. The password module is *more* restrictive than AGENTS.md says, which is the safer side. Removing the dictionary/similarity checks would weaken security; updating AGENTS.md to allow them aligns doc-with-code.
-
-**Quoted policy (AGENTS.md:516-521):**
-> Password validation MUST only check minimum length
-
-**Fix (deferred):** Cannot decide without user/PM input. Carried.
-
-**Exit criterion:** User decision on which side to reconcile.
-
----
-
-### SEC4-4: [INFO] CSP, HSTS, and cookie security headers verified
-
-**File:** `src/proxy.ts:148-238`
-
-The CSP is dynamically built per request (with nonce), distinguishes `/signup` (allowing hcaptcha) from other pages, and properly restricts `frame-ancestors`, `object-src`, `base-uri`, `form-action`. HSTS is set when `x-forwarded-proto === "https"`. Cookies are cleared with `secure: true` for `__Secure-` variants.
-
-`SEC-M5` (UA hash audit) at lines 278-291 is correctly an audit-only signal, not a hard reject. Reasonable.
-
-**No action.**
-
----
-
-### SEC4-5: [INFO] Anti-cheat data is correctly redacted
-
-**File:** `src/components/exam/anti-cheat-monitor.tsx:240-261`
-
-`describeElement` deliberately does NOT capture text content from the page (commented at line 252-253: "text content is intentionally NOT captured to avoid storing copyrighted exam problem text in the audit log"). This is a strong privacy-by-design choice. The `target` field reports element type and parent class only.
-
-**No action.**
-
----
-
-### SEC4-6: [INFO] localStorage usage in anti-cheat is appropriate
-
-**File:** `src/components/exam/anti-cheat-monitor.tsx:41-63`
-
-The pending-events queue is stored in `localStorage` keyed by `assignmentId`. This is a queue of events to retry sending; no PII or auth tokens. The data is bounded by the user's own activity (visibility changes, copies, etc.) and cleared once delivered. Reasonable use of localStorage.
-
-Minor: see CR4-2 for length cap. No security impact today.
-
-**No action.**
-
----
-
-### SEC4-7: [LOW] Test mock signatures use `any` for handler ctx
-
-**Severity:** LOW | **Confidence:** HIGH | **File:** `tests/unit/api/contests-analytics-route.test.ts:21-22`
-
-```ts
-({ handler }: { handler: (req: NextRequest, ctx: { user: any; params: any }) => Promise<Response> }) =>
+**Fix:** BEFORE the destructive drop, run a one-shot backfill:
+```sql
+-- Verify the hashing scheme matches src/lib/security/tokens.ts hashToken()
+UPDATE judge_workers
+SET secret_token_hash = encode(sha256(secret_token::bytea), 'hex')
+WHERE secret_token_hash IS NULL AND secret_token IS NOT NULL;
 ```
+Then verify zero rows have `secret_token IS NOT NULL AND secret_token_hash IS NULL`. Then run the drop.
 
-`any` types in test mocks reduce type safety in tests. If the production route handler's expected ctx shape changes, the test mock won't catch it. Cosmetic.
-
-**Fix:** Type the mock as `Parameters<typeof createApiHandler>[0]` or use `unknown` with proper narrowing.
-
-**Exit criterion:** N/A this cycle (cosmetic; deferred).
-
----
-
-### SEC4-8: [INFO] No new security regressions detected
-
-Verified clean:
-- Auth secret validation in `env.ts:182-190` (placeholder reject + 32-char min).
-- Judge auth token validation in `env.ts:192-210` (3 placeholder rejects + 32-char min).
-- Trust-host logic correctly defaults to `true` only in non-prod.
-- Cache clear cookies use `maxAge: 0` (immediate expiry, RFC-correct).
-- No SQL string interpolation in `analytics/route.ts:108-112` — uses `@assignmentId` placeholder via `rawQueryOne`.
-
-**No action.**
+**Exit criteria:**
+- A pre-drop migration backfills hashes from plaintext.
+- A verification query asserts zero rows would be orphaned.
+- The drop migration runs only after the verification passes.
 
 ---
 
-## Confidence Summary
+## SEC5-2: [LOW, actionable, NEW] `clearAuthSessionCookies` lacks dedicated test coverage asserting BOTH cookie names are cleared in one response
 
-- SEC4-1: MEDIUM (carried-deferred, dev-only impact).
-- SEC4-2: MEDIUM (multi-step risk; defense-in-depth fix recommended).
-- SEC4-3: HIGH (carried-deferred, repo-policy ambiguity).
-- SEC4-4: HIGH (informational).
-- SEC4-5: HIGH (informational; intentional privacy choice).
-- SEC4-6: HIGH (informational).
-- SEC4-7: HIGH (cosmetic).
-- SEC4-8: HIGH (clean state).
+**Severity:** LOW
+**Confidence:** HIGH
+
+**Evidence:** `src/proxy.ts:87-97`. Cycles 1-2 added the dual-clear. Tests in `tests/unit/proxy*` exist; `grep -rn "clearAuthSessionCookies" tests/` returns hits, but none specifically assert that BOTH cookie names are cleared in a single response.
+
+**Fix:** Add a unit test that calls `clearAuthSessionCookies(NextResponse.next())` and asserts both `authjs.session-token` and `__Secure-authjs.session-token` are present in the response with `maxAge: 0`.
+
+**Exit criteria:** New unit test asserts both cookie names are cleared.
+
+---
+
+## SEC5-3: [LOW, deferred-carry] AGENTS.md vs `password.ts` mismatch (carried from cycles 3-4)
+
+**Severity:** MEDIUM
+**Confidence:** HIGH
+**Reason for deferral:** Per cycle 3-4 plan, requires user/PM decision (which behavior is canonical). Repo rules don't forbid deferring docs/code mismatches. Exit criterion: User/PM declares which is canonical.
+
+---
+
+## SEC5-4: [LOW, deferred] `__Secure-` cookie clear over HTTP no-op (carried from cycle 3 SEC3-1)
+
+Production is HTTPS-only; this is a dev-only nuisance.
+
+---
+
+## SEC5-5: [LOW, NEW] `__test_internals` runtime gate is defense-in-depth but cycle-4 type-cast undermines fail-fast clarity
+
+**Severity:** LOW
+**Confidence:** MEDIUM
+
+**Evidence:** `src/app/api/v1/contests/[assignmentId]/analytics/route.ts:101-118`. The double-cast `undefined as unknown as <type>` (see ARCH5-2) means a SSRF/RCE chain that lets an attacker `import("@/.../route")` and call `__test_internals.cacheClear()` would crash the route module instead of clearing the cache. Net-positive for security, but the type system silently agrees with the call site, so a future maintainer who deletes the runtime gate without realizing the fail-fast contract loses the protection silently.
+
+**Fix:** ARCH5-2's recommendation (mark the type as `... | undefined`) makes the runtime gate the type-level contract too.
+
+---
+
+## Final Sweep
+
+- No new HIGH-severity security regression in the recently-touched code itself.
+- The HIGH-severity finding (SEC5-1) is a deploy-time concern triggered by ARCH5-1's drift, but the data-loss risk to judge worker auth credentials is independently severe and per the deferred-fix rules ("Security, correctness, and data-loss findings are NOT deferrable") MUST be planned-and-fixed alongside ARCH5-1 in this cycle.
+- All gates green: lint 0 errors, test:unit 2232 pass, build EXIT=0.

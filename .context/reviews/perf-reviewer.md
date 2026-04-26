@@ -1,111 +1,69 @@
-# Performance Reviewer Review — RPF Cycle 4/100
+# Perf Reviewer — RPF Cycle 5/100
 
-**Date:** 2026-04-27
-**Scope:** CPU/memory/network/UI responsiveness, hot-path allocation, concurrency
-
-## Findings
-
-### PERF4-1: [INFO] `_lastRefreshFailureAt` lifecycle bound to `analyticsCache` via dispose hook
-
-**Severity:** INFO | **Confidence:** HIGH | **File:** `src/app/api/v1/contests/[assignmentId]/analytics/route.ts:34-47`
-
-The cycle-3 fix (commit `56dd6957`) closes the slow-leak finding from cycle 3 PERF3-2 / AGG3-1. After verification:
-- Eviction path (capacity, TTL): dispose fires → `_lastRefreshFailureAt.delete(key)` → no leak.
-- Explicit delete path: same.
-- Overwrite path: dispose fires for the OLD value, new value is set; cooldown semantics preserved by ordering of catch-block writes.
-
-**No action.**
+**Date:** 2026-04-26
+**Lens:** performance, concurrency, CPU/memory, UI responsiveness, deploy hot-paths
+**Files inventoried:** Same as architect.md.
 
 ---
 
-### PERF4-2: [LOW] `getAuthSessionCookieNames()` allocates a new object literal on every call
+## PERF5-1: [LOW, actionable, NEW] Drizzle-kit `npm install` runs on every deploy
 
-**Severity:** LOW | **Confidence:** HIGH | **File:** `src/lib/security/env.ts:178-180`
+**Severity:** LOW
+**Confidence:** HIGH
 
-```ts
-export function getAuthSessionCookieNames(): { name: string; secureName: string } {
-  return { name: AUTH_SESSION_COOKIE_NAME, secureName: SECURE_AUTH_SESSION_COOKIE_NAME };
-}
+**Evidence:** `deploy-docker.sh:564`
+```sh
+sh -c 'npm install --no-save drizzle-kit drizzle-orm nanoid 2>&1 | tail -1 && npx drizzle-kit push'
 ```
+This runs `npm install --no-save` for `drizzle-kit + drizzle-orm + nanoid` inside a fresh `node:24-alpine` container on every deploy. ~150 packages, 30-60s of network/CPU.
 
-Every call allocates: 1 fresh object + 2 string-property slots. Strings themselves are interned constants (no extra alloc). The function is called from `proxy.ts:92` on every unauthorized response and on every logout/cookie-clear path.
+**Why it's a problem:** Every deploy slows by 30-60s for transitive dep install in a throwaway container. With per-cycle deploy mode this multiplies across the loop.
 
-**Real-world cost:** Sub-microsecond per call. The proxy handles thousands of req/sec under load; this pattern adds maybe 10-100 microseconds total over a day. Negligible.
+**Fix:** Mount the project's `node_modules` (the host already resolves `drizzle-kit` via `npm run db:push`) or build a small image with drizzle-kit pre-installed. Or use the app's own `next` image which already has it.
 
-**Fix (optional):** Hoist a frozen constant:
-```ts
-const AUTH_SESSION_COOKIE_NAMES = Object.freeze({
-  name: AUTH_SESSION_COOKIE_NAME,
-  secureName: SECURE_AUTH_SESSION_COOKIE_NAME,
-});
-export function getAuthSessionCookieNames() {
-  return AUTH_SESSION_COOKIE_NAMES;
-}
-```
-
-**Exit criterion:** N/A this cycle (cosmetic; carried from cycle 3 AGG3-10).
+**Exit criteria:** Deploy runtime measurably faster (>20s shaved). No correctness regression (drizzle-kit version still matches the project's pinned version).
 
 ---
 
-### PERF4-3: [LOW] Anti-cheat `loadPendingEvents` JSON parses on every visibility/online event
+## PERF5-2: [LOW, NEW] `formatDetailsJson` parses + reformats JSON on every render of expanded row
 
-**Severity:** LOW | **Confidence:** HIGH | **File:** `src/components/exam/anti-cheat-monitor.tsx:41-51`
+**Severity:** LOW
+**Confidence:** MEDIUM
 
-`loadPendingEvents` performs `JSON.parse` on the localStorage string every time it's called. Callers include `flushPendingEvents` (visibility change to visible, online event), `reportEvent` (whenever a network failure occurs), and the retry-timer callback. In an active exam, this could happen ~once per minute under normal conditions.
+**Evidence:** `src/components/contest/anti-cheat-dashboard.tsx:91-105,558-559`. `JSON.parse + JSON.stringify` invoked on every component render (sort, filter, polling refresh) for each event row that has details and is currently expanded.
 
-**Real-world cost:** Negligible for small queues (<10 events). Could matter if the queue ever grows large (see CR4-2 — currently no upper bound).
+**Why it's a problem:** With the page polling every 30s and 100-500 events potentially expanded, each render is N JSON parses. Negligible for 10 rows but cumulative for instructors who expand many.
 
-**Fix:** No code change today. If CR4-2 is fixed (add cap), this becomes a non-issue.
+**Fix:** Memoize per-event with a `useMemo` keyed on `filteredEvents`, or compute the formatted strings once at fetch time.
 
-**Exit criterion:** N/A this cycle.
-
----
-
-### PERF4-4: [LOW] `Date.now()` used for staleness check; `getDbNowMs()` used for cache writes — split is intentional
-
-**Severity:** LOW | **Confidence:** HIGH | **File:** `src/app/api/v1/contests/[assignmentId]/analytics/route.ts:127-134,159`
-
-Per cycle 2 design (commit `e897b0a5`), staleness checks use `Date.now()` (no DB call) while cache writes use `await getDbNowMs()` (authoritative). This is the correct split: cache hits are zero-DB-roundtrip, while cache writes are infrequent and benefit from the authoritative time source.
-
-**No action.**
+**Exit criteria:** A profile shows formatDetailsJson invocations no longer scale with re-render count.
 
 ---
 
-### PERF4-5: [LOW] `proxy.ts` cache cleanup at 90% capacity is correctly amortized
+## PERF5-3: [LOW, NEW] Tests `import @/app/...analytics/route` repeatedly via `vi.resetModules()` — slow cold-start path
 
-**Severity:** LOW | **Confidence:** HIGH | **File:** `src/proxy.ts:64-85`
+**Severity:** LOW
+**Confidence:** MEDIUM
 
-The auth-cache cleanup loop iterates the full cache only when `size >= 0.9 * MAX_SIZE` (=450). Under steady load, this triggers infrequently (only when cache is near full, which requires ~450 distinct active users + token-refresh churn). The amortized cost is constant per `setCachedAuthUser` call. Correct design.
+**Evidence:** `tests/unit/api/contests-analytics-route.test.ts:74-79,127,146,182,207,234`. Each test calls `callRoute` once or twice with `vi.resetModules()` between, re-instantiating the route module + its transitive imports each time. The test file is slow relative to its assertion count.
 
-**No action.**
+**Why it's a problem:** Test suite drag. The pattern is correct (need fresh module-level cache per cooldown test) but expensive.
 
----
+**Fix:** Either (a) use `__test_internals.cacheDelete()` to scope state-resets to a single key without `vi.resetModules()`, or (b) restructure tests to share a single module instance.
 
-### PERF4-6: [LOW] Heartbeat schedule could use `setInterval` instead of recursive `setTimeout`
-
-**Severity:** LOW | **Confidence:** MEDIUM | **File:** `src/components/exam/anti-cheat-monitor.tsx:200-216`
-
-Recursive `setTimeout` is functionally equivalent to `setInterval` for a fixed-cadence heartbeat. The current pattern correctly clears via `clearTimeout(heartbeatTimer)` on cleanup. `setInterval` would be marginally simpler:
-
-```ts
-heartbeatTimer = setInterval(() => {
-  if (document.visibilityState === "visible") {
-    void reportEventRef.current("heartbeat");
-  }
-}, HEARTBEAT_INTERVAL_MS);
-```
-
-But: `setInterval` doesn't naturally accommodate the immediate first-call (`void reportEventRef.current("heartbeat")` at line 203). The current recursive-setTimeout pattern allows that. Tradeoff is fine.
-
-**No action.**
+**Exit criteria:** Test file runs ≥30% faster. All cooldown/staleness invariants still asserted.
 
 ---
 
-## Confidence Summary
+## PERF5-4: [LOW, deferred-carry] LRU `dispose` hook fires on `set` (overwrite) — cycle-4 docstring covers this
 
-- PERF4-1: HIGH (verified fix from cycle 3).
-- PERF4-2: HIGH (negligible cost; cosmetic).
-- PERF4-3: HIGH (negligible cost).
-- PERF4-4: HIGH (intentional design).
-- PERF4-5: HIGH (correct amortization).
-- PERF4-6: MEDIUM (subjective; current is fine).
+`src/app/api/v1/contests/[assignmentId]/analytics/route.ts:37-46` — comprehensive docstring. No action.
+
+---
+
+## Final Sweep
+
+- No new perf regressions in the recently-touched code.
+- The LRU + dispose hook + Date.now staleness check changes from cycles 2-3 are measurable wins (cache hits no longer take a DB round-trip).
+- `loadPendingEvents.slice(0, 200)` cap from cycle 4 prevents pathological iteration cost.
+- All gates green: lint 0 errors, test:unit 2232 pass, build EXIT=0.

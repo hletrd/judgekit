@@ -1,96 +1,101 @@
-# Critic Review — RPF Cycle 4/100
+# Critic — RPF Cycle 5/100
 
-**Date:** 2026-04-27
-**Stance:** multi-perspective critique, looking for hidden assumptions, brittle patterns, weak invariants
-
-## Findings
-
-### CRIT4-1: [LOW] `__test_internals` is a leaky abstraction
-
-**Severity:** LOW | **Confidence:** HIGH | **Files:** `src/app/api/v1/contests/[assignmentId]/analytics/route.ts:92-101`, `tests/unit/api/contests-analytics-route.test.ts:230-248`
-
-The route module now exports `__test_internals` to enable a single test (`evicts cooldown metadata when the cache entry is removed (dispose hook)`). This works but inverts the dependency: production code is now adapted to the test, not the other way around. Tests should either:
-
-1. Drive observable behavior through the public API (call the route handler twice and observe state externally), OR
-2. Reach in via a test-only module (sibling file with `// eslint-disable-next-line` or alias path).
-
-The `__test_internals` export sits in the production module, advertised by name and documented as "test-only" — but the language has no `internal` keyword. Anyone with import access can use it.
-
-**Hidden assumption:** Future contributors will read the JSDoc and resist using it. Reality: someone will eventually use it for a hot-fix and ship it.
-
-**Fix:** Either gate behind `process.env.NODE_ENV === "test"` (one-line, ARCH4-1 / CR4-1 also flagged this) or move to `route.test-helpers.ts`.
-
-**Exit criterion:** Production builds cannot access `__test_internals`.
+**Date:** 2026-04-26
+**Lens:** multi-perspective critique; what's missing, over-engineered, or assumed-invisible.
 
 ---
 
-### CRIT4-2: [LOW] `_refreshingKeys` correctness depends on the `finally` block always running
+## CRIT5-1: [HIGH, actionable, NEW] Deploy script's "[OK] Database migrated" is reported even when drizzle-kit push errors interactively
 
-**Severity:** LOW | **Confidence:** MEDIUM | **File:** `src/app/api/v1/contests/[assignmentId]/analytics/route.ts:64-80`
+**Severity:** HIGH (operational visibility)
+**Confidence:** HIGH (orchestrator note from cycle 4 documents this exact behavior)
 
-The dedup guard `if (!_refreshingKeys.has(cacheKey) && ...)` correctness depends on `_refreshingKeys.delete(cacheKey)` running in the `finally` clause. If the `try`/`catch` body throws *synchronously* before `try` is entered (it cannot — but contributors don't always know that), or if a `Promise.race` ever externally cancels this task (it can't with current code, but `AbortController` could be added), the `finally` may not fire.
+**Evidence:**
+- `deploy-docker.sh:564-566`:
+  ```sh
+  sh -c '... npx drizzle-kit push'" 2>&1 || \
+    die "drizzle-kit push failed — aborting deploy"
+  success "Database migrated"
+  ```
+- The orchestrator note for cycle 5: "Deploy still proceeded via the additive `[OK] Database migrated` path" despite the data-loss warning.
+- This means drizzle-kit push exits 0 even when its data-loss prompt was unanswered and the destructive change was NOT applied.
 
-**Hidden assumption:** No one will ever wrap `refreshAnalyticsCacheInBackground` with a cancel-on-timeout abstraction.
+**Why it's a problem:** Operators see "Database migrated" in the log but the schema didn't change. Future drift compounds silently. This is exactly the kind of failure that causes a 3am page when production breaks for non-obvious reasons.
 
-**Failure scenario:** A future caller wraps the call in `Promise.race([refresh, abortPromise])`. The "winner" cancels the refresh promise. JS does not actually cancel the underlying work, but if the abort path involves `process.exit` or similar, the `finally` may not run before exit. Recovery requires an app restart.
+**Fix:**
+1. Capture drizzle-kit push output, scan for "data loss" / "Are you sure" / unanswered prompt, and downgrade the success log to a warning when detected:
+   ```sh
+   PUSH_OUT=$(remote "... npx drizzle-kit push" 2>&1) || die "..."
+   if grep -qi "data loss\|are you sure" <<<"$PUSH_OUT"; then
+     warn "drizzle-kit push detected destructive change but did not apply it (interactive prompt). Manual intervention required."
+   else
+     success "Database migrated"
+   fi
+   ```
+2. Or switch to `drizzle-kit migrate` (see ARCH5-1) which has no interactive prompt.
 
-**Fix:** Document the contract. Optionally add a watchdog timer (see ARCH4-2). Defer unless someone introduces cancellation.
-
-**Exit criterion:** N/A this cycle.
-
----
-
-### CRIT4-3: [LOW] Privacy notice is mandatory: no decline path
-
-**Severity:** LOW | **Confidence:** HIGH | **File:** `src/components/exam/anti-cheat-monitor.tsx:307-332`
-
-The privacy notice dialog (carried deferred from cycle 2 AGG-12 / cycle 3 AGG3-8) has only an "Accept" button. The user cannot decline. They can close the tab, but that aborts the exam.
-
-This is a UX/ethics concern as much as a code one. In some jurisdictions (GDPR, etc.), surveillance disclosures with no opt-out may be considered insufficient consent. Whether this is enforceable depends on the legal context (school/employer/etc. may have legitimate interest), but at minimum the UX should explain "if you decline, your exam is aborted" or offer a "Decline & exit" button that returns to the dashboard.
-
-**Hidden assumption:** Test-takers have already implicitly consented by registering for the exam.
-
-**Fix (deferred):** Carry as deferred — UX/legal judgment call. Reopen with explicit user direction.
-
-**Exit criterion:** N/A this cycle (deferred per repo policy on UX judgment calls).
-
----
-
-### CRIT4-4: [LOW] Cycle planning is converging on cosmetic-only items
-
-**Severity:** LOW | **Confidence:** HIGH | **Observation across:** `.context/reviews/_aggregate-cycle-3.md`, `.context/reviews/_aggregate-cycle-2.md`
-
-Cycles 1-3 closed the meaningful issues (analytics race, cookie clearing, cache lifecycle, performFlush extraction, IIFE refactor). Cycle 3 and 4 are at steady state: the remaining findings are LOW-severity stylistic items, optional refactors, and deferred-deferral chains. This is healthy — but the review-plan-fix loop is now spending cycles primarily to maintain hygiene rather than fix bugs. Suggest the next 5-10 cycles either:
-
-1. Pivot to a feature/migration effort (e.g., the user-injected workspace-to-public migration directive).
-2. Pause the loop until the codebase changes (so reviewers have new code to find issues in).
-
-**Hidden assumption:** Each loop iteration finds proportional new value.
-
-**Fix:** No code change. Note in the plan that cycles 4-10 should consider migration progress or pause.
-
-**Exit criterion:** N/A — observational.
+**Exit criteria:** A deploy that hits the data-loss prompt does NOT print `[OK] Database migrated`. The deploy log surfaces the actual drizzle-kit message that triggered the prompt.
 
 ---
 
-### CRIT4-5: [LOW] Cookie names hoisted to module-level constants would simplify proxy
+## CRIT5-2: [MEDIUM, actionable, NEW] Workspace-to-public migration is "high priority" but the per-cycle remediation loop has surfaced zero migration findings since cycle 2
 
-See CR4-6. Same finding from a different perspective: the proxy reads cookie names through a function call layer, which is good for the linter and bad for the reader. A reader has to follow `getAuthSessionCookieNames()` → `env.ts:178` → constants to understand what cookies are being cleared. Two-level indirection.
+**Severity:** MEDIUM (process / prioritization)
+**Confidence:** MEDIUM
 
-**Fix:** Same as CR4-6 — hoist to module-level const. Cosmetic.
+**Evidence:**
+- `user-injected/workspace-to-public-migration.md` is flagged HIGH priority, ongoing.
+- `src/components/layout/app-sidebar.tsx:55-59` already documents that "All non-admin navigation ... is now in the PublicHeader dropdown. The sidebar only renders for users with admin capabilities and contains only admin-specific items."
+- The migration appears largely **done** — sidebar is admin-only, public dropdown carries the rest.
+- The user-injected doc still lists "Problems / Submissions / Compiler/Playground / Contests" as "evaluate unifying," but the actual code has done the unification (`public-nav.ts:61-70` exposes Dashboard/Problems/Problem-Sets/Groups/My-Submissions/Contests/Profile/Admin in the dropdown).
 
-**Exit criterion:** N/A this cycle.
+**Why it's a problem:** The user-injected directive's "current state" section is stale. The migration loop is asked to "make progress where the review surfaces a relevant opportunity" — but if the actual state is "mostly done," the directive should reflect that, or the per-cycle review wastes attention on a phantom backlog.
+
+**Fix:** Update `user-injected/workspace-to-public-migration.md`:
+- Mark the "non-admin nav items removed from sidebar" milestone as DONE with citation `src/components/layout/app-sidebar.tsx:55-59`.
+- Update "Current State" to reflect that the public dropdown carries Dashboard/Problems/Problem-Sets/Groups/My-Submissions/Contests/Profile/Admin (per `public-nav.ts:61-70`).
+- Identify SPECIFIC remaining migration candidates, or close the directive.
+
+**Exit criteria:** The directive accurately reflects what is and isn't done; per-cycle reviews can identify real residual work or close the directive.
 
 ---
 
-## Workspace-to-Public Migration Note
+## CRIT5-3: [LOW, NEW] Cycle 4 plan claimed `__test_internals` would be `undefined` outside test, but the actual implementation casts to the type
 
-The user-injected directive at `user-injected/workspace-to-public-migration.md` requests incremental migration of dashboard-only pages to the public top navbar. **Cycle 4 review surfaces no specific page candidate** based on the file diff since cycle 3. The standing plan continues to track this work. Suggest next cycle's review specifically check `src/components/layout/app-sidebar.tsx` against `src/lib/navigation/public-nav.ts` for migration candidates if no other findings surface.
+**Severity:** LOW
+**Confidence:** HIGH
 
-## Confidence Summary
+**Evidence:** Cycle 4 plan (`plans/open/2026-04-27-rpf-cycle-4-review-remediation.md` Task A) says:
+> Production builds (`NODE_ENV=production`) have `__test_internals === undefined`.
 
-- CRIT4-1: HIGH.
-- CRIT4-2: MEDIUM (depends on hypothetical future contributor changes).
-- CRIT4-3: HIGH (UX/legal — but already deferred).
-- CRIT4-4: HIGH (observational).
-- CRIT4-5: HIGH (cosmetic).
+The actual fix (`route.ts:113-118`) writes `(undefined as unknown as <typeof methods>)`. Runtime IS undefined, but the TYPE is not. The cycle-4 verifier's exit criterion was met (runtime undefined), but the spirit ("don't let production code accidentally call this") is undermined by the type cast — see ARCH5-2.
+
+**Fix:** Adopt ARCH5-2's recommendation. Plan intent and implementation type then converge.
+
+---
+
+## CRIT5-4: [LOW, NEW] Plans directory `plans/open/` has stale entries from prior cycles
+
+**Severity:** LOW
+**Confidence:** HIGH
+
+**Evidence:** `git status` shows:
+- `D plans/open/2026-04-23-rpf-cycle-48-review-remediation.md`
+- `D plans/open/2026-04-25-rpf-cycle-47-review-remediation.md`
+- `?? plans/open/2026-04-25-rpf-cycle-48-review-remediation.md`
+- `?? plans/open/_archive/2026-04-23-rpf-cycle-48-review-remediation.md`
+- `?? plans/open/_archive/2026-04-25-rpf-cycle-47-review-remediation.md`
+
+These untracked moves should be committed; the working tree shouldn't have orphaned plan files between cycles.
+
+**Fix:** Commit the archive moves (or revert them). Per `plans/open/README.md`, the canonical archive is `plans/done/` — but the moves above land in `plans/open/_archive/`. Verify and pick one convention.
+
+**Exit criteria:** Working tree clean of orphaned plan files; archive convention applied consistently.
+
+---
+
+## Final Sweep
+
+- The two cycle-5 NEW findings (ARCH5-1 + SEC5-1 = same root cause; CRIT5-1 = deploy log lying about it) form a single "deploy + migration honesty" cluster — the highest-signal item this cycle.
+- The workspace-to-public migration directive needs a freshness pass.
+- All gates green: lint, test:unit, build.

@@ -1,92 +1,98 @@
-# Debugger Review — RPF Cycle 4/100
+# Debugger — RPF Cycle 5/100
 
-**Date:** 2026-04-27
-**Scope:** latent bug surface, failure modes, regressions, defensive code review
-
-## Findings
-
-### DBG4-1: [LOW] `dispose` hook on `analyticsCache` triggers on `set` (overwrite), potentially clearing freshly-stored cooldown
-
-**Severity:** LOW | **Confidence:** MEDIUM | **File:** `src/app/api/v1/contests/[assignmentId]/analytics/route.ts:34-47`
-
-The `dispose` callback fires on five reasons: `evict`, `set` (overwrite), `delete`, `expire`, `fetch`. The current implementation correctly handles four of those. But on `set` (overwriting an existing entry), the sequence inside `refreshAnalyticsCacheInBackground` is:
-
-1. `analyticsCache.set(cacheKey, { data: fresh, ... })` (line 70) — fires `dispose` on the old entry, which calls `_lastRefreshFailureAt.delete(key)`.
-2. `_lastRefreshFailureAt.delete(cacheKey)` (line 71) — explicit delete of cooldown.
-
-That's two deletes of the same key, both correct. But if a refresh **fails**, the catch block sets `_lastRefreshFailureAt.set(cacheKey, Date.now())` on line 75. The dispose hook does NOT fire on this path because no `analyticsCache.set` occurs in the catch — confirmed by reading the code.
-
-The risk is more subtle: imagine a future contributor adds `analyticsCache.set(cacheKey, { ...stale, error: true })` to the catch block to mark stale cache for some reason. The dispose hook would fire, deleting the *just-set* cooldown entry. The cooldown becomes useless.
-
-The doc comment at lines 38-46 already calls this out clearly:
-> If it was a failure, the catch-block writes a fresh entry to this map *after* the dispose hook fires, preserving the cooldown signal.
-
-So the contract is documented and currently safe. **But** the comment talks about the *current* failure path; if a future change sets the cache in the catch, the comment becomes stale silently.
-
-**Failure scenario:** Future feature: "mark cache entries as known-stale after error." Engineer adds `analyticsCache.set(cacheKey, { data: cached.data, createdAt: 0 })` in the catch block. Cooldown silently fails to register because the dispose hook now eats it.
-
-**Fix:** Add a defensive comment in the catch block: `// IMPORTANT: do not call analyticsCache.set() here — it would dispose the cooldown timestamp via the LRU dispose hook.` Or use a `disposeAfter` instead of `dispose` (the lru-cache library distinguishes them) — but disposeAfter has subtle ordering rules; current dispose is the right primitive.
-
-**Exit criterion:** Comment in the catch block warning future contributors not to set the cache there.
+**Date:** 2026-04-26
+**Lens:** latent bug surface, failure modes, regressions, defensive code review
 
 ---
 
-### DBG4-2: [LOW] Test "respects cooldown" assumes `vi.runAllTimersAsync()` drains the detached promise
+## DBG5-1: [LOW, actionable, NEW] `_refreshingKeys.add` runs OUTSIDE `refreshAnalyticsCacheInBackground` — paired with the function's `finally` cleanup, but coupling is fragile
 
-**Severity:** LOW | **Confidence:** HIGH | **File:** `tests/unit/api/contests-analytics-route.test.ts:194,216,226`
+**Severity:** LOW
+**Confidence:** HIGH
 
-The test now has comments explaining the behavior, which is great. Still a fragile pattern: if Vitest 5 changes the semantics of `runAllTimersAsync` (which is a known evolving API across Vitest 3 → 4 → 5), the test will fail to wait for the detached `.catch` chain. The test would either time out, race, or pass spuriously depending on the new semantics.
+**Evidence:** `src/app/api/v1/contests/[assignmentId]/analytics/route.ts:159-170`
+```ts
+if (!_refreshingKeys.has(cacheKey) && nowMs - lastFailure >= REFRESH_FAILURE_COOLDOWN_MS) {
+  _refreshingKeys.add(cacheKey);             // ← line 160
+  refreshAnalyticsCacheInBackground(assignmentId, cacheKey).catch((err) => {...});
+}
+```
+Then `refreshAnalyticsCacheInBackground.finally` (line 84-86) does `_refreshingKeys.delete(cacheKey)`.
 
-**Failure scenario:** Vitest 5 release breaks `runAllTimersAsync` into separate "drain timers" and "drain microtasks" functions. The test starts hanging in CI.
+**Why it's a problem:** The add-here / delete-there pattern means `_refreshingKeys` consistency depends on the function ALWAYS running its `finally`. If a future refactor:
+- replaces the `.catch` chain with try/await wrapping that throws synchronously, OR
+- moves `refreshAnalyticsCacheInBackground` to a different file and someone "simplifies" by removing the `finally`,
 
-**Fix:** Pin Vitest version (already done in package.json). Add a `// TODO(vitest5): re-validate microtask drain semantics on upgrade` comment near each call. Defensive.
+the set leaks the key. Subsequent stale-cache reads see `_refreshingKeys.has(cacheKey) === true` and never trigger refresh. This is a slow degradation that only surfaces under "stale cache after a refresh attempt" — easy to miss in tests.
 
-**Exit criterion:** N/A this cycle (cosmetic).
+**Fix:** Co-locate add and delete inside the function:
+```ts
+async function refreshAnalyticsCacheInBackground(assignmentId, cacheKey) {
+  if (_refreshingKeys.has(cacheKey)) return;  // (idempotent guard)
+  _refreshingKeys.add(cacheKey);
+  try { ... } catch { ... } finally { _refreshingKeys.delete(cacheKey); }
+}
+```
+Caller becomes:
+```ts
+if (nowMs - lastFailure >= REFRESH_FAILURE_COOLDOWN_MS) {
+  refreshAnalyticsCacheInBackground(assignmentId, cacheKey).catch(...);
+}
+```
+This co-locates the lifecycle in one function. The duplicate-check guard in caller becomes optional but defense-in-depth.
 
----
-
-### DBG4-3: [LOW] Heartbeat scheduling does not detect `document.hidden` until the timer fires
-
-**Severity:** LOW | **Confidence:** MEDIUM | **File:** `src/components/exam/anti-cheat-monitor.tsx:200-221`
-
-The heartbeat `setTimeout` schedules itself recursively. The check `document.visibilityState === "visible"` occurs only when the timer fires. If the user closes/hides the tab right after the timer is scheduled, the timer still fires (modern browsers throttle but don't always cancel), and the heartbeat fires while hidden. The visibility check then suppresses the actual `reportEventRef.current("heartbeat")` call. So no spurious heartbeat is sent. Correct.
-
-But: if the timer is *throttled* (Chrome throttles `setTimeout` in background tabs to 1 minute minimum), the next heartbeat fires far later than 30 seconds. The user sees a long gap in audit logs. This is by design (Chromium's throttling, not our bug), but operators may interpret the gap as a missed heartbeat / network issue.
-
-**Fix:** Use `requestIdleCallback` for non-critical heartbeats, or accept the throttled cadence. Defer.
-
-**Exit criterion:** Document the throttling behavior in the audit-log doc, or N/A.
-
----
-
-### DBG4-4: [LOW] `proxy.ts` does not clear `LOCALE_COOKIE_NAME` on logout
-
-**Severity:** LOW | **Confidence:** HIGH | **File:** `src/proxy.ts:87-97`
-
-`clearAuthSessionCookies` clears only the auth session cookies. The locale cookie persists across login/logout, which is by design (a returning user should keep their preferred locale). But if a user reports "I'm seeing a stuck locale," there's no UI path to clear it. The login page won't reset it; logout doesn't reset it.
-
-This is a UX edge case, not a bug. But worth flagging.
-
-**Fix:** No code change. Document in user-facing FAQ if it ever becomes an issue.
-
-**Exit criterion:** N/A.
-
----
-
-### DBG4-5: [INFO] Cycle 3 fixes verified
-
-The new dispose-hook test (`evicts cooldown metadata when the cache entry is removed (dispose hook)`) at `tests/unit/api/contests-analytics-route.test.ts:230-248` is a tight, targeted regression guard. Asserts both the cooldown plant and the dispose-driven cleanup. Solid.
-
-The retry-scheduling refactor in `anti-cheat-monitor.tsx` (cycle 1-3 commits) eliminates the duplicated load-send-save logic via `performFlush`. The single source of truth is now `scheduleRetryRef.current` set in a `useEffect`. Behavior is correct based on read-through.
-
-**No action.**
+**Exit criteria:**
+- Single owner for `_refreshingKeys` add+delete (the function itself).
+- Existing test "triggers exactly one background refresh" still passes (the in-function guard preserves the dedup invariant).
+- All gates green.
 
 ---
 
-## Confidence Summary
+## DBG5-2: [LOW, NEW] `formatEventTime` accepts `string | number` but a number is treated as Unix-seconds (line 297-299) — silent type confusion
 
-- DBG4-1: MEDIUM (depends on future change patterns).
-- DBG4-2: HIGH (Vitest API churn historical pattern).
-- DBG4-3: MEDIUM (browser-throttling reality, no current bug).
-- DBG4-4: HIGH (intentional behavior, edge-case noted).
-- DBG4-5: HIGH (informational).
+**Severity:** LOW
+**Confidence:** MEDIUM
+
+**Evidence:** `src/components/contest/anti-cheat-dashboard.tsx:296-300`
+```ts
+function formatEventTime(ts: string | number): string {
+  const d = typeof ts === "number" ? new Date(ts * 1000) : new Date(ts);
+  ...
+}
+```
+The function multiplies by 1000 when `ts` is a number, assuming Unix-seconds. But callers pass `event.createdAt` (line 571), and `createdAt` is typed `string` in the `AntiCheatEvent` interface (line 49). The number branch is unreachable from current call sites.
+
+**Why it's a problem:** The unused number branch (a) suggests the code once handled both, (b) creates a foot-gun if a future contributor passes `Date.now()` thinking it's seconds — they'll get year ~57000.
+
+**Fix:** Either narrow the type to `string` (delete the unused branch) or make the contract explicit (`tsSeconds: number`).
+
+**Exit criteria:** Either the number branch handles all common cases (ms-vs-seconds detection) or it's deleted entirely.
+
+---
+
+## DBG5-3: [LOW, NEW] `lastEventRef.current[eventType] ?? 0` — initial render, every event passes the throttle
+
+**Severity:** LOW
+**Confidence:** MEDIUM
+
+**Evidence:** `src/components/exam/anti-cheat-monitor.tsx:127-130`
+```ts
+const lastEventAt = lastEventRef.current[eventType] ?? 0;
+if (now - lastEventAt < MIN_INTERVAL_MS) return;
+lastEventRef.current[eventType] = now;
+```
+First-time event for any `eventType`: `lastEventAt = 0`, `now - 0 >= MIN_INTERVAL_MS` → passes. Correct intent.
+
+**Why it's a near-bug:** If a contest starts and the user immediately switches tabs, blurs, copies, and contextmenu's all within 1ms, ALL FOUR events are recorded (since each has a different key, no throttle). The intent of `MIN_INTERVAL_MS` is per-event-type throttling — that part is correct. But there's no global rate-limit on the burst of distinct event types. A bot could fire one of every event type per second, generating 6 events/sec sustained.
+
+**Why deferring:** Not a regression; intentional behavior. The server-side rate-limit (`anti-cheat:log` in `route.ts:35`) is the actual throttle.
+
+**Exit criterion for re-open:** Server-side rate-limit becomes a load problem.
+
+---
+
+## Final Sweep
+
+- The cycle-4 fixes (gate `__test_internals`, cap `loadPendingEvents`, defensive comment in catch) all observed working in the test suite.
+- The dispose-hook test in `contests-analytics-route.test.ts:230-248` actually covers the cooldown-eviction invariant — robust.
+- All gates green: lint 0 errors, test:unit 2232 pass, build EXIT=0.

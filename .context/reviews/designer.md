@@ -1,103 +1,80 @@
-# Designer Review — RPF Cycle 4/100
+# Designer — RPF Cycle 5/100
 
-**Date:** 2026-04-27
-**Scope:** UI/UX review of recent changes; web frontend exists (Next.js + Tailwind + shadcn UI)
-**Method:** source-level review (no live runtime; Postgres + Docker not available in sandbox per cycle-3 history note)
-
-## Inventory of UI/UX-relevant files (recently changed)
-
-- `src/components/exam/anti-cheat-monitor.tsx` — privacy notice dialog, heartbeat events
-- `src/components/exam/` — siblings (no recent change)
-- `src/lib/navigation/public-nav.ts` — top-nav config (Languages was removed in earlier cycle)
-- `src/components/layout/public-footer.tsx` — Languages now lives here
-- `src/components/layout/app-sidebar.tsx` — workspace sidebar (potential migration source)
-- `messages/` — i18n translations
-
-## Findings
-
-### DES4-1: [LOW] Privacy notice dialog has no decline path (carried)
-
-**Severity:** LOW | **Confidence:** HIGH | **File:** `src/components/exam/anti-cheat-monitor.tsx:307-332`
-
-Repeating the carried-deferred finding (cycle 2 AGG-12, cycle 3 AGG3-8). The dialog has only an "Accept" button. The `Dialog` is also marked `disablePointerDismissal` and `onOpenChange={() => {}}`, which together prevent the user from dismissing without accepting.
-
-**Concrete UX issue:**
-- User opens an exam, sees the surveillance disclosure, decides not to consent → only path is to close the browser tab. There's no in-app "Decline & exit" → return to dashboard.
-- For accessibility: a screen reader user encounters the dialog with no way to back out. The escape key is suppressed (`disablePointerDismissal`).
-- The "X" close button is hidden (`showCloseButton={false}`).
-
-**Fix (deferred per cycle 3):** Either:
-1. Add a secondary "Decline & exit" button that navigates to `/dashboard` or `/contests` (depending on user role).
-2. Allow `Escape` key to close → soft cancel that aborts the exam load.
-
-Carry forward.
-
-**Exit criterion:** UX/legal direction from product owner.
+**Date:** 2026-04-26
+**Lens:** UI/UX review of recent changes; web frontend exists (Next.js + Tailwind + shadcn UI)
+**Method:** source-level review; no live runtime (Postgres + Docker not available in sandbox per cycle-3 history note)
 
 ---
 
-### DES4-2: [LOW] Privacy notice dialog uses `ShieldAlert` icon which can imply "alert/error" rather than informational
+## DES5-1: [LOW, actionable, NEW] AntiCheatDashboard "Filter chips + Student select" use `select-none` cursor-pointer Badges — keyboard / a11y concern
 
-**Severity:** LOW | **Confidence:** MEDIUM | **File:** `src/components/exam/anti-cheat-monitor.tsx:312-313`
+**Severity:** LOW
+**Confidence:** MEDIUM
 
+**Evidence:** `src/components/contest/anti-cheat-dashboard.tsx:436-454`
 ```tsx
-<ShieldAlert className="size-5 text-muted-foreground" aria-hidden="true" />
+<Badge
+  variant={typeFilter === null ? "default" : "outline"}
+  className="cursor-pointer select-none"
+  onClick={() => setTypeFilter(null)}
+>
+  {t("allTypes")}
+</Badge>
 ```
+Badges are styled as buttons (`cursor-pointer`) but render as `<div>` (or whatever `Badge` renders). Likely:
+- No `tabindex` → not keyboard-focusable.
+- No `role="button"` → screen readers don't announce as actionable.
+- No `aria-pressed` for toggle state.
 
-The icon is `ShieldAlert` (a shield with an exclamation mark from lucide-react), which visually implies "warning/alert." The privacy notice is a *informational* disclosure ("here's what we monitor"), not an alert ("something went wrong"). A neutral icon (`Shield`, `ShieldCheck`, or `Eye`) might better match intent.
+**Why it's a problem:** WCAG 2.2 SC 2.1.1 (Keyboard) requires all interactive functionality to be keyboard-operable. Filter chips that fire `onClick` but are unreachable by keyboard violate this.
 
-**Failure scenario:** User sees an alert icon, panics, expects something is wrong. Currently mitigated by the `text-muted-foreground` class (subtle color), but the iconography itself implies urgency.
+**Fix:** Either swap `Badge` for `Button variant="secondary" size="sm"` (which is already keyboard-accessible with proper roles) or wrap each Badge in a Button. With shadcn UI in this repo, `Button` is the right primitive.
 
-**Fix:** Swap to `Shield` or `Eye`. Cosmetic.
-
-**Exit criterion:** Icon swap deemed appropriate.
-
----
-
-### DES4-3: [LOW] Workspace-to-public migration: no candidate surfaces this cycle
-
-**Severity:** LOW | **Confidence:** MEDIUM | **Files:** `src/lib/navigation/public-nav.ts`, `src/components/layout/app-sidebar.tsx`
-
-Per the user-injected directive (`user-injected/workspace-to-public-migration.md`), the loop should incrementally migrate workspace-only pages to public navigation. Cycle 4's review of recently-changed files surfaces no specific candidate page (the changes touched `analytics/route.ts`, `anti-cheat-monitor.tsx`, `env.ts`, `proxy.ts` — none of which are routing or page-level components).
-
-**Suggested next-cycle review focus:**
-- Compare `dashboard/sidebar.tsx` items against `public-nav.ts` items for unification candidates.
-- Specifically `Submissions` (already in both — could unify), `Compiler/Playground` (status of unification unclear from this cycle's diff).
-
-**Exit criterion:** Migration plan continues to track this in `plans/open/2026-04-19-workspace-to-public-migration.md`. No cycle-4 task added.
+**Exit criteria:**
+- Filter chips are keyboard-focusable (Tab moves to them, Enter/Space activates).
+- Screen readers announce the active filter state via `aria-pressed`.
 
 ---
 
-### DES4-4: [INFO] Korean letter-spacing rule observed
+## DES5-2: [LOW, deferred-carry] Privacy notice has no decline path (carried from DES3-1)
 
-Per CLAUDE.md, no `tracking-*` Tailwind utility may be applied to Korean text. The `anti-cheat-monitor.tsx` privacy notice uses `text-sm text-muted-foreground space-y-1 list-disc list-inside` — no `tracking-*` class. Compliant.
+**Severity:** LOW
+**Confidence:** HIGH
 
-The `Dialog` content is rendered through shadcn primitives. No tracking applied at component level.
+**Evidence:** `src/components/exam/anti-cheat-monitor.tsx:274-298`. Dialog with no close button (`showCloseButton={false}`) and `disablePointerDismissal`. Only one button: `privacyNoticeAccept`. The user CANNOT decline without leaving the page.
 
-**No action.**
+**Why deferring:** UX/legal judgment call (carried from cycle 3). Repo rules don't forbid deferring UX choices.
 
----
-
-### DES4-5: [LOW] Privacy notice text content is not visible without translation lookup
-
-**Severity:** LOW | **Confidence:** HIGH | **Files:** `src/components/exam/anti-cheat-monitor.tsx:312-327`, `messages/en.json` and `messages/ko.json`
-
-The dialog uses `t("privacyNoticeTitle")`, `t("privacyNoticeDescription")`, and four bullet keys (`privacyNoticeTabSwitch`, `privacyNoticeCopyPaste`, `privacyNoticeIpAddress`, `privacyNoticeCodeSnapshots`). For a sandbox source-level review, I did not verify the actual translated copy. A future runtime designer pass should:
-
-- Confirm Korean translation reads naturally (no AI-translated awkwardness — see CLAUDE.md `korean-naturalizer` skill).
-- Confirm English translation is legally clear about what is monitored.
-- Verify all four bullets are present in both locales.
-
-**Fix:** Spot-check translations in the next cycle that has live messages access.
-
-**Exit criterion:** N/A this cycle.
+**Exit criterion for re-open:** Product/legal decides whether to add a "Decline → exit assignment" path.
 
 ---
 
-## Confidence Summary
+## DES5-3: [LOW, NEW] Active filter chip color contrast not verified for dark mode
 
-- DES4-1: HIGH (literal observation; carried-deferred).
-- DES4-2: MEDIUM (subjective UX call).
-- DES4-3: MEDIUM (no surface this cycle; migration is standing work).
-- DES4-4: HIGH (informational, compliance check).
-- DES4-5: HIGH (need runtime verification).
+**Severity:** LOW
+**Confidence:** LOW (no live runtime)
+
+**Evidence:** `src/components/contest/anti-cheat-dashboard.tsx:75-89`
+```ts
+const EVENT_TYPE_COLORS: Record<string, string> = {
+  tab_switch: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400",
+  ...
+  ip_change: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400",
+};
+```
+Light mode `bg-yellow-100 text-yellow-800` likely passes WCAG AA (per Tailwind palette). Dark mode `dark:bg-yellow-900/30 dark:text-yellow-400` — the 30% alpha background on a dark surface MAY NOT meet AA 4.5:1 for normal text.
+
+**Why it's a problem:** Anti-cheat events are review-critical UI — instructors need to read them quickly.
+
+**Fix:** Verify with a contrast checker (Lighthouse / axe). If failing, increase dark-mode alpha to /50 or /60.
+
+**Exit criterion for re-open:** Run a Playwright + axe pass once a sandbox with Postgres is available.
+
+---
+
+## Final Sweep
+
+- The recently-touched UI surfaces (anti-cheat-monitor, anti-cheat-dashboard) have a few accessibility concerns but no regressions from cycle 4.
+- The directive `user-injected/workspace-to-public-migration.md` (see CRIT5-2 / DOC5-1) needs freshness pass; the codebase has actually completed most of the migration.
+- No live-runtime designer review possible (sandbox limitation per cycle-3 history).
+- All gates green: lint, test:unit, build.

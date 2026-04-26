@@ -1,102 +1,63 @@
-# Document-Specialist Review — RPF Cycle 4/100
+# Document Specialist — RPF Cycle 5/100
 
-**Date:** 2026-04-27
-**Scope:** documentation accuracy, code/doc mismatches, plan hygiene, README convention compliance
-
-## Findings
-
-### DOC4-1: [MEDIUM, deferred] AGENTS.md vs `password.ts` policy mismatch (carried)
-
-**Severity:** MEDIUM | **Confidence:** HIGH | **Files:** `AGENTS.md:516-521`, `src/lib/security/password.ts:45,50,59`
-
-Carried from cycle 3 AGG3-5. AGENTS.md says password validation MUST only check minimum length; code enforces dictionary + similarity. Requires user/PM decision before any reconciliation.
-
-**Fix (deferred):** No change this cycle. Carried.
-
-**Exit criterion:** User decision on which side to reconcile.
+**Date:** 2026-04-26
+**Lens:** documentation accuracy, code/doc mismatches, plan hygiene
 
 ---
 
-### DOC4-2: [LOW] `plans/open/` archival convention now documented but new plans still accumulate
+## DOC5-1: [MEDIUM, actionable, NEW] `user-injected/workspace-to-public-migration.md` is stale relative to actual code state
 
-**Severity:** LOW | **Confidence:** HIGH | **Files:** `plans/open/README.md`, `plans/open/`
+**Severity:** MEDIUM (process — the directive drives per-cycle migration attention)
+**Confidence:** HIGH
 
-Cycle 3 archived 76 completed plans and added the convention to `plans/open/README.md` (commit `d0751786`). After that, cycle 3's plan was added (`2026-04-27-rpf-cycle-3-review-remediation.md`), and cycle 4 will add another. The pattern is now: each cycle adds 1 new plan and (per the convention) archives the previous cycle's plan when complete.
+**Evidence:**
+- The directive's "Current State" lists Sidebar items as if non-admin pages were still there.
+- Actual code: `src/components/layout/app-sidebar.tsx:55-59` says: "Non-admin nav items have been removed from the sidebar. All non-admin navigation ... is now in the PublicHeader dropdown."
+- Actual code: `src/lib/navigation/public-nav.ts:61-70` exposes Dashboard/Problems/Problem-Sets/Groups/My-Submissions/Contests/Profile/Admin in the dropdown.
 
-Currently `plans/open/` contains: workspace-migration plan + master backlogs (4 files) + the cycle-3 plan (now done, will be moved this cycle). After cycle 4 completes, `plans/open/` will contain: workspace-migration + 4 master backlogs + cycle-4 plan = ~6 files. Healthy.
+**Why it's a problem:** Reviewers reading the directive each cycle will plan migration work that's already done, wasting cycle attention.
 
-**Action this cycle:** As part of the cycle-4 plan execution, archive `plans/open/2026-04-27-rpf-cycle-3-review-remediation.md` to `plans/done/`. (Already done in this cycle's first commit batch.)
-
-**Exit criterion:** Cycle-3 plan moved to `plans/done/`. Verified above.
+**Fix:** Update the directive (see CRIT5-2 details).
 
 ---
 
-### DOC4-3: [LOW] Doc comment on `_lastRefreshFailureAt` mentions "the lifecycle" but the relevant `dispose` hook is below it
+## DOC5-2: [LOW, deferred-carry] AGENTS.md vs `password.ts` mismatch (carried from cycles 3-4)
 
-**Severity:** LOW | **Confidence:** MEDIUM | **File:** `src/app/api/v1/contests/[assignmentId]/analytics/route.ts:21-31`
+Same as SEC5-3. Reason for deferral: requires user/PM decision.
 
-The doc comment above `_lastRefreshFailureAt` reads:
-> Bound to the same lifecycle as `analyticsCache` via the `dispose` hook below
+---
 
-This is correct, but a reader scanning the file top-down sees the doc comment first and the `dispose` implementation 14 lines later. The comment refers to "below" without a line anchor. Easy to miss.
+## DOC5-3: [LOW, actionable, NEW] `deploy-docker.sh:547,553-554,565-566` says "drizzle-kit push" but the broader system has `0020_drop_judge_workers_secret_token.sql` which IS a migrate-style file
 
-**Fix:** Add `(see line ~37)` or move the cooldown declaration below the `analyticsCache` declaration so the spatial relationship is clearer:
-```ts
-const analyticsCache = new LRUCache<string, CacheEntry>({
-  max: 100,
-  ttl: CACHE_TTL_MS,
-  dispose: (...) => { _lastRefreshFailureAt.delete(key); },
-});
-const _lastRefreshFailureAt = new Map<string, number>();
+**Severity:** LOW
+**Confidence:** HIGH
+
+**Evidence:**
+- `deploy-docker.sh:547` log: "Running database migrations (drizzle-kit push)..."
+- `deploy-docker.sh:553-554` comment: "Run drizzle-kit push via a temporary Node container ..."
+- BUT there ARE journaled migrations in `drizzle/pg/*.sql`. `package.json:14-15` exposes both `db:push` (drizzle-kit push) and `db:generate` (drizzle-kit generate) but NOT `db:migrate`.
+
+**Why it's a problem:** The deploy script's choice of `push` over `migrate` is a hidden architectural decision — there's no comment explaining WHY push was chosen. This makes ARCH5-1's fix harder to reason about: a maintainer might "fix" by adding `db:migrate` not realizing push was intentional (or vice versa).
+
+**Fix:** Add a short comment at `deploy-docker.sh:547` explaining the choice:
+```sh
+# We use `drizzle-kit push` (schema-vs-DB diff) instead of `drizzle-kit migrate`
+# (apply numbered SQL files) because [historical reason]. Destructive changes
+# require manual intervention or `--force`.
 ```
+Or change the strategy to migrate (per ARCH5-1) and update the comment to match.
 
-But: that requires the cooldown to be declared *after* it's referenced in `dispose`, which works only because `dispose` runs at call time. Cleaner: move the comment.
-
-**Exit criterion:** N/A this cycle (cosmetic).
-
----
-
-### DOC4-4: [INFO] `__test_internals` JSDoc is good but unenforceable
-
-**File:** `src/app/api/v1/contests/[assignmentId]/analytics/route.ts:82-91`
-
-The JSDoc clearly states "Production code MUST NOT depend on this export." This is good documentation. As CR4-1 / ARCH4-1 / CRIT4-1 noted, this is policy-not-mechanism. The doc is fine as-is; if cycle 4 fixes the env-gating (per ARCH4-1), the doc should be updated to say "this export is only available when NODE_ENV === 'test'."
-
-**No action this cycle** unless ARCH4-1 fix lands; in that case, update the JSDoc concurrently.
+**Exit criteria:** The script's choice of strategy is documented in-place.
 
 ---
 
-### DOC4-5: [LOW] CLAUDE.md "Korean letter-spacing" directive is project-specific and well-respected
+## DOC5-4: [LOW, deferred-carry] Privacy notice has no decline path (carried from DES3-1)
 
-**File:** `CLAUDE.md:14-16`
-
-Spot-checked the recent changes for `tracking-*` or `letter-spacing` on Korean text: none found. The privacy notice dialog uses no tracking utilities. The compliance posture is healthy.
-
-**No action.**
+Already-deferred cosmetic / UX-legal judgment call.
 
 ---
 
-### DOC4-6: [INFO] Cycle plan structure is consistent
+## Final Sweep
 
-The cycle-3 plan (`plans/open/2026-04-27-rpf-cycle-3-review-remediation.md`, now archived) follows the established structure: status legend, summary, tasks with exit criteria, deferred items table with severity/confidence/reason/exit-criterion columns, repo-policy compliance section, gate plan. The cycle-4 plan should follow the same template.
-
-**No action — informational.**
-
----
-
-## Workspace-to-Public Migration Doc Trail
-
-The directive at `user-injected/workspace-to-public-migration.md` is well-documented (constraints, current state, desired outcome, considerations). The standing plan at `plans/open/2026-04-19-workspace-to-public-migration.md` tracks ongoing work. Cycle 4 review surfaces no new concrete migration candidate (DES4-3); the directive remains accurate and current.
-
-**No action.**
-
----
-
-## Confidence Summary
-
-- DOC4-1: HIGH (carried-deferred per repo policy).
-- DOC4-2: HIGH (housekeeping; will be addressed by cycle 4 plan).
-- DOC4-3: MEDIUM (cosmetic).
-- DOC4-4: HIGH (informational; conditional update).
-- DOC4-5: HIGH (compliance affirmed).
-- DOC4-6: HIGH (informational).
+- The cycle-4 plan archive question (CRIT5-4) has a documentation angle: `plans/open/README.md` says archive convention is `plans/done/`, but the working tree shows moves to `plans/open/_archive/`. Pick one.
+- All gates green; documentation drift is the main signal this cycle.

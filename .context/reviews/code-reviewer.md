@@ -1,134 +1,89 @@
-# Code Reviewer Review — RPF Cycle 4/100
+# Code Reviewer — RPF Cycle 5/100
 
-**Date:** 2026-04-27
-**Scope:** code quality, SOLID adherence, naming, maintainability of recently-modified files
-**Files inventoried:** `src/app/api/v1/contests/[assignmentId]/analytics/route.ts`, `src/components/exam/anti-cheat-monitor.tsx`, `src/lib/security/env.ts`, `src/proxy.ts`, `tests/unit/api/contests-analytics-route.test.ts`, `tests/unit/security/env.test.ts`
-
-## Findings
-
-### CR4-1: [LOW] `__test_internals` is shipped in production bundles
-
-**Severity:** LOW | **Confidence:** HIGH | **File:** `src/app/api/v1/contests/[assignmentId]/analytics/route.ts:92-101`
-
-The exported `__test_internals` object survives into the production bundle even though only test code consumes it. Tree-shaking won't drop it because it is a named export from the same module that exports `GET`. The bundle is served to the server only (route handler), not the client, so the size cost is minimal — but it does mean a future malicious or accidental call from another server module could mutate cache state.
-
-**Fix (preferred):**
-```ts
-export const __test_internals = process.env.NODE_ENV === "test"
-  ? { /* current shape */ }
-  : (undefined as never);
-```
-This makes accidental production access throw `Cannot read properties of undefined (reading 'cacheClear')` instead of silently working.
-
-**Failure scenario:** A future contributor adds a debug-utility route that imports `__test_internals.cacheClear()` to "fix a stuck cache" in prod. Cache invalidation now happens out-of-band from the documented invalidation paths, leading to confusing reliability incidents.
-
-**Exit criterion:** `__test_internals` is `undefined` at runtime in non-test environments.
+**Date:** 2026-04-26
+**Lens:** code quality, logic, SOLID, maintainability, dead code, naming
+**Files inventoried:** As architect.md, plus the test files (`tests/unit/api/contests-analytics-route.test.ts`, `tests/unit/components/anti-cheat-storage.test.ts`).
 
 ---
 
-### CR4-2: [LOW] `loadPendingEvents` accepts arbitrary stored JSON without bounds checking
+## CR5-1: [LOW, actionable, NEW] `cacheClear` exposed in `__test_internals` but never consumed — YAGNI
 
-**Severity:** LOW | **Confidence:** MEDIUM | **File:** `src/components/exam/anti-cheat-monitor.tsx:41-51`
+**Severity:** LOW
+**Confidence:** HIGH (verified by grep across `tests/`)
 
-`loadPendingEvents` reads `localStorage`, parses JSON, filters by `isValidPendingEvent`, and returns the result. If a user (or a malicious extension/script) writes a 10MB string to that key, `JSON.parse` will allocate, the filter will iterate, and the function will silently return whatever passed validation. There's no length cap or size cap.
+**Evidence:**
+- `src/app/api/v1/contests/[assignmentId]/analytics/route.ts:108-110` exposes `cacheClear`.
+- `grep -rn "cacheClear" tests/` returns zero hits. Tests use `setCooldown`, `hasCooldown`, `cacheDelete` only (`tests/unit/api/contests-analytics-route.test.ts:239-247`).
+- The cycle-4 verifier called this out (VER4-2) and the fix was deferred.
 
-**Failure scenario:** A page-extension or browser bug injects a very large pending-events array. On every visibility-change/online event, the entire list is iterated and re-saved. Realistic? Low. But the function trusts the storage origin too completely.
+**Why it's a problem:** Dead surface area. Test internals should be the smallest possible escape hatch. Adding unused methods invites accidental coupling and grows the production-vs-test API delta.
 
-**Fix:** Cap returned array length to a reasonable upper bound (e.g., 200 events). Anything beyond that gets dropped on load with a single `console.warn`.
-
+**Fix:** Drop `cacheClear` from the exported object:
 ```ts
-return parsed.filter(isValidPendingEvent).slice(0, 200);
+export const __test_internals: ... | undefined =
+  process.env.NODE_ENV === "test"
+    ? { hasCooldown, setCooldown, cacheDelete }
+    : undefined;
 ```
 
-**Exit criterion:** `loadPendingEvents` returns at most N events; oversized stored arrays are truncated gracefully.
+**Exit criteria:**
+- `__test_internals` does not include `cacheClear`.
+- `grep -rn "cacheClear" src/ tests/` returns no hits.
+- All gates green.
 
 ---
 
-### CR4-3: [LOW] `describeElement` returns "unknown" for missing element rather than null/undefined
+## CR5-2: [LOW, actionable, NEW] `_refreshingKeys` Set has no upper bound and depends on `finally` for cleanup
 
-**Severity:** LOW | **Confidence:** HIGH | **File:** `src/components/exam/anti-cheat-monitor.tsx:240-261`
+**Severity:** LOW
+**Confidence:** MEDIUM
 
-The function returns the literal string `"unknown"` when `el === null`. While this works, it makes callers unable to distinguish between "really unknown element" and "literal `<unknown>` tag" (very edge-case but exists). Cleaner: return `null | undefined` and let the caller decide what to log.
+**Evidence:** `src/app/api/v1/contests/[assignmentId]/analytics/route.ts:19,85,160`. The set is added to in line 160 and removed from in line 85 (the `finally` of `refreshAnalyticsCacheInBackground`). The `finally` always runs, so under normal control flow the set drains.
 
-This is a minor code-style nit. The current behavior is unambiguous in practice (HTML doesn't define an `<unknown>` element).
+**Why it's a problem:** If a future refactor moves the `add` outside the function or introduces a synchronous throw before `try`, the `finally` doesn't run and the set leaks the key forever. Subsequent stale-cache reads for that key never trigger refresh. The cycle-4 architect (ARCH4-2) and critic (CRIT4-2) both noted this risk.
 
-**Fix (optional):** No change recommended. Note for future ref.
+**Fix:** Move the `_refreshingKeys.add(cacheKey)` to be the FIRST line inside `refreshAnalyticsCacheInBackground` (before the try), so the function is the single owner of both add and delete. Or use a bounded `Set` (e.g., LRU) with a TTL guard.
 
-**Exit criterion:** N/A.
-
----
-
-### CR4-4: [LOW] `_refreshingKeys` and `_lastRefreshFailureAt` use private-style underscore prefix on module-level vars
-
-**Severity:** LOW | **Confidence:** HIGH | **File:** `src/app/api/v1/contests/[assignmentId]/analytics/route.ts:19,32`
-
-JavaScript/TypeScript convention varies, but the underscore prefix is most commonly reserved for `_unused` parameters (consumed by linters) or class private fields. For module-scoped consts, the prefix is unusual and may confuse readers ("is this private to a class? Does eslint think it's unused?").
-
-**Fix (optional):** Either:
-1. Drop the underscore: `refreshingKeys`, `lastRefreshFailureAt`.
-2. Move them inside an IIFE or class wrapper that makes the privacy real.
-
-Option (1) is cosmetic. Carried from cycle 3 AGG3-10. Defer.
-
-**Exit criterion:** N/A this cycle.
+**Exit criteria:**
+- A unit test verifies that a synchronous failure inside the refresh-launch path leaves `_refreshingKeys` empty for that key.
+- All gates green.
 
 ---
 
-### CR4-5: [INFO] Test file has good coverage of analytics route
+## CR5-3: [LOW, NEW] `MIN_INTERVAL_MS` is a hook-local const inside the component body
 
-**File:** `tests/unit/api/contests-analytics-route.test.ts:1-249`
+**Severity:** LOW
+**Confidence:** MEDIUM
 
-The test suite covers: 404 (missing assignment), 403 (forbidden), cache miss/hit, staleness without DB call, in-progress dedup, refresh failure logging, cooldown, and the new dispose-hook eviction (added in cycle 3). The mock isolation via `vi.hoisted` is correct. The `vi.runAllTimersAsync()` calls now have inline comments explaining the microtask drain. Solid suite.
-
-**No action.**
-
----
-
-### CR4-6: [LOW] `proxy.ts` `clearAuthSessionCookies` re-derives cookie names on every call
-
-**Severity:** LOW | **Confidence:** HIGH | **File:** `src/proxy.ts:87-97`
-
+**Evidence:** `src/components/exam/anti-cheat-monitor.tsx:41`
 ```ts
-function clearAuthSessionCookies(response: NextResponse) {
-  const { name, secureName } = getAuthSessionCookieNames();
-  // ...
-}
+const MIN_INTERVAL_MS = 1000;
 ```
+Sits inside the React component body, alongside the other constants (`MAX_RETRIES`, `RETRY_BASE_DELAY_MS`, `HEARTBEAT_INTERVAL_MS`) which are at module scope (lines 28-30).
 
-`getAuthSessionCookieNames()` is a pure function returning a fresh object literal every call. In the proxy hot path, this allocates ~2 strings + 1 object on every unauthorized response. Not a real issue (allocation is sub-microsecond), but the helper could be hoisted to a module-level const.
+**Why it's a problem:** Inconsistent placement. Recreated on every render (negligible cost, but stylistically off). Forces every reader to scan for "where did this come from."
 
-**Fix (optional):** Hoist the call:
-```ts
-const AUTH_SESSION_COOKIE_NAMES = getAuthSessionCookieNames();
-function clearAuthSessionCookies(response: NextResponse) {
-  response.cookies.set(AUTH_SESSION_COOKIE_NAMES.name, "", { ... });
-  response.cookies.set(AUTH_SESSION_COOKIE_NAMES.secureName, "", { ..., secure: true });
-  return response;
-}
-```
+**Fix:** Move to module scope alongside the other constants.
 
-But: hoisting at module load means the cookie names are frozen at import time. If the underlying constants change (they don't currently), the proxy wouldn't pick up the change. Currently safe because the function reads two `const` strings.
-
-**Exit criterion:** Optional optimization. Defer.
+**Exit criteria:** All numeric tunables for the anti-cheat monitor live at module scope.
 
 ---
 
-### CR4-7: [INFO] `getAuthSessionCookieNames` doesn't depend on env state
+## CR5-4: [LOW, deferred] `lastEventRef.current[eventType]` Record bound by enum closed-set in practice
 
-**File:** `src/lib/security/env.ts:178-180`
+**Severity:** LOW
+**Confidence:** MEDIUM
 
-Unlike `getAuthSessionCookieName()` (singular, which checks `shouldUseSecureSessionCookie()`), the plural `getAuthSessionCookieNames()` returns both literal constants without consulting env. This is intentional (the proxy needs to clear both variants), but it means a renamed cookie literal would only update if both functions are kept in sync. The current code does this correctly via shared module-private constants `AUTH_SESSION_COOKIE_NAME` / `SECURE_AUTH_SESSION_COOKIE_NAME`.
+**Evidence:** `src/components/exam/anti-cheat-monitor.tsx:40,127,129`. The Record is keyed by `eventType` which is enum-bounded (`CLIENT_EVENT_TYPES` = 6 entries). In practice cannot grow unboundedly.
 
-**No action.**
+**Why deferring:** Bound is implicit, not enforced. Cosmetic only.
+
+**Exit criterion for re-open:** Either (a) anti-cheat events become user-defined, or (b) a code review wants the bound enforced at the type level (`Record<typeof CLIENT_EVENT_TYPES[number], number>`).
 
 ---
 
-## Confidence Summary
+## Final Sweep
 
-- CR4-1: HIGH (export survives into prod bundle).
-- CR4-2: MEDIUM (theoretical large-storage attack; defense-in-depth).
-- CR4-3: HIGH (cosmetic).
-- CR4-4: HIGH (style nit; deferred).
-- CR4-5: HIGH (informational; no action).
-- CR4-6: HIGH (negligible perf; cosmetic).
-- CR4-7: HIGH (informational).
+- All cycle-4 fixes verified present and minimal: `__test_internals` env-gated; `loadPendingEvents` capped via `MAX_PENDING_EVENTS`; storage helpers extracted to `anti-cheat-storage.ts` with unit tests.
+- No new code-quality regressions detected in the recently-touched files.
+- All gates green: lint 0 errors, test:unit 2232 pass, build EXIT=0.

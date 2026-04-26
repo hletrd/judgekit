@@ -1,134 +1,76 @@
-# Tracer Review — RPF Cycle 4/100
+# Tracer — RPF Cycle 5/100
 
-**Date:** 2026-04-27
+**Date:** 2026-04-26
 **Method:** causal tracing of suspicious flows; competing-hypothesis evaluation
 
-## Trace Targets
+---
 
-- Analytics route cache + cooldown lifecycle
-- Anti-cheat monitor retry scheduling chain
-- Proxy session-cookie clearing flow
+## TRC5-1: [HIGH, actionable, NEW] Trace: deploy → drizzle-kit push → "data loss" prompt → success log lies
 
-## Trace 1: Analytics Cache + Cooldown Lifecycle
+**Severity:** HIGH (trace conclusion: ARCH5-1 + CRIT5-1)
+**Confidence:** HIGH
 
-**Hypothesis A (current):** `_lastRefreshFailureAt` cannot grow unbounded because the LRU `dispose` hook fires on every entry-loss.
+**Hypothesis A:** drizzle-kit push exits non-zero on data-loss prompt → `die` fires → orchestrator sees a deploy failure.
+**Hypothesis B:** drizzle-kit push exits zero with the prompt unanswered → `success "Database migrated"` runs → orchestrator sees deploy success.
+
+**Evidence supports B:**
+- The orchestrator note for cycle 5 explicitly says: "Deploy still proceeded via the additive `[OK] Database migrated` path."
+- If A were true, the orchestrator would have reported `per-cycle-failed`.
+- Therefore drizzle-kit push exits 0 even when the destructive change was NOT applied.
+
+**Causal chain:**
+1. `schema.pg.ts:418-420` removed plaintext `secretToken`.
+2. `drizzle/pg/0020_drop_judge_workers_secret_token.sql` was hand-authored without `drizzle-kit generate`.
+3. `meta/0020_snapshot.json` was never created → `meta/0019_snapshot.json` (the latest) still contains `secret_token`.
+4. Each deploy: `drizzle-kit push` re-diffs `schema.pg.ts` (no `secret_token`) vs DB (has `secret_token`) → wants to drop.
+5. Non-interactive shell → drizzle-kit emits prompt to stderr but exits 0 (NOT applied).
+6. Bash sees exit 0 → `success "Database migrated"`.
+
+**Fix:** See ARCH5-1 (regenerate snapshot, switch to `drizzle-kit migrate` or pass `--force`) plus CRIT5-1 (capture output and warn instead of success when prompt detected).
+
+**Exit criteria:** Same as ARCH5-1 + CRIT5-1.
+
+---
+
+## TRC5-2: [LOW, NEW] Trace: `__test_internals` runtime gate vs type-system contract
+
+**Severity:** LOW
+**Confidence:** HIGH
+
+**Hypothesis:** A future maintainer accidentally calls `__test_internals.cacheClear()` from production code.
 
 **Trace:**
-1. `analyticsCache.delete(key)` → `dispose(value, key, 'delete')` → `_lastRefreshFailureAt.delete(key)`. ✓
-2. TTL expiry → internal cleanup → `dispose(value, key, 'expire')` → `_lastRefreshFailureAt.delete(key)`. ✓
-3. Capacity eviction → `dispose(value, key, 'evict')` → `_lastRefreshFailureAt.delete(key)`. ✓
-4. Overwrite via `analyticsCache.set(key, newVal)` → `dispose(oldVal, key, 'set')` fires BEFORE the new value is committed → `_lastRefreshFailureAt.delete(key)`. ✓
+1. `route.ts:101-118`: `__test_internals` typed as `{ hasCooldown, ... } | (undefined-as-cast-to-the-same)`.
+2. TypeScript checker sees `__test_internals.cacheClear` as a valid method call.
+3. Runtime: in production, the value is `undefined` → throws `TypeError: Cannot read properties of undefined (reading 'cacheClear')`.
 
-**Hypothesis B (cycle 3 was wrong):** The dispose-on-`set` fires AFTER the new value is committed, leading to out-of-order delete.
-
-**Verification:** The lru-cache library docs and source confirm `dispose` for the previous value runs synchronously before the new value is committed. Test added in cycle 3 (`evicts cooldown metadata when the cache entry is removed (dispose hook)`) validates the contract for `delete`. The contract for `set` overwrites is implicit but documented in code comments.
-
-**Verdict:** Hypothesis A holds. **No bug.**
+**Conclusion:** Behavior is fail-fast (good), but the type system is silent (bad). A test fixture that pins this contract (TE5-1) closes the loop.
 
 ---
 
-## Trace 2: Anti-Cheat Retry Scheduling Chain
+## TRC5-3: [LOW, NEW] Trace: anti-cheat retry timer lifecycle across `assignmentId` changes
 
-**Hypothesis A (current):** `scheduleRetryRef.current` is the single source of truth for retry scheduling; both `flushPendingEvents` and `reportEvent` delegate to it correctly.
+**Severity:** LOW
+**Confidence:** MEDIUM
 
-**Trace flow on `reportEvent` failure path:**
-1. `reportEvent("tab_switch")` → `sendEvent` returns false → enters `if (!ok)` branch (line 172).
-2. `pending = loadPendingEvents()` → loads array.
-3. `pending.push({ ...event, retries: 1 })` → adds new event with retries=1.
-4. `savePendingEvents(assignmentId, pending)`.
-5. `scheduleRetryRef.current(pending)` (line 179) → executes the closure stored in scheduleRetryRef.current.
-6. Inside the closure: `hasRetriable = pending.some(e => e.retries < MAX_RETRIES)` → true (retries=1, MAX=3).
-7. `if (hasRetriable && !retryTimerRef.current)` → enters branch.
-8. `maxRetry = pending.reduce(...)` → max retries among pending = 1.
-9. `backoffDelay = Math.min(1000 * 2^1, 30000) = 2000ms`.
-10. `setTimeout` set for 2000ms.
-
-**Hypothesis B:** scheduleRetryRef may hold a stale closure if `useEffect` doesn't re-run when expected.
-
-**Trace:** scheduleRetryRef is updated in `useEffect(() => { scheduleRetryRef.current = (...) => {...}; }, [performFlush])`. `performFlush` itself is a `useCallback` with deps `[assignmentId, sendEvent]`. `sendEvent` deps are `[assignmentId]`. So scheduleRetryRef.current reflects the latest `performFlush` whenever `assignmentId` (or sendEvent) changes. In practice, `assignmentId` doesn't change in component lifetime today (the component is keyed on it).
-
-**Stale-closure check:** scheduleRetryRef.current's closure captures `performFlush` from its useEffect run. Inside the timer callback (line 148-152), it calls `await performFlush()` and then recursively `scheduleRetryRef.current(retryRemaining)`. Both refer to the latest version (via `.current`).
-
-**Verdict:** Hypothesis A holds. **No bug.**
-
-**Edge case noted:** If the React tree unmounts while a timer is pending, the cleanup at line 298-301 clears the timer. But `scheduleRetryRef.current` itself is never reset. If the component re-mounts, it will see the closure from the previous mount. This is unlikely to cause issues because (a) `assignmentId` is the same and (b) `useEffect` re-runs and re-assigns scheduleRetryRef.current. But it's a theoretical artifact worth a comment.
-
----
-
-## Trace 3: Proxy Session-Cookie Clearing
-
-**Hypothesis A (current):** `clearAuthSessionCookies` clears both the secure and non-secure variants on every code path that triggers it.
-
-**Trace call sites:**
-1. `proxy.ts:295` — `isAuthPage && token && !activeUser` → user has token but no active record → clear cookies + render auth page.
-2. `proxy.ts:312` — `(isProtectedRoute || isChangePasswordPage) && !activeUser && isApiRoute && !hasApiKeyAuth` → return 401 + cleared cookies.
-3. `proxy.ts:318` — same precondition but not API route → redirect to /login + cleared cookies.
-
-In each case, `clearAuthSessionCookies` calls `response.cookies.set(name, "", { maxAge: 0, path: "/" })` for non-secure, and `response.cookies.set(secureName, "", { maxAge: 0, path: "/", secure: true })` for secure.
-
-**Hypothesis B:** The clear-via-empty-string-with-maxAge-0 idiom may not work in all Next.js versions or browser versions.
-
-**Trace:** Per RFC 6265, setting a cookie with `Max-Age=0` and an empty value causes the browser to expire it immediately. Next.js's `response.cookies.set(name, value, options)` translates this to a `Set-Cookie` header with `Max-Age=0; Path=/`. This is the standard expiration pattern.
-
-**Verdict:** Hypothesis A holds. **No bug.** Carried deferred SEC4-1 (`__Secure-` over HTTP) is a separate dev-environment edge.
-
----
-
-## Trace 4: Analytics Background Refresh Race (cross-trace check)
-
-Two simultaneous GET requests for the same `assignmentId`, both seeing stale cache. Hypothesis: the dedup guard `_refreshingKeys.has(cacheKey)` prevents duplicate background refreshes.
+**Hypothesis:** Component re-renders with a new `assignmentId` while a retry timer for the old assignment is queued.
 
 **Trace:**
-1. Request A enters route handler. Cache hit, age > STALE. `_refreshingKeys.has(key) === false`, `nowMs - lastFailure >= COOLDOWN_MS` (no recent failure).
-2. Request A: `_refreshingKeys.add(key)`. Then `refreshAnalyticsCacheInBackground(...)` (no await).
-3. Request A returns the stale data.
-4. Request B enters. Cache hit, age > STALE. `_refreshingKeys.has(key) === true`. Skips refresh.
-5. Request B returns the stale data.
-6. Eventually Request A's background refresh resolves: cache.set() updates the entry, `_refreshingKeys.delete(key)` in finally.
+1. `anti-cheat-monitor.tsx:42`: `retryTimerRef.current` is component-scoped.
+2. `assignmentId` change does NOT unmount the component (parent stays).
+3. The cleanup in `useEffect` (line 258-269) runs on unmount OR dependency change. The dep array is `[enabled, resolvedWarningMessage, showPrivacyNotice]` — does NOT include `assignmentId`. So an `assignmentId` change does NOT trigger cleanup.
+4. The queued `setTimeout` then fires `performFlush()` which calls `loadPendingEvents(assignmentId)` with the NEW `assignmentId` (closure captures the latest ref).
 
-**Test coverage:** `tests/unit/api/contests-analytics-route.test.ts:142-176` ("triggers exactly one background refresh when cache is stale (in-progress dedup)"). Validated.
+**Conclusion:** The timer IS aimed at the new assignment after re-key. This MIGHT be intentional (events from old assignment are dropped) or MIGHT be a bug (events for old assignment are silently lost).
 
-**Verdict:** **No bug.**
+**Confidence is MEDIUM** because the parent layout almost certainly re-keys the component on assignmentId change (`<AntiCheatMonitor key={assignmentId} ... />` is the conventional pattern), which would trigger unmount+remount. Not verified in this review.
 
----
-
-## Findings (Issues to Surface)
-
-### TRC4-1: [LOW] scheduleRetryRef.current outlives component unmount
-
-**Severity:** LOW | **Confidence:** MEDIUM | **File:** `src/components/exam/anti-cheat-monitor.tsx:142-155`
-
-The `useEffect` that assigns `scheduleRetryRef.current` does not have a cleanup that resets it on unmount. After unmount, scheduleRetryRef.current still holds a closure from the unmounted render. If the component re-mounts (e.g., navigation to/from the exam page), the previous closure runs first until the new useEffect runs and overwrites it.
-
-In practice this is benign because: (a) `retryTimerRef` is cleared on unmount (line 298-301), so no pending timer survives; (b) the closure captures `performFlush` which itself captures `assignmentId` and `sendEvent` from the previous render — but these are stable per-mount.
-
-**Failure scenario (theoretical):** If a future change makes the closure depend on something that *should* reset on remount (e.g., a session token), the stale closure would use the old value briefly until the useEffect runs.
-
-**Fix:** Add a cleanup function:
-```ts
-useEffect(() => {
-  scheduleRetryRef.current = (...) => { ... };
-  return () => {
-    scheduleRetryRef.current = () => {};
-  };
-}, [performFlush]);
-```
-
-This is defensive. Real-world impact is low.
-
-**Exit criterion:** Cleanup resets scheduleRetryRef.current to a no-op on unmount.
+**Exit criterion for re-open:** Verify whether the parent uses `key={assignmentId}`. If not, document the cross-assignment data-loss behavior or fix it.
 
 ---
 
-### TRC4-2: [INFO] No new race conditions found
+## Final Sweep
 
-The analytics in-progress dedup, cooldown logic, and dispose-hook coupling are all correctly serialized through Node's single-threaded event loop. The anti-cheat retry chain is correctly serialized through the `retryTimerRef` guard. Proxy code runs in Edge runtime (serial per request). No data-race surface detected.
-
-**No action.**
-
----
-
-## Confidence Summary
-
-- TRC4-1: MEDIUM (defensive; real-world impact low).
-- TRC4-2: HIGH (informational).
+- The cycle-5 NEW finding (TRC5-1) is the key trace this cycle. It identifies the exact mechanism by which deploy lies about migration success.
+- Cycle 4 trace findings (TRC4-1 scheduleRetryRef.current outlives unmount) addressed via cycle-3-4 documentation.
+- All gates green: lint, test:unit, build.

@@ -1,123 +1,94 @@
-# Test Engineer Review — RPF Cycle 4/100
+# Test Engineer — RPF Cycle 5/100
 
-**Date:** 2026-04-27
-**Scope:** test coverage gaps, flaky tests, TDD opportunities
-
-## Findings
-
-### TE4-1: [LOW] `__test_internals` not exercised by every consumer it could be
-
-**Severity:** LOW | **Confidence:** MEDIUM | **File:** `tests/unit/api/contests-analytics-route.test.ts:230-248`
-
-Only one test currently uses `__test_internals` (the dispose-hook eviction test). The other helper, `__test_internals.cacheClear()`, is exposed but unused. If unused test helpers stay, they slowly accumulate as dead surface that future contributors must reason about. Either:
-
-1. Add a test that uses `cacheClear()` (e.g., between-test cache reset for isolation).
-2. Remove `cacheClear()` from `__test_internals` until a test needs it.
-
-Option (2) is YAGNI-aligned. Option (1) could improve test isolation.
-
-**Fix:** Pending product decision. Defer.
-
-**Exit criterion:** Either remove unused helpers or add a test that exercises them.
+**Date:** 2026-04-26
+**Lens:** test coverage gaps, flaky tests, TDD opportunities
 
 ---
 
-### TE4-2: [LOW, deferred] Anti-cheat retry/backoff lacks direct timing tests (carried)
+## TE5-1: [LOW, actionable, NEW] No test asserts that production-mode (NODE_ENV !== "test") `__test_internals` is undefined
 
-**Severity:** LOW | **Confidence:** LOW | **File:** `src/components/exam/anti-cheat-monitor.tsx`
+**Severity:** LOW
+**Confidence:** HIGH
 
-Carried from cycle 2 AGG-13 / cycle 3 AGG3-7. The exponential backoff (1s → 2s → 4s → 8s capped at 30s) has only indirect coverage. Direct testing would require:
-- `vi.useFakeTimers`
-- mock `apiFetch` to return `{ ok: false }` N times then `{ ok: true }`
-- mock `localStorage` (or use jsdom)
-- assert that `setTimeout` was called with expected delays
+**Evidence:**
+- `src/app/api/v1/contests/[assignmentId]/analytics/route.ts:101-118` gates `__test_internals` behind `NODE_ENV === "test"`.
+- `tests/unit/api/contests-analytics-route.test.ts` does NOT assert what happens when `NODE_ENV !== "test"` — that's hard to do because vitest sets it to `test` automatically.
+- The cycle-4 plan exit criterion was "Production builds have `__test_internals === undefined`" but no test pins this contract.
 
-**Test sketch:**
+**Why it's a problem:** The runtime gate could be removed accidentally (e.g., during a TypeScript refactor that "cleans up" the conditional), and no test would fail. The next time someone reads the code, they'd see "this is undefined in production" but nothing enforces it.
+
+**Fix:** Add a test that uses `vi.stubEnv("NODE_ENV", "production")` before re-importing:
 ```ts
-import { act, renderHook } from "@testing-library/react";
-// import the component, render, simulate failed sendEvent, advance timers, assert next sendEvent fires after backoff.
+it("__test_internals is undefined in production", async () => {
+  vi.resetModules();
+  vi.stubEnv("NODE_ENV", "production");
+  const mod = await import("@/app/api/v1/contests/[assignmentId]/analytics/route");
+  expect(mod.__test_internals).toBeUndefined();
+  vi.unstubAllEnvs();
+});
 ```
 
-The setup is non-trivial (3+ mocks, jsdom, render hook). Defer to a dedicated testing-focused cycle.
-
-**Exit criterion:** Pick up in a dedicated testing cycle.
-
----
-
-### TE4-3: [INFO] Analytics suite has good behavioral coverage
-
-**File:** `tests/unit/api/contests-analytics-route.test.ts`
-
-Coverage of route GET behavior:
-- 404 (missing assignment): line 100-104.
-- 403 (forbidden): line 106-110.
-- Cache miss: line 112-118.
-- Cache hit (no DB call): line 120-140.
-- Stale + in-progress dedup: line 142-176.
-- Refresh failure logging: line 178-201.
-- Cooldown respected: line 203-228.
-- Dispose-hook eviction (new in cycle 3): line 230-248.
-
-Comprehensive. The mock setup via `vi.hoisted` is correct, the `vi.useFakeTimers` + `vi.setSystemTime` pattern allows time control, and `vi.resetModules()` ensures module-state isolation between tests.
-
-**No action.**
+**Exit criteria:**
+- New test asserts `__test_internals === undefined` when `NODE_ENV === "production"`.
+- Test passes; gates green.
 
 ---
 
-### TE4-4: [LOW] No test for `getAuthSessionCookieNames` shape against `proxy.ts` consumer
+## TE5-2: [LOW, actionable, NEW] `clearAuthSessionCookies` lacks dedicated test asserting both cookie names are cleared in one response
 
-**Severity:** LOW | **Confidence:** MEDIUM | **Files:** `tests/unit/security/env.test.ts:412-440`, `src/proxy.ts:87-97`
+**Severity:** LOW (also flagged as SEC5-2)
+**Confidence:** HIGH
 
-`env.test.ts` covers `getAuthSessionCookieNames` literal-value assertions (resolved per cycle 3 AGG3-2). `proxy.ts` consumes `getAuthSessionCookieNames()` in `clearAuthSessionCookies`. There's no integration test that asserts:
-1. `clearAuthSessionCookies` calls `response.cookies.set` with the names from `getAuthSessionCookieNames`.
-2. The non-secure variant doesn't have `secure: true`.
+**Evidence:** `src/proxy.ts:87-97`. Tests in `tests/unit/proxy*` exercise the function indirectly but don't assert the dual-clear directly.
 
-Such a test would catch a refactor that swapped the names or accidentally set `secure` on the non-secure variant.
+**Fix:** Add unit test (see SEC5-2 details).
 
-**Test sketch:**
+---
+
+## TE5-3: [LOW, NEW] `_refreshingKeys` leak scenario (DBG5-1) is uncovered by tests
+
+**Severity:** LOW
+**Confidence:** MEDIUM
+
+**Evidence:** Existing tests cover the dedup guard (`tests/unit/api/contests-analytics-route.test.ts:142-176`) but no test asserts that `_refreshingKeys` drains to empty after a failure scenario. If the `finally` cleanup ever broke, only manual observation would catch it.
+
+**Fix:** Add `__test_internals.isRefreshing(key)` (or expose the size of the set) and assert post-test state. Could pair with the broader CR5-2 / DBG5-1 fix that moves the add into the function.
+
+**Exit criteria:** A test that triggers a failed refresh and then asserts that for the same key, the next stale-read CAN trigger a new refresh (proving the set drained).
+
+---
+
+## TE5-4: [LOW, deferred-carry] Anti-cheat retry/backoff lacks direct timing tests (carried from cycles 3-4 TE3-2)
+
+Per cycle 3-4 plan, deferred — test setup non-trivial. Not a security/correctness blocker.
+
+---
+
+## TE5-5: [LOW, NEW] `anti-cheat-storage.test.ts` doesn't assert behavior when `localStorage` itself throws
+
+**Severity:** LOW
+**Confidence:** MEDIUM
+
+**Evidence:** `tests/unit/components/anti-cheat-storage.test.ts:158-178`. Tests cover "remove when empty" and "persist as JSON" but no test verifies that `savePendingEvents` swallows a thrown `localStorage` error (e.g., quota exceeded) per the source's `try { ... } catch { /* localStorage unavailable */ }` (`anti-cheat-storage.ts:60-68`).
+
+**Fix:** Add test using a `MemoryStorage` subclass whose `setItem` throws:
 ```ts
-import { NextResponse } from "next/server";
-// (after extracting clearAuthSessionCookies as a testable export)
-const res = NextResponse.next();
-clearAuthSessionCookies(res);
-const cookieHeader = res.headers.get("Set-Cookie");
-expect(cookieHeader).toContain("authjs.session-token=;");
-expect(cookieHeader).toContain("__Secure-authjs.session-token=;");
+it("savePendingEvents swallows quota-exceeded error", () => {
+  class FailingStorage extends MemoryStorage {
+    setItem(): void { throw new Error("QuotaExceededError"); }
+  }
+  Object.defineProperty(globalThis, "localStorage", { ..., value: new FailingStorage() });
+  expect(() => savePendingEvents("x", [{...}])).not.toThrow();
+});
 ```
 
-But `clearAuthSessionCookies` is currently a private function in `proxy.ts`. Would require export-for-test.
-
-**Fix:** Defer. Add when `proxy.ts` next gets a refactor.
-
-**Exit criterion:** N/A this cycle.
+**Exit criteria:** New test confirms `savePendingEvents` never throws on storage failure.
 
 ---
 
-### TE4-5: [INFO] No flakes detected in unit suite
+## Final Sweep
 
-Cycle 3 ran the analytics suite cleanly (7/7 in 79ms). The full suite was reported at 2218 tests passing. The dispose-hook test added in cycle 3 is deterministic (no async, no timers — relies only on `analyticsCache.delete` firing the synchronous `dispose` callback).
-
-**No action.**
-
----
-
-### TE4-6: [LOW] Cycle-4 review identifies `loadPendingEvents` cap recommendation; no test currently asserts behavior
-
-**Severity:** LOW | **Confidence:** MEDIUM | **File:** `src/components/exam/anti-cheat-monitor.tsx:41-51`
-
-If CR4-2 is implemented (cap at 200 events), a test should assert: load → returns at most 200 events even when localStorage has more. No current test exists for this surface.
-
-**Fix:** If CR4-2 lands, add the test. Else N/A.
-
-**Exit criterion:** Conditional on CR4-2 implementation.
-
----
-
-## Confidence Summary
-
-- TE4-1: MEDIUM (cosmetic).
-- TE4-2: LOW (carried-deferred).
-- TE4-3: HIGH (informational).
-- TE4-4: MEDIUM (defensible defer).
-- TE4-5: HIGH (informational).
-- TE4-6: MEDIUM (conditional).
+- 304 test files passing, 2232 tests, 0 failures.
+- Cycle 4 added `anti-cheat-storage.test.ts` (185 lines, well-structured) — great addition.
+- The dispose-hook test in `contests-analytics-route.test.ts:230-248` is solid evidence that the cycle-3 lru/dispose coupling works.
+- All gates green: lint 0 errors, test:unit 2232 pass, build EXIT=0.
