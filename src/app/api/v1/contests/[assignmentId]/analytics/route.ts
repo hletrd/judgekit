@@ -56,6 +56,12 @@ type AssignmentRow = {
  * Background refresh of the analytics cache for a single assignment.
  * Called from the GET handler when the cached entry is stale-but-within-TTL.
  *
+ * Lifecycle ownership: this function is the single owner of `_refreshingKeys`
+ * — it adds the key on entry (idempotent guard), and the `finally` removes
+ * it on exit. The caller no longer manipulates `_refreshingKeys` directly,
+ * eliminating the cycle-5 AGG5-5 / DBG5-1 fragility where the add and
+ * delete lived in different modules and a refactor could leak the key.
+ *
  * Failure handling: any failure (compute or DB-time fetch) sets the cooldown
  * timestamp to suppress thundering-herd refresh attempts. The cooldown
  * uses Date.now() directly — there's no DB call to fail here, simplifying
@@ -65,6 +71,13 @@ async function refreshAnalyticsCacheInBackground(
   assignmentId: string,
   cacheKey: string,
 ): Promise<void> {
+  // Idempotent guard: if a refresh is already in flight for this key,
+  // bail out without mutating state. Belt-and-suspenders defense — the
+  // caller also checks _refreshingKeys.has() before invoking, but this
+  // co-located guard means a future direct caller can't accidentally
+  // double-launch.
+  if (_refreshingKeys.has(cacheKey)) return;
+  _refreshingKeys.add(cacheKey);
   try {
     const fresh = await computeContestAnalytics(assignmentId, true);
     analyticsCache.set(cacheKey, { data: fresh, createdAt: await getDbNowMs() });
@@ -154,9 +167,11 @@ export const GET = createApiHandler({
       }
       // Stale but still within TTL — return stale data and trigger ONE background
       // refresh (unless a refresh failed recently — avoid amplifying DB failures).
+      // The `_refreshingKeys.has()` check here is defense-in-depth; the function
+      // itself also short-circuits if the key is already in flight (cycle-5
+      // AGG5-5: function is the single owner of the set lifecycle).
       const lastFailure = _lastRefreshFailureAt.get(cacheKey) ?? 0;
       if (!_refreshingKeys.has(cacheKey) && nowMs - lastFailure >= REFRESH_FAILURE_COOLDOWN_MS) {
-        _refreshingKeys.add(cacheKey);
         // Defensive outer catch logs (instead of silently swallowing) any
         // unhandled rejection from refreshAnalyticsCacheInBackground —
         // including unlikely failures inside the catch/finally blocks.
