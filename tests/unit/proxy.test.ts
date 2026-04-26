@@ -50,6 +50,13 @@ vi.mock("@/lib/api/auth", () => ({
 
 vi.mock("@/lib/security/env", () => ({
   getValidatedAuthSecret: getValidatedAuthSecretMock,
+  // proxy.ts now imports getAuthSessionCookieNames() to clear both cookie
+  // variants on auth failure. Mock with the canonical names so all 401/redirect
+  // paths exercise the same cookie-clearing behaviour as production.
+  getAuthSessionCookieNames: vi.fn().mockReturnValue({
+    name: "authjs.session-token",
+    secureName: "__Secure-authjs.session-token",
+  }),
 }));
 
 vi.mock("@/lib/audit/events", () => ({
