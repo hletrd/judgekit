@@ -148,6 +148,13 @@
       "when": 1777100000000,
       "tag": "0020_drop_judge_workers_secret_token",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1777244518416,
+      "tag": "0021_lethal_black_tom",
+      "breakpoints": true
     }
   ]
 }
