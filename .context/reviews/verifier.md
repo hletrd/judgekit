@@ -1,65 +1,77 @@
-# Verifier — RPF Cycle 5/100
+# Verifier — RPF Cycle 6/100
 
 **Date:** 2026-04-26
-**Lens:** evidence-based verification of cycle-4 task exit criteria + general correctness check
+**Cycle:** 6/100
+**Lens:** evidence-based verification of cycle-5 task exit criteria + general correctness check
 
 ---
 
-## Cycle-4 Exit-Criteria Verification
+## Cycle-5 task exit criterion verification
 
-| Cycle 4 Task | Exit Criterion | Evidence | Verdict |
-|--------------|----------------|----------|---------|
-| Task A — gate `__test_internals` | Production `__test_internals === undefined` | `route.ts:101-118` env-gates the export. Type cast obscures it (see ARCH5-2) but runtime is correct. NO TEST pins the production-mode behavior — see TE5-1. | **PASS-WITH-CAVEAT** (runtime correct, type & test gap) |
-| Task A — JSDoc updated | "This export is `undefined` outside `NODE_ENV === 'test'`" | `route.ts:90-100` includes the language. | **PASS** |
-| Task A — dispose-hook test still passes | Existing test runs | `contests-analytics-route.test.ts:230-248` still passes (in 2232/2232 suite). | **PASS** |
-| Task B — `loadPendingEvents` capped at 200 | Returns at most 200 events | `anti-cheat-storage.ts:53` `slice(0, MAX_PENDING_EVENTS)`. Test `anti-cheat-storage.test.ts:124-142` writes 250, asserts 200 returned. | **PASS** |
-| Task B — `MAX_PENDING_EVENTS = 200` constant + test | Module-level constant exported, asserted | `anti-cheat-storage.ts:26` exports the constant; test `anti-cheat-storage.test.ts:181-184` asserts the value. | **PASS** |
-| Task B — storage helpers unit-testable | Helpers extracted | `anti-cheat-storage.ts` (70 lines) is self-contained; 14 tests pass. | **PASS** |
-| Task C — defensive comment in catch block | Comment present | `route.ts:76-81` has the warning comment. | **PASS** |
+| Cycle-5 Task | Exit Criterion | HEAD Verification | Status |
+|--------------|----------------|-------------------|--------|
+| Task A.1 | `meta/0020_snapshot.json` exists, no `secret_token` column | `python3 -c "..."` returns columns including `secret_token_hash` (no plain `secret_token`) | PASS |
+| Task A.2 | Pre-drop backfill SQL exists at 0020 (cycle-5 plan rolled it into 0020 + added 0021_lethal_black_tom) | `0020_drop_judge_workers_secret_token.sql` contains the DO-block + DROP | PASS |
+| Task A.3 | `deploy-docker.sh` no longer prints `[OK] Database migrated` when push hits data-loss prompt | `deploy-docker.sh:594-600` correctly downgrades to warn | PASS |
+| Task A.4 | Maintainer comment explains push-vs-migrate choice | `deploy-docker.sh:544-566` contains the comment block | PASS |
+| Task B | Workspace-to-public migration directive reflects reality | `user-injected/workspace-to-public-migration.md` Status section dated 2026-04-26 | PASS |
+| Task C | `__test_internals: TestInternals \| undefined` (no double-cast); cacheClear removed | `route.ts:115-130` — type is honest, cacheClear gone | PASS |
+| Task D | `_refreshingKeys` lifecycle co-located inside refresh function | `route.ts:79-99` — function is single owner | PASS |
+| Task E | New `clearAuthSessionCookies` dual-clear test passes | `tests/unit/proxy.test.ts:488-507` exists and asserts Max-Age=0 + Secure | PASS |
+| Task F | New test pins `__test_internals === undefined` in production NODE_ENV | `tests/unit/api/contests-analytics-route.test.ts:234-247` | PASS |
+| Task G | Cycle-4 plan moved to plans/done/ | Verified: plans/done/2026-04-27-rpf-cycle-4-review-remediation.md exists | PASS |
 
-**Overall:** All cycle-4 exit criteria met at the runtime level. Gaps surfaced this cycle: the type-system contract (ARCH5-2) and the prod-mode test (TE5-1) — both LOW.
+**All cycle-5 exit criteria verified.**
 
 ---
 
-## VER5-1: [HIGH, actionable, NEW] Verified: deploy-time schema-vs-DB drift exists and the deploy script masks it
+## VER6-1: [MEDIUM, NEW] `0020` backfill DO-block exit criterion is incomplete — verifies presence, not execution
 
+**Severity:** MEDIUM (verification gap — overlaps with SEC6-1, ARCH6-2, TRC6-1)
 **Confidence:** HIGH
 
-Cross-reference: ARCH5-1 (snapshot drift), CRIT5-1 (success log lies), SEC5-1 (data-loss risk on judge worker auth), TRC5-1 (causal chain).
+**Evidence:** Cycle-5 verifier confirmed the SQL DO-block exists in 0020. But the deploy script (`drizzle-kit push`) does NOT execute SQL files from the journal. So the DO-block is present-but-dead under the current deploy strategy. A complete exit criterion would require: "the backfill ACTUALLY runs against any deploy that targets a DB carrying `secret_token` — verified by either (a) deploy-time invocation of the DO-block via psql, or (b) switching the deploy to drizzle-kit migrate."
 
-**Verification of orchestrator's note:**
-- `meta/0020_snapshot.json` MISSING: `ls drizzle/pg/meta/*.json | tail -5` returns `0019_snapshot.json` as the latest. ✓
-- `meta/0019_snapshot.json` still has `secret_token`: `grep -n "secret_token\b" drizzle/pg/meta/0019_snapshot.json` returns hits at line 2623-2624. ✓
-- Deploy uses `drizzle-kit push` not `drizzle-kit migrate`: `deploy-docker.sh:564` confirms. ✓
-- Schema removed the column: `schema.pg.ts:418-420` only has `secretTokenHash`. ✓
+**Fix:** Re-open the cycle-5 SEC5-1 finding under cycle-6 (now SEC6-1 / ARCH6-2 / TRC6-1) and ensure the backfill is actually executed during deploy, not just present in the file system.
 
-All four facts verified. The orchestrator's note is correct and the finding is real.
+**Exit criteria:** A deploy against a DB with `secret_token IS NOT NULL` produces zero `secret_token_hash IS NULL AND secret_token IS NOT NULL` rows immediately before the DROP. Gates green.
 
 ---
 
-## VER5-2: [LOW, NEW] Verified: workspace-to-public migration is largely done
+## VER6-2: [LOW, NEW] `tags.updated_at` migration nullable is inconsistent with the schema's stated convention
 
+**Severity:** LOW (data-model consistency)
 **Confidence:** HIGH
 
-- `app-sidebar.tsx:55-59` documents that the sidebar is admin-only.
-- `app-sidebar.tsx:154-163` enforces this by returning `null` when no admin caps.
-- `public-nav.ts:61-70` lists 8 dropdown items (Dashboard/Problems/Problem-Sets/Groups/My-Submissions/Contests/Profile/Admin) — covers what the user-injected directive labels as "candidates for unifying."
+**Evidence:** Schema convention (verified via grep) — every other `updated_at` column in `schema.pg.ts` uses `.notNull()`. Only `tags.updated_at` (line 1056-1057) omits it.
 
-**Verdict:** The directive's "current state" section is stale (CRIT5-2). Marking it accurately reflects the codebase.
+**Fix:** Same as CRIT6-4 / SEC6-2. Backfill + add `.notNull()` OR explicit code comment justifying the deviation.
 
----
-
-## VER5-3: [INFO, NEW] All gates pass at the start of this cycle
-
-- **lint:** `npm run lint` → 0 errors, 14 warnings (all in untracked dev `.mjs` scripts and `playwright.visual.config.ts` + `.context/tmp/uiux-audit.mjs`; no source-tree warnings).
-- **test:unit:** `npm run test:unit` → 304 files passed, 2232 tests passed. Duration 31.55s.
-- **build:** `npm run build` → EXIT=0.
-
-No regressions from cycle 4.
+**Exit criteria:** Either consistent NOT NULL OR explicit documented exception. Gates green.
 
 ---
 
-## Final Sweep
+## VER6-3: [LOW, NEW] DRIZZLE_PUSH_FORCE knob has no operator-facing documentation
 
-- All cycle-4 deliverables met their stated exit criteria; the new findings for cycle 5 are honest gaps (type cast, missing test) and a high-signal external concern (deploy/migration drift).
-- No agent failures.
+**Severity:** LOW (verification gap on operator ergonomics)
+**Confidence:** HIGH
+
+**Evidence:** Same as DOC6-1 / ARCH6-1.
+
+**Fix:** Document in AGENTS.md and .env.example.
+
+**Exit criteria:** Knob is discoverable from operator-facing docs. Gates green.
+
+---
+
+## Final Sweep — Verification
+
+- All cycle-5 task exit criteria PASS.
+- New cycle-6 findings are smaller-scope (LOW-MEDIUM); the highest-impact one (SEC6-1 / ARCH6-2 / TRC6-1 / VER6-1) is the same root cluster as cycle-5 SEC5-1 — the safety mechanism exists in code but is bypassed by the actual deploy path.
+
+**Gates at cycle-6 baseline:**
+- `npm run lint`: 0 errors, 14 warnings (untracked dev .mjs scripts).
+- `npm run test:unit`: 304 files passed, 2234 tests passed, EXIT=0.
+- `npm run build`: EXIT=0.
+
+**No agent failures.**

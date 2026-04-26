@@ -1,94 +1,89 @@
-# Test Engineer — RPF Cycle 5/100
+# Test Engineer — RPF Cycle 6/100
 
 **Date:** 2026-04-26
+**Cycle:** 6/100
 **Lens:** test coverage gaps, flaky tests, TDD opportunities
 
 ---
 
-## TE5-1: [LOW, actionable, NEW] No test asserts that production-mode (NODE_ENV !== "test") `__test_internals` is undefined
+**Cycle-5 carry-over verification:**
+- TE5-1 (`__test_internals === undefined` in production): RESOLVED at `tests/unit/api/contests-analytics-route.test.ts:234-247`.
+- TE5-2 (`clearAuthSessionCookies` dual-clear test): RESOLVED at `tests/unit/proxy.test.ts:488-507`.
+- TE5-5 (storage-quota-exceeded swallow): UNCHANGED — carried deferred.
+
+Gates verified: `npm run lint` 0 errors / 14 warnings (untracked dev .mjs scripts only); `npm run test:unit` 304/304 files, 2234/2234 tests, EXIT=0; `npm run build` EXIT=0.
+
+---
+
+## TE6-1: [LOW, NEW] No test asserts the `0020` SQL backfill DO-block is idempotent (re-runs as no-op when secret_token column does not exist)
 
 **Severity:** LOW
 **Confidence:** HIGH
 
 **Evidence:**
-- `src/app/api/v1/contests/[assignmentId]/analytics/route.ts:101-118` gates `__test_internals` behind `NODE_ENV === "test"`.
-- `tests/unit/api/contests-analytics-route.test.ts` does NOT assert what happens when `NODE_ENV !== "test"` — that's hard to do because vitest sets it to `test` automatically.
-- The cycle-4 plan exit criterion was "Production builds have `__test_internals === undefined`" but no test pins this contract.
+- `drizzle/pg/0020_drop_judge_workers_secret_token.sql` wraps the UPDATE in a DO-block guarded by `IF EXISTS (SELECT 1 FROM information_schema.columns WHERE ... column_name = 'secret_token')`.
+- Comment in the SQL claims idempotency, but no automated test runs the SQL twice and verifies the second run is a no-op.
 
-**Why it's a problem:** The runtime gate could be removed accidentally (e.g., during a TypeScript refactor that "cleans up" the conditional), and no test would fail. The next time someone reads the code, they'd see "this is undefined in production" but nothing enforces it.
+**Why it's a problem:** A future schema change that drops the guard, OR a future Postgres version that changes information_schema query semantics, will silently break the idempotency. The DO-block runs in production deploys; a regression here would manifest as an UPDATE that executes when it shouldn't.
 
-**Fix:** Add a test that uses `vi.stubEnv("NODE_ENV", "production")` before re-importing:
-```ts
-it("__test_internals is undefined in production", async () => {
-  vi.resetModules();
-  vi.stubEnv("NODE_ENV", "production");
-  const mod = await import("@/app/api/v1/contests/[assignmentId]/analytics/route");
-  expect(mod.__test_internals).toBeUndefined();
-  vi.unstubAllEnvs();
-});
-```
+**Fix:** Add a Postgres-mode integration test (or a sandboxed sql-runner test) that:
+1. Sets up a DB with the schema at commit `0019_familiar_mikhail_rasputin` (still has `secret_token`).
+2. Runs `0020` once: verifies hash backfill happened + column dropped.
+3. Runs `0020` again: verifies no error + no UPDATE occurs.
 
-**Exit criteria:**
-- New test asserts `__test_internals === undefined` when `NODE_ENV === "production"`.
-- Test passes; gates green.
+If integration testing is too expensive, fall back to a documentation test (a comment with a manual procedure operators can run periodically).
+
+**Exit criteria:** Either integration test exists, OR a documented manual procedure is captured in `tests/sql/README.md`. Gates green.
 
 ---
 
-## TE5-2: [LOW, actionable, NEW] `clearAuthSessionCookies` lacks dedicated test asserting both cookie names are cleared in one response
+## TE6-2: [LOW, NEW] Dispose-hook test name describes mechanism, not invariant — fragile to refactor
 
-**Severity:** LOW (also flagged as SEC5-2)
+**Severity:** LOW (test quality — same surface as CRIT6-2)
 **Confidence:** HIGH
 
-**Evidence:** `src/proxy.ts:87-97`. Tests in `tests/unit/proxy*` exercise the function indirectly but don't assert the dual-clear directly.
+**Evidence:** `tests/unit/api/contests-analytics-route.test.ts:248`: `it("evicts cooldown metadata when the cache entry is removed (dispose hook)", ...)`.
 
-**Fix:** Add unit test (see SEC5-2 details).
+**Fix:** Rename to "cooldown metadata cannot outlive its cache entry (memory leak guard)" or similar.
+
+**Exit criteria:** Test name pins the invariant. Gates green.
 
 ---
 
-## TE5-3: [LOW, NEW] `_refreshingKeys` leak scenario (DBG5-1) is uncovered by tests
+## TE6-3: [LOW, NEW] `setCooldown(key, valueMs)` parameter naming is ambiguous in tests — no test asserts the value semantics
 
-**Severity:** LOW
+**Severity:** LOW (related to CR6-1)
+**Confidence:** HIGH
+
+**Evidence:**
+- `tests/unit/api/contests-analytics-route.test.ts:257`: `__test_internals.setCooldown(ASSIGNMENT_ID, Date.now())`.
+- The test passes `Date.now()` (a timestamp) but the parameter name `valueMs` reads as "duration in ms".
+
+**Fix:** Once the parameter is renamed to `failureAtMs` (per CR6-1), update the test caller. Add a brief comment in the test explaining the value is a timestamp.
+
+**Exit criteria:** Test caller uses the renamed parameter; gates green.
+
+---
+
+## TE6-4: [LOW, NEW] No test pins `0021_lethal_black_tom.sql` content matches `tags.updated_at` schema
+
+**Severity:** LOW (defense — schema-vs-migration drift is detectable today via existing `db/schema-parity.test.ts` if it covers the tags table)
 **Confidence:** MEDIUM
 
-**Evidence:** Existing tests cover the dedup guard (`tests/unit/api/contests-analytics-route.test.ts:142-176`) but no test asserts that `_refreshingKeys` drains to empty after a failure scenario. If the `finally` cleanup ever broke, only manual observation would catch it.
+**Evidence:**
+- `tests/unit/db/schema-parity.test.ts` exists per the test output (`tests/unit/db/schema-parity.test.ts (4 tests)`). Without reading it, can't confirm whether it covers `tags.updated_at`.
 
-**Fix:** Add `__test_internals.isRefreshing(key)` (or expose the size of the set) and assert post-test state. Could pair with the broader CR5-2 / DBG5-1 fix that moves the add into the function.
+**Fix:** Verify schema-parity.test.ts catches a missing `updated_at` column on tags (e.g., by removing it from the schema and running the test — should fail). If it does, no action needed. If it doesn't, extend it.
 
-**Exit criteria:** A test that triggers a failed refresh and then asserts that for the same key, the next stale-read CAN trigger a new refresh (proving the set drained).
-
----
-
-## TE5-4: [LOW, deferred-carry] Anti-cheat retry/backoff lacks direct timing tests (carried from cycles 3-4 TE3-2)
-
-Per cycle 3-4 plan, deferred — test setup non-trivial. Not a security/correctness blocker.
+**Exit criteria:** Schema-parity test catches `tags.updated_at` missing in the migration. Gates green.
 
 ---
 
-## TE5-5: [LOW, NEW] `anti-cheat-storage.test.ts` doesn't assert behavior when `localStorage` itself throws
+## Final Sweep — Test Coverage
 
-**Severity:** LOW
-**Confidence:** MEDIUM
+- Unit-test count: 2234 (up from 2232 in cycle 5 — cycle-5 added 2 tests).
+- 304 test files; 0 failures.
+- Coverage of cycle-5 fixes is solid.
+- The new gaps (TE6-1, TE6-4) are low-priority migration-validation tests.
 
-**Evidence:** `tests/unit/components/anti-cheat-storage.test.ts:158-178`. Tests cover "remove when empty" and "persist as JSON" but no test verifies that `savePendingEvents` swallows a thrown `localStorage` error (e.g., quota exceeded) per the source's `try { ... } catch { /* localStorage unavailable */ }` (`anti-cheat-storage.ts:60-68`).
-
-**Fix:** Add test using a `MemoryStorage` subclass whose `setItem` throws:
-```ts
-it("savePendingEvents swallows quota-exceeded error", () => {
-  class FailingStorage extends MemoryStorage {
-    setItem(): void { throw new Error("QuotaExceededError"); }
-  }
-  Object.defineProperty(globalThis, "localStorage", { ..., value: new FailingStorage() });
-  expect(() => savePendingEvents("x", [{...}])).not.toThrow();
-});
-```
-
-**Exit criteria:** New test confirms `savePendingEvents` never throws on storage failure.
-
----
-
-## Final Sweep
-
-- 304 test files passing, 2232 tests, 0 failures.
-- Cycle 4 added `anti-cheat-storage.test.ts` (185 lines, well-structured) — great addition.
-- The dispose-hook test in `contests-analytics-route.test.ts:230-248` is solid evidence that the cycle-3 lru/dispose coupling works.
-- All gates green: lint 0 errors, test:unit 2232 pass, build EXIT=0.
+**No agent failures.**

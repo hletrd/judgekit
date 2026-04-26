@@ -1,96 +1,101 @@
-# Architect Review — RPF Cycle 5/100
+# Architect Review — RPF Cycle 6/100
 
 **Date:** 2026-04-26
+**Cycle:** 6/100 of review-plan-fix loop
 **Lens:** architectural / design risk, coupling, layering, schema lifecycle
-**Files inventoried (review-relevant):** `src/app/api/v1/contests/[assignmentId]/analytics/route.ts`, `src/components/exam/anti-cheat-monitor.tsx`, `src/components/exam/anti-cheat-storage.ts`, `src/components/contest/anti-cheat-dashboard.tsx`, `src/lib/security/env.ts`, `src/proxy.ts`, `src/lib/navigation/public-nav.ts`, `src/components/layout/app-sidebar.tsx`, `src/lib/db/schema.pg.ts`, `drizzle/pg/*.sql`, `drizzle/pg/meta/*.json`, `deploy-docker.sh`, `package.json`, `drizzle.config.ts`.
+**Files inventoried (review-relevant):** `src/app/api/v1/contests/[assignmentId]/analytics/route.ts`, `src/components/exam/anti-cheat-monitor.tsx`, `src/components/exam/anti-cheat-storage.ts`, `src/components/contest/anti-cheat-dashboard.tsx`, `src/lib/security/env.ts`, `src/proxy.ts`, `src/lib/judge/auth.ts`, `src/lib/db/schema.pg.ts`, `drizzle/pg/*.sql`, `drizzle/pg/meta/*.json`, `deploy-docker.sh`, `package.json`, `drizzle.config.ts`.
+
+**Cycle-5 carry-over verification:** All HIGH-severity items from cycle-5 cluster (ARCH5-1 / SEC5-1 / CRIT5-1 / TRC5-1 / VER5-1) are resolved at HEAD:
+- `drizzle/pg/meta/0020_snapshot.json` exists and contains no `secret_token` column (only `secret_token_hash`).
+- `drizzle/pg/0020_drop_judge_workers_secret_token.sql` now embeds a guarded backfill DO-block that hashes plaintext `secret_token` into `secret_token_hash` before the destructive DROP COLUMN.
+- `drizzle/pg/0021_lethal_black_tom.sql` adds `tags.updated_at` matching the schema definition (`schema.pg.ts:1056`).
+- `deploy-docker.sh:594-600` now scans `drizzle-kit push` stdout for the data-loss / interactive-prompt markers and downgrades `success "Database migrated"` to `warn "..."` when one is detected.
+- `deploy-docker.sh:544-566` now contains a maintainer comment explaining the push-vs-migrate choice and DRIZZLE_PUSH_FORCE knob.
+- `route.ts:115-130` now declares `__test_internals: TestInternals | undefined` (no double-cast); `cacheClear` removed.
+- `route.ts:79-99` is the single owner of `_refreshingKeys.add` / `delete` (idempotent guard inside the function).
 
 ---
 
-## ARCH5-1: [HIGH, actionable, NEW] Drizzle migration journal vs `drizzle-kit push` lifecycle mismatch — schema drop blocked at deploy
+## ARCH6-1: [LOW, NEW] `DRIZZLE_PUSH_FORCE` is an undocumented operator knob
 
-**Severity:** HIGH (architectural — schema-vs-deploy contract violated)
-**Confidence:** HIGH (orchestrator surfaced the symptom; verified mechanics directly)
-
-**Evidence:**
-- `drizzle/pg/0020_drop_judge_workers_secret_token.sql` exists and contains `ALTER TABLE "judge_workers" DROP COLUMN "secret_token";`.
-- `drizzle/pg/meta/_journal.json` lists `idx: 20, tag: "0020_drop_judge_workers_secret_token"` (line 145-150).
-- BUT `drizzle/pg/meta/0020_snapshot.json` is **MISSING**. The latest snapshot file is `0019_snapshot.json`, and it still contains a `secret_token` column entry.
-- `meta/0017_snapshot.json` and `meta/0019_snapshot.json` BOTH still contain `secret_token` — the snapshot was never regenerated to reflect the drop.
-- `src/lib/db/schema.pg.ts:418-420` no longer has `secretToken`; only `secretTokenHash`.
-- `deploy-docker.sh:547,564-565` runs `npx drizzle-kit push`, NOT `npx drizzle-kit migrate`. `drizzle-kit push` ignores SQL files in the journal — it diffs `schema.pg.ts` against the live DB and errors interactively on data loss.
-
-**Why it's a problem:**
-1. Schema-vs-DB drift is unbounded. Each deploy attempts to drop `secret_token`; the prompt fails non-interactively; `[OK] Database migrated` is reported anyway because the script runs additive repairs after the push, masking the failure.
-2. The 0020 SQL migration is dead code. It was authored but the deploy mechanism doesn't consume it.
-3. Snapshot lifecycle is broken. Drizzle-kit's "generate" command produces both the SQL file AND a fresh `<idx>_snapshot.json` — the missing snapshot for `0020` indicates the migration was hand-authored without `drizzle-kit generate`. Future `drizzle-kit generate` runs will incorrectly diff against `0019_snapshot.json` (which still has `secret_token`), producing duplicate or conflicting migrations.
-4. Production data is at risk. When `drizzle-kit push` finally executes (with `--force` or after someone hits "y" interactively), it'll drop the column. If any auth-token migration to the hash column failed silently, plaintext tokens are dropped without a rollback path.
-
-**Failure scenario:** A future maintainer runs `npx drizzle-kit generate` after editing the schema. Drizzle-kit reads `meta/0019_snapshot.json` (which still has `secret_token`), diffs against the new schema (which has neither), and emits a NEW `drop_secret_token` migration on top of the orphaned 0020. The journal accumulates duplicate intent.
-
-**Fix:**
-1. Regenerate the snapshot. Either: (a) `npx drizzle-kit generate` to refresh `0020_snapshot.json` from `schema.pg.ts`, then commit; or (b) hand-author `meta/0020_snapshot.json` matching the post-drop state.
-2. Switch `deploy-docker.sh` from `drizzle-kit push` to `drizzle-kit migrate` so the journal IS the source of truth and destructive migrations are applied via the SQL file (no interactive prompt).
-3. Alternatively, if `drizzle-kit push` must stay, add `--force` (only after confirming the snapshot is consistent with the schema).
-4. Document in `AGENTS.md` and the deploy script which command is canonical.
-
-**Exit criteria:**
-- `drizzle/pg/meta/0020_snapshot.json` exists and reflects the post-drop state (no `secret_token` column).
-- A clean deploy from a state where the column already exists in the DB succeeds without the data-loss prompt erroring out.
-- A future `drizzle-kit generate` does NOT emit another `drop_secret_token` migration.
-
----
-
-## ARCH5-2: [LOW, actionable, NEW] `__test_internals` runtime gate uses double-cast `undefined as unknown as <type>` — type-system foot-gun
-
-**Severity:** LOW
+**Severity:** LOW (operational documentation gap)
 **Confidence:** HIGH
 
-**Evidence:** `src/app/api/v1/contests/[assignmentId]/analytics/route.ts:101-118`:
-```ts
-export const __test_internals =
-  process.env.NODE_ENV === "test"
-    ? { hasCooldown, setCooldown, cacheDelete, cacheClear }
-    : (undefined as unknown as {
-        hasCooldown: (key: string) => boolean;
-        ...
-      });
-```
+**Evidence:**
+- `deploy-docker.sh:557-559` mentions DRIZZLE_PUSH_FORCE in a script-internal comment.
+- `deploy-docker.sh:577-579` reads `DRIZZLE_PUSH_FORCE=1` to add `--force` to `npx drizzle-kit push`.
+- `deploy-docker.sh:597` mentions DRIZZLE_PUSH_FORCE in the warn message.
+- `grep -rn "DRIZZLE_PUSH_FORCE" /Users/hletrd/flash-shared/judgekit/AGENTS.md /Users/hletrd/flash-shared/judgekit/CLAUDE.md /Users/hletrd/flash-shared/judgekit/README.md` returns NO hits.
 
-**Why it's a problem:** The `undefined as unknown as <type>` double-cast tells TypeScript the value is the methods object even when it isn't. Any test that imports `__test_internals` from a non-`test` build will type-check successfully and crash at runtime with "Cannot read properties of undefined (reading 'hasCooldown')". The cycle-4 plan wanted fail-fast behavior; the actual implementation hides the type from the type-system. A future contributor who calls `__test_internals.cacheClear()` from a non-test code path gets full IDE autocomplete and zero warning.
+**Why it's a problem:** The new env knob is the operator's escape hatch when drizzle-kit push hits a data-loss prompt. If the knob isn't documented in `AGENTS.md` (or a deploy runbook), an operator who sees `[WARN] drizzle-kit push detected a destructive schema change but did NOT apply it` only learns about DRIZZLE_PUSH_FORCE by reading the warn string itself or by spelunking through the bash script. The cycle 5 plan promised "operators see the truth" — partially true; they need to know the knob exists and what it does.
 
-**Fix:** Make the type honest: `... | undefined`. Force callers to null-check.
-```ts
-type TestInternals = { hasCooldown: ...; setCooldown: ...; cacheDelete: ... };
-export const __test_internals: TestInternals | undefined =
-  process.env.NODE_ENV === "test"
-    ? { hasCooldown, setCooldown, cacheDelete }
-    : undefined;
-```
-Update the test to `__test_internals!.setCooldown(...)` (the `!` is acceptable in tests where we know NODE_ENV is `test`).
+**Failure scenario:** A new operator running their first production deploy hits the warn, doesn't recognize it, restarts the deploy expecting different behavior, gets the warn again, and concludes the script is broken. They then either (a) escalate, blocking the deploy until someone with context responds, or (b) pass `--force` manually outside the deploy script (which bypasses the safety backfill in `0020_drop_judge_workers_secret_token.sql` if they go around the journal too).
+
+**Fix:**
+1. Add a short paragraph to `AGENTS.md` under "Deploy" or "Database migrations" describing:
+   - When the warn appears (drizzle-kit push hit data-loss prompt non-interactively).
+   - What DRIZZLE_PUSH_FORCE=1 does (passes --force, applies destructive change).
+   - When NOT to use it (the journal SQL safety backfill in 0020 only runs via `drizzle-kit migrate`, NOT via `push --force` — so push --force will skip the backfill).
+2. Optionally add a one-line `DRIZZLE_PUSH_FORCE` mention to `.env.example` / `.env.production.example`.
 
 **Exit criteria:**
-- The TypeScript type of `__test_internals` is `TestInternals | undefined`.
-- No double-cast `as unknown as`.
-- Tests still pass (using non-null assertion).
+- `grep -rn "DRIZZLE_PUSH_FORCE" /Users/hletrd/flash-shared/judgekit/AGENTS.md` returns at least one hit with operator-facing description.
+- All gates green.
 
 ---
 
-## ARCH5-3: [LOW, deferred-carry] Anti-cheat monitor scheduleRetryRef latching pattern is intentional but fragile to future contributors
+## ARCH6-2: [LOW, NEW] Pre-drop backfill in `0020_drop_judge_workers_secret_token.sql` is dead under the current `drizzle-kit push` deploy flow
 
-**Severity:** LOW
-**Confidence:** MEDIUM
+**Severity:** LOW (latent — only matters if/when deploy switches to `drizzle-kit migrate`, OR an operator uses `--force`)
+**Confidence:** HIGH
 
-**Evidence:** `src/components/exam/anti-cheat-monitor.tsx:95,109-122`. `scheduleRetryRef` is initialized with a no-op then mutated in a `useEffect`. Cycle 4 reviewed and accepted this pattern, but the pattern is non-obvious. The recursion `scheduleRetryRef.current(retryRemaining)` inside the timer means if the effect re-runs between `setTimeout` and timer fire, the mid-flight closure points to the old `performFlush`. Documented at lines 82-94, but this is exactly the kind of subtle pattern that breaks under refactor.
+**Evidence:**
+- `drizzle/pg/0020_drop_judge_workers_secret_token.sql` contains a DO-block backfill followed by `ALTER TABLE "judge_workers" DROP COLUMN IF EXISTS "secret_token"`.
+- `deploy-docker.sh:567,590` runs `npx drizzle-kit push`, NOT `npx drizzle-kit migrate`. `push` ignores the journal — it diffs `schema.pg.ts` against the live DB and synthesizes its own DDL. The backfill DO-block in 0020 is NEVER executed by `push`.
+- The deploy script comment at `deploy-docker.sh:558-559` correctly documents this: "For journal-driven migrations instead, change `drizzle-kit push` to `drizzle-kit migrate` here AND verify drizzle/pg/meta/_journal.json + meta/<NN>_snapshot.json files stay in sync".
 
-**Why deferring:** Pattern works correctly; cycles 1-4 documented and verified. Risk is hypothetical-future, not present.
+**Why it's a problem:** The backfill is genuinely needed safety code. Today it's a no-op because the journal is not consumed. A future operator who sees the warn (per ARCH6-1) and reaches for `DRIZZLE_PUSH_FORCE=1` to apply the destructive change will skip the backfill — `push --force` synthesizes its own ALTER without running the DO-block — and any judge_worker row with `secret_token IS NOT NULL AND secret_token_hash IS NULL` is silently locked out.
 
-**Exit criterion for re-open:** A bug report where retry timer references stale state, or a refactor that touches lines 95-122 without being deeply familiar with the latch pattern.
+**Failure scenario:** Operator hits warn → reads warn → sets DRIZZLE_PUSH_FORCE=1 → deploys → drizzle-kit push --force drops the column synthesizing its own DDL → backfill DO-block in 0020 was never executed → orphaned workers locked out.
+
+**Fix (choose one — both meet the exit criterion):**
+1. **Recommended (small, defensive):** Modify `deploy-docker.sh` to ALWAYS pre-execute the inlined backfill DO-block via `psql` before `drizzle-kit push`. The DO-block is idempotent (checks for column existence), so running it on every deploy is safe.
+2. **Larger (correctness):** Switch `deploy-docker.sh` to `drizzle-kit migrate` so the journal IS executed.
+
+**Exit criteria:**
+- Pre-drop backfill runs against any DB that still carries `secret_token`, regardless of the deploy strategy.
+- All gates green.
 
 ---
 
-## Final Sweep
+## ARCH6-3: [LOW, NEW] Deploy script "additive PostgreSQL schema repairs" duplicates intent of journal-driven migrations
 
-- All four files modified relative to last cycle (`route.ts`, `anti-cheat-monitor.tsx`, `env.ts`, `proxy.ts`) are committed and clean.
-- The schema/deploy drift (ARCH5-1) was the only material new architectural finding this cycle. It is high-signal because deploy log evidence is observed and reproduces deterministically.
-- No new coupling/layering regressions detected.
-- No agent failures.
+**Severity:** LOW (architectural — coupling between deploy script and schema)
+**Confidence:** HIGH
+
+**Evidence:**
+- `deploy-docker.sh:603-617`:
+  ```sh
+  ALTER TABLE problems ADD COLUMN IF NOT EXISTS default_language text;
+  ALTER TABLE system_settings ADD COLUMN IF NOT EXISTS default_language text;
+  ```
+- These columns are also defined in `src/lib/db/schema.pg.ts` (the schema is the source of truth for `drizzle-kit push`).
+- The "additive repairs" block runs AFTER `drizzle-kit push` — duplicating the intent.
+
+**Why it's a problem:** Two sources of truth for schema diffs. If the operator forgets to update the additive block when a new column is added, deploys to older DBs will be missing the column until `drizzle-kit push` synthesizes the ALTER. This is defensive but implicitly assumes future column additions will be remembered here.
+
+**Fix (defer if not chosen):** Add a comment block above explaining "this is a safety net for legacy DBs where drizzle-kit push has not yet been authoritative; new schema additions should be added here AND to schema.pg.ts." OR delete the block entirely once the production DB is confirmed to be on the current schema.
+
+**Exit criteria:**
+- Either (a) inline comment justifying the duplication, or (b) the additive block is removed.
+
+---
+
+## Final Sweep — Architectural Boundaries
+
+- `src/lib/judge/auth.ts` is correct after cycle 5: only checks hash, falls back to shared token only when worker not found, logs migration-required warn when worker exists without hash.
+- `src/proxy.ts` cookie clearing is now under test (cycle 5 AGG5-6) and asserts both cookie variants get Max-Age=0.
+- `src/components/exam/anti-cheat-monitor.tsx` is at 302 lines (under the 400-line repo threshold).
+- `src/components/exam/anti-cheat-storage.ts` has `MAX_PENDING_EVENTS = 200` and `isValidPendingEvent` validator. Unit tests assert both.
+
+**No agent failures.**

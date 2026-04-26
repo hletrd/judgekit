@@ -1,63 +1,89 @@
-# Document Specialist — RPF Cycle 5/100
+# Document Specialist — RPF Cycle 6/100
 
 **Date:** 2026-04-26
+**Cycle:** 6/100
 **Lens:** documentation accuracy, code/doc mismatches, plan hygiene
 
 ---
 
-## DOC5-1: [MEDIUM, actionable, NEW] `user-injected/workspace-to-public-migration.md` is stale relative to actual code state
+**Cycle-5 carry-over verification:**
+- DOC5-1 (workspace-to-public migration directive stale): RESOLVED at HEAD via `user-injected/workspace-to-public-migration.md` "Status (as of 2026-04-26)" section.
+- DOC5-3 (deploy-docker.sh push-vs-migrate comment): RESOLVED at `deploy-docker.sh:544-566`.
 
-**Severity:** MEDIUM (process — the directive drives per-cycle migration attention)
+---
+
+## DOC6-1: [MEDIUM, NEW] `DRIZZLE_PUSH_FORCE` env knob is undocumented in `AGENTS.md`, `CLAUDE.md`, `README.md`, `.env.example`, `.env.production.example`
+
+**Severity:** MEDIUM (operational documentation gap; ties to ARCH6-1, CRIT6-1)
 **Confidence:** HIGH
 
 **Evidence:**
-- The directive's "Current State" lists Sidebar items as if non-admin pages were still there.
-- Actual code: `src/components/layout/app-sidebar.tsx:55-59` says: "Non-admin nav items have been removed from the sidebar. All non-admin navigation ... is now in the PublicHeader dropdown."
-- Actual code: `src/lib/navigation/public-nav.ts:61-70` exposes Dashboard/Problems/Problem-Sets/Groups/My-Submissions/Contests/Profile/Admin in the dropdown.
+- `grep -rn "DRIZZLE_PUSH_FORCE" /Users/hletrd/flash-shared/judgekit/AGENTS.md /Users/hletrd/flash-shared/judgekit/CLAUDE.md /Users/hletrd/flash-shared/judgekit/README.md /Users/hletrd/flash-shared/judgekit/.env.example /Users/hletrd/flash-shared/judgekit/.env.production.example` returns NO hits.
+- `deploy-docker.sh` mentions DRIZZLE_PUSH_FORCE only in a script-internal comment + warn message + the `if` block.
 
-**Why it's a problem:** Reviewers reading the directive each cycle will plan migration work that's already done, wasting cycle attention.
+**Why it's a problem:** The escape-hatch knob is a critical operational control. Operators should learn about it from operator-facing docs, not from the script's warn message at 3am.
 
-**Fix:** Update the directive (see CRIT5-2 details).
+**Fix:**
+1. Add a paragraph in `AGENTS.md` describing the knob, when to use it, and the gotcha that `push --force` skips the journal.
+2. Add a `# DRIZZLE_PUSH_FORCE=0` commented entry to `.env.example` (and the production example) with a one-line description.
+
+**Exit criteria:**
+- AGENTS.md has at least one paragraph; `.env.example`/`.env.production.example` reference the knob.
+- Gates green.
 
 ---
 
-## DOC5-2: [LOW, deferred-carry] AGENTS.md vs `password.ts` mismatch (carried from cycles 3-4)
+## DOC6-2: [LOW, NEW] `deploy-docker.sh` references `cycle 5 aggregate AGG5-1` — link will rot when `_aggregate.md` rotates next cycle
 
-Same as SEC5-3. Reason for deferral: requires user/PM decision.
-
----
-
-## DOC5-3: [LOW, actionable, NEW] `deploy-docker.sh:547,553-554,565-566` says "drizzle-kit push" but the broader system has `0020_drop_judge_workers_secret_token.sql` which IS a migrate-style file
-
-**Severity:** LOW
+**Severity:** LOW (doc rot)
 **Confidence:** HIGH
 
 **Evidence:**
-- `deploy-docker.sh:547` log: "Running database migrations (drizzle-kit push)..."
-- `deploy-docker.sh:553-554` comment: "Run drizzle-kit push via a temporary Node container ..."
-- BUT there ARE journaled migrations in `drizzle/pg/*.sql`. `package.json:14-15` exposes both `db:push` (drizzle-kit push) and `db:generate` (drizzle-kit generate) but NOT `db:migrate`.
+- `deploy-docker.sh:563-565` (also flagged by CRIT6-3):
+  ```sh
+  # Cycle 5 aggregate AGG5-1 documents the prior failure mode where the
+  # success log was printed even though the destructive change was
+  # unapplied, masking schema drift across deploys.
+  ```
+- The `_aggregate.md` file is overwritten every cycle. Cycle 6 onwards, AGG5-1 lives only in the cycle-5 archived copy `_aggregate-cycle-5.md`.
 
-**Why it's a problem:** The deploy script's choice of `push` over `migrate` is a hidden architectural decision — there's no comment explaining WHY push was chosen. This makes ARCH5-1's fix harder to reason about: a maintainer might "fix" by adding `db:migrate` not realizing push was intentional (or vice versa).
+**Why it's a problem:** A reader of the deploy script in cycle 30 will see "AGG5-1" with no clear path to find it.
 
-**Fix:** Add a short comment at `deploy-docker.sh:547` explaining the choice:
-```sh
-# We use `drizzle-kit push` (schema-vs-DB diff) instead of `drizzle-kit migrate`
-# (apply numbered SQL files) because [historical reason]. Destructive changes
-# require manual intervention or `--force`.
-```
-Or change the strategy to migrate (per ARCH5-1) and update the comment to match.
+**Fix:** Replace the cycle-5 reference with the archived path `.context/reviews/_aggregate-cycle-5.md` (same content, but the path is stable). Or, expand the comment to include the actual rationale inline so the cross-reference becomes optional.
 
-**Exit criteria:** The script's choice of strategy is documented in-place.
+**Exit criteria:** No cycle-specific aggregate IDs (without an archived path) in long-lived source files. Gates green.
 
 ---
 
-## DOC5-4: [LOW, deferred-carry] Privacy notice has no decline path (carried from DES3-1)
+## DOC6-3: [LOW, NEW] `0021_lethal_black_tom.sql` filename is auto-generated drizzle-kit nonsense and conflicts with the team's naming convention
 
-Already-deferred cosmetic / UX-legal judgment call.
+**Severity:** LOW (consistency / readability — same surface as CR6-3)
+**Confidence:** HIGH
+
+**Evidence:**
+- `drizzle/pg/0021_lethal_black_tom.sql` vs `drizzle/pg/0018_add_late_penalty_check.sql`, `drizzle/pg/0020_drop_judge_workers_secret_token.sql` — the team renames migration files for clarity.
+
+**Fix:** Rename to `0021_add_tags_updated_at.sql` AND update `meta/_journal.json` `tag` field for idx 21.
+
+**Exit criteria:** Filename describes intent; gates green.
 
 ---
 
-## Final Sweep
+## DOC6-4: [LOW, carry-deferred] `AGENTS.md` vs `password.ts` mismatch — needs PM/user decision
 
-- The cycle-4 plan archive question (CRIT5-4) has a documentation angle: `plans/open/README.md` says archive convention is `plans/done/`, but the working tree shows moves to `plans/open/_archive/`. Pick one.
-- All gates green; documentation drift is the main signal this cycle.
+**Severity:** MEDIUM (carried; deferred reason: needs human declaration of canonical source)
+**Confidence:** HIGH
+
+**Status:** Same as cycle 3. Reaffirm carried-deferred. No new evidence to change the deferral.
+
+---
+
+## Final Sweep — Documentation Surfaces
+
+- README.md: not modified this cycle. No regressions.
+- AGENTS.md: not modified this cycle. The new DRIZZLE_PUSH_FORCE knob is a doc gap (DOC6-1).
+- CLAUDE.md: small project-specific rules; not modified this cycle.
+- `.env.example`: missing DRIZZLE_PUSH_FORCE knob (DOC6-1).
+- `user-injected/`: cycle-5 brought the migration directive up to date.
+
+**No agent failures.**
