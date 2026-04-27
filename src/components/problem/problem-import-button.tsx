@@ -8,7 +8,17 @@ import { Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { apiFetch } from "@/lib/api/client";
 
-export function ProblemImportButton() {
+type ProblemImportButtonProps = {
+  /**
+   * Path to navigate to after import. The created problem id is appended
+   * (path/<id>) when present in the response. Defaults to /practice/problems
+   * so the public listing is the canonical landing page; instructors can
+   * still pass /dashboard/problems if they want the management view.
+   */
+  redirectBasePath?: string;
+};
+
+export function ProblemImportButton({ redirectBasePath = "/practice/problems" }: ProblemImportButtonProps = {}) {
   const t = useTranslations("problems");
   const router = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
@@ -46,9 +56,9 @@ export function ProblemImportButton() {
       toast.success(t("importSuccess"));
       const problemId = result.data?.id;
       if (problemId) {
-        router.push(`/dashboard/problems/${problemId}`);
+        router.push(`${redirectBasePath}/${problemId}`);
       } else {
-        router.push("/dashboard/problems");
+        router.push(redirectBasePath);
       }
     } catch {
       toast.error(t("importFailed"));

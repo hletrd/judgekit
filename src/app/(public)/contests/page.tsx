@@ -5,6 +5,11 @@ import { getPublicContests } from "@/lib/assignments/public-contests";
 import { JsonLd } from "@/components/seo/json-ld";
 import { buildAbsoluteUrl, buildLocalePath, buildPublicMetadata } from "@/lib/seo";
 import { getResolvedSystemSettings } from "@/lib/system-settings";
+import { auth } from "@/lib/auth";
+import { resolveCapabilities } from "@/lib/capabilities/cache";
+import { Button } from "@/components/ui/button";
+import { KeyRound, Plus } from "lucide-react";
+import Link from "next/link";
 
 function formatDateLabel(value: Date | null, fallback: string, locale: string) {
   return value
@@ -39,11 +44,15 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function PublicContestsPage() {
-  const [t, tContests, locale] = await Promise.all([
+  const [t, tContests, locale, session] = await Promise.all([
     getTranslations("publicShell"),
     getTranslations("contests"),
     getLocale(),
+    auth(),
   ]);
+  const caps = session?.user ? await resolveCapabilities(session.user.role) : null;
+  const canCreateContest = caps?.has("contests.create") ?? false;
+  const isAuthenticated = Boolean(session?.user);
   const statusLabels = {
     upcoming: t("contests.status.upcoming"),
     open: t("contests.status.open"),
@@ -74,6 +83,26 @@ export default async function PublicContestsPage() {
   return (
     <>
       <JsonLd data={contestsJsonLd} />
+      {(isAuthenticated || canCreateContest) && (
+        <div className="mb-4 flex flex-wrap justify-end gap-2">
+          {canCreateContest && (
+            <Link href={buildLocalePath("/dashboard/contests/create", locale)}>
+              <Button>
+                <Plus className="mr-1 size-4" />
+                {tContests("createContest")}
+              </Button>
+            </Link>
+          )}
+          {isAuthenticated && (
+            <Link href={buildLocalePath("/contests/join", locale)}>
+              <Button variant="outline">
+                <KeyRound className="mr-1 size-4" />
+                {tContests("joinWithCode")}
+              </Button>
+            </Link>
+          )}
+        </div>
+      )}
       <PublicContestList
         title={t("contests.catalogTitle")}
         description={t("contests.catalogDescription")}

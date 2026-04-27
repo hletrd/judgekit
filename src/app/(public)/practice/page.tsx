@@ -12,10 +12,13 @@ import { getResolvedSystemSettings, getResolvedSystemTimeZone } from "@/lib/syst
 import { formatDateInTimeZone } from "@/lib/datetime";
 import { formatDifficulty } from "@/lib/formatting";
 import { auth } from "@/lib/auth";
+import { resolveCapabilities } from "@/lib/capabilities/cache";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { FilterSelect } from "@/components/filter-select";
+import { ProblemImportButton } from "@/components/problem/problem-import-button";
+import { Plus } from "lucide-react";
 import Link from "next/link";
 import { normalizePage, normalizePageSize, setPaginationParams } from "@/lib/pagination";
 import { getProblemTierInfo } from "@/lib/problem-tiers";
@@ -150,6 +153,8 @@ export default async function PracticePage({
   // Check auth for progress tracking
   const session = await auth();
   const userId = session?.user?.id ?? null;
+  const caps = session?.user ? await resolveCapabilities(session.user.role) : null;
+  const canManageProblems = caps?.has("problems.create") ?? false;
 
   // Fetch all tags for the filter dropdown
   const allTags = await db
@@ -562,6 +567,18 @@ export default async function PracticePage({
   return (
     <>
       <JsonLd data={practiceJsonLd} />
+
+      {canManageProblems && (
+        <div className="mb-4 flex flex-wrap justify-end gap-2">
+          <ProblemImportButton />
+          <Link href={buildLocalePath("/dashboard/problems/create", locale)}>
+            <Button>
+              <Plus className="mr-1 size-4" />
+              {tProblems("create")}
+            </Button>
+          </Link>
+        </div>
+      )}
 
       {/* Search & Filter */}
       <Card className="mb-4">

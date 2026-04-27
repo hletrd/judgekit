@@ -22,7 +22,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { PaginationControls } from "@/components/pagination-controls";
 import { FilterSelect } from "@/components/filter-select";
-import { ProblemImportButton } from "./problem-import-button";
+import { ProblemImportButton } from "@/components/problem/problem-import-button";
 import { getRecruitingAccessContext } from "@/lib/recruiting/access";
 import { resolveCapabilities } from "@/lib/capabilities/cache";
 import { normalizePage } from "@/lib/pagination";
@@ -476,7 +476,7 @@ export default async function ProblemsPage({
         <h2 className="text-2xl font-bold">{t("title")}</h2>
         {canManageProblems && (
           <div className="flex gap-2">
-            <ProblemImportButton />
+            <ProblemImportButton redirectBasePath="/dashboard/problems" />
             <Link href="/dashboard/problems/create">
               <Button>{t("create")}</Button>
             </Link>
