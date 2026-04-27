@@ -17,6 +17,7 @@ type SubmissionLanguage = {
 };
 
 type PublicQuickSubmitProps = {
+  assignmentId?: string | null;
   editorTheme?: string | null;
   languages: SubmissionLanguage[];
   preferredLanguage?: string | null;
@@ -29,6 +30,7 @@ type PublicQuickSubmitProps = {
 };
 
 export function PublicQuickSubmit({
+  assignmentId = null,
   editorTheme = null,
   languages,
   preferredLanguage = null,
@@ -50,6 +52,7 @@ export function PublicQuickSubmit({
       userId={userId}
       problemId={problemId}
       languages={languages}
+      assignmentId={assignmentId}
       preferredLanguage={preferredLanguage}
       problemDefaultLanguage={problemDefaultLanguage}
       siteDefaultLanguage={siteDefaultLanguage}
