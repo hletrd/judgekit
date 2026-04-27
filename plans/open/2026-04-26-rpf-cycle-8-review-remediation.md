@@ -23,7 +23,7 @@ The other ~6 LOW findings are observational (CRIT8-2 convergence steady-state ob
 All ~28 cycle-7 carried-deferred items remain accurate at HEAD; the cycle-7 doc-only commits did not change any executable code, so no defers had their preconditions altered.
 
 **Implementation status (2026-04-26):**
-- Task A `[ ]` — pending (cycle-7 plan archival to plans/done/).
+- Task A `[x]` — done in commit `390cde9b` (cycle-7 plan archived to plans/done/).
 
 Gates at cycle-8 start: lint 0 errors (14 unchanged warnings in untracked dev .mjs scripts); test:unit 304 files / 2234 tests pass; build EXIT=0.
 
@@ -33,7 +33,7 @@ Gates at cycle-8 start: lint 0 errors (14 unchanged warnings in untracked dev .m
 
 ### Task A — [LOW, 3-agent convergence, housekeeping] Archive cycle-7 plan to `plans/done/` (AGG8-1 / ARCH8-1 / CRIT8-1 / VER8-2)
 
-**Status:** `[ ]` — pending
+**Status:** `[x]` — done in commit `390cde9b`
 **Severity:** LOW (process)
 **Confidence:** HIGH
 **Reference:** `.context/reviews/_aggregate.md` AGG8-1; per-agent: `architect.md` ARCH8-1, `critic.md` CRIT8-1, `verifier.md` VER8-2
