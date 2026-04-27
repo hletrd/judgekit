@@ -43,7 +43,7 @@ vi.mock("next/navigation", () => ({
   }),
 }));
 
-import ProblemRankingsPage from "@/app/(dashboard)/dashboard/problems/[id]/rankings/page";
+import ProblemRankingsPage from "@/app/(public)/practice/problems/[id]/rankings/page";
 
 describe("ProblemRankingsPage", () => {
   beforeEach(() => {

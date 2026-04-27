@@ -178,7 +178,7 @@ function MobileStudentCard({
             <div className="text-xs">
               {labels.lastSubmission}:{" "}
               <Link
-                href={`/dashboard/submissions/${row.latestSubmissionId}`}
+                href={`/submissions/${row.latestSubmissionId}`}
                 className="text-primary hover:underline"
               >
                 {formatSubmissionIdPrefix(row.latestSubmissionId)}
@@ -231,7 +231,7 @@ function MobileStudentCard({
                           <Badge variant="outline" className="text-xs">{statusLabels.not_submitted}</Badge>
                         )}
                         <Link
-                          href={`/dashboard/submissions/${problemRow.latestSubmissionId}`}
+                          href={`/submissions/${problemRow.latestSubmissionId}`}
                           className="text-primary hover:underline"
                         >
                           {formatSubmissionIdPrefix(problemRow.latestSubmissionId)}
@@ -412,7 +412,7 @@ export function StatusBoard({
                         <div className="space-y-1">
                           <div>
                             <Link
-                              href={`/dashboard/submissions/${row.latestSubmissionId}`}
+                              href={`/submissions/${row.latestSubmissionId}`}
                               className="text-primary hover:underline"
                             >
                               {formatSubmissionIdPrefix(row.latestSubmissionId)}
@@ -492,7 +492,7 @@ export function StatusBoard({
                                 <Badge variant="outline">{statusLabels.not_submitted}</Badge>
                               )}
                               <Link
-                                href={`/dashboard/submissions/${problem.latestSubmissionId}`}
+                                href={`/submissions/${problem.latestSubmissionId}`}
                                 className="text-primary hover:underline"
                               >
                                 {formatSubmissionIdPrefix(problem.latestSubmissionId)}

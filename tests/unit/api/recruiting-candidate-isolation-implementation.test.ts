@@ -24,7 +24,7 @@ describe("recruiting candidate isolation implementation", () => {
 
   it("prevents recruiting candidates from reaching per-problem rankings even via direct routes", () => {
     const detailSource = read("src/app/(dashboard)/dashboard/problems/[id]/page.tsx");
-    const rankingsSource = read("src/app/(dashboard)/dashboard/problems/[id]/rankings/page.tsx");
+    const rankingsSource = read("src/app/(public)/practice/problems/[id]/rankings/page.tsx");
 
     expect(detailSource).toContain('{!isRecruitingCandidate && (');
     expect(rankingsSource).toContain('const recruitingAccess = await getRecruitingAccessContext(session.user.id);');

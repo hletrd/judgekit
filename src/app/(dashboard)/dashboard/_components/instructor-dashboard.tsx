@@ -164,7 +164,7 @@ export async function InstructorDashboard({ userId, capabilities }: InstructorDa
                       />
                     </TableCell>
                     <TableCell>
-                      <Link href={`/dashboard/submissions/${submission.id}`}>
+                      <Link href={`/submissions/${submission.id}`}>
                         <Button size="sm" variant="outline">{t("viewSubmission")}</Button>
                       </Link>
                     </TableCell>

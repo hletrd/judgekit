@@ -16,7 +16,7 @@ describe("submission queue status implementation", () => {
   });
 
   it("shows queue/judging copy on the submission detail page while a submission is live", () => {
-    const source = read("src/app/(dashboard)/dashboard/submissions/[id]/submission-detail-client.tsx");
+    const source = read("src/components/submissions/submission-detail-client.tsx");
 
     expect(source).toContain("/api/v1/submissions/${submission.id}/queue-status");
     expect(source).toContain('t("queueAhead", { count: queuePosition ?? 0 })');

@@ -53,6 +53,27 @@ const nextConfig: NextConfig = {
         destination: "/dashboard/admin/discussions",
         permanent: false,
       },
+      // Phase 6 route consolidation: more dashboard duplicates → public pages
+      {
+        source: "/dashboard/submissions",
+        destination: "/submissions?scope=mine",
+        permanent: false,
+      },
+      {
+        source: "/dashboard/submissions/:id",
+        destination: "/submissions/:id",
+        permanent: false,
+      },
+      {
+        source: "/dashboard/contests/join",
+        destination: "/contests/join",
+        permanent: false,
+      },
+      {
+        source: "/dashboard/problems/:id/rankings",
+        destination: "/practice/problems/:id/rankings",
+        permanent: false,
+      },
     ];
   },
   webpack: disableMinify

@@ -101,7 +101,7 @@ test.describe("Contest System", () => {
   test.describe("Join Contest Page", () => {
     test("loads join page with code input", async ({ page }) => {
       await login(page);
-      await page.goto("/dashboard/contests/join");
+      await page.goto("/contests/join");
       await page.waitForLoadState("domcontentloaded");
 
       const codeInput = page.locator("#access-code");
@@ -111,7 +111,7 @@ test.describe("Contest System", () => {
 
     test("join button is disabled when code is empty", async ({ page }) => {
       await login(page);
-      await page.goto("/dashboard/contests/join");
+      await page.goto("/contests/join");
       await page.waitForLoadState("domcontentloaded");
 
       const joinBtn = page.getByRole("button", { name: /^Join$|^참가$/ });
@@ -120,7 +120,7 @@ test.describe("Contest System", () => {
 
     test("shows error for invalid access code", async ({ page }) => {
       await login(page);
-      await page.goto("/dashboard/contests/join");
+      await page.goto("/contests/join");
       await page.waitForLoadState("domcontentloaded");
 
       await page.locator("#access-code").fill("INVALIDCODE99");
@@ -133,7 +133,7 @@ test.describe("Contest System", () => {
 
     test("pre-fills code from URL param", async ({ page }) => {
       await login(page);
-      await page.goto("/dashboard/contests/join?code=TEST1234");
+      await page.goto("/contests/join?code=TEST1234");
       await page.waitForLoadState("domcontentloaded");
 
       await expect(page.locator("#access-code")).toHaveValue("TEST1234");

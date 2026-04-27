@@ -20,7 +20,7 @@ describe("UI hardcoded-string guards", () => {
         required: ['getTranslations("dashboardState")'],
       },
       {
-        path: "src/app/(dashboard)/dashboard/submissions/[id]/not-found.tsx",
+        path: "src/app/(public)/submissions/[id]/not-found.tsx",
         forbidden: ["Not Found", "Back to Dashboard"],
         required: ['getTranslations("dashboardState")'],
       },

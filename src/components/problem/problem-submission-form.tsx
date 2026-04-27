@@ -45,7 +45,7 @@ export function ProblemSubmissionForm({
   problemDefaultLanguage = null,
   siteDefaultLanguage = null,
   editorTheme = null,
-  submissionHrefBuilder = (submissionId) => `/dashboard/submissions/${submissionId}?from=problem`,
+  submissionHrefBuilder = (submissionId) => `/submissions/${submissionId}?from=problem`,
   onSubmitted,
 }: ProblemSubmissionFormProps) {
   const router = useRouter();

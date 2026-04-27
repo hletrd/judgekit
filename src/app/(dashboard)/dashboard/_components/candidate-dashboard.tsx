@@ -451,7 +451,7 @@ export async function CandidateDashboard({
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-semibold">{totalAttempts}</div>
-            <Link href="/dashboard/submissions" className="mt-2 inline-block text-xs text-muted-foreground hover:text-foreground">
+            <Link href="/submissions?scope=mine" className="mt-2 inline-block text-xs text-muted-foreground hover:text-foreground">
               {t("viewAttempts")}
             </Link>
           </CardContent>
@@ -636,7 +636,7 @@ export async function CandidateDashboard({
                   <span>{t("scoreLabel", { score: submission.score ?? 0 })}</span>
                 </div>
                 <div className="mt-3">
-                  <Link href={`/dashboard/submissions/${submission.id}`}>
+                  <Link href={`/submissions/${submission.id}`}>
                     <Badge variant="secondary">{t("viewAttempt")}</Badge>
                   </Link>
                 </div>

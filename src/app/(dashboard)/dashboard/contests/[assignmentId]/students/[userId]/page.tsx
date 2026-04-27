@@ -162,7 +162,7 @@ export default async function StudentDetailPage({
                   <TableRow key={sub.id}>
                     <TableCell className="font-medium text-sm">
                       <Link
-                        href={`/dashboard/submissions/${sub.id}`}
+                        href={`/submissions/${sub.id}`}
                         className="text-primary hover:underline"
                       >
                         {sub.problem?.title ?? sub.problemId}
@@ -175,7 +175,7 @@ export default async function StudentDetailPage({
                     </TableCell>
                     <TableCell>
                       <Link
-                        href={`/dashboard/submissions/${sub.id}`}
+                        href={`/submissions/${sub.id}`}
                         className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium hover:opacity-80 ${statusColors[sub.status ?? ""] ?? ""}`}
                       >
                         {tSub(`status.${sub.status}`)}
@@ -188,7 +188,7 @@ export default async function StudentDetailPage({
                       {formatDateTimeInTimeZone(sub.submittedAt, locale, timeZone)}
                     </TableCell>
                     <TableCell className="text-right pr-6">
-                      <Link href={`/dashboard/submissions/${sub.id}`}>
+                      <Link href={`/submissions/${sub.id}`}>
                         <Button variant="outline" size="sm">
                           {tCommon("view")}
                         </Button>

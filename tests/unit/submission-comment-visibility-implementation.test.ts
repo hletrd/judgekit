@@ -8,7 +8,7 @@ function read(relativePath: string) {
 
 describe("submission comment visibility implementation", () => {
   it("renders the comment section regardless of assignment scope so scoped reviewers can comment on coursework submissions", () => {
-    const source = read("src/app/(dashboard)/dashboard/submissions/[id]/submission-detail-client.tsx");
+    const source = read("src/components/submissions/submission-detail-client.tsx");
 
     expect(source).toContain("<CommentSection");
     expect(source).toContain("submissionId={submission.id}");

@@ -17,7 +17,7 @@ describe("judge progress implementation", () => {
 
   it("surfaces judging progress from queue-status polling on the submission detail page", () => {
     const queueRoute = read("src/app/api/v1/submissions/[id]/queue-status/route.ts");
-    const client = read("src/app/(dashboard)/dashboard/submissions/[id]/submission-detail-client.tsx");
+    const client = read("src/components/submissions/submission-detail-client.tsx");
 
     expect(queueRoute).toContain("gradingTestCase");
     expect(queueRoute).toContain("from(submissionResults)");

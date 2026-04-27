@@ -1,6 +1,6 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { CommentSection } from "@/app/(dashboard)/dashboard/submissions/[id]/_components/comment-section";
+import { CommentSection } from "@/components/submissions/_components/comment-section";
 import { apiFetch } from "@/lib/api/client";
 
 vi.mock("next-intl", () => ({

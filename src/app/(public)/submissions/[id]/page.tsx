@@ -6,7 +6,7 @@ import { and, desc, eq, ne } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import { getResolvedSystemTimeZone } from "@/lib/system-settings";
 import { redirect, notFound } from "next/navigation";
-import { SubmissionDetailClient } from "@/app/(dashboard)/dashboard/submissions/[id]/submission-detail-client";
+import { SubmissionDetailClient } from "@/components/submissions/submission-detail-client";
 import { buildLocalePath, NO_INDEX_METADATA } from "@/lib/seo";
 import { formatScore } from "@/lib/formatting";
 import { SubmissionStatusBadge } from "@/components/submission-status-badge";
@@ -39,7 +39,11 @@ export default async function PublicSubmissionDetailPage({ params, searchParams 
   const submissionId = resolvedParams.id;
   const fromParam = resolvedSearchParams?.from;
   const backHref = buildLocalePath(
-    fromParam === "problem" ? "/practice" : "/submissions",
+    fromParam === "problem"
+      ? "/practice"
+      : fromParam === "admin"
+        ? "/dashboard/admin/submissions"
+        : "/submissions",
     locale,
   );
 

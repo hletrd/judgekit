@@ -159,7 +159,7 @@ export default async function ContestsPage({
               </Button>
             </Link>
           )}
-          <Link href="/dashboard/contests/join">
+          <Link href="/contests/join">
             <Button variant="outline" size="sm" className="gap-1.5">
               <KeyRound className="size-4" />
               {t("joinWithCode")}

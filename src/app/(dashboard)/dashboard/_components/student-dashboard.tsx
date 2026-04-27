@@ -176,7 +176,7 @@ export async function StudentDashboard({ userId }: StudentDashboardProps) {
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-semibold">{completedAssignments}</div>
-            <Link href="/dashboard/submissions" className="mt-2 inline-block text-xs text-muted-foreground hover:text-foreground">
+            <Link href="/submissions?scope=mine" className="mt-2 inline-block text-xs text-muted-foreground hover:text-foreground">
               {tCommon("viewAll")}
             </Link>
           </CardContent>
@@ -244,7 +244,7 @@ export async function StudentDashboard({ userId }: StudentDashboardProps) {
                     </span>
                   </div>
                   <div className="mt-3">
-                    <Link href={`/dashboard/submissions/${submission.id}`}>
+                    <Link href={`/submissions/${submission.id}`}>
                       <Badge variant="outline">{t("viewSubmission")}</Badge>
                     </Link>
                   </div>

@@ -238,7 +238,7 @@ export default async function ProblemDetailPage({
           </div>
           <div className="flex flex-wrap gap-2">
             {!isRecruitingCandidate && (
-              <Link href={`/dashboard/problems/${problem.id}/rankings`}>
+              <Link href={`/practice/problems/${problem.id}/rankings`}>
                 <Button variant="outline" size="sm">
                   <Trophy className="size-4 mr-1" />
                   {tRankings("viewRankings")}

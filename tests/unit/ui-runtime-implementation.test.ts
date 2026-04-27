@@ -16,7 +16,7 @@ describe("UI/runtime implementation guards", () => {
 
   it("guards duplicate submission-result events and cleans up SSE fallback polling", () => {
     const detailSource = readFileSync(
-      join(process.cwd(), "src/app/(dashboard)/dashboard/submissions/[id]/submission-detail-client.tsx"),
+      join(process.cwd(), "src/components/submissions/submission-detail-client.tsx"),
       "utf8"
     );
     const pollingSource = readFileSync(

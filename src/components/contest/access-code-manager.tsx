@@ -134,7 +134,7 @@ export function AccessCodeManager({ assignmentId }: AccessCodeManagerProps) {
 
   async function handleCopyLink() {
     if (!code) return;
-    const url = `${window.location.origin}${buildLocalizedHref("/dashboard/contests/join", locale)}?code=${code}`;
+    const url = `${window.location.origin}${buildLocalizedHref("/contests/join", locale)}?code=${code}`;
     await copyValue(url, { showToast: true });
   }
 

@@ -200,7 +200,7 @@ export default async function StudentSubmissionsPage({
                           <TableRow key={sub.id}>
                             <TableCell className="font-mono text-xs">
                               <Link
-                                href={`/dashboard/submissions/${sub.id}`}
+                                href={`/submissions/${sub.id}`}
                                 className="text-primary hover:underline"
                               >
                                 {formatSubmissionIdPrefix(sub.id)}
@@ -242,7 +242,7 @@ export default async function StudentSubmissionsPage({
                                 : "-"}
                             </TableCell>
                             <TableCell>
-                              <Link href={`/dashboard/submissions/${sub.id}`}>
+                              <Link href={`/submissions/${sub.id}`}>
                                 <Button variant="outline" size="sm">
                                   {tCommon("view")}
                                 </Button>

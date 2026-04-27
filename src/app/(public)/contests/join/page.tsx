@@ -9,7 +9,7 @@ export default async function ContestJoinPage() {
 
   const { isRecruitingCandidate } = await getRecruitingAccessContext(session.user.id);
   if (isRecruitingCandidate) {
-    redirect("/dashboard/contests");
+    redirect("/contests");
   }
 
   return <ContestJoinClient />;

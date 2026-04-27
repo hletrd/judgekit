@@ -8,9 +8,9 @@ function read(relativePath: string) {
 
 describe("submission detail time-limit wiring", () => {
   it("threads problem time limits from server pages into the submission detail client badges", () => {
-    const dashboardPage = read("src/app/(dashboard)/dashboard/submissions/[id]/page.tsx");
+    const dashboardPage = read("src/app/(public)/submissions/[id]/page.tsx");
     const publicPage = read("src/app/(public)/submissions/[id]/page.tsx");
-    const client = read("src/app/(dashboard)/dashboard/submissions/[id]/submission-detail-client.tsx");
+    const client = read("src/components/submissions/submission-detail-client.tsx");
 
     expect(dashboardPage).toContain("timeLimitMs: true");
     expect(dashboardPage).toContain("problemTimeLimitMs={submission.problem?.timeLimitMs ?? null}");

@@ -59,7 +59,7 @@ const DROPDOWN_ICONS: Record<string, React.ReactNode> = {
   "/dashboard/problems": <FileText className="size-4" />,
   "/dashboard/problem-sets": <FolderOpen className="size-4" />,
   "/dashboard/groups": <Users className="size-4" />,
-  "/dashboard/submissions": <ClipboardList className="size-4" />,
+  "/submissions?scope=mine": <ClipboardList className="size-4" />,
   "/dashboard/contests": <Timer className="size-4" />,
   "/dashboard/profile": <Settings className="size-4" />,
   "/dashboard/admin": <Shield className="size-4" />,

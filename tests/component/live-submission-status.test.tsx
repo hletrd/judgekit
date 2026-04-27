@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import { LiveSubmissionStatus } from "@/app/(dashboard)/dashboard/submissions/[id]/_components/live-submission-status";
+import { LiveSubmissionStatus } from "@/components/submissions/_components/live-submission-status";
 
 describe("LiveSubmissionStatus", () => {
   it("shows queue position for queued submissions", () => {

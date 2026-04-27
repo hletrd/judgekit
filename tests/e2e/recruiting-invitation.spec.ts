@@ -121,7 +121,7 @@ test("recruiting invitation candidates are scoped to their contest only", async 
   });
   await expect(candidatePage).toHaveURL(/\/dashboard\/contests(?:$|\/)/);
 
-  await candidatePage.goto(`${BASE_URL}/dashboard/contests/join`, { waitUntil: "networkidle" });
+  await candidatePage.goto(`${BASE_URL}/contests/join`, { waitUntil: "networkidle" });
   await expect(candidatePage).toHaveURL(/\/dashboard\/contests$/);
 
   await candidatePage.goto(`${BASE_URL}/playground`, { waitUntil: "networkidle" });

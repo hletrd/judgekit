@@ -443,7 +443,7 @@ export default async function ContestDetailPage({
                                 : "-"}
                             </TableCell>
                             <TableCell className="pr-6">
-                              <Link href={`/dashboard/submissions/${sub.id}`}>
+                              <Link href={`/submissions/${sub.id}`}>
                                 <Button variant="outline" size="sm">
                                   {tCommon("view")}
                                 </Button>

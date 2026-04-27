@@ -319,7 +319,7 @@ export async function ParticipantTimelineView({
                         <TableRow key={sub.submissionId}>
                           <TableCell className="font-mono text-xs">
                             <Link
-                              href={`/dashboard/submissions/${sub.submissionId}`}
+                              href={`/submissions/${sub.submissionId}`}
                               className="text-primary hover:underline"
                             >
                               {formatSubmissionIdPrefix(sub.submissionId)}
@@ -370,7 +370,7 @@ export async function ParticipantTimelineView({
                           </TableCell>
                           <TableCell>
                             <Link
-                              href={`/dashboard/submissions/${sub.submissionId}`}
+                              href={`/submissions/${sub.submissionId}`}
                             >
                               <Button variant="outline" size="sm">
                                 {tCommon("view")}
