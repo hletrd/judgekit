@@ -1,7 +1,7 @@
 # Workspace-to-Public Page Migration Plan
 
 **Date:** 2026-04-19
-**Status:** Phases 1-5 COMPLETE, Phase 6 SUBSTANTIALLY COMPLETE (more dashboard duplicates redirected, /practice and /contests now host management buttons), Phase 7 OUTSTANDING (participation flow at /dashboard/contests/[id] and /dashboard/problems/[id])
+**Status:** Phases 1-6 COMPLETE, Phase 7 COMPLETE (participation flow migrated to /contests/[id] and /practice/problems/[id]?assignmentId=...)
 **Source:** User-injected TODO #2, AGG-13
 
 ## Goal
@@ -333,7 +333,7 @@ No redundant page components remain under `(dashboard)`.
 - Phase 4: 4-6 hours
 - Phase 5: 2-3 hours
 - Phase 6: 3-4 hours
-- Phase 7 (remaining): 6-10 hours
+- Phase 7: 6-10 hours
 - **Total: 21-32 hours** (spread across multiple cycles)
 
 ---
@@ -354,14 +354,25 @@ No redundant page components remain under `(dashboard)`.
 - Update internal links from `/dashboard/submissions/[id]` → `/submissions/[id]` across the codebase
 - Restore not-found page in the new public submissions/[id] location
 
-### Phase 7 — Participation flow (REMAINING)
+### Phase 7 — Participation flow
+
+**Status:** COMPLETE
 
 Move/merge the contest and problem participation experiences into the public route group with auth-aware rendering:
 
-- `/dashboard/contests/[assignmentId]` student view → `/contests/[id]` participation section (anti-cheat monitor, exam-session start, leaderboard, my submissions)
-- `/dashboard/contests/[assignmentId]` instructor view → consider keeping it as the management view (status board, anti-cheat dashboard, candidates, invitations) but reachable from `/contests/[id]` via a "Manage" button
-- `/dashboard/problems/[id]` participant view (with assignmentId) → `/practice/problems/[id]?assignmentId=...` with anti-cheat monitor, lecture mode, edit/delete/export buttons
-- Add a "My Contests" tab/section to `/contests` showing private/group contests the user is enrolled in (calls `getContestsForUser`)
-- Once the participation flow lives at `/practice/problems/[id]`, redirect `/dashboard/problems/[id]` → `/practice/problems/[id]`
+- ~~`/dashboard/contests/[assignmentId]` student view → `/contests/[id]` participation section (anti-cheat monitor, exam-session start, leaderboard, my submissions)~~ DONE
+- ~~`/dashboard/contests/[assignmentId]` instructor view → kept as the management view (status board, anti-cheat dashboard, candidates, invitations) reachable from `/contests/[id]` via a "Manage Contest" button~~ DONE
+- ~~`/dashboard/problems/[id]` participant view (with assignmentId) → `/practice/problems/[id]?assignmentId=...` with anti-cheat monitor, lecture mode, edit/delete/export buttons~~ DONE
+- ~~Add a "My Contests" tab/section to `/contests` showing private/group contests the user is enrolled in (calls `getContestsForUser`)~~ DONE
+- ~~Redirect `/dashboard/problems/[id]` → `/practice/problems/[id]`~~ DONE
+- ~~Redirect `/dashboard/contests/[assignmentId]` → `/contests/[assignmentId]` for students~~ DONE
 
-This phase is left for a follow-up cycle because it requires merging substantial UI (anti-cheat monitor injection timing, lecture mode wrapper, instructor-only tabs, leaderboard freeze logic) without regressing exam integrity. Each merge is its own careful refactor.
+**Implementation details (commits):**
+1. `5dffe377` — Data layer: `getUserContestAccess()`, `getEnrolledContestDetail()` in `public-contests.ts`
+2. `7ed5fd90` — Move `AssignmentOverview` to shared `@/components/assignment/` with `backHref`/`problemHrefPrefix` props
+3. `21671fdd` — Pass `assignmentId` through `PublicQuickSubmit` to `ProblemSubmissionForm`
+4. `4df35c7f` — Auth-aware contest detail at `/contests/[id]` (three rendering paths: student/instructor/public)
+5. `565d68ad` — Assignment context for problem detail at `/practice/problems/[id]?assignmentId=...`
+6. `db9ddbc8` — "My Contests" section on `/contests` page for authenticated users
+7. No separate commit needed — link cleanup verified as already correct from Steps 4-6
+8. `1ee90015` — Redirect dashboard problem/contest pages to public URLs
