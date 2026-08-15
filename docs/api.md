@@ -1974,7 +1974,7 @@ Proxies Google's `GET https://generativelanguage.googleapis.com/v1beta/models` (
 {
   "models": [
     {
-      "id": "gemini-3.6-flash",
+      "id": "gemini-3.7-flash",
       "displayName": "string|null",
       "description": "string|null",
       "inputTokenLimit": 0,

@@ -3,7 +3,7 @@ import { z } from "zod";
 // ── Recommended shortlist ─────────────────────────────────────────────────────
 // Hardcoded ids only. Live metadata (name/price/context) comes from the
 // OpenRouter `/models` fetch. Order matters: shown top-first in the picker.
-// All verified present on OpenRouter and tool-calling capable as of 2026-07-22.
+// All verified present on OpenRouter and tool-calling capable as of 2026-08-14.
 export const RECOMMENDED_OPENROUTER_MODELS = [
   "deepseek/deepseek-v4-flash", // default
   "inclusionai/ling-2.6-1t",
@@ -14,7 +14,7 @@ export const RECOMMENDED_OPENROUTER_MODELS = [
   "xiaomi/mimo-v2.5-pro",
   "kwaipilot/kat-coder-pro-v2.5",
   "z-ai/glm-5.2",
-  "google/gemini-3.6-flash",
+  "google/gemini-3.7-flash",
   "x-ai/grok-4.5",
   "moonshotai/kimi-k3",
 ] as const;

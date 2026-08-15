@@ -51,7 +51,7 @@ and changes only the base URL and the two attribution headers. Each provider
 supports both streaming chat and tool calling.
 
 Default models: OpenAI `gpt-5-mini`, Claude `claude-sonnet-4-6`, Gemini
-`gemini-3.6-flash`, OpenRouter `deepseek/deepseek-v4-flash`
+`gemini-3.7-flash`, OpenRouter `deepseek/deepseek-v4-flash`
 (`src/lib/plugins/chat-widget/schema.ts`).
 
 ---
@@ -103,7 +103,7 @@ name/price/context comes from the fetch):
 - OpenRouter: `src/lib/plugins/chat-widget/openrouter-models.ts`
   (`RECOMMENDED_OPENROUTER_MODELS`), default `deepseek/deepseek-v4-flash`.
 - Gemini: `src/lib/plugins/chat-widget/gemini-models.ts`
-  (`RECOMMENDED_GEMINI_MODELS`), default `gemini-3.6-flash`. These are the
+  (`RECOMMENDED_GEMINI_MODELS`), default `gemini-3.7-flash`. These are the
   confirmed **fallback list** used when the live fetch cannot run (e.g. no key
   configured, `keyConfigured: false`).
 
