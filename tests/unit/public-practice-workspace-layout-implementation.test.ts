@@ -13,7 +13,11 @@ describe("public practice workspace layout implementation", () => {
     expect(source).toContain('grid grid-cols-1 gap-6 lg:grid-cols-2');
     expect(source).toContain('id="public-submit-panel"');
     expect(source).toContain('layout="inline"');
-    expect(source).toContain('Link href="#public-submit-panel"');
+    // 09e27f53 deliberately removed the header "Submit Solution" jump-link
+    // because it duplicated the inline submit panel rendered right below;
+    // the inline form is the single submission path for signed-in users.
+    // Pinned as an absence so the duplicate CTA cannot come back unnoticed.
+    expect(source).not.toContain('Link href="#public-submit-panel"');
   });
 
   it("moves my submissions into the right-hand workspace column instead of a dedicated tab", () => {
