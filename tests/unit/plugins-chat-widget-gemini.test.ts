@@ -10,8 +10,9 @@ import {
 // ── Pure helpers (no mocks) ───────────────────────────────────────────────────
 
 describe("RECOMMENDED_GEMINI_MODELS", () => {
-  it("is the confirmed 7-id shortlist in spec order with the GA default first", () => {
+  it("is the confirmed 8-id shortlist in spec order with the GA default first", () => {
     expect([...RECOMMENDED_GEMINI_MODELS]).toEqual([
+      "gemini-3.8-flash",
       "gemini-3.7-flash",
       "gemini-3.6-flash",
       "gemini-3.5-flash-lite",
@@ -20,7 +21,7 @@ describe("RECOMMENDED_GEMINI_MODELS", () => {
       "gemini-2.5-flash",
       "gemini-2.5-pro",
     ]);
-    expect(RECOMMENDED_GEMINI_MODELS[0]).toBe("gemini-3.7-flash");
+    expect(RECOMMENDED_GEMINI_MODELS[0]).toBe("gemini-3.8-flash");
   });
 
   it("has no duplicate ids and none carry the `models/` prefix", () => {
@@ -34,8 +35,8 @@ describe("RECOMMENDED_GEMINI_MODELS", () => {
 
 describe("stripModelsPrefix", () => {
   it("removes a leading `models/` and leaves bare ids untouched", () => {
-    expect(stripModelsPrefix("models/gemini-3.7-flash")).toBe("gemini-3.7-flash");
-    expect(stripModelsPrefix("gemini-3.7-flash")).toBe("gemini-3.7-flash");
+    expect(stripModelsPrefix("models/gemini-3.8-flash")).toBe("gemini-3.8-flash");
+    expect(stripModelsPrefix("gemini-3.8-flash")).toBe("gemini-3.8-flash");
   });
 });
 
@@ -66,8 +67,8 @@ describe("buildGeminiModelList", () => {
       },
       // The default recommended model with live metadata.
       {
-        name: "models/gemini-3.7-flash",
-        displayName: "Gemini 3.7 Flash",
+        name: "models/gemini-3.8-flash",
+        displayName: "Gemini 3.8 Flash",
         description: "default flash",
         inputTokenLimit: 1048576,
         supportedGenerationMethods: ["generateContent", "countTokens"],
@@ -79,7 +80,7 @@ describe("buildGeminiModelList", () => {
     const list = buildGeminiModelList(mockPayload);
     const firstRecommended = list.slice(0, RECOMMENDED_GEMINI_MODELS.length).map((m) => m.id);
     expect(firstRecommended).toEqual([...RECOMMENDED_GEMINI_MODELS]);
-    expect(list[0].id).toBe("gemini-3.7-flash");
+    expect(list[0].id).toBe("gemini-3.8-flash");
     expect(list[0].recommended).toBe(true);
   });
 
@@ -96,8 +97,8 @@ describe("buildGeminiModelList", () => {
 
   it("trims live metadata for recommended entries present in the payload", () => {
     const list = buildGeminiModelList(mockPayload);
-    const flash = list.find((m) => m.id === "gemini-3.7-flash")!;
-    expect(flash.displayName).toBe("Gemini 3.7 Flash");
+    const flash = list.find((m) => m.id === "gemini-3.8-flash")!;
+    expect(flash.displayName).toBe("Gemini 3.8 Flash");
     expect(flash.description).toBe("default flash");
     expect(flash.inputTokenLimit).toBe(1048576);
   });
@@ -193,8 +194,8 @@ describe("gemini-models route", () => {
       json: async () => ({
         models: [
           {
-            name: "models/gemini-3.7-flash",
-            displayName: "Gemini 3.7 Flash",
+            name: "models/gemini-3.8-flash",
+            displayName: "Gemini 3.8 Flash",
             supportedGenerationMethods: ["generateContent"],
           },
         ],
@@ -208,7 +209,7 @@ describe("gemini-models route", () => {
 
     expect(body.error).toBe(false);
     expect(body.keyConfigured).toBe(true);
-    expect(body.models[0].id).toBe("gemini-3.7-flash");
+    expect(body.models[0].id).toBe("gemini-3.8-flash");
 
     // The key is in the header, and NOT in the URL.
     const [calledUrl, init] = fetchMock.mock.calls[0];

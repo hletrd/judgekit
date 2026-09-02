@@ -215,7 +215,7 @@ export default function ChatWidgetAdminConfig({ config, onSave }: PluginAdminPro
   const [claudeApiKey, setClaudeApiKey] = useState((config.claudeApiKey as string) ?? "");
   const [claudeModel, setClaudeModel] = useState((config.claudeModel as string) ?? "claude-sonnet-4-6");
   const [geminiApiKey, setGeminiApiKey] = useState((config.geminiApiKey as string) ?? "");
-  const [geminiModel, setGeminiModel] = useState((config.geminiModel as string) ?? "gemini-3.7-flash");
+  const [geminiModel, setGeminiModel] = useState((config.geminiModel as string) ?? "gemini-3.8-flash");
   const [assistantName, setAssistantName] = useState((config.assistantName as string) ?? "");
   const [systemPrompt, setSystemPrompt] = useState((config.systemPrompt as string) ?? "");
   const [knowledgeBase, setKnowledgeBase] = useState((config.knowledgeBase as string) ?? "");

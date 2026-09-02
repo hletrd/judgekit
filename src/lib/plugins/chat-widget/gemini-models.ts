@@ -1,13 +1,14 @@
 import { z } from "zod";
 
 // ── Recommended shortlist ─────────────────────────────────────────────────────
-// Confirmed against Google's official Gemini API docs (2026-08-14). These are
+// Confirmed against Google's official Gemini API docs (2026-09-03). These are
 // Google's exact model ids (no leading "models/"), the same ids the native
 // `gemini` provider passes to `.../v1beta/models/${id}:streamGenerateContent`.
 // Live metadata (display name / description / token limit) comes from the
 // `/v1beta/models` fetch. Order matters: shown top-first in the picker.
 export const RECOMMENDED_GEMINI_MODELS = [
-  "gemini-3.7-flash", // GA, default
+  "gemini-3.8-flash", // GA, default
+  "gemini-3.7-flash", // GA
   "gemini-3.6-flash", // GA
   "gemini-3.5-flash-lite", // GA
   "gemini-3.1-pro-preview", // preview

@@ -14,7 +14,7 @@ export const RECOMMENDED_OPENROUTER_MODELS = [
   "xiaomi/mimo-v2.5-pro",
   "kwaipilot/kat-coder-pro-v2.5",
   "z-ai/glm-5.2",
-  "google/gemini-3.7-flash",
+  "google/gemini-3.8-flash",
   "x-ai/grok-4.5",
   "moonshotai/kimi-k3",
 ] as const;
