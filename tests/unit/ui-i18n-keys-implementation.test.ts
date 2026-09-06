@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
+import { ALL_CAPABILITIES, CAPABILITY_GROUPS } from "@/lib/capabilities/types";
+import { buildStatusLabels } from "@/lib/judge/status-labels";
 
 type Messages = Record<string, unknown>;
 
@@ -87,6 +89,120 @@ describe("UI i18n key coverage", () => {
           if (getAtPath(messages, fullKey) === undefined) {
             missing.push(`${lang}:${file}:${fullKey}`);
           }
+        }
+      }
+    }
+
+    expect(missing).toEqual([]);
+  });
+
+  /**
+   * The literal scan above cannot see keys built from a template literal
+   * (`t(`status.${submission.status}`)`), which is how the TLE label went
+   * missing: the DB status is `time_limit_exceeded` but the bundles only
+   * carry `status.time_limit`. These cases pin the dynamic key sources.
+   */
+  it("resolves every submission status through buildStatusLabels to a real key", () => {
+    const en = JSON.parse(read("messages/en.json")) as Messages;
+    const ko = JSON.parse(read("messages/ko.json")) as Messages;
+
+    const statusSource = read("src/lib/submissions/status.ts");
+    const union = statusSource.match(/export type SubmissionStatus = ([^;]+);/)?.[1] ?? "";
+    const statuses = [...union.matchAll(/"([a-z_]+)"/g)].map(match => match[1]);
+    expect(statuses.length).toBeGreaterThan(0);
+
+    const usedKeys: string[] = [];
+    const labels = buildStatusLabels(key => {
+      usedKeys.push(key);
+      return key;
+    });
+
+    const missing: string[] = [];
+    for (const status of statuses) {
+      if (labels[status] === undefined) {
+        missing.push(`buildStatusLabels:${status}`);
+      }
+    }
+    for (const key of usedKeys) {
+      for (const [lang, messages] of [["en", en], ["ko", ko]] as const) {
+        if (getAtPath(messages, `submissions.${key}`) === undefined) {
+          missing.push(`${lang}:submissions.${key}`);
+        }
+      }
+    }
+
+    expect(missing).toEqual([]);
+  });
+
+  it("keeps a label for every capability group and capability", () => {
+    const en = JSON.parse(read("messages/en.json")) as Messages;
+    const ko = JSON.parse(read("messages/ko.json")) as Messages;
+
+    const keys = [
+      // capability-matrix.tsx renders `t(`groups.${groupKey}`)`, so the
+      // message key must match the CAPABILITY_GROUPS object key, not labelKey.
+      ...Object.keys(CAPABILITY_GROUPS).map(group => `capabilities.groups.${group}`),
+      ...ALL_CAPABILITIES.map(capability => `capabilities.items.${capability}`),
+    ];
+
+    const missing: string[] = [];
+    for (const key of keys) {
+      for (const [lang, messages] of [["en", en], ["ko", ko]] as const) {
+        if (getAtPath(messages, key) === undefined) {
+          missing.push(`${lang}:${key}`);
+        }
+      }
+    }
+
+    expect(missing).toEqual([]);
+  });
+
+  it("keeps a message for every error code the server actions hand back to t()", () => {
+    const en = JSON.parse(read("messages/en.json")) as Messages;
+    const ko = JSON.parse(read("messages/ko.json")) as Messages;
+
+    // Actions whose `error` code is passed straight into t() by their caller.
+    const actionNamespaces: Record<string, string> = {
+      "change-password.ts": "changePassword",
+      "public-signup.ts": "auth",
+      "tag-management.ts": "admin.tags",
+      "update-profile.ts": "profile",
+      "user-management.ts": "admin.users",
+    };
+
+    const missing: string[] = [];
+    for (const [file, namespace] of Object.entries(actionNamespaces)) {
+      const source = read(join("src/lib/actions", file));
+      const codes = new Set([...source.matchAll(/error:\s*"([^"]+)"/g)].map(match => match[1]));
+      expect(codes.size).toBeGreaterThan(0);
+
+      for (const code of codes) {
+        for (const [lang, messages] of [["en", en], ["ko", ko]] as const) {
+          if (getAtPath(messages, `${namespace}.${code}`) === undefined) {
+            missing.push(`${lang}:${file}:${namespace}.${code}`);
+          }
+        }
+      }
+    }
+
+    expect(missing).toEqual([]);
+  });
+
+  it("keeps a nav label for every breadcrumb segment mapping", () => {
+    const en = JSON.parse(read("messages/en.json")) as Messages;
+    const ko = JSON.parse(read("messages/ko.json")) as Messages;
+
+    const source = read("src/components/layout/breadcrumb.tsx");
+    const start = source.indexOf("SEGMENT_LABEL_MAP");
+    const block = source.slice(start, source.indexOf("};", start));
+    const keys = [...block.matchAll(/:\s*"([A-Za-z]+)"/g)].map(match => match[1]);
+    expect(keys.length).toBeGreaterThan(0);
+
+    const missing: string[] = [];
+    for (const key of keys) {
+      for (const [lang, messages] of [["en", en], ["ko", ko]] as const) {
+        if (getAtPath(messages, `nav.${key}`) === undefined) {
+          missing.push(`${lang}:nav.${key}`);
         }
       }
     }
