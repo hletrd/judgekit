@@ -188,6 +188,51 @@ describe("UI i18n key coverage", () => {
     expect(missing).toEqual([]);
   });
 
+  it("keeps a message for every code in a client-side known-error whitelist", () => {
+    const en = JSON.parse(read("messages/en.json")) as Messages;
+    const ko = JSON.parse(read("messages/ko.json")) as Messages;
+
+    // Callers that filter an API error code through a Set before handing it to
+    // t() — the Set is the contract, so every member needs a message.
+    const whitelists: { file: string; setName: string; namespace: string }[] = [
+      {
+        file: "src/app/(dashboard)/dashboard/admin/settings/database-backup-restore.tsx",
+        setName: "KNOWN_BACKUP_ERRORS",
+        namespace: "admin.settings",
+      },
+      {
+        file: "src/app/(public)/problem-sets/_components/problem-set-form.tsx",
+        setName: "KNOWN_SUBMIT_ERRORS",
+        namespace: "problemSets",
+      },
+      {
+        file: "src/components/code/compiler-client.tsx",
+        setName: "knownErrorKeys",
+        namespace: "compiler",
+      },
+    ];
+
+    const missing: string[] = [];
+    for (const { file, setName, namespace } of whitelists) {
+      const source = read(file);
+      const start = source.indexOf(setName);
+      expect(start).toBeGreaterThan(-1);
+      const block = source.slice(start, source.indexOf("]", start));
+      const codes = [...block.matchAll(/"([A-Za-z]+)"/g)].map(match => match[1]);
+      expect(codes.length).toBeGreaterThan(0);
+
+      for (const code of codes) {
+        for (const [lang, messages] of [["en", en], ["ko", ko]] as const) {
+          if (getAtPath(messages, `${namespace}.${code}`) === undefined) {
+            missing.push(`${lang}:${setName}:${namespace}.${code}`);
+          }
+        }
+      }
+    }
+
+    expect(missing).toEqual([]);
+  });
+
   it("keeps a nav label for every breadcrumb segment mapping", () => {
     const en = JSON.parse(read("messages/en.json")) as Messages;
     const ko = JSON.parse(read("messages/ko.json")) as Messages;

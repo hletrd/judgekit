@@ -1489,6 +1489,8 @@
       "backupSuccess": "Backup downloaded.",
       "backupFailed": "Failed to download backup.",
       "passwordRequired": "Password is required.",
+      "authenticationFailed": "Authentication failed. Please sign in again.",
+      "forbidden": "You are not authorized to perform this action.",
       "enterPassword": "Enter your password",
       "restoreTitle": "Restore Database",
       "restoreWarning": "Restoring replaces ALL current data. A pre-restore backup is saved automatically. The application may need a restart. Only super administrators can restore.",

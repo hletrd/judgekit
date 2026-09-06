@@ -1489,6 +1489,8 @@
       "backupSuccess": "백업을 받았어요.",
       "backupFailed": "백업 다운로드에 실패했어요.",
       "passwordRequired": "비밀번호를 입력하세요.",
+      "authenticationFailed": "인증에 실패했어요. 다시 로그인해 주세요.",
+      "forbidden": "이 작업을 할 권한이 없어요.",
       "enterPassword": "비밀번호를 입력하세요",
       "restoreTitle": "데이터베이스 복원",
       "restoreWarning": "복원하면 모든 데이터가 교체돼요. 복원하기 전에 자동 백업이 저장돼요. 애플리케이션을 다시 시작해야 할 수 있어요. 최고 관리자만 복원할 수 있어요.",
