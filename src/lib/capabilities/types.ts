@@ -131,7 +131,7 @@ export const CAPABILITY_GROUPS = {
     ],
   },
   problem_sets: {
-    labelKey: "capabilities.groups.problemSets",
+    labelKey: "capabilities.groups.problem_sets",
     capabilities: [
       "problem_sets.create",
       "problem_sets.edit",
@@ -158,7 +158,7 @@ export const CAPABILITY_GROUPS = {
     capabilities: ["recruiting.manage_invitations"],
   },
   anti_cheat: {
-    labelKey: "capabilities.groups.antiCheat",
+    labelKey: "capabilities.groups.anti_cheat",
     capabilities: ["anti_cheat.view_events", "anti_cheat.run_similarity"],
   },
   system: {

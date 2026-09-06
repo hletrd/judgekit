@@ -120,7 +120,8 @@
     "emailInUse": "That email address is already in use.",
     "invalidEmail": "Enter a valid email address.",
     "nameRequired": "Enter your name.",
-    "registrationClosed": "Public sign-up is disabled.",
+    "signupDisabled": "Public sign-up is disabled.",
+    "unauthorized": "This request could not be verified. Please reload the page and try again.",
     "hcaptchaRequired": "Please complete the hCaptcha challenge.",
     "hcaptchaVerificationFailed": "hCaptcha verification failed. Please try again.",
     "hcaptchaUnavailable": "hCaptcha is not configured for this deployment.",
@@ -183,6 +184,9 @@
     "languages": "Languages",
     "tagManagement": "Tag Management",
     "workspace": "Workspace",
+    "practice": "Practice",
+    "playground": "Playground",
+    "community": "Community",
     "discussionModeration": "Discussion Moderation",
     "discussionModerationDescription": "Review, pin, lock, and remove discussion threads.",
     "discussions": "Discussion Moderation",
@@ -1273,6 +1277,7 @@
       "deleteFailed": "Failed to delete user",
       "cannotDeleteSuperAdmin": "The super admin account cannot be deleted",
       "cannotDeleteSelf": "You cannot delete your own account",
+      "instructorOwnsGroups": "This instructor still owns groups. Reassign or delete those groups first.",
       "deleteUserFailed": "Failed to delete user. Please try again.",
       "confirmUsernameMismatch": "Username confirmation does not match"
     },
@@ -1977,6 +1982,10 @@
       "deleteConfirmDescription": "Tag \"{name}\" will be permanently deleted.",
       "deleteConfirmWithProblems": "Tag \"{name}\" is used by {count} problem(s). It will be removed from all of them.",
       "duplicateName": "A tag with this name already exists",
+      "missingName": "Tag name is required",
+      "notFound": "Tag not found",
+      "unauthorized": "You are not authorized to perform this action",
+      "rateLimited": "Too many requests. Please wait a moment and try again.",
       "deleteFailed": "Failed to delete tag",
       "createFailed": "Failed to create tag",
       "updateFailed": "Failed to update tag",
@@ -2009,6 +2018,7 @@
     "updateError": "Failed to update profile",
     "rateLimited": "Too many requests. Please wait a moment and try again.",
     "notAuthenticated": "Not authenticated",
+    "unauthorized": "This request could not be verified. Please reload the page and try again.",
     "nameRequired": "Name is required",
     "nameTooLong": "Name must be 100 characters or less",
     "invalidEmail": "Please enter a valid email address",
@@ -2055,6 +2065,7 @@
     "currentPasswordIncorrect": "Current password is incorrect",
     "changePasswordRateLimited": "Too many password change attempts. Please wait a few minutes and try again.",
     "error": "An error occurred",
+    "unauthorized": "This request could not be verified. Please reload the page and try again.",
     "userNotFound": "User not found",
     "sessionExpired": "Your session expired. Redirecting to the sign-in page...",
     "reauthFailed": "Password changed, but automatic sign-in failed. Please sign in again with your new password.",
@@ -2783,13 +2794,14 @@
       "groups": "Groups",
       "assignments": "Assignments",
       "submissions": "Submissions",
-      "problemSets": "Problem Sets",
+      "problem_sets": "Problem Sets",
       "contests": "Contests",
-      "antiCheat": "Anti-Cheat",
+      "anti_cheat": "Anti-Cheat",
       "files": "Files",
       "system": "System",
       "content": "Content",
-      "community": "Community"
+      "community": "Community",
+      "recruiting": "Recruiting"
     },
     "items": {
       "users": {
@@ -2860,6 +2872,9 @@
       },
       "community": {
         "moderate": "Moderate discussions"
+      },
+      "recruiting": {
+        "manage_invitations": "Manage candidate invitations"
       }
     },
     "languages": {
