@@ -27,6 +27,7 @@ import { getCatalogNumbersForIds } from "@/lib/problems/catalog-numbers";
 import { getRecruitingAccessContext } from "@/lib/recruiting/access";
 import { resolveCapabilities } from "@/lib/capabilities/cache";
 import { normalizePage } from "@/lib/pagination";
+import { buildStatusLabels } from "@/lib/judge/status-labels";
 
 type ProblemProgress = "solved" | "attempted" | "untried";
 type ProblemFilter = "all" | "solved" | "unsolved" | "attempted";
@@ -165,6 +166,7 @@ export default async function ProblemsPage({
   const t = await getTranslations("problems");
   const tCommon = await getTranslations("common");
   const tSubmissions = await getTranslations("submissions");
+  const statusLabels = buildStatusLabels(tSubmissions);
   const locale = await getLocale();
   const recruitingAccess = await getRecruitingAccessContext(session.user.id);
   const caps = await resolveCapabilities(session.user.role);
@@ -510,7 +512,7 @@ export default async function ProblemsPage({
     }
 
     if (problemProgress === "attempted" && latestStatus) {
-      const statusLabel = tSubmissions(`status.${latestStatus}` as Parameters<typeof tSubmissions>[0]) ?? latestStatus;
+      const statusLabel = statusLabels[latestStatus] ?? latestStatus;
       return (
         <SubmissionStatusBadge
           label={statusLabel}

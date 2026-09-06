@@ -7,6 +7,7 @@ import { OutputDiffView } from "@/components/submissions/output-diff-view";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useTranslations, useLocale } from "next-intl";
+import { buildStatusLabels } from "@/lib/judge/status-labels";
 import type { SubmissionResultView } from "@/hooks/use-submission-polling";
 
 type SubmissionResultPanelProps = {
@@ -20,6 +21,7 @@ type SubmissionResultPanelProps = {
 export function SubmissionResultPanel({ showCompileOutput, showDetailedResults, showRuntimeErrors, compileOutput, results }: SubmissionResultPanelProps) {
   const t = useTranslations("submissions");
   const locale = useLocale();
+  const statusLabels = useMemo(() => buildStatusLabels(t), [t]);
 
   const sortedResults = useMemo(
     () =>
@@ -79,7 +81,7 @@ export function SubmissionResultPanel({ showCompileOutput, showDetailedResults, 
                       <TableCell>#{index + 1}</TableCell>
                       <TableCell>
                         <SubmissionStatusBadge
-                          label={t(`status.${result.status}` as Parameters<typeof t>[0]) ?? result.status}
+                          label={statusLabels[result.status] ?? result.status}
                           status={result.status}
                           locale={locale}
                         />

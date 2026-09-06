@@ -21,6 +21,7 @@ import { useSubmissionPolling, normalizeSubmission } from "@/hooks/use-submissio
 import type { SubmissionDetailView } from "@/hooks/use-submission-polling";
 import { SubmissionResultPanel } from "./_components/submission-result-panel";
 import { getLanguageDisplayLabel } from "@/lib/judge/languages";
+import { buildStatusLabels } from "@/lib/judge/status-labels";
 import { CommentSection } from "./_components/comment-section";
 import { LiveSubmissionStatus } from "./_components/live-submission-status";
 
@@ -43,6 +44,7 @@ export function SubmissionDetailClient(props: SubmissionDetailClientProps) {
   const tCommon = useTranslations("common");
   const locale = useLocale();
   const router = useRouter();
+  const statusLabels = buildStatusLabels(t);
 
   const { submission, setSubmission, error: pollingError } = useSubmissionPolling(props.initialSubmission);
   const [rejudging, setRejudging] = useState(false);
@@ -275,7 +277,7 @@ export function SubmissionDetailClient(props: SubmissionDetailClientProps) {
                 {t("table.language")}: {getLanguageDisplayLabel(submission.language)}
               </Badge>
               <SubmissionStatusBadge
-                label={t(`status.${submission.status}` as Parameters<typeof t>[0]) ?? submission.status}
+                label={statusLabels[submission.status] ?? submission.status}
                 showLivePulse
                 status={submission.status}
                 executionTimeMs={submission.executionTimeMs}
