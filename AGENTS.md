@@ -12,6 +12,7 @@ JudgeKit is a secure online judge platform for programming assignments. Next.js 
 | `judge-worker-rs/` | Rust judge worker (production) |
 | `docker/` | Judge language Dockerfiles + seccomp profile |
 | `scripts/` | Systemd services, deploy helpers, backup tools |
+| `messages/` | `en.json` / `ko.json` next-intl message bundles |
 | `tests/` | Playwright E2E tests, Vitest unit/integration tests |
 | `data/` | Local database files (gitignored) |
 
@@ -674,6 +675,57 @@ This project uses `@base-ui/react/select` via `src/components/ui/select.tsx`. Th
 3. Test: selected value shows readable label, not a raw ID/key
 4. For "pick-to-add" selects (no persistent selection), use `key` prop to force remount after each pick
 5. **NEVER** leave `<SelectValue />` without children — it shows the raw value (nanoid/key) instead of a label
+
+## Internationalization (CRITICAL)
+
+Two locales, `en` and `ko`, via next-intl. Every user-facing string lives in
+`messages/en.json` **and** `messages/ko.json` — the two bundles must always hold
+the same key set. Full guide: `docs/i18n.md`.
+
+### A missing key renders the key path, not a fallback
+
+next-intl returns the full key path as the string when a key is absent. It never
+returns `undefined`, so a `??` guard is dead code and the user sees literal
+`submissions.status.time_limit_exceeded` on the page.
+
+### NEVER interpolate a runtime value into a message key
+
+```tsx
+// BROKEN — invisible to the literal-key test, and the DB value is not the key
+label={t(`status.${submission.status}`) ?? submission.status}
+```
+
+Keys built from a template literal escape the literal-key scan in
+`tests/unit/ui-i18n-keys-implementation.test.ts`, so this ships silently. Use one
+of three guarded forms instead:
+
+1. **A lookup map that owns the mapping** — `buildStatusLabels(t)` from
+   `src/lib/judge/status-labels.ts` for submission verdicts. The DB stores
+   `time_limit_exceeded` / `memory_limit_exceeded`; the bundles key those as
+   `status.time_limit` / `status.memory_limit`. Build the map once per render,
+   not per row.
+2. **`translateApiErrorKey(t, code, fallbackKey)`** (`src/lib/i18n/api-error.ts`)
+   — checks `t.has()` first, so an unknown API error code degrades to a real
+   sentence.
+3. **An explicit whitelist** `Set`/`switch` before the lookup. Every member of
+   the whitelist MUST have a message — the whitelist is the contract.
+
+### Server-action error codes are message keys
+
+`src/lib/actions/*` return `{ success: false, error: "<code>" }` and callers do
+`t(result.error ?? "...")`. A new code in `change-password.ts`, `public-signup.ts`,
+`tag-management.ts`, `update-profile.ts`, or `user-management.ts` needs a matching
+key in `changePassword` / `auth` / `admin.tags` / `profile` / `admin.users`.
+
+### Checklist when adding any string or runtime-keyed lookup
+
+1. Key added to **both** `en.json` and `ko.json`, same namespace, same position
+2. No template literal in the `t()` argument — use a map, `t.has()`, or a whitelist
+3. Korean copy matches the `~해요` voice already in `ko.json`, at default
+   letter-spacing (see `CLAUDE.md` Typography)
+4. New runtime-keyed lookup? Extend `tests/unit/ui-i18n-keys-implementation.test.ts`
+   and document it in `docs/i18n.md`
+5. `npx vitest run tests/unit/ui-i18n-keys-implementation.test.ts` passes
 
 ## Conventions
 

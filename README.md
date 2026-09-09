@@ -160,6 +160,7 @@ judgekit/
 │   ├── lib/             # Core logic (DB, auth, assignments, judge)
 │   ├── components/      # UI components
 │   └── types/           # TypeScript types
+├── messages/            # en/ko message bundles (next-intl)
 ├── tests/               # Vitest unit + Playwright E2E
 ├── docs/                # Extended documentation
 └── data/                # Local database files (gitignored)
@@ -295,6 +296,7 @@ The client uses `GET /api/v1/time` to align its clock with the database server b
 - [Monitoring & Alerting](docs/monitoring.md) — health surfaces, metrics, and minimum operator alerting guidance
 - [Authentication](docs/authentication.md) — sign-in flow, session token & cookie architecture, password policy, API smoke test
 - [Admin Security Operations](docs/admin-security-operations.md) — lockout policy, MFA/SSO integration guidance, and dependency scanning baseline
+- [Internationalization](docs/i18n.md) — en/ko message bundles, adding strings, and the runtime-built-key rules
 - [Languages](docs/languages.md) — all 125 variants, Docker image presets, admin management
 - [Judge Workers](docs/judge-workers.md) — multi-worker architecture, registration, deployment, warm container pool
 - [AI Assistant](docs/ai-assistant.md) — chat-widget plugin, LLM providers (OpenAI/Claude/Gemini/OpenRouter), model pickers, key storage
