@@ -422,15 +422,43 @@ function validateGeminiModel(model: string): void {
   }
 }
 
+/**
+ * Map the shared `ChatMessage` history onto Gemini `contents`.
+ *
+ * Gemini is the only provider that rewrites the history instead of forwarding
+ * it, so it is the only one that has to recognise its own turns coming back.
+ * The agent loop pushes `rawAssistantMessage` (`{ role: "model", parts }`) and
+ * `formatToolResult` (`{ role: "user", content: [{ functionResponse }] }`) onto
+ * the same array the caller's plain `{ role, content: string }` messages live
+ * in. Blindly re-mapping the first shape flipped `role: "model"` to `"user"`
+ * (it is not the string `"assistant"`) and turned its missing `content` into
+ * the literal text "undefined", so the functionCall turn disappeared and the
+ * functionResponse that followed answered nothing — which Gemini rejects.
+ */
+function toGeminiContents(
+  chatMessages: ChatMessage[]
+): Array<{ role: string; parts: unknown[] }> {
+  return chatMessages.map((m) => {
+    const raw = m as unknown as { role?: unknown; parts?: unknown };
+    // Already a Gemini turn we produced — forward verbatim.
+    if (Array.isArray(raw.parts)) {
+      return { role: raw.role === "model" ? "model" : "user", parts: raw.parts };
+    }
+    const role = m.role === "assistant" ? "model" : "user";
+    // A tool result: `content` is an array of Gemini parts, not text.
+    if (Array.isArray(m.content)) {
+      return { role, parts: m.content as unknown[] };
+    }
+    return { role, parts: [{ text: typeof m.content === "string" ? m.content : String(m.content ?? "") }] };
+  });
+}
+
 const geminiProvider: ChatProvider = {
   async stream({ apiKey, model, messages, maxTokens }) {
     const systemMessage = messages.find((m) => m.role === "system");
     const chatMessages = messages.filter((m) => m.role !== "system");
 
-    const contents = chatMessages.map((m) => ({
-      role: m.role === "assistant" ? "model" : "user",
-      parts: [{ text: m.content }],
-    }));
+    const contents = toGeminiContents(chatMessages);
 
     const body: Record<string, unknown> = {
       contents,
@@ -473,19 +501,7 @@ const geminiProvider: ChatProvider = {
     const systemMessage = messages.find((m) => m.role === "system");
     const chatMessages = messages.filter((m) => m.role !== "system");
 
-    const contents = chatMessages.map((m) => {
-      // Handle regular messages
-      if (typeof m.content === "string") {
-        return {
-          role: m.role === "assistant" ? "model" : "user",
-          parts: [{ text: m.content }],
-        };
-      }
-      return {
-        role: m.role === "assistant" ? "model" : "user",
-        parts: Array.isArray(m.content) ? m.content : [{ text: String(m.content) }],
-      };
-    });
+    const contents = toGeminiContents(chatMessages);
 
     const body: Record<string, unknown> = {
       contents,

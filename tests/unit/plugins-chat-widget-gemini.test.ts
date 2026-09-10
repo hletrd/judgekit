@@ -261,3 +261,77 @@ describe("gemini-models route", () => {
     expect(allLoggedArgs).not.toContain(SECRET_KEY);
   });
 });
+
+// ── Agent-loop history mapping (regression) ───────────────────────────────────
+
+describe("geminiProvider tool-loop history mapping", () => {
+  const originalFetch = globalThis.fetch;
+
+  afterEach(() => {
+    globalThis.fetch = originalFetch;
+    vi.restoreAllMocks();
+  });
+
+  /** Run chatWithTools against a stub fetch and return the request body sent. */
+  async function captureRequestBody(messages: unknown[]) {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({ candidates: [{ content: { parts: [{ text: "done" }] } }] }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      ),
+    );
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+    const { getProvider } = await import("@/lib/plugins/chat-widget/providers");
+    await getProvider("gemini").chatWithTools({
+      apiKey: "test-key",
+      model: "gemini-3.8-flash",
+      messages: messages as never,
+      maxTokens: 2048,
+      tools: [{ name: "get_problem", description: "d", parameters: { type: "object" } }],
+    });
+
+    return JSON.parse(fetchMock.mock.calls[0][1].body as string);
+  }
+
+  it("forwards a model turn from a previous iteration verbatim", async () => {
+    // The agent loop pushes `rawAssistantMessage` — `{ role: "model", parts }` —
+    // straight back onto the history. It must survive the round trip: before
+    // this fix the role flipped to "user" and parts became [{ text: "undefined" }],
+    // which detached the functionResponse from its functionCall.
+    const functionCallParts = [{ functionCall: { name: "get_problem", args: { id: "p1" } } }];
+    const body = await captureRequestBody([
+      { role: "system", content: "sys" },
+      { role: "user", content: "안녕" },
+      { role: "model", parts: functionCallParts },
+      { role: "user", content: [{ functionResponse: { name: "get_problem", response: { result: "ok" } } }] },
+    ]);
+
+    expect(body.contents).toEqual([
+      { role: "user", parts: [{ text: "안녕" }] },
+      { role: "model", parts: functionCallParts },
+      { role: "user", parts: [{ functionResponse: { name: "get_problem", response: { result: "ok" } } }] },
+    ]);
+  });
+
+  it("never emits the literal string \"undefined\" as a message part", async () => {
+    const body = await captureRequestBody([
+      { role: "user", content: "hi" },
+      { role: "model", parts: [{ functionCall: { name: "get_problem", args: {} } }] },
+    ]);
+
+    expect(JSON.stringify(body.contents)).not.toContain("undefined");
+  });
+
+  it("still maps ordinary assistant/user text turns", async () => {
+    const body = await captureRequestBody([
+      { role: "user", content: "q" },
+      { role: "assistant", content: "a" },
+    ]);
+
+    expect(body.contents).toEqual([
+      { role: "user", parts: [{ text: "q" }] },
+      { role: "model", parts: [{ text: "a" }] },
+    ]);
+  });
+});
