@@ -73,6 +73,7 @@ function subqueryChain() {
 function countChain(total: number) {
   const c: Record<string, unknown> = {};
   c.from = vi.fn(() => c);
+  c.innerJoin = vi.fn(() => c);
   c.leftJoin = vi.fn(() => c);
   c.where = vi.fn(() => Promise.resolve([{ total }]));
   return c;
@@ -81,6 +82,7 @@ function countChain(total: number) {
 function candidateChain(rows: { id: string }[]) {
   const c: Record<string, unknown> = {};
   c.from = vi.fn(() => c);
+  c.innerJoin = vi.fn(() => c);
   c.leftJoin = vi.fn(() => c);
   c.where = vi.fn(() => c);
   c.orderBy = vi.fn(() => c);
@@ -209,6 +211,7 @@ describe("POST /api/v1/admin/submissions/ai-review-backfill", () => {
     // Count query: capture the outer matchFilter, resolve remaining = 0 so the
     // route skips the candidate query (only two db.select() calls total).
     const countFrom: Record<string, unknown> = {};
+    countFrom.innerJoin = vi.fn(() => countFrom);
     countFrom.leftJoin = vi.fn(() => countFrom);
     countFrom.where = vi.fn((cond: unknown) => {
       matchWhere = cond;
@@ -238,6 +241,14 @@ describe("POST /api/v1/admin/submissions/ai-review-backfill", () => {
     expect(matchQ.sql.toLowerCase()).toContain("not exists");
     expect(matchQ.params).toContain("accepted");
     expect(matchQ.params).toEqual(expect.arrayContaining(["g1", "g2"]));
+
+    // Problems with AI turned off are excluded. The generator always refuses
+    // them, so they can never acquire the AI comment that clears them from the
+    // dedup predicate: counting them left `remaining` permanently above zero,
+    // and since candidates are taken oldest-first, a block of them at the head
+    // of the window was re-enqueued every call and the backfill never advanced.
+    expect(matchQ.sql).toContain('"allow_ai_assistant"');
+    expect(matchQ.params).toContain(true);
   });
 
   it("rejects a missing date range with 400", async () => {

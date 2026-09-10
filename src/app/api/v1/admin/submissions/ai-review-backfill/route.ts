@@ -5,7 +5,7 @@ import { createApiHandler } from "@/lib/api/handler";
 import { apiSuccess } from "@/lib/api/responses";
 import { db } from "@/lib/db";
 import { getSubmissionReviewGroupIds } from "@/lib/assignments/submissions";
-import { assignments, submissions, submissionComments } from "@/lib/db/schema";
+import { assignments, problems, submissions, submissionComments } from "@/lib/db/schema";
 import { enqueueReview } from "@/lib/judge/auto-review";
 import { recordAuditEvent } from "@/lib/audit/events";
 
@@ -44,7 +44,9 @@ const backfillSchema = z
  * Range-scoped bulk backfill of AI reviews. Targets ACCEPTED submissions in the
  * `{ from, to }` window that LACK an AI comment (dedup predicate: no
  * `submission_comments` row with `authorId IS NULL`), scoped to the reviewer's
- * groups like bulk-rejudge.
+ * groups like bulk-rejudge, and restricted to problems with `allowAiAssistant`
+ * on — the generator always refuses the rest, so counting them would make
+ * `remaining` un-drainable and wedge the oldest-first batch.
  *
  * Not gated by the `autoCodeReviewEnabled` toggle — this is an explicit admin
  * action. Resumable + bounded: counts total matching (`remaining`) and enqueues
@@ -90,12 +92,20 @@ export const POST = createApiHandler({
       lte(submissions.submittedAt, to),
       scopedGroupFilter,
       lacksAiComment,
+      // The generator refuses any submission whose problem has AI turned off,
+      // so such rows can never gain the AI comment that would clear them from
+      // `lacksAiComment`. Counting them made `remaining` un-drainable, and —
+      // because candidates are taken oldest-first — a run of them at the head
+      // of the window was re-enqueued on every call and the backfill never
+      // advanced past it. Exclude them from both the count and the batch.
+      eq(problems.allowAiAssistant, true),
     );
 
     // Total backlog before this batch drains. The UI loops until this hits 0.
     const countRows = await db
       .select({ total: count() })
       .from(submissions)
+      .innerJoin(problems, eq(submissions.problemId, problems.id))
       .leftJoin(assignments, eq(submissions.assignmentId, assignments.id))
       .where(matchFilter);
     const remaining = Number(countRows[0]?.total ?? 0);
@@ -105,6 +115,7 @@ export const POST = createApiHandler({
       ? await db
           .select({ id: submissions.id })
           .from(submissions)
+          .innerJoin(problems, eq(submissions.problemId, problems.id))
           .leftJoin(assignments, eq(submissions.assignmentId, assignments.id))
           .where(matchFilter)
           .orderBy(asc(submissions.submittedAt))
