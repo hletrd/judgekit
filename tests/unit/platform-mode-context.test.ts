@@ -25,10 +25,14 @@ vi.mock("@/lib/db", () => ({
   },
 }));
 
-vi.mock("@/lib/system-settings", () => ({
-  getResolvedPlatformMode: getResolvedPlatformModeMock,
-  getSystemSettings: getSystemSettingsMock,
-}));
+vi.mock("@/lib/system-settings", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/system-settings")>();
+  return {
+    ...actual,
+    getResolvedPlatformMode: getResolvedPlatformModeMock,
+    getSystemSettings: getSystemSettingsMock,
+  };
+});
 
 describe("platform mode context derivation", () => {
   beforeEach(() => {
@@ -138,6 +142,72 @@ describe("platform mode context derivation", () => {
         reason: "active_restricted_scope",
       },
     });
+  });
+});
+
+describe("non-interactive AI output (post-judge auto review)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    getResolvedPlatformModeMock.mockResolvedValue("homework");
+    getSystemSettingsMock.mockResolvedValue({ aiAssistantEnabled: true });
+  });
+
+  it("is suppressed for a participant with an active restricted assignment when interactive", async () => {
+    rawQueryOneMock.mockResolvedValueOnce({ assignmentId: "assignment-2" });
+
+    const { isAiAssistantEnabledForContext } = await import("@/lib/platform-mode-context");
+    await expect(
+      isAiAssistantEnabledForContext({ userId: "student-1", assignmentId: null })
+    ).resolves.toBe(false);
+  });
+
+  it("still runs for that same participant when interactive is false", async () => {
+    // The regression this guards: a student enrolled in ANY currently-open
+    // exam_mode != 'none' assignment resolved to contest mode, so the
+    // post-judge review was disabled on every one of their submissions —
+    // practice and plain homework included.
+    rawQueryOneMock.mockResolvedValueOnce({ assignmentId: "assignment-2" });
+
+    const { isAiAssistantEnabledForContext } = await import("@/lib/platform-mode-context");
+    await expect(
+      isAiAssistantEnabledForContext({
+        userId: "student-1",
+        assignmentId: null,
+        interactive: false,
+      })
+    ).resolves.toBe(true);
+  });
+
+  it("still honours the master aiAssistantEnabled kill switch", async () => {
+    getSystemSettingsMock.mockResolvedValue({ aiAssistantEnabled: false });
+    rawQueryOneMock.mockResolvedValueOnce({ assignmentId: "assignment-2" });
+
+    const { isAiAssistantEnabledForContext } = await import("@/lib/platform-mode-context");
+    await expect(
+      isAiAssistantEnabledForContext({
+        userId: "student-1",
+        assignmentId: null,
+        interactive: false,
+      })
+    ).resolves.toBe(false);
+  });
+
+  it("still honours a per-contest aiAssistantPolicy of forbid", async () => {
+    const dbModule = await import("@/lib/db");
+    vi.mocked(dbModule.db.query.assignments.findFirst).mockResolvedValueOnce({
+      examMode: "scheduled",
+      aiAssistantPolicy: "forbid",
+    } as never);
+    rawQueryOneMock.mockResolvedValueOnce({ assignmentId: "assignment-2" });
+
+    const { isAiAssistantEnabledForContext } = await import("@/lib/platform-mode-context");
+    await expect(
+      isAiAssistantEnabledForContext({
+        userId: "student-1",
+        assignmentId: null,
+        interactive: false,
+      })
+    ).resolves.toBe(false);
   });
 });
 

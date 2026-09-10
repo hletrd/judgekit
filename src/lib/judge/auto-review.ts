@@ -118,9 +118,18 @@ export async function generateAndStoreReview(
       return { status: "skipped", reason: "sourceTooLarge" };
     }
 
+    // `interactive: false` — this review is machine-generated after the verdict
+    // and stored as a comment; the student cannot prompt it. Without this flag
+    // the shared helper resolves the SUBMITTER's context, and any student
+    // enrolled in a group with a currently-open `exam_mode != 'none'`
+    // assignment resolves to contest/exam mode, which suppressed every review
+    // (including on practice and plain-homework submissions). The master
+    // `aiAssistantEnabled` switch and a per-contest `aiAssistantPolicy:
+    // 'forbid'` still disable it.
     const globalEnabled = await isAiAssistantEnabledForContext({
       userId: submission.userId,
       assignmentId: submission.assignmentId,
+      interactive: false,
     });
     if (!globalEnabled) return { status: "disabled", reason: "aiDisabledForContext" };
 

@@ -17,6 +17,18 @@ export type PlatformModeContextOptions = {
    * as a participant.
    */
   userRole?: string | null;
+  /**
+   * Whether the AI is being used INTERACTIVELY by the person named in `userId`
+   * (chat assistant, in-editor help). Defaults to `true`.
+   *
+   * Pass `false` for machine-generated, after-the-fact output that the user
+   * cannot steer — today that means the post-judge auto code review, which is
+   * stored as a comment on an already-graded submission. The restricted-mode
+   * rule exists to stop a participant from getting live AI help DURING a graded
+   * session; it was never meant to suppress feedback written after the verdict.
+   * See `isAiAssistantEnabledForContext` for exactly which gates still apply.
+   */
+  interactive?: boolean;
 };
 
 export type ResolvedPlatformModeAssignmentContext = {
@@ -331,6 +343,17 @@ export async function isAiAssistantEnabledForContext(
     return false;
   }
   if (aiAssistantPolicy === "allow") {
+    return settings?.aiAssistantEnabled ?? true;
+  }
+
+  // Non-interactive output (the post-judge auto code review) stops here. It is
+  // not live assistance to a participant: the submission is already judged and
+  // the reader cannot prompt the model. The master kill switch above and an
+  // explicit per-contest `forbid` still suppress it; the blanket
+  // contest/exam/recruiting restriction below does not, because it would
+  // silently delete graded-work feedback for every student enrolled in any
+  // currently-open assignment.
+  if (options.interactive === false) {
     return settings?.aiAssistantEnabled ?? true;
   }
 
